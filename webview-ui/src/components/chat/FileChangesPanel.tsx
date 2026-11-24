@@ -21,6 +21,25 @@ interface FileChangesPanelProps {
 // `ts` is not unique, so the message's own id identifies it; `ts` only covers messages persisted without one.
 const originalKey = (entry: { messageId?: string; ts: number }) => entry.messageId ?? `ts:${entry.ts}`
 
+const mergedDiffs = new WeakMap<FileChangeEntry[], { original: string; final: string; diff: string }>()
+
+function getFileDiff(entries: FileChangeEntry[], original: string | undefined, final: string | null | undefined) {
+	if (original === undefined || !final) {
+		mergedDiffs.delete(entries)
+		return entries.map((entry) => entry.diff).join("\n\n")
+	}
+
+	// Each group keeps its identity until the edits change. Other rows can receive
+	// content or change their expansion state while this file's inputs stay the same.
+	const cached = mergedDiffs.get(entries)
+	if (cached?.original === original && cached.final === final) return cached.diff
+
+	const path = entries[0].path
+	const diff = createTwoFilesPatch(path, path, original, final)
+	mergedDiffs.set(entries, { original, final, diff })
+	return diff
+}
+
 const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChangesPanelProps) => {
 	const { t } = useAppTranslation()
 	const [panelExpanded, setPanelExpanded] = useState(false)
@@ -184,11 +203,7 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 							entries[0].originalContent ?? originalContentByKey[originalKey(entries[0])] ?? undefined
 						const lookupPath = path.startsWith("./") ? path.slice(2) : path
 						const finalContent = finalContentByPath.get(lookupPath)
-						const hasMergedDiff =
-							originalContent !== undefined && finalContent != null && finalContent !== ""
-						const displayDiff = hasMergedDiff
-							? createTwoFilesPatch(path, path, originalContent, finalContent)
-							: entries.map((e) => e.diff).join("\n\n")
+						const displayDiff = getFileDiff(entries, originalContent, finalContent)
 						const combinedStats = entries.reduce(
 							(acc, e) => ({
 								added: acc.added + (e.diffStats?.added ?? 0),

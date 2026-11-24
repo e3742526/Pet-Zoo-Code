@@ -1,4 +1,5 @@
 import React from "react"
+import { createTwoFilesPatch } from "diff"
 import { act } from "@testing-library/react"
 import { fireEvent, render, screen } from "@/utils/test-utils"
 import type { ClineMessage, ExtensionMessage, WebviewMessage } from "@roo-code/types"
@@ -6,6 +7,11 @@ import { TranslationProvider } from "@/i18n/__mocks__/TranslationContext"
 import FileChangesPanel from "../components/chat/FileChangesPanel"
 
 const mockPostMessage = vi.fn<(message: WebviewMessage) => void>()
+
+vi.mock("diff", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("diff")>()
+	return { ...actual, createTwoFilesPatch: vi.fn(actual.createTwoFilesPatch) }
+})
 
 vi.mock("@src/utils/vscode", () => ({
 	vscode: {
@@ -240,6 +246,49 @@ describe("FileChangesPanel", () => {
 
 		const requestsOfType = (type: WebviewMessage["type"]) =>
 			mockPostMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type)
+
+		it("rebuilds only the diff whose inputs change and reuses it across toggles", () => {
+			const patch = vi.mocked(createTwoFilesPatch)
+			const taskId = "task-A"
+			const pathA = "src/a.ts"
+			const pathB = "src/b.ts"
+			renderPanel(
+				[
+					{ ...createEditWithOriginal({ path: pathA, originalContentLength: 5000 }), messageId: "id-a" },
+					{ ...createEditWithOriginal({ path: pathB, originalContent: "old b\n" }), messageId: "id-b" },
+				],
+				taskId,
+			)
+			fireEvent.click(screen.getByText("2 file(s) changed in this conversation").closest("button")!)
+			const [toggleA, toggleB] = screen.getAllByTestId("accordian-toggle")
+			fireEvent.click(toggleA)
+			fireEvent.click(toggleB)
+
+			respond({ type: "fileContent", fileContent: { path: pathA, content: "new a\n" } })
+			const respondToA = (content: string) =>
+				respond({
+					type: "originalContent",
+					originalContentInfo: { ts: TS, taskId, messageId: "id-a", content },
+				})
+			respondToA("old a\n")
+			expect(patch.mock.calls.map(([path]) => path)).toEqual([pathA])
+
+			respond({ type: "fileContent", fileContent: { path: pathB, content: "new b\n" } })
+			fireEvent.click(toggleA)
+			fireEvent.click(toggleA)
+			const panelToggle = screen.getByText("2 file(s) changed in this conversation").closest("button")!
+			fireEvent.click(panelToggle)
+			fireEvent.click(panelToggle)
+			expect(patch.mock.calls.map(([path]) => path)).toEqual([pathA, pathB])
+
+			respondToA("earlier a\n")
+			expect(patch.mock.calls.map(([path]) => path)).toEqual([pathA, pathB, pathA])
+			const [a, b] = screen.getAllByTestId("accordian-code")
+			expect(a).toHaveTextContent("-earlier a")
+			expect(a).toHaveTextContent("+new a")
+			expect(b).toHaveTextContent("-old b")
+			expect(b).toHaveTextContent("+new b")
+		})
 
 		it("requests nothing until a row is expanded, then asks for the final and the original content", () => {
 			renderPanel([createEditWithOriginal({ originalContentLength: 5000 })])

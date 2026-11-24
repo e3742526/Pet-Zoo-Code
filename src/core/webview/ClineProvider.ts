@@ -1576,7 +1576,7 @@ export class ClineProvider
 			stateValues.apiProvider && !isRetiredProvider(stateValues.apiProvider)
 				? stateValues.apiProvider
 				: providerIdentifiers.anthropic
-		const apiConfiguration = this.contextProxy.getProviderSettings()
+		const apiConfiguration = this.contextProxy.getProviderSettings(stateValues)
 		if (!apiConfiguration.apiProvider) {
 			apiConfiguration.apiProvider = taskApiProvider
 		}
@@ -3335,8 +3335,9 @@ export class ClineProvider
 			"clineMessages" | "renderContext" | "hasOpenedModeSelector" | "version" | "shouldShowAnnouncement"
 		>
 	> {
-		const stateValues = this.contextProxy.getValues()
 		const customModes = await this.customModesManager.getCustomModes()
+		// Read the active profile and provider configuration from one snapshot after the async load.
+		const stateValues = this.contextProxy.getValues()
 
 		// Determine apiProvider with the same logic as before, while filtering retired providers.
 		const apiProvider: ProviderName =
@@ -3345,7 +3346,7 @@ export class ClineProvider
 				: providerIdentifiers.anthropic
 
 		// Build the apiConfiguration object combining state values and secrets.
-		const providerSettings = this.contextProxy.getProviderSettings()
+		const providerSettings = this.contextProxy.getProviderSettings(stateValues)
 
 		// Ensure apiProvider is set properly if not already in state
 		if (!providerSettings.apiProvider) {

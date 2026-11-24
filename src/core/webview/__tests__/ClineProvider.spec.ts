@@ -4140,6 +4140,40 @@ describe("ClineProvider", () => {
 		expect(state).toHaveProperty("writeDelayMs")
 	})
 
+	test("getState returns one coherent profile after loading custom modes", async () => {
+		const proxy = provider.contextProxy
+		await proxy.setValues({
+			currentApiConfigName: "original-profile",
+			apiProvider: providerIdentifiers.openrouter,
+			openRouterModelId: "original-model",
+		})
+		vi.spyOn(provider.customModesManager, "getCustomModes").mockImplementationOnce(async () => {
+			await proxy.setValues({
+				currentApiConfigName: "updated-profile",
+				apiProvider: providerIdentifiers.anthropic,
+				apiModelId: "updated-model",
+				apiKey: "fixture-key",
+			})
+			return []
+		})
+		const readSettings = vi.spyOn(proxy, "getValues")
+
+		try {
+			expect(await provider.getState()).toMatchObject({
+				currentApiConfigName: "updated-profile",
+				apiModelId: "updated-model",
+				apiConfiguration: {
+					apiProvider: providerIdentifiers.anthropic,
+					apiModelId: "updated-model",
+					apiKey: "fixture-key",
+				},
+			})
+			expect(readSettings).toHaveBeenCalledTimes(1)
+		} finally {
+			readSettings.mockRestore()
+		}
+	})
+
 	test("getState and getStateToPostToWebview return the complete NanoGPT configuration", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		await provider.contextProxy.setProviderSettings({

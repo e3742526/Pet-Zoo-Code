@@ -539,9 +539,7 @@ export class ContextProxy {
 	 * ProviderSettings
 	 */
 
-	public getProviderSettings(): ProviderSettings {
-		const values = this.getValues()
-
+	public getProviderSettings(values = this.getValues()): ProviderSettings {
 		// Sanitize invalid/removed apiProvider values before parsing
 		// This handles cases where a user had a provider selected that was later removed
 		// from the extension (e.g., "glama"). We sanitize here to avoid repeated

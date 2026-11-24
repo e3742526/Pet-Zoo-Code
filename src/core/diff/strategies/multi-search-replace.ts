@@ -16,10 +16,10 @@ function getSimilarity(original: string, search: string): number {
 		return 0
 	}
 
-	// Use the normalizeString utility to handle smart quotes and other special characters
-	const normalizedOriginal = normalizeString(original)
-	const normalizedSearch = normalizeString(search)
+	return getNormalizedSimilarity(normalizeString(original), normalizeString(search))
+}
 
+function getNormalizedSimilarity(normalizedOriginal: string, normalizedSearch: string): number {
 	if (normalizedOriginal === normalizedSearch) {
 		return 1
 	}
@@ -72,6 +72,50 @@ function fuzzySearch(lines: string[], searchChunk: string, startIndex: number, e
 	}
 
 	return { bestScore, bestMatchIndex, bestMatchContent }
+}
+
+type SearchReplacement = { searchLines: string[]; replaceLines: string[] }
+type FullFileMatch =
+	{ kind: "unique"; index: number; candidate: SearchReplacement } | { kind: "ambiguous" } | { kind: "missing" }
+
+/**
+ * Find one qualifying position across both forms of a stale-hint block. The forms
+ * have the same number of lines, so each file window needs only one normalization.
+ */
+function findUniqueFullFileMatch(
+	lines: string[],
+	original: SearchReplacement,
+	stripped: SearchReplacement | undefined,
+	threshold: number,
+): FullFileMatch {
+	const candidates = (stripped ? [original, stripped] : [original]).map((candidate) => ({
+		candidate,
+		text: normalizeString(candidate.searchLines.join("\n")),
+	}))
+	const width = original.searchLines.length
+	let match: Extract<FullFileMatch, { kind: "unique" }> | undefined
+
+	for (let index = 0; index <= lines.length - width; index++) {
+		const text = normalizeString(lines.slice(index, index + width).join("\n"))
+		const found = candidates.find(({ text: search }) => {
+			if (threshold === 1 || text === search) {
+				return text === search && threshold <= 1
+			}
+
+			// Even the best possible score cannot overcome a large length difference.
+			const maxLength = Math.max(text.length, search.length)
+			const upperBound = 1 - Math.abs(text.length - search.length) / maxLength
+			return upperBound >= threshold && getNormalizedSimilarity(text, search) >= threshold
+		})
+		if (!found) {
+			continue
+		}
+		if (match) {
+			return { kind: "ambiguous" }
+		}
+		match = { kind: "unique", index, candidate: found.candidate }
+	}
+	return match ?? { kind: "missing" }
 }
 
 export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
@@ -424,7 +468,8 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 		for (const replacement of replacements) {
 			let { searchContent, replaceContent } = replacement
-			let startLine = replacement.startLine + (replacement.startLine === 0 ? 0 : delta)
+			let hasLineHint = replacement.startLine > 0
+			let startLine = hasLineHint ? replacement.startLine + delta : 0
 
 			// First unescape any escaped markers in the content
 			searchContent = this.unescapeMarkers(searchContent)
@@ -435,8 +480,9 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 				(everyLineHasLineNumbers(searchContent) && everyLineHasLineNumbers(replaceContent)) ||
 				(everyLineHasLineNumbers(searchContent) && replaceContent.trim() === "")
 
-			if (hasAllLineNumbers && startLine === 0) {
+			if (hasAllLineNumbers && !hasLineHint) {
 				startLine = parseInt(searchContent.split("\n")[0].split("|")[0])
+				hasLineHint = startLine > 0
 			}
 
 			if (hasAllLineNumbers) {
@@ -481,28 +527,31 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			let searchEndIndex = resultLines.length
 
 			// Validate and handle line range if provided
-			if (startLine) {
+			if (hasLineHint) {
 				// Convert to 0-based index
 				const exactStartIndex = startLine - 1
-				const searchLen = searchLines.length
-				const exactEndIndex = exactStartIndex + searchLen - 1
+				const exactEndIndex = exactStartIndex + searchLines.length
 
 				// Try exact match first
-				const originalChunk = resultLines.slice(exactStartIndex, exactEndIndex + 1).join("\n")
-				const similarity = getSimilarity(originalChunk, searchChunk)
-				if (similarity >= this.fuzzyThreshold) {
+				const originalChunk =
+					exactStartIndex >= 0 && exactEndIndex <= resultLines.length
+						? resultLines.slice(exactStartIndex, exactEndIndex).join("\n")
+						: undefined
+				const similarity = originalChunk === undefined ? 0 : getSimilarity(originalChunk, searchChunk)
+				if (originalChunk !== undefined && similarity >= this.fuzzyThreshold) {
 					matchIndex = exactStartIndex
 					bestMatchScore = similarity
 					bestMatchContent = originalChunk
 				} else {
 					// Set bounds for buffered search
-					searchStartIndex = Math.max(0, startLine - (this.bufferLines + 1))
+					searchStartIndex = Math.max(0, Math.min(resultLines.length, exactStartIndex - this.bufferLines))
 					searchEndIndex = Math.min(resultLines.length, startLine + searchLines.length + this.bufferLines)
 				}
 			}
 
+			const hasSearchWindow = !hasLineHint || searchStartIndex + searchLines.length <= searchEndIndex
 			// If no match found yet, try middle-out search within bounds
-			if (matchIndex === -1) {
+			if (matchIndex === -1 && hasSearchWindow) {
 				const {
 					bestScore,
 					bestMatchIndex,
@@ -515,6 +564,8 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 			// Try aggressive line number stripping as a fallback if regular matching fails
 			if (matchIndex === -1 || bestMatchScore < this.fuzzyThreshold) {
+				const bestMatchIndex = matchIndex
+				matchIndex = -1
 				// Strip both search and replace content once (simultaneously)
 				const aggressiveSearchContent = stripLineNumbers(searchContent, true)
 				const aggressiveReplaceContent = stripLineNumbers(replaceContent, true)
@@ -523,26 +574,46 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 				const aggressiveSearchChunk = aggressiveSearchLines.join("\n")
 
 				// Try middle-out search again with aggressive stripped content (respecting the same search bounds)
-				const {
-					bestScore,
-					bestMatchIndex,
-					bestMatchContent: aggContent,
-				} = fuzzySearch(resultLines, aggressiveSearchChunk, searchStartIndex, searchEndIndex)
-				if (bestMatchIndex !== -1 && bestScore >= this.fuzzyThreshold) {
-					matchIndex = bestMatchIndex
-					bestMatchScore = bestScore
-					bestMatchContent = aggContent
-					// Replace the original search/replace with their stripped versions
-					searchContent = aggressiveSearchContent
-					replaceContent = aggressiveReplaceContent
+				const aggressive = hasSearchWindow
+					? fuzzySearch(resultLines, aggressiveSearchChunk, searchStartIndex, searchEndIndex)
+					: undefined
+				const aggressiveReplaceLines = aggressiveReplaceContent ? aggressiveReplaceContent.split(/\r?\n/) : []
+				if (aggressive && aggressive.bestMatchIndex !== -1 && aggressive.bestScore >= this.fuzzyThreshold) {
+					matchIndex = aggressive.bestMatchIndex
 					searchLines = aggressiveSearchLines
-					replaceLines = replaceContent ? replaceContent.split(/\r?\n/) : []
-				} else {
+					replaceLines = aggressiveReplaceLines
+				} else if (hasLineHint) {
+					const stripped =
+						aggressiveSearchChunk &&
+						aggressiveSearchChunk !== searchChunk &&
+						aggressiveSearchContent !== aggressiveReplaceContent
+							? { searchLines: aggressiveSearchLines, replaceLines: aggressiveReplaceLines }
+							: undefined
+					const fullFileMatch = findUniqueFullFileMatch(
+						resultLines,
+						{ searchLines, replaceLines },
+						stripped,
+						this.fuzzyThreshold,
+					)
+					if (fullFileMatch.kind === "unique") {
+						matchIndex = fullFileMatch.index
+						searchLines = fullFileMatch.candidate.searchLines
+						replaceLines = fullFileMatch.candidate.replaceLines
+					} else if (fullFileMatch.kind === "ambiguous") {
+						diffResults.push({
+							success: false,
+							error: "The full-file search found at least 2 matching positions. Add surrounding lines to make the SEARCH block unique, or verify the current start line.",
+						})
+						continue
+					}
+				}
+
+				if (matchIndex === -1) {
 					// File and search text are never echoed: they may hold secrets. Report only numbers and constants.
 					const lineRange = startLine ? ` at line: ${startLine}` : ""
 					const bestMatchLocation =
-						bestMatchContent && matchIndex >= 0
-							? `lines ${matchIndex + 1}-${matchIndex + bestMatchContent.split("\n").length}`
+						bestMatchContent && bestMatchIndex >= 0
+							? `lines ${bestMatchIndex + 1}-${bestMatchIndex + bestMatchContent.split("\n").length}`
 							: "none"
 
 					const levenDist = bestMatchContent

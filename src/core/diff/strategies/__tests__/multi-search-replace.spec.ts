@@ -1,5 +1,87 @@
 import { MultiSearchReplaceDiffStrategy } from "../multi-search-replace"
 
+describe("stale start-line hints", () => {
+	const padding = Array.from({ length: 90 }, (_, index) => `// padding row ${index}`)
+	const search = "const retryDelay = 4000"
+	const replacement = "const retryDelay = 2000"
+	const diffBlock = (line: number, block = search, update = replacement) =>
+		["<<<<<<< SEARCH", `:start_line:${line}`, "-------", block, "=======", update, ">>>>>>> REPLACE"].join("\n")
+
+	it.each([1, 999])("uses a unique full-file match when the hint points to line %s", async (line) => {
+		const original = [...padding, `\t${search}`].join("\r\n")
+		const result = await new MultiSearchReplaceDiffStrategy().applyDiff(original, diffBlock(line))
+
+		expect(result).toMatchObject({ success: true, content: [...padding, `\t${replacement}`].join("\r\n") })
+	})
+
+	it.each([
+		{ block: search, update: replacement, lines: [search, search] },
+		{ block: `| ${search}`, update: `| ${replacement}`, lines: [`| ${search}`, search] },
+	])("rejects two qualifying full-file positions in $lines", async ({ block, update, lines }) => {
+		const original = [...padding, ...lines].join("\n")
+		const result = await new MultiSearchReplaceDiffStrategy().applyDiff(original, diffBlock(1, block, update))
+
+		expect(result).toMatchObject({
+			success: false,
+			failParts: [{ error: expect.stringContaining("at least 2 matching positions") }],
+		})
+		expect(JSON.stringify(result)).not.toContain(search)
+	})
+
+	it("uses the existing line-number stripping rules when recovering a unique match", async () => {
+		const original = [...padding, search].join("\n")
+		const result = await new MultiSearchReplaceDiffStrategy().applyDiff(
+			original,
+			diffBlock(1, `| ${search}`, `| ${replacement}`),
+		)
+
+		expect(result).toMatchObject({ success: true, content: [...padding, replacement].join("\n") })
+	})
+
+	it("uses the configured similarity threshold for the full-file retry", async () => {
+		const original = [...padding, "const retryDelay = 4001"].join("\n")
+		const diff = diffBlock(1)
+
+		await expect(new MultiSearchReplaceDiffStrategy().applyDiff(original, diff)).resolves.toMatchObject({
+			success: false,
+		})
+		await expect(new MultiSearchReplaceDiffStrategy(0.9).applyDiff(original, diff)).resolves.toMatchObject({
+			success: true,
+			content: [...padding, replacement].join("\n"),
+		})
+	})
+
+	it("does not treat a partial window at the end of the file as a complete block", async () => {
+		const lastLine = "const retryPolicy = { delay: 4000, retries: 3, timeout: 17000, enabled: true }"
+		const result = await new MultiSearchReplaceDiffStrategy(0.97).applyDiff(
+			[...padding, lastLine].join("\n"),
+			diffBlock(1, `${lastLine}\nx`),
+		)
+
+		expect(result.success).toBe(false)
+	})
+
+	it("uses the hinted match when identical text appears elsewhere", async () => {
+		const original = [search, ...padding, search].join("\n")
+		const result = await new MultiSearchReplaceDiffStrategy().applyDiff(original, diffBlock(1))
+
+		expect(result).toMatchObject({ success: true, content: [replacement, ...padding, search].join("\n") })
+	})
+
+	it("recovers later blocks after an earlier replacement changes the file length", async () => {
+		const original = ["initial", ...padding, search].join("\n")
+		const introduced = [...Array.from({ length: 45 }, (_, index) => `// inserted ${index}`), "updated"]
+		const diff = [diffBlock(1, "initial", introduced.join("\n")), diffBlock(2)].join("\n")
+		const result = await new MultiSearchReplaceDiffStrategy().applyDiff(original, diff)
+
+		expect(result).toMatchObject({
+			success: true,
+			content: [...introduced, ...padding, replacement].join("\n"),
+			failParts: [],
+		})
+	})
+})
+
 describe("MultiSearchReplaceDiffStrategy", () => {
 	describe("validateMarkerSequencing", () => {
 		let strategy: MultiSearchReplaceDiffStrategy

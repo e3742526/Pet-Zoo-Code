@@ -269,6 +269,12 @@ XLSX extraction reads cached formula results, including zero, false, and error v
 
 The regression tests exercise both in-memory workbooks and XLSX bytes. They cover filled-down formulas, formula date-times, date-only cells near midnight, quoted literals, and elapsed hours, minutes, and seconds in the 1900 and 1904 date systems.
 
+## Stale line hints in apply_diff
+
+When a line hint no longer points near a qualifying SEARCH block, the strategy retries across the file. It compares complete line ranges at the configured similarity threshold and accepts one qualifying position across the plain and line-number-stripped forms. The retry stops once it finds two distinct positions and gives a diagnostic without echoing file text. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2248)
+
+Regression tests cover a moved block, a hint beyond the end of the file, duplicate positions, prefixed line numbers, relaxed similarity, CRLF and indentation, and multi-block edits that shift later line numbers.
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

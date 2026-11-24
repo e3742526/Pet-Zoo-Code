@@ -1,5 +1,4 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useSize } from "react-use"
 import { Trans } from "react-i18next"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import deepEqual from "fast-deep-equal"
@@ -13,6 +12,7 @@ import type {
 	ClineAskUseMcpServer,
 	ClineSayTool,
 	CompletionCheckpoint,
+	ExtensionMessage,
 } from "@roo-code/types"
 
 import { Mode } from "@roo/modes"
@@ -162,8 +162,6 @@ interface ChatRowProps {
 	onFollowUpUnmount?: () => void
 	isFollowUpAnswered?: boolean
 	isFollowUpAutoApprovalPaused?: boolean
-	editable?: boolean
-	hasCheckpoint?: boolean
 	completionCheckpoint?: CompletionCheckpoint
 	onJumpToPreviousCheckpoint?: () => void
 }
@@ -173,39 +171,60 @@ interface ChatRowContentProps extends Omit<ChatRowProps, "onHeightChange"> {}
 
 const ChatRow = memo(
 	(props: ChatRowProps) => {
-		const { isLast, onHeightChange, message } = props
-		// Store the previous height to compare with the current height
-		// This allows us to detect changes without causing re-renders
-		const prevHeightRef = useRef(0)
-
-		const [chatrow, { height }] = useSize(
-			<div className="px-[15px] py-[10px] pr-[6px]">
-				<ChatRowContent {...props} />
-			</div>,
-		)
+		const { isLast, onHeightChange } = props
+		const rowRef = useRef<HTMLDivElement>(null)
+		const previousHeight = useRef(0)
 
 		useEffect(() => {
-			const isHeightValid = height !== 0 && height !== Infinity
-			// used for partials, command output, etc.
-			// NOTE: it's important we don't distinguish between partial or complete here since our scroll effects in chatview need to handle height change during partial -> complete
-			const isInitialRender = prevHeightRef.current === 0 // prevents scrolling when new element is added since we already scroll for that
-			// height starts off at Infinity
-			if (isLast && isHeightValid && height !== prevHeightRef.current) {
-				if (!isInitialRender) {
-					onHeightChange(height > prevHeightRef.current)
-				}
-				prevHeightRef.current = height
-			}
-		}, [height, isLast, onHeightChange, message])
+			const row = rowRef.current
+			if (!isLast || !row) return
 
-		// we cannot return null as virtuoso does not support it, so we use a separate visibleMessages array to filter out messages that should not be rendered
-		return chatrow
+			const observer = new ResizeObserver(() => {
+				const height = row.offsetHeight
+				const before = previousHeight.current
+				if (height === 0 || height === before) return
+				previousHeight.current = height
+				// The list already scrolls when it adds a row. Report changes after the first measurement.
+				if (before > 0) onHeightChange(height > before)
+			})
+			observer.observe(row, { box: "border-box" })
+			return () => observer.disconnect()
+		}, [isLast, onHeightChange])
+
+		return (
+			<div ref={rowRef} className="relative px-[15px] py-[10px] pr-[6px]">
+				<ChatRowContent {...props} />
+			</div>
+		)
 	},
 	// memo does shallow comparison of props, so we need to do deep comparison of arrays/objects whose properties might change
 	deepEqual,
 )
 
 export default ChatRow
+
+type EditChatTextAreaProps = Omit<React.ComponentProps<typeof ChatTextArea>, "shouldDisableImages"> & {
+	messageTs: number
+}
+
+function EditChatTextArea({ messageTs, setSelectedImages, ...props }: EditChatTextAreaProps) {
+	const { apiConfiguration } = useExtensionState()
+	const { info: model } = useSelectedModel(apiConfiguration)
+
+	useEffect(() => {
+		const handleMessage = ({ data }: MessageEvent<ExtensionMessage>) => {
+			if (data?.type === "selectedImages" && data.context === "edit" && data.messageTs === messageTs) {
+				setSelectedImages((images) => appendImages(images, data.images, MAX_IMAGES_PER_MESSAGE))
+			}
+		}
+		window.addEventListener("message", handleMessage)
+		return () => window.removeEventListener("message", handleMessage)
+	}, [messageTs, setSelectedImages])
+
+	return (
+		<ChatTextArea {...props} setSelectedImages={setSelectedImages} shouldDisableImages={!model?.supportsImages} />
+	)
+}
 
 export const ChatRowContent = ({
 	message,
@@ -229,31 +248,16 @@ export const ChatRowContent = ({
 		alwaysAllowMcp,
 		currentCheckpoint,
 		mode,
-		apiConfiguration,
 		clineMessages,
 		currentTaskItem,
 		enableCheckpoints,
 		timeFormat,
 		dateFormat,
 	} = useExtensionState()
-	const { info: model } = useSelectedModel(apiConfiguration)
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
 	const [editImages, setEditImages] = useState<string[]>([])
-
-	// Handle message events for image selection during edit mode
-	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const msg = event.data
-			if (msg.type === "selectedImages" && msg.context === "edit" && msg.messageTs === message.ts && isEditing) {
-				setEditImages((prevImages) => appendImages(prevImages, msg.images, MAX_IMAGES_PER_MESSAGE))
-			}
-		}
-
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
-	}, [isEditing, message.ts])
 
 	// Memoized callback to prevent re-renders caused by inline arrow functions.
 	const handleToggleExpand = useCallback(() => {
@@ -1279,7 +1283,8 @@ export const ChatRowContent = ({
 								)}>
 								{isEditing ? (
 									<div className="flex flex-col gap-2">
-										<ChatTextArea
+										<EditChatTextArea
+											messageTs={message.ts}
 											inputValue={editedContent}
 											setInputValue={setEditedContent}
 											sendingDisabled={false}
@@ -1289,7 +1294,6 @@ export const ChatRowContent = ({
 											setSelectedImages={setEditImages}
 											onSend={handleSaveEdit}
 											onSelectImages={handleSelectImages}
-											shouldDisableImages={!model?.supportsImages}
 											mode={editMode}
 											setMode={setEditMode}
 											modeShortcutText=""

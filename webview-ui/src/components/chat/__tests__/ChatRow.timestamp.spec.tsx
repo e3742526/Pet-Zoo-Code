@@ -1,8 +1,9 @@
 import React from "react"
-import { fireEvent, render, screen } from "@/utils/test-utils"
+import { act, fireEvent, render, screen } from "@/utils/test-utils"
 import type { ClineMessage } from "@roo-code/types"
+import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 
-import { ChatRowContent } from "../ChatRow"
+import ChatRow, { ChatRowContent } from "../ChatRow"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
@@ -25,15 +26,18 @@ vi.mock("react-i18next", () => ({
 vi.mock("../ChatTextArea", () => ({
 	ChatTextArea: ({
 		inputValue,
+		selectedImages,
 		onSend,
 		onCancel,
 	}: {
 		inputValue: string
+		selectedImages: string[]
 		onSend: () => void
 		onCancel: () => void
 	}) => (
 		<div data-testid="edit-box">
 			<textarea data-testid="edit-text" value={inputValue} readOnly />
+			<span data-testid="edit-images">{selectedImages.join(",")}</span>
 			<button data-testid="cancel-edit" onClick={onCancel} />
 			<button data-testid="send-edit" onClick={onSend} />
 		</div>
@@ -56,7 +60,7 @@ vi.mock("@src/context/ExtensionStateContext", async (importOriginal) => ({
 }))
 
 vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
-	useSelectedModel: () => ({ info: { supportsImages: true } }),
+	useSelectedModel: vi.fn(() => ({ info: { supportsImages: true } })),
 }))
 
 const renderRow = (message: ClineMessage, isStreaming = false) =>
@@ -73,6 +77,96 @@ const renderRow = (message: ClineMessage, isStreaming = false) =>
 			isFollowUpAnswered={false}
 		/>,
 	)
+
+describe("ChatRow render work", () => {
+	it("observes only the last row and reports growth and shrinkage", () => {
+		const observe = vi.fn()
+		const disconnect = vi.fn()
+		let notifyResize = () => {}
+		class TestResizeObserver implements ResizeObserver {
+			constructor(callback: ResizeObserverCallback) {
+				notifyResize = () => callback([], this)
+			}
+			observe = observe
+			unobserve = vi.fn()
+			disconnect = disconnect
+		}
+		vi.stubGlobal("ResizeObserver", TestResizeObserver)
+		try {
+			const message: ClineMessage = { ts: 1, type: "say", say: "user_feedback", text: "row text" }
+			const onHeightChange = vi.fn()
+			const row = (isLast: boolean) => (
+				<ChatRow
+					message={message}
+					isExpanded={false}
+					isLast={isLast}
+					isStreaming={false}
+					onToggleExpand={() => {}}
+					onHeightChange={onHeightChange}
+				/>
+			)
+			const { container, rerender } = render(row(false))
+			expect(container.querySelector("iframe")).toBeNull()
+			expect(observe).not.toHaveBeenCalled()
+
+			rerender(row(true))
+			const element = container.firstElementChild
+			expect(observe).toHaveBeenCalledWith(element, { box: "border-box" })
+			const measure = (height: number) => {
+				Object.defineProperty(element, "offsetHeight", { value: height, configurable: true })
+				notifyResize()
+			}
+			measure(40)
+			expect(onHeightChange).not.toHaveBeenCalled()
+			measure(60)
+			measure(30)
+			expect(onHeightChange.mock.calls).toEqual([[true], [false]])
+			rerender(row(false))
+			expect(disconnect).toHaveBeenCalledTimes(1)
+		} finally {
+			vi.unstubAllGlobals()
+		}
+	})
+
+	it("loads the model and receives selected images only while editing", () => {
+		vi.mocked(useSelectedModel).mockClear()
+		const addListener = vi.spyOn(window, "addEventListener")
+		const removeListener = vi.spyOn(window, "removeEventListener")
+		try {
+			const ts = Date.now()
+			renderRow({ ts, type: "say", say: "user_feedback", text: "edit this row" })
+			expect(useSelectedModel).not.toHaveBeenCalled()
+			expect(addListener.mock.calls.filter(([event]) => event === "message")).toHaveLength(0)
+
+			fireEvent.click(screen.getByText("edit this row"))
+			expect(useSelectedModel).toHaveBeenCalledTimes(1)
+			const listener = addListener.mock.calls.find(([event]) => event === "message")?.[1]
+			expect(listener).toBeDefined()
+			const sendImage = (messageTs: number, image: string) => {
+				act(() =>
+					window.dispatchEvent(
+						new MessageEvent("message", {
+							data: {
+								type: "selectedImages",
+								context: "edit",
+								messageTs,
+								images: [image],
+							},
+						}),
+					),
+				)
+			}
+			sendImage(ts + 1, "another-row")
+			sendImage(ts, "this-row")
+			expect(screen.getByTestId("edit-images")).toHaveTextContent(/^this-row$/)
+			fireEvent.click(screen.getByTestId("cancel-edit"))
+			expect(removeListener).toHaveBeenCalledWith("message", listener)
+		} finally {
+			addListener.mockRestore()
+			removeListener.mockRestore()
+		}
+	})
+})
 
 describe("ChatRow – message timestamp", () => {
 	beforeEach(() => {

@@ -7,10 +7,21 @@ import * as yaml from "yaml"
 describe("dist assets", () => {
 	const distPath = path.join(__dirname, "../dist")
 	const marketplaceAssetsPath = path.join(__dirname, "../assets/marketplace")
+	const webviewAssetsPath = path.join(__dirname, "../webview-ui/build/assets")
 
-	it("excludes the retired Roo Cloud service from the extension bundle", () => {
-		const extension = fs.readFileSync(path.join(distPath, "extension.js"), "utf8")
-		expect(extension.match(/https:\/\/(?:app|clerk)\.roocode\.com\b/g) ?? []).toEqual([])
+	it("excludes retired Zoo Gateway, account, and analytics endpoints from both runtimes", () => {
+		const retiredEndpoints =
+			/https?:\/\/(?:(?:app|clerk)\.roocode\.com|(?:[\w-]+\.)*posthog\.com)\b|\/api\/(?:gateway\/v1|extension\/auth\/(?:verify|revoke))\b/g
+		const webviewScripts = fs
+			.readdirSync(webviewAssetsPath)
+			.filter((filename) => filename.endsWith(".js"))
+			.map((filename) => path.join(webviewAssetsPath, filename))
+		expect(webviewScripts.length).toBeGreaterThan(0)
+
+		for (const file of [path.join(distPath, "extension.js"), ...webviewScripts]) {
+			const source = fs.readFileSync(file, "utf8")
+			expect(source.match(retiredEndpoints) ?? [], path.relative(path.join(__dirname, ".."), file)).toEqual([])
+		}
 	})
 
 	describe("tiktoken", () => {

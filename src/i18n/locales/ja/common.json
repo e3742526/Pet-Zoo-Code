@@ -147,6 +147,13 @@
 			"success_other": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。"
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Zoo Code のタスク履歴をインポート",
+		"nothingFound": "{{domain}} のタスク履歴が見つかりませんでした。",
+		"nothingCopied": "Zoo Code から新しいタスクはコピーされませんでした。",
+		"success": "Zoo Code からタスクをインポートしました（{{count}} 件）。",
+		"failed": "Zoo Code のタスク履歴をインポートできませんでした。{{error}}"
+	},
 	"answers": {
 		"yes": "はい",
 		"activate_requesty": "Requestyを有効にする"

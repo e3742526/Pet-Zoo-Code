@@ -147,6 +147,13 @@
 			"success_other": "Đã nhập {{count}} lịch sử nhiệm vụ Roo Code vào Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Nhập lịch sử tác vụ từ Zoo Code",
+		"nothingFound": "Không tìm thấy lịch sử tác vụ của {{domain}}.",
+		"nothingCopied": "Không có tác vụ mới nào được sao chép từ Zoo Code.",
+		"success": "Đã nhập tác vụ từ Zoo Code ({{count}}).",
+		"failed": "Không thể nhập lịch sử tác vụ từ Zoo Code. {{error}}"
+	},
 	"answers": {
 		"yes": "Có",
 		"activate_requesty": "Kích hoạt Requesty"

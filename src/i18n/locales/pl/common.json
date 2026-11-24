@@ -153,6 +153,13 @@
 			"success_other": "Zaimportowano {{count}} historii zadań Roo Code do Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Importuj historię zadań z Zoo Code",
+		"nothingFound": "Nie znaleziono historii zadań dla {{domain}}.",
+		"nothingCopied": "Nie skopiowano nowych zadań z Zoo Code.",
+		"success": "Zaimportowano zadania z Zoo Code ({{count}}).",
+		"failed": "Nie można zaimportować historii zadań z Zoo Code. {{error}}"
+	},
 	"answers": {
 		"yes": "Tak",
 		"activate_requesty": "Aktywuj Requesty"

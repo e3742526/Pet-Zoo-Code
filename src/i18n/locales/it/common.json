@@ -151,6 +151,13 @@
 			"success_other": "Importate {{count}} cronologie di attività Roo Code in Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Importa la cronologia delle attività di Zoo Code",
+		"nothingFound": "Non è stata trovata alcuna cronologia delle attività per {{domain}}.",
+		"nothingCopied": "Non sono state copiate nuove attività da Zoo Code.",
+		"success": "Attività importate da Zoo Code ({{count}}).",
+		"failed": "Impossibile importare la cronologia di Zoo Code. {{error}}"
+	},
 	"answers": {
 		"yes": "Sì",
 		"activate_requesty": "Attiva Requesty"

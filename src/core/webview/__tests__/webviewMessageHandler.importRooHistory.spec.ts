@@ -7,6 +7,7 @@ vi.mock("../../../i18n", () => ({
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
+import { handleLegacyHistoryImport } from "../handleLegacyHistoryImport"
 
 vi.mock("vscode", () => ({
 	window: {
@@ -39,46 +40,58 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-const importRooTaskHistoryMock = vi.fn()
-vi.mock("../../task-persistence/importRooTaskHistory", () => ({
-	importRooTaskHistory: (...args: any[]) => importRooTaskHistoryMock(...args),
+const importLegacyTaskHistoryMock = vi.hoisted(() =>
+	vi.fn<typeof import("../../task-persistence/importLegacyTaskHistory").importLegacyTaskHistory>(),
+)
+vi.mock("../../task-persistence/importLegacyTaskHistory", () => ({
+	importLegacyTaskHistory: importLegacyTaskHistoryMock,
 }))
 
 import * as vscode from "vscode"
 
-describe("webviewMessageHandler - importRooHistory", () => {
-	let mockProvider: ClineProvider & {
-		contextProxy: any
-		taskHistoryStore: {
-			invalidateAll: ReturnType<typeof vi.fn>
-			reconcile: ReturnType<typeof vi.fn>
-		}
-		postMessageToWebview: ReturnType<typeof vi.fn>
-		postStateToWebview: ReturnType<typeof vi.fn>
-		log: ReturnType<typeof vi.fn>
-	}
+const makeProvider = () => ({
+	contextProxy: { globalStorageUri: { fsPath: "/mock/storage" } },
+	taskHistoryStore: {
+		invalidateAll: vi.fn(),
+		reconcile: vi.fn().mockResolvedValue(undefined),
+	},
+	postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+	postStateToWebview: vi.fn().mockResolvedValue(undefined),
+	log: vi.fn(),
+})
+
+describe("legacy task history import", () => {
+	let mockProvider: ReturnType<typeof makeProvider>
+	let provider: ClineProvider
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockProvider = makeProvider()
+		// The handler uses the storage path, task history store, and messaging methods.
+		provider = mockProvider as unknown as ClineProvider
+	})
 
-		mockProvider = {
-			contextProxy: {
-				getValue: vi.fn(),
-				setValue: vi.fn(),
-				globalStorageUri: { fsPath: "/mock/storage" },
-			},
-			taskHistoryStore: {
-				invalidateAll: vi.fn(),
-				reconcile: vi.fn().mockResolvedValue(undefined),
-			},
-			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
-			postStateToWebview: vi.fn().mockResolvedValue(undefined),
-			log: vi.fn(),
-		} as any
+	it("refreshes imported Zoo tasks without sending Roo webview progress", async () => {
+		importLegacyTaskHistoryMock.mockResolvedValue({
+			sourceExtensionId: "ZooCodeOrganization.zoo-code",
+			sourceStorageRoots: ["/mock/legacy-zoo"],
+			destinationStorageRoot: "/mock/storage",
+			foundTaskCount: 1,
+			importedTaskCount: 1,
+			importedFileCount: 2,
+		})
+
+		await handleLegacyHistoryImport(provider, "zoo")
+
+		expect(importLegacyTaskHistoryMock).toHaveBeenCalledWith("/mock/storage", "zoo", undefined)
+		expect(mockProvider.taskHistoryStore.reconcile).toHaveBeenCalledTimes(1)
+		expect(mockProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("common:zooHistoryImport.success")
 	})
 
 	it("refreshes task history, streams progress, and shows a success message after importing Roo history", async () => {
-		importRooTaskHistoryMock.mockImplementation(async (_globalStoragePath, onProgress) => {
+		importLegacyTaskHistoryMock.mockImplementation(async (_globalStoragePath, _source, onProgress) => {
 			await onProgress?.({
 				copiedFileCount: 2,
 				totalFileCount: 4,
@@ -89,19 +102,18 @@ describe("webviewMessageHandler - importRooHistory", () => {
 			})
 
 			return {
-				rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-				zooExtensionDomain: "e3742526.pet-zoo-code",
-				rooStorageRoots: ["/mock/roo-storage"],
-				zooStorageRoot: "/mock/storage",
+				sourceExtensionId: "RooVeterinaryInc.roo-cline",
+				sourceStorageRoots: ["/mock/roo-storage"],
+				destinationStorageRoot: "/mock/storage",
 				foundTaskCount: 2,
 				importedTaskCount: 2,
 				importedFileCount: 4,
 			}
 		})
 
-		await webviewMessageHandler(mockProvider as any, { type: "importRooHistory" } as any)
+		await webviewMessageHandler(provider, { type: "importRooHistory" })
 
-		expect(importRooTaskHistoryMock).toHaveBeenCalledWith("/mock/storage", expect.any(Function))
+		expect(importLegacyTaskHistoryMock).toHaveBeenCalledWith("/mock/storage", "roo", expect.any(Function))
 		expect(mockProvider.taskHistoryStore.invalidateAll).toHaveBeenCalledTimes(1)
 		expect(mockProvider.taskHistoryStore.reconcile).toHaveBeenCalledTimes(1)
 
@@ -145,17 +157,16 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	})
 
 	it("uses the singular success message when one Roo task history is imported", async () => {
-		importRooTaskHistoryMock.mockResolvedValue({
-			rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-			zooExtensionDomain: "e3742526.pet-zoo-code",
-			rooStorageRoots: ["/mock/roo-storage"],
-			zooStorageRoot: "/mock/storage",
+		importLegacyTaskHistoryMock.mockResolvedValue({
+			sourceExtensionId: "RooVeterinaryInc.roo-cline",
+			sourceStorageRoots: ["/mock/roo-storage"],
+			destinationStorageRoot: "/mock/storage",
 			foundTaskCount: 1,
 			importedTaskCount: 1,
 			importedFileCount: 2,
 		})
 
-		await webviewMessageHandler(mockProvider as any, { type: "importRooHistory" } as any)
+		await webviewMessageHandler(provider, { type: "importRooHistory" })
 
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("common:info.rooHistoryImport.success")
 		expect(mockProvider.postMessageToWebview).toHaveBeenNthCalledWith(2, {
@@ -172,19 +183,18 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	})
 
 	it("shows a 'not found' warning when no Roo history exists at all", async () => {
-		importRooTaskHistoryMock.mockResolvedValue({
-			rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-			zooExtensionDomain: "e3742526.pet-zoo-code",
-			rooStorageRoots: ["/mock/roo-storage"],
-			zooStorageRoot: "/mock/storage",
+		importLegacyTaskHistoryMock.mockResolvedValue({
+			sourceExtensionId: "RooVeterinaryInc.roo-cline",
+			sourceStorageRoots: ["/mock/roo-storage"],
+			destinationStorageRoot: "/mock/storage",
 			foundTaskCount: 0,
 			importedTaskCount: 0,
 			importedFileCount: 0,
 		})
 
-		await webviewMessageHandler(mockProvider as any, { type: "importRooHistory" } as any)
+		await webviewMessageHandler(provider, { type: "importRooHistory" })
 
-		expect(importRooTaskHistoryMock).toHaveBeenCalledWith("/mock/storage", expect.any(Function))
+		expect(importLegacyTaskHistoryMock).toHaveBeenCalledWith("/mock/storage", "roo", expect.any(Function))
 		expect(mockProvider.taskHistoryStore.invalidateAll).not.toHaveBeenCalled()
 		expect(mockProvider.taskHistoryStore.reconcile).not.toHaveBeenCalled()
 
@@ -204,17 +214,16 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	})
 
 	it("shows an 'already imported' warning when all Roo tasks are already in Zoo", async () => {
-		importRooTaskHistoryMock.mockResolvedValue({
-			rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-			zooExtensionDomain: "e3742526.pet-zoo-code",
-			rooStorageRoots: ["/mock/roo-storage"],
-			zooStorageRoot: "/mock/storage",
+		importLegacyTaskHistoryMock.mockResolvedValue({
+			sourceExtensionId: "RooVeterinaryInc.roo-cline",
+			sourceStorageRoots: ["/mock/roo-storage"],
+			destinationStorageRoot: "/mock/storage",
 			foundTaskCount: 3,
 			importedTaskCount: 0,
 			importedFileCount: 0,
 		})
 
-		await webviewMessageHandler(mockProvider as any, { type: "importRooHistory" } as any)
+		await webviewMessageHandler(provider, { type: "importRooHistory" })
 
 		// History is refreshed even when nothing new was imported, so a retry
 		// after a partial-copy failure still reconciles the store.
@@ -229,15 +238,15 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	})
 
 	it("shows an error without refreshing task history when the import throws", async () => {
-		importRooTaskHistoryMock.mockRejectedValue(new Error("permission denied"))
+		importLegacyTaskHistoryMock.mockRejectedValue(new Error("permission denied"))
 
-		await webviewMessageHandler(mockProvider as any, { type: "importRooHistory" } as any)
+		await webviewMessageHandler(provider, { type: "importRooHistory" })
 
 		expect(mockProvider.taskHistoryStore.invalidateAll).not.toHaveBeenCalled()
 		expect(mockProvider.taskHistoryStore.reconcile).not.toHaveBeenCalled()
 
 		expect(mockProvider.postStateToWebview).not.toHaveBeenCalled()
-		expect(mockProvider.log).toHaveBeenCalledWith("[importRooHistory] failed: permission denied")
+		expect(mockProvider.log).toHaveBeenCalledWith("[importLegacyHistory:roo] failed: permission denied")
 		expect(mockProvider.postMessageToWebview).toHaveBeenNthCalledWith(2, {
 			type: "rooHistoryImportProgress",
 			rooHistoryImportProgress: {

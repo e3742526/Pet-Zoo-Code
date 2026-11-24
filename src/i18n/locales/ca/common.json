@@ -155,6 +155,13 @@
 			"success_other": "S'han importat {{count}} historials de tasques de Roo Code a Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Importa l’historial de tasques de Zoo Code",
+		"nothingFound": "No s’ha trobat cap historial de tasques per a {{domain}}.",
+		"nothingCopied": "No s’ha copiat cap tasca nova de Zoo Code.",
+		"success": "S’han importat tasques de Zoo Code ({{count}}).",
+		"failed": "No s’ha pogut importar l’historial de Zoo Code. {{error}}"
+	},
 	"answers": {
 		"yes": "Sí",
 		"activate_requesty": "Activa Requesty"

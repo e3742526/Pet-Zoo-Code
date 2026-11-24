@@ -30,6 +30,7 @@ suite("Zoo Code Extension", function () {
 			"terminalAddToContext",
 			"terminalFixCommand",
 			"terminalExplainCommand",
+			"importZooHistory",
 		]
 
 		const commands = new Set(

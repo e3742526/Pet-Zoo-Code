@@ -13,6 +13,8 @@ import { handleNewTask } from "./handleTask"
 import { importSettingsWithFeedback } from "../core/config/importExport"
 import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic"
 import { createDiagnosticsReport } from "../services/diagnostics"
+import { handleLegacyHistoryImport } from "../core/webview/handleLegacyHistoryImport"
+import { t } from "../i18n"
 
 /**
  * Helper to get the visible ClineProvider instance or log if not found.
@@ -169,6 +171,11 @@ const getCommandsMap = ({
 			filePath,
 		)
 	},
+	importZooHistory: () =>
+		vscode.window.withProgress(
+			{ location: vscode.ProgressLocation.Notification, title: t("common:zooHistoryImport.title") },
+			() => handleLegacyHistoryImport(provider, "zoo"),
+		),
 	createDiagnosticsReport: () =>
 		createDiagnosticsReport({
 			context,

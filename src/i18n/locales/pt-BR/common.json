@@ -155,6 +155,13 @@
 			"success_other": "{{count}} históricos de tarefas do Roo Code importados para o Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Importar histórico de tarefas do Zoo Code",
+		"nothingFound": "Nenhum histórico de tarefas foi encontrado para {{domain}}.",
+		"nothingCopied": "Nenhuma tarefa nova foi copiada do Zoo Code.",
+		"success": "Tarefas importadas do Zoo Code ({{count}}).",
+		"failed": "Não foi possível importar o histórico do Zoo Code. {{error}}"
+	},
 	"answers": {
 		"yes": "Sim",
 		"activate_requesty": "Ativar Requesty"

@@ -147,6 +147,13 @@
 			"success_other": "{{count}} riwayat tugas Roo Code berhasil diimpor ke Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Impor riwayat tugas Zoo Code",
+		"nothingFound": "Tidak ada riwayat tugas untuk {{domain}}.",
+		"nothingCopied": "Tidak ada tugas baru yang disalin dari Zoo Code.",
+		"success": "Tugas dari Zoo Code berhasil diimpor ({{count}}).",
+		"failed": "Riwayat tugas Zoo Code gagal diimpor. {{error}}"
+	},
 	"answers": {
 		"yes": "Ya",
 		"activate_requesty": "Aktifkan Requesty"

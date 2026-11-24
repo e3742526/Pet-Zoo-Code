@@ -169,6 +169,13 @@ If you prefer to install the VSIX package manually:
     code --install-extension bin/pet-zoo-code-<version>.vsix
     ```
 
+### Transfer from a Zoo Code installation
+
+1. In Zoo Code, complete or stop active tasks. Open **Settings → About** and select **Export** under **Manage Settings**. Import the file from the same screen in Pet Zoo Code. Treat the export as private because it can contain provider API keys.
+2. Copy any VS Code settings you want to keep from `zoo-code.*` to `pet-zoo-code.*`. Use a different custom storage folder for each extension.
+3. Run **Pet Zoo Code: Import Zoo Code Task History** from the Command Palette. Pet Zoo Code copies saved task history and conversations into its own store and skips tasks already present. Checkpoint repositories stay in the original store.
+4. Sign in again to any subscription providers that you use. For an installation with administrator policy, ask the administrator to apply the policy to Pet Zoo Code before using it.
+
 ---
 
 We use [changesets](https://github.com/changesets/changesets) for versioning and

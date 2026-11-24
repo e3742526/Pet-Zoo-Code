@@ -149,6 +149,13 @@
 			"signInUnavailable": "Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Import Zoo Code task history",
+		"nothingFound": "No task history was found for {{domain}}.",
+		"nothingCopied": "No new tasks were copied from Zoo Code.",
+		"success": "Imported tasks from Zoo Code ({{count}}).",
+		"failed": "Cannot import Zoo Code task history. {{error}}"
+	},
 	"answers": {
 		"yes": "Yes",
 		"activate_requesty": "Activate Requesty"

@@ -6,12 +6,15 @@ import * as vscode from "vscode"
 import { historyItemSchema } from "@roo-code/types"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
-import { Package } from "../../shared/package"
-import { getStorageBasePath } from "../../utils/storage"
+import { getCustomStoragePath, getStorageBasePath } from "../../utils/storage"
 
-const ROO_EXTENSION_DOMAIN = "RooVeterinaryInc.roo-cline"
-const ROO_STORAGE_DIRECTORY = ROO_EXTENSION_DOMAIN.toLowerCase()
-const ROO_CONFIGURATION_SECTION = "roo-cline"
+const legacyExtensions = {
+	roo: { id: "RooVeterinaryInc.roo-cline", configurationSection: "roo-cline" },
+	zoo: { id: "ZooCodeOrganization.zoo-code", configurationSection: "zoo-code" },
+} as const
+
+export type LegacyHistorySource = keyof typeof legacyExtensions
+
 const IMPORTABLE_TASK_FILE_NAMES = [
 	GlobalFileNames.historyItem,
 	GlobalFileNames.uiMessages,
@@ -25,20 +28,19 @@ const IMPORTABLE_TASK_FILE_NAMES = [
 // and doesn't start with a hidden/reserved prefix.
 const UNSAFE_TASK_ID_RE = /[/\\.]|^_/
 
-export interface RooHistoryImportPaths {
-	rooExtensionDomain: string
-	zooExtensionDomain: string
-	rooStorageRoots: string[]
-	zooStorageRoot: string
+interface LegacyHistoryImportPaths {
+	sourceExtensionId: string
+	sourceStorageRoots: string[]
+	destinationStorageRoot: string
 }
 
-export interface RooHistoryImportResult extends RooHistoryImportPaths {
+interface LegacyHistoryImportResult extends LegacyHistoryImportPaths {
 	foundTaskCount: number
 	importedTaskCount: number
 	importedFileCount: number
 }
 
-export interface RooHistoryImportProgress {
+export interface LegacyHistoryImportProgress {
 	copiedFileCount: number
 	totalFileCount: number
 	importedTaskCount: number
@@ -84,6 +86,41 @@ const getConfiguredCustomStoragePath = (configurationSection: string) => {
 
 // Only treat missing files as skippable — permission errors should propagate.
 const isAbsent = (error: unknown) => (error as NodeJS.ErrnoException).code === "ENOENT"
+
+// Resolve aliases even when the final directory does not exist yet.
+async function comparableRealPath(candidatePath: string): Promise<string> {
+	const resolved = path.resolve(candidatePath)
+	let ancestor = resolved
+	while (true) {
+		try {
+			return toComparablePath(path.join(await fs.realpath(ancestor), path.relative(ancestor, resolved)))
+		} catch (error) {
+			const parent = path.dirname(ancestor)
+			if (!isAbsent(error) || parent === ancestor) {
+				throw error
+			}
+			ancestor = parent
+		}
+	}
+}
+
+function containsPath(root: string, candidate: string): boolean {
+	const relative = path.relative(root, candidate)
+	return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+}
+
+async function verifySeparateStorage(sourceRoots: string[], destinationRoot: string): Promise<void> {
+	const comparableStorage = (root: string) =>
+		Promise.all([comparableRealPath(root), comparableRealPath(path.join(root, "tasks"))])
+	const [destinations, ...sources] = await Promise.all([destinationRoot, ...sourceRoots].map(comparableStorage))
+	for (const source of sources.flat()) {
+		if (
+			destinations.some((destination) => containsPath(source, destination) || containsPath(destination, source))
+		) {
+			throw new Error("Choose separate task storage folders for the two extensions before importing history.")
+		}
+	}
+}
 
 // Validate that history_item.json parses as a HistoryItem and that its `id`
 // field matches the task directory name. Prevents imported metadata from
@@ -214,31 +251,46 @@ const collectImportableTaskPlans = async (sourceRoots: string[]) => {
 	}
 }
 
-export const resolveRooHistoryImportPaths = async (globalStoragePath: string): Promise<RooHistoryImportPaths> => {
-	const zooExtensionDomain = `${Package.publisher}.${Package.name}`
-	const zooStorageRoot = await getStorageBasePath(globalStoragePath)
-	const rooDefaultStorageRoot = path.join(path.dirname(globalStoragePath), ROO_STORAGE_DIRECTORY)
-	const rooCustomStorageRoot = getConfiguredCustomStoragePath(ROO_CONFIGURATION_SECTION)
+export const resolveLegacyHistoryImportPaths = async (
+	globalStoragePath: string,
+	source: LegacyHistorySource,
+): Promise<LegacyHistoryImportPaths> => {
+	const legacyExtension = legacyExtensions[source]
+	const defaultSourceRoot = path.join(path.dirname(globalStoragePath), legacyExtension.id.toLowerCase())
+	const customSourceRoot = getConfiguredCustomStoragePath(legacyExtension.configurationSection)
+	const candidateSources = dedupePaths([defaultSourceRoot, ...(customSourceRoot ? [customSourceRoot] : [])])
+	const verifySources = async (destinationRoot: string) => {
+		// Roo imports historically skip an explicitly shared root and copy the remaining source.
+		const sourceRoots =
+			source === "roo"
+				? candidateSources.filter((root) => toComparablePath(root) !== toComparablePath(destinationRoot))
+				: candidateSources
+		await verifySeparateStorage(sourceRoots, destinationRoot)
+		return sourceRoots
+	}
+	const customDestinationRoot = getCustomStoragePath()
+	const proposedDestinationRoot = customDestinationRoot || globalStoragePath
+	let sourceStorageRoots = await verifySources(proposedDestinationRoot)
+	const destinationStorageRoot = await getStorageBasePath(globalStoragePath, customDestinationRoot)
+	if (destinationStorageRoot !== proposedDestinationRoot) {
+		sourceStorageRoots = await verifySources(destinationStorageRoot)
+	}
 
 	return {
-		rooExtensionDomain: ROO_EXTENSION_DOMAIN,
-		zooExtensionDomain,
-		rooStorageRoots: dedupePaths([rooDefaultStorageRoot, ...(rooCustomStorageRoot ? [rooCustomStorageRoot] : [])]),
-		zooStorageRoot,
+		sourceExtensionId: legacyExtension.id,
+		sourceStorageRoots,
+		destinationStorageRoot,
 	}
 }
 
-export const importRooTaskHistory = async (
+export const importLegacyTaskHistory = async (
 	globalStoragePath: string,
-	onProgress?: (progress: RooHistoryImportProgress) => Promise<void> | void,
-): Promise<RooHistoryImportResult> => {
-	const paths = await resolveRooHistoryImportPaths(globalStoragePath)
-	const destinationComparablePath = toComparablePath(paths.zooStorageRoot)
-	const sourceRoots = paths.rooStorageRoots.filter(
-		(sourceRoot) => toComparablePath(sourceRoot) !== destinationComparablePath,
-	)
-	const destinationTasksRoot = path.join(paths.zooStorageRoot, "tasks")
-	const { taskPlans, totalTaskCount: foundTaskCount } = await collectImportableTaskPlans(sourceRoots)
+	source: LegacyHistorySource,
+	onProgress?: (progress: LegacyHistoryImportProgress) => Promise<void> | void,
+): Promise<LegacyHistoryImportResult> => {
+	const paths = await resolveLegacyHistoryImportPaths(globalStoragePath, source)
+	const destinationTasksRoot = path.join(paths.destinationStorageRoot, "tasks")
+	const { taskPlans, totalTaskCount: foundTaskCount } = await collectImportableTaskPlans(paths.sourceStorageRoots)
 	const importedTaskIds = new Set<string>()
 	let importedFileCount = 0
 	let copiedFileCount = 0
@@ -360,7 +412,6 @@ export const importRooTaskHistory = async (
 
 	return {
 		...paths,
-		rooStorageRoots: sourceRoots,
 		foundTaskCount,
 		importedTaskCount: importedTaskIds.size,
 		importedFileCount,

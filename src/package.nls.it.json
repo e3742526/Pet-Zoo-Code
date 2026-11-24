@@ -11,6 +11,7 @@
 	"command.focusInput.title": "Focalizza Campo di Input",
 	"command.setCustomStoragePath.title": "Imposta Percorso di Archiviazione Personalizzato",
 	"command.importSettings.title": "Importa Impostazioni",
+	"command.importZooHistory.title": "Importa la cronologia delle attività di Zoo Code",
 	"command.terminal.addToContext.title": "Aggiungi Contenuto del Terminale al Contesto",
 	"command.terminal.fixCommand.title": "Correggi Questo Comando",
 	"command.terminal.explainCommand.title": "Spiega Questo Comando",

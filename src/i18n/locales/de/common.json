@@ -149,6 +149,13 @@
 			"success_other": "{{count}} Roo Code-Aufgabenverläufe in Zoo Code importiert."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Aufgabenverlauf aus Zoo Code importieren",
+		"nothingFound": "Für {{domain}} wurde kein Aufgabenverlauf gefunden.",
+		"nothingCopied": "Es wurden keine neuen Aufgaben aus Zoo Code kopiert.",
+		"success": "Aufgaben aus Zoo Code importiert ({{count}}).",
+		"failed": "Der Aufgabenverlauf aus Zoo Code konnte nicht importiert werden. {{error}}"
+	},
 	"answers": {
 		"yes": "Ja",
 		"activate_requesty": "Requesty aktivieren"

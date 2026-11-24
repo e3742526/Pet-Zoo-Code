@@ -149,6 +149,13 @@
 			"success_other": "{{count}} Roo Code-taakgeschiedenissen geïmporteerd in Zoo Code."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Taakgeschiedenis uit Zoo Code importeren",
+		"nothingFound": "Geen taakgeschiedenis gevonden voor {{domain}}.",
+		"nothingCopied": "Er zijn geen nieuwe taken uit Zoo Code gekopieerd.",
+		"success": "Taken geïmporteerd uit Zoo Code ({{count}}).",
+		"failed": "De taakgeschiedenis uit Zoo Code kon niet worden geïmporteerd. {{error}}"
+	},
 	"answers": {
 		"yes": "Ja",
 		"activate_requesty": "Requesty activeren"

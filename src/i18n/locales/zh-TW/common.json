@@ -147,6 +147,13 @@
 			"success_other": "已將 {{count}} 筆 Roo Code 工作歷史記錄匯入 Zoo Code。"
 		}
 	},
+	"zooHistoryImport": {
+		"title": "匯入 Zoo Code 工作記錄",
+		"nothingFound": "找不到 {{domain}} 的工作記錄。",
+		"nothingCopied": "沒有從 Zoo Code 複製新的工作。",
+		"success": "已從 Zoo Code 匯入 {{count}} 個工作。",
+		"failed": "無法匯入 Zoo Code 工作記錄。{{error}}"
+	},
 	"answers": {
 		"yes": "是",
 		"activate_requesty": "啟用 Requesty"

@@ -41,6 +41,7 @@ export const commandIds = [
 
 	"setCustomStoragePath",
 	"importSettings",
+	"importZooHistory",
 
 	"focusInput",
 	"acceptInput",

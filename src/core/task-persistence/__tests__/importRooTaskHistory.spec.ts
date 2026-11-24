@@ -4,10 +4,10 @@ import * as path from "path"
 import * as vscode from "vscode"
 
 import {
-	importRooTaskHistory,
+	importLegacyTaskHistory,
 	isConcurrentDestinationClaimError,
-	resolveRooHistoryImportPaths,
-} from "../importRooTaskHistory"
+	resolveLegacyHistoryImportPaths,
+} from "../importLegacyTaskHistory"
 
 vi.mock("vscode", () => ({
 	workspace: {
@@ -18,22 +18,25 @@ vi.mock("vscode", () => ({
 const makeHistoryItem = (id: string, extra: Record<string, unknown> = {}) =>
 	JSON.stringify({ id, number: 1, ts: 1000, task: "t", tokensIn: 0, tokensOut: 0, totalCost: 0, ...extra })
 
-describe("importRooTaskHistory", () => {
+describe("importLegacyTaskHistory", () => {
 	let tempRoot: string
 
 	const mockStorageConfiguration = ({
 		roo = "",
-		zoo = "",
+		pet = "",
+		legacyZoo = "",
 		throwOnRoo = false,
 	}: {
 		roo?: string
-		zoo?: string
+		pet?: string
+		legacyZoo?: string
 		throwOnRoo?: boolean
 	} = {}) => {
 		const getConfigurationMock = vi.mocked(vscode.workspace.getConfiguration)
 
 		getConfigurationMock.mockImplementation((section?: string) => {
 			const resolvedSection = section ?? ""
+			// Storage resolution only calls WorkspaceConfiguration.get.
 			return {
 				get: vi.fn().mockImplementation(() => {
 					if (resolvedSection === "roo-cline" && throwOnRoo) {
@@ -44,13 +47,17 @@ describe("importRooTaskHistory", () => {
 						return roo
 					}
 
+					if (resolvedSection === "zoo-code") {
+						return legacyZoo
+					}
+
 					if (resolvedSection === "pet-zoo-code") {
-						return zoo
+						return pet
 					}
 
 					return ""
 				}),
-			} as any
+			} as unknown as vscode.WorkspaceConfiguration
 		})
 	}
 
@@ -63,58 +70,131 @@ describe("importRooTaskHistory", () => {
 		await fs.rm(tempRoot, { recursive: true, force: true })
 	})
 
-	it("resolves Roo and Zoo storage roots from extension domains and configured custom paths", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+	it("resolves Roo and Pet Zoo Code storage roots from extension domains and configured custom paths", async () => {
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooCustomStoragePath = path.join(tempRoot, "roo-custom")
-		const zooCustomStoragePath = path.join(tempRoot, "zoo-custom")
+		const petCustomStoragePath = path.join(tempRoot, "zoo-custom")
 
 		mockStorageConfiguration({
 			roo: rooCustomStoragePath,
-			zoo: zooCustomStoragePath,
+			pet: petCustomStoragePath,
 		})
 
-		const result = await resolveRooHistoryImportPaths(zooGlobalStoragePath)
+		const result = await resolveLegacyHistoryImportPaths(petGlobalStoragePath, "roo")
 
-		expect(result.rooExtensionDomain).toBe("RooVeterinaryInc.roo-cline")
-		expect(result.zooExtensionDomain).toBe("e3742526.pet-zoo-code")
-		expect(result.rooStorageRoots).toEqual([
+		expect(result.sourceExtensionId).toBe("RooVeterinaryInc.roo-cline")
+		expect(result.sourceStorageRoots).toEqual([
 			path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline"),
 			rooCustomStoragePath,
 		])
-		expect(result.zooStorageRoot).toBe(zooCustomStoragePath)
+		expect(result.destinationStorageRoot).toBe(petCustomStoragePath)
 	})
 
 	it("falls back to the default Roo storage root when reading Roo custom storage fails", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 
 		mockStorageConfiguration({ throwOnRoo: true })
 
-		const result = await resolveRooHistoryImportPaths(zooGlobalStoragePath)
+		const result = await resolveLegacyHistoryImportPaths(petGlobalStoragePath, "roo")
 
-		expect(result.rooStorageRoots).toEqual([path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")])
-		expect(result.zooStorageRoot).toBe(zooGlobalStoragePath)
+		expect(result.sourceStorageRoots).toEqual([path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")])
+		expect(result.destinationStorageRoot).toBe(petGlobalStoragePath)
 	})
 
 	it("dedupes Roo storage roots when the custom path matches the default Roo storage root", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration({ roo: rooDefaultStorageRoot })
 
-		const result = await resolveRooHistoryImportPaths(zooGlobalStoragePath)
+		const result = await resolveLegacyHistoryImportPaths(petGlobalStoragePath, "roo")
 
-		expect(result.rooStorageRoots).toEqual([rooDefaultStorageRoot])
+		expect(result.sourceStorageRoots).toEqual([rooDefaultStorageRoot])
 	})
 
-	it("copies Roo task directories into the active Zoo storage root", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+	it("copies only the default and custom Zoo Code task stores, once each", async () => {
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const legacyDefault = path.join(tempRoot, "globalStorage", "zoocodeorganization.zoo-code")
+		const legacyCustom = path.join(tempRoot, "zoo-custom")
+		const rooRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
+		mockStorageConfiguration({ legacyZoo: legacyCustom })
+
+		const sources = [
+			[legacyDefault, "zoo-default-task"],
+			[legacyCustom, "zoo-custom-task"],
+			[rooRoot, "roo-task"],
+		]
+		for (const [root, id] of sources) {
+			const taskPath = path.join(root, "tasks", id)
+			await fs.mkdir(taskPath, { recursive: true })
+			await fs.writeFile(path.join(taskPath, "history_item.json"), makeHistoryItem(id))
+			await fs.writeFile(path.join(taskPath, "ui_messages.json"), JSON.stringify([{ text: id }]))
+		}
+		await fs.mkdir(path.join(legacyDefault, "settings"))
+		await fs.writeFile(path.join(legacyDefault, "settings", "local.json"), "{}")
+
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "zoo")
+		expect(result).toMatchObject({
+			sourceExtensionId: "ZooCodeOrganization.zoo-code",
+			sourceStorageRoots: [legacyDefault, legacyCustom],
+			importedTaskCount: 2,
+			importedFileCount: 4,
+		})
+		expect((await fs.readdir(path.join(petGlobalStoragePath, "tasks"))).sort()).toEqual([
+			"zoo-custom-task",
+			"zoo-default-task",
+		])
+		await expect(fs.stat(path.join(petGlobalStoragePath, "settings"))).rejects.toMatchObject({ code: "ENOENT" })
+		for (const [root, id] of sources.slice(0, 2)) {
+			const relative = path.join("tasks", id, "ui_messages.json")
+			const contents = JSON.stringify([{ text: id }])
+			expect(await fs.readFile(path.join(root, relative), "utf8")).toBe(contents)
+			expect(await fs.readFile(path.join(petGlobalStoragePath, relative), "utf8")).toBe(contents)
+		}
+		expect(await importLegacyTaskHistory(petGlobalStoragePath, "zoo")).toMatchObject({
+			foundTaskCount: 2,
+			importedTaskCount: 0,
+			importedFileCount: 0,
+		})
+	})
+
+	it.each(["shared", "nested", "linked-root", "linked-tasks"] as const)(
+		"rejects %s storage before changing the legacy Zoo store",
+		async (layout) => {
+			const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+			const legacy = path.join(tempRoot, "legacy")
+			const linkedRoot = path.join(tempRoot, "linked-root")
+			const linkedTasks = path.join(tempRoot, "linked-tasks")
+			const task = path.join(legacy, "tasks", "legacy-task")
+			await fs.mkdir(task, { recursive: true })
+			await fs.writeFile(path.join(task, "history_item.json"), makeHistoryItem("legacy-task"))
+			await fs.mkdir(linkedTasks)
+			await fs.symlink(legacy, linkedRoot, "junction")
+			await fs.symlink(path.join(legacy, "tasks"), path.join(linkedTasks, "tasks"), "junction")
+			const destinations = {
+				shared: legacy,
+				nested: path.join(legacy, "new-destination"),
+				"linked-root": linkedRoot,
+				"linked-tasks": linkedTasks,
+			}
+			mockStorageConfiguration({ legacyZoo: legacy, pet: destinations[layout] })
+
+			await expect(importLegacyTaskHistory(petGlobalStoragePath, "zoo")).rejects.toThrow("separate task storage")
+			expect(await fs.readdir(legacy)).toEqual(["tasks"])
+			expect(await fs.readdir(path.join(legacy, "tasks"))).toEqual(["legacy-task"])
+			expect(await fs.readFile(path.join(task, "history_item.json"), "utf8")).toBe(makeHistoryItem("legacy-task"))
+		},
+	)
+
+	it("copies Roo task directories into the active Pet Zoo Code storage root", async () => {
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 		const rooCustomStorageRoot = path.join(tempRoot, "roo-custom")
-		const zooCustomStorageRoot = path.join(tempRoot, "zoo-custom")
+		const petCustomStorageRoot = path.join(tempRoot, "zoo-custom")
 
 		mockStorageConfiguration({
 			roo: rooCustomStorageRoot,
-			zoo: zooCustomStorageRoot,
+			pet: petCustomStorageRoot,
 		})
 
 		await fs.mkdir(path.join(rooDefaultStorageRoot, "tasks", "task-default"), { recursive: true })
@@ -135,27 +215,27 @@ describe("importRooTaskHistory", () => {
 			"custom",
 		)
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.foundTaskCount).toBe(2)
 		expect(result.importedTaskCount).toBe(2)
 		expect(result.importedFileCount).toBe(4)
 		expect(
-			await fs.readFile(path.join(zooCustomStorageRoot, "tasks", "task-default", "ui_messages.json"), "utf8"),
+			await fs.readFile(path.join(petCustomStorageRoot, "tasks", "task-default", "ui_messages.json"), "utf8"),
 		).toBe("default")
 		expect(
 			await fs.readFile(
-				path.join(zooCustomStorageRoot, "tasks", "task-custom", "api_conversation_history.json"),
+				path.join(petCustomStorageRoot, "tasks", "task-custom", "api_conversation_history.json"),
 				"utf8",
 			),
 		).toBe("custom")
-		await expect(fs.access(path.join(zooCustomStorageRoot, "tasks", "_index.json"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petCustomStorageRoot, "tasks", "_index.json"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
 	})
 
 	it("does not overwrite an existing Zoo task directory when the same Roo history is imported again", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration()
@@ -167,7 +247,7 @@ describe("importRooTaskHistory", () => {
 		)
 		await fs.writeFile(path.join(rooDefaultStorageRoot, "tasks", "task-repeat", "ui_messages.json"), "first-ui")
 
-		const firstImportResult = await importRooTaskHistory(zooGlobalStoragePath)
+		const firstImportResult = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(firstImportResult.importedTaskCount).toBe(1)
 		expect(firstImportResult.importedFileCount).toBe(2)
@@ -178,21 +258,21 @@ describe("importRooTaskHistory", () => {
 		)
 		await fs.writeFile(path.join(rooDefaultStorageRoot, "tasks", "task-repeat", "ui_messages.json"), "second-ui")
 
-		const secondImportResult = await importRooTaskHistory(zooGlobalStoragePath)
+		const secondImportResult = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(secondImportResult.foundTaskCount).toBe(1)
 		expect(secondImportResult.importedTaskCount).toBe(0)
 		expect(secondImportResult.importedFileCount).toBe(0)
 		expect(
-			await fs.readFile(path.join(zooGlobalStoragePath, "tasks", "task-repeat", "history_item.json"), "utf8"),
+			await fs.readFile(path.join(petGlobalStoragePath, "tasks", "task-repeat", "history_item.json"), "utf8"),
 		).toBe(makeHistoryItem("task-repeat", { source: "first-import" }))
 		expect(
-			await fs.readFile(path.join(zooGlobalStoragePath, "tasks", "task-repeat", "ui_messages.json"), "utf8"),
+			await fs.readFile(path.join(petGlobalStoragePath, "tasks", "task-repeat", "ui_messages.json"), "utf8"),
 		).toBe("first-ui")
 	})
 
 	it("deterministically keeps the first importable Roo task when duplicate task IDs exist across roots", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 		const rooCustomStorageRoot = path.join(tempRoot, "roo-custom")
 
@@ -222,26 +302,26 @@ describe("importRooTaskHistory", () => {
 			"custom-only-ui",
 		)
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.importedTaskCount).toBe(2)
 		expect(result.importedFileCount).toBe(4)
 		expect(
-			await fs.readFile(path.join(zooGlobalStoragePath, "tasks", "task-shared", "history_item.json"), "utf8"),
+			await fs.readFile(path.join(petGlobalStoragePath, "tasks", "task-shared", "history_item.json"), "utf8"),
 		).toBe(makeHistoryItem("task-shared", { source: "default-root" }))
 		expect(
-			await fs.readFile(path.join(zooGlobalStoragePath, "tasks", "task-shared", "ui_messages.json"), "utf8"),
+			await fs.readFile(path.join(petGlobalStoragePath, "tasks", "task-shared", "ui_messages.json"), "utf8"),
 		).toBe("default-ui")
 		expect(
 			await fs.readFile(
-				path.join(zooGlobalStoragePath, "tasks", "task-custom-only", "history_item.json"),
+				path.join(petGlobalStoragePath, "tasks", "task-custom-only", "history_item.json"),
 				"utf8",
 			),
 		).toBe(makeHistoryItem("task-custom-only", { source: "custom-root" }))
 	})
 
 	it("reports Roo history import progress as files are copied", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 		const onProgress = vi.fn()
 
@@ -258,7 +338,7 @@ describe("importRooTaskHistory", () => {
 			"api",
 		)
 
-		await importRooTaskHistory(zooGlobalStoragePath, onProgress)
+		await importLegacyTaskHistory(petGlobalStoragePath, "roo", onProgress)
 
 		expect(onProgress.mock.calls).toEqual([
 			[
@@ -305,13 +385,13 @@ describe("importRooTaskHistory", () => {
 	})
 
 	it("imports only top-level task history files and skips checkpoint directories", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
-		const zooCustomStorageRoot = path.join(tempRoot, "shared-storage")
+		const petCustomStorageRoot = path.join(tempRoot, "shared-storage")
 
 		mockStorageConfiguration({
-			roo: zooCustomStorageRoot,
-			zoo: zooCustomStorageRoot,
+			roo: petCustomStorageRoot,
+			pet: petCustomStorageRoot,
 		})
 
 		await fs.mkdir(path.join(rooDefaultStorageRoot, "tasks", "task-visible", "checkpoints", ".git", "objects"), {
@@ -337,43 +417,43 @@ describe("importRooTaskHistory", () => {
 		await fs.writeFile(path.join(rooDefaultStorageRoot, "tasks", ".task-hidden", "history_item.json"), "hidden-dir")
 		await fs.writeFile(path.join(rooDefaultStorageRoot, "tasks", "_task-hidden", "history_item.json"), "hidden-dir")
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
-		expect(result.rooStorageRoots).toEqual([rooDefaultStorageRoot])
+		expect(result.sourceStorageRoots).toEqual([rooDefaultStorageRoot])
 		expect(result.importedTaskCount).toBe(1)
 		expect(result.importedFileCount).toBe(4)
 		expect(
-			await fs.readFile(path.join(zooCustomStorageRoot, "tasks", "task-visible", "ui_messages.json"), "utf8"),
+			await fs.readFile(path.join(petCustomStorageRoot, "tasks", "task-visible", "ui_messages.json"), "utf8"),
 		).toBe("visible-ui")
 		expect(
 			await fs.readFile(
-				path.join(zooCustomStorageRoot, "tasks", "task-visible", "api_conversation_history.json"),
+				path.join(petCustomStorageRoot, "tasks", "task-visible", "api_conversation_history.json"),
 				"utf8",
 			),
 		).toBe("visible-api")
 		expect(
-			await fs.readFile(path.join(zooCustomStorageRoot, "tasks", "task-visible", "task_metadata.json"), "utf8"),
+			await fs.readFile(path.join(petCustomStorageRoot, "tasks", "task-visible", "task_metadata.json"), "utf8"),
 		).toBe("metadata")
-		await expect(fs.access(path.join(zooCustomStorageRoot, "tasks", ".task-hidden"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petCustomStorageRoot, "tasks", ".task-hidden"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
-		await expect(fs.access(path.join(zooCustomStorageRoot, "tasks", "_task-hidden"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petCustomStorageRoot, "tasks", "_task-hidden"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
 		await expect(
 			fs.access(
-				path.join(zooCustomStorageRoot, "tasks", "task-visible", "checkpoints", ".git", "objects", "object"),
+				path.join(petCustomStorageRoot, "tasks", "task-visible", "checkpoints", ".git", "objects", "object"),
 			),
 		).rejects.toMatchObject({
 			code: "ENOENT",
 		})
-		await expect(fs.access(path.join(zooCustomStorageRoot, "tasks", "loose.json"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petCustomStorageRoot, "tasks", "loose.json"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
 	})
 
 	it("ignores missing Roo task roots while still importing from available roots", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 		const rooMissingCustomStorageRoot = path.join(tempRoot, "roo-missing")
 
@@ -394,18 +474,18 @@ describe("importRooTaskHistory", () => {
 			taskDefaultHistoryJson,
 		)
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
-		expect(result.rooStorageRoots).toEqual([rooDefaultStorageRoot, rooMissingCustomStorageRoot])
+		expect(result.sourceStorageRoots).toEqual([rooDefaultStorageRoot, rooMissingCustomStorageRoot])
 		expect(result.importedTaskCount).toBe(1)
 		expect(result.importedFileCount).toBe(1)
 		expect(
-			await fs.readFile(path.join(zooGlobalStoragePath, "tasks", "task-default", "history_item.json"), "utf8"),
+			await fs.readFile(path.join(petGlobalStoragePath, "tasks", "task-default", "history_item.json"), "utf8"),
 		).toBe(taskDefaultHistoryJson)
 	})
 
 	it("skips tasks that do not have an importable history_item.json", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration()
@@ -416,11 +496,11 @@ describe("importRooTaskHistory", () => {
 			"ui only",
 		)
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.importedTaskCount).toBe(0)
 		expect(result.importedFileCount).toBe(0)
-		await expect(fs.access(path.join(zooGlobalStoragePath, "tasks", "task-missing-history"))).rejects.toMatchObject(
+		await expect(fs.access(path.join(petGlobalStoragePath, "tasks", "task-missing-history"))).rejects.toMatchObject(
 			{
 				code: "ENOENT",
 			},
@@ -428,9 +508,9 @@ describe("importRooTaskHistory", () => {
 	})
 
 	it("does not delete an existing Zoo task when the Roo task is missing history_item.json", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
-		const existingZooTaskDirectory = path.join(zooGlobalStoragePath, "tasks", "task-existing")
+		const existingZooTaskDirectory = path.join(petGlobalStoragePath, "tasks", "task-existing")
 
 		mockStorageConfiguration()
 
@@ -439,7 +519,7 @@ describe("importRooTaskHistory", () => {
 		await fs.mkdir(existingZooTaskDirectory, { recursive: true })
 		await fs.writeFile(path.join(existingZooTaskDirectory, "history_item.json"), "existing")
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.importedTaskCount).toBe(0)
 		expect(result.importedFileCount).toBe(0)
@@ -447,9 +527,9 @@ describe("importRooTaskHistory", () => {
 	})
 
 	it("does not overwrite an existing Zoo task when the Roo task is otherwise importable", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
-		const existingZooTaskDirectory = path.join(zooGlobalStoragePath, "tasks", "task-existing")
+		const existingZooTaskDirectory = path.join(petGlobalStoragePath, "tasks", "task-existing")
 
 		mockStorageConfiguration()
 
@@ -463,7 +543,7 @@ describe("importRooTaskHistory", () => {
 		await fs.writeFile(path.join(existingZooTaskDirectory, "history_item.json"), "existing")
 		await fs.writeFile(path.join(existingZooTaskDirectory, "ui_messages.json"), "existing-ui")
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.importedTaskCount).toBe(0)
 		expect(result.importedFileCount).toBe(0)
@@ -472,7 +552,7 @@ describe("importRooTaskHistory", () => {
 	})
 
 	it("rejects task IDs containing dots or underscore prefixes to prevent traversal", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration()
@@ -493,18 +573,18 @@ describe("importRooTaskHistory", () => {
 			makeHistoryItem("task-safe"),
 		)
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.importedTaskCount).toBe(1)
 		for (const name of unsafeCandidates) {
-			await expect(fs.access(path.join(zooGlobalStoragePath, "tasks", name))).rejects.toMatchObject({
+			await expect(fs.access(path.join(petGlobalStoragePath, "tasks", name))).rejects.toMatchObject({
 				code: "ENOENT",
 			})
 		}
 	})
 
 	it("rejects tasks whose history_item.json id field does not match the directory name or contains unsafe characters", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration()
@@ -537,23 +617,23 @@ describe("importRooTaskHistory", () => {
 			makeHistoryItem("task-valid"),
 		)
 
-		const result = await importRooTaskHistory(zooGlobalStoragePath)
+		const result = await importLegacyTaskHistory(petGlobalStoragePath, "roo")
 
 		expect(result.importedTaskCount).toBe(1)
-		await expect(fs.access(path.join(zooGlobalStoragePath, "tasks", "task-mismatch"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petGlobalStoragePath, "tasks", "task-mismatch"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
-		await expect(fs.access(path.join(zooGlobalStoragePath, "tasks", "task-traversal"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petGlobalStoragePath, "tasks", "task-traversal"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
-		await expect(fs.access(path.join(zooGlobalStoragePath, "tasks", "task-invalid-schema"))).rejects.toMatchObject({
+		await expect(fs.access(path.join(petGlobalStoragePath, "tasks", "task-invalid-schema"))).rejects.toMatchObject({
 			code: "ENOENT",
 		})
-		await expect(fs.access(path.join(zooGlobalStoragePath, "tasks", "task-valid"))).resolves.toBeUndefined()
+		await expect(fs.access(path.join(petGlobalStoragePath, "tasks", "task-valid"))).resolves.toBeUndefined()
 	})
 
 	it("rethrows unexpected task-root errors while importing Roo history", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration()
@@ -561,7 +641,7 @@ describe("importRooTaskHistory", () => {
 		await fs.mkdir(rooDefaultStorageRoot, { recursive: true })
 		await fs.writeFile(path.join(rooDefaultStorageRoot, "tasks"), "not a directory")
 
-		await expect(importRooTaskHistory(zooGlobalStoragePath)).rejects.toMatchObject({
+		await expect(importLegacyTaskHistory(petGlobalStoragePath, "roo")).rejects.toMatchObject({
 			code: "ENOTDIR",
 		})
 	})
@@ -575,7 +655,7 @@ describe("importRooTaskHistory", () => {
 	})
 
 	it("imports the complete file set when two calls run concurrently against the same Roo task", async () => {
-		const zooGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
+		const petGlobalStoragePath = path.join(tempRoot, "globalStorage", "e3742526.pet-zoo-code")
 		const rooDefaultStorageRoot = path.join(tempRoot, "globalStorage", "rooveterinaryinc.roo-cline")
 
 		mockStorageConfiguration()
@@ -595,14 +675,14 @@ describe("importRooTaskHistory", () => {
 		)
 
 		const [result1, result2] = await Promise.all([
-			importRooTaskHistory(zooGlobalStoragePath),
-			importRooTaskHistory(zooGlobalStoragePath),
+			importLegacyTaskHistory(petGlobalStoragePath, "roo"),
+			importLegacyTaskHistory(petGlobalStoragePath, "roo"),
 		])
 
 		// Exactly one call should win the atomic rename; the other should skip gracefully.
 		expect(result1.importedTaskCount + result2.importedTaskCount).toBe(1)
 
-		const destTaskDir = path.join(zooGlobalStoragePath, "tasks", "task-concurrent")
+		const destTaskDir = path.join(petGlobalStoragePath, "tasks", "task-concurrent")
 
 		// The winning import must have written all three files completely.
 		expect(await fs.readFile(path.join(destTaskDir, "history_item.json"), "utf8")).toBe(
@@ -614,7 +694,7 @@ describe("importRooTaskHistory", () => {
 		)
 
 		// No staging directories should be left behind.
-		const tasksEntries = await fs.readdir(path.join(zooGlobalStoragePath, "tasks"))
+		const tasksEntries = await fs.readdir(path.join(petGlobalStoragePath, "tasks"))
 		expect(tasksEntries.filter((e) => e.startsWith("_staging_"))).toHaveLength(0)
 	})
 })

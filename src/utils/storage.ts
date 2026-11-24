@@ -16,8 +16,10 @@ export function getCustomStoragePath(): string {
 }
 
 /** Resolves a writable storage path for creating files. */
-export async function getStorageBasePath(defaultPath: string): Promise<string> {
-	const customStoragePath = getCustomStoragePath()
+export async function getStorageBasePath(
+	defaultPath: string,
+	customStoragePath = getCustomStoragePath(),
+): Promise<string> {
 	if (!customStoragePath) {
 		return defaultPath
 	}

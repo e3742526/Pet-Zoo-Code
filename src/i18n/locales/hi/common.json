@@ -149,6 +149,13 @@
 			"success_other": "{{count}} Roo Code कार्य इतिहास Zoo Code में आयात किए।"
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Zoo Code का कार्य इतिहास आयात करें",
+		"nothingFound": "{{domain}} का कोई कार्य इतिहास नहीं मिला।",
+		"nothingCopied": "Zoo Code से कोई नया कार्य कॉपी नहीं हुआ।",
+		"success": "Zoo Code से आयात किए गए कार्य ({{count}})।",
+		"failed": "Zoo Code का कार्य इतिहास आयात नहीं हो सका। {{error}}"
+	},
 	"answers": {
 		"yes": "हां",
 		"activate_requesty": "Requesty सक्रिय करें"

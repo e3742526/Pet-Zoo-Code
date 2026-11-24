@@ -151,6 +151,11 @@
 				"category": "%configuration.title%"
 			},
 			{
+				"command": "pet-zoo-code.importZooHistory",
+				"title": "%command.importZooHistory.title%",
+				"category": "%configuration.title%"
+			},
+			{
 				"command": "pet-zoo-code.focusInput",
 				"title": "%command.focusInput.title%",
 				"category": "%configuration.title%"

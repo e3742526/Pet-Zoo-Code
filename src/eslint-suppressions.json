@@ -639,11 +639,6 @@
 			"count": 4
 		}
 	},
-	"core/task-persistence/__tests__/importRooTaskHistory.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 1
-		}
-	},
 	"core/task-persistence/__tests__/taskMessages.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 2
@@ -932,11 +927,6 @@
 	"core/webview/__tests__/webviewMessageHandler.edit.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 1
-		}
-	},
-	"core/webview/__tests__/webviewMessageHandler.importRooHistory.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 13
 		}
 	},
 	"core/webview/__tests__/webviewMessageHandler.readFileContent.spec.ts": {

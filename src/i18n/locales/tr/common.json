@@ -149,6 +149,13 @@
 			"success_other": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı."
 		}
 	},
+	"zooHistoryImport": {
+		"title": "Zoo Code görev geçmişini içe aktar",
+		"nothingFound": "{{domain}} için görev geçmişi bulunamadı.",
+		"nothingCopied": "Zoo Code’dan yeni görev kopyalanmadı.",
+		"success": "Zoo Code görevleri içe aktarıldı ({{count}}).",
+		"failed": "Zoo Code görev geçmişi içe aktarılamadı. {{error}}"
+	},
 	"answers": {
 		"yes": "Evet",
 		"activate_requesty": "Requesty'i etkinleştir"

@@ -91,6 +91,10 @@ A metadata fixture calculated 24 snapshots of a 1,281-row transcript. The median
 
 The packaged extension ran a task through a loopback Ollama fixture and reopened it from history. Its saved record reported the expected 100 input and 20 output tokens.
 
+The extension host and webview also reuse parsed usage fields while a request row keeps the same text. When the host updates the active row in place, the next calculation reads the new tokens, cache counts, and cost.
+
+A separate fixture ran 64 calculations over 480 historical request rows and one active row that changed on every calculation. JSON parses fell from 30,848 to 64. Across 11 trials after four warm-up trials, the median for 64 calculations fell from 4.81 ms to 0.36 ms. The observed ranges were 4.68–5.21 ms and 0.35–0.40 ms. For a single calculation on fresh row objects, the median rose from 0.074 ms to 0.091 ms. Both versions returned the same totals and context size. These timings cover the shared accounting function.
+
 ## Repeated UI transcript saves
 
 The UI transcript writer compares the merged snapshot with the committed file after recovery, while holding the advisory lock. An equal result satisfies the save. Focused tests cover peer updates, clearing an optional field, recovery before the comparison, an initial empty file, and corrupt JSON.

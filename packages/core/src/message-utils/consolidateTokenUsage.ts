@@ -9,6 +9,24 @@ export type ParsedApiReqStartedTextType = {
 	apiProtocol?: "anthropic" | "openai"
 }
 
+type RequestUsage = Pick<ParsedApiReqStartedTextType, "tokensIn" | "tokensOut" | "cacheWrites" | "cacheReads" | "cost">
+
+const requestUsageByMessage = new WeakMap<ClineMessage, RequestUsage & { text: string }>()
+
+function readRequestUsage(message: ClineMessage, text: string): RequestUsage {
+	const cached = requestUsageByMessage.get(message)
+
+	// The extension host can update a request's text on the same message object.
+	if (cached?.text === text) {
+		return cached
+	}
+
+	const { tokensIn, tokensOut, cacheWrites, cacheReads, cost }: RequestUsage = JSON.parse(text)
+	const usage = { text, tokensIn, tokensOut, cacheWrites, cacheReads, cost }
+	requestUsageByMessage.set(message, usage)
+	return usage
+}
+
 /**
  * Consolidates token usage metrics from an array of ClineMessages.
  *
@@ -40,8 +58,7 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 	messages.forEach((message) => {
 		if (message.type === "say" && message.say === "api_req_started" && message.text) {
 			try {
-				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
-				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost } = parsedText
+				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost } = readRequestUsage(message, message.text)
 
 				if (typeof tokensIn === "number") {
 					result.totalTokensIn += tokensIn
@@ -80,8 +97,7 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 
 		if (message.type === "say" && message.say === "api_req_started" && message.text) {
 			try {
-				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
-				const { tokensIn, tokensOut } = parsedText
+				const { tokensIn, tokensOut } = readRequestUsage(message, message.text)
 
 				// Since tokensIn now stores TOTAL input tokens (including cache tokens),
 				// we no longer need to add cacheWrites and cacheReads separately.

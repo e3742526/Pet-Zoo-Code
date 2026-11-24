@@ -22,6 +22,41 @@ describe("consolidateTokenUsage", () => {
 		text: JSON.stringify(data),
 	})
 
+	it("reuses unchanged request metadata and reads edits to the active request", () => {
+		const historical = createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cacheWrites: 20, cost: 0.125 })
+		const active = createApiReqMessage(1001, { tokensIn: 200, tokensOut: 60 })
+		const messages = [historical, active]
+		const originalText = active.text
+		const parse = vi.spyOn(JSON, "parse")
+		try {
+			const originalUsage = consolidateTokenUsage(messages)
+			expect(originalUsage).toEqual({
+				totalTokensIn: 300,
+				totalTokensOut: 110,
+				totalCacheWrites: 20,
+				totalCacheReads: undefined,
+				totalCost: 0.125,
+				contextTokens: 260,
+			})
+			expect(consolidateTokenUsage(messages)).toEqual(originalUsage)
+
+			active.text = JSON.stringify({ tokensIn: 250, tokensOut: 70, cacheReads: 40, cost: 0.25 })
+			expect(consolidateTokenUsage(messages)).toEqual({
+				totalTokensIn: 350,
+				totalTokensOut: 120,
+				totalCacheWrites: 20,
+				totalCacheReads: 40,
+				totalCost: 0.375,
+				contextTokens: 320,
+			})
+			for (const payload of [historical.text, originalText, active.text]) {
+				expect(parse.mock.calls.filter(([text]) => text === payload)).toHaveLength(1)
+			}
+		} finally {
+			parse.mockRestore()
+		}
+	})
+
 	describe("basic token accumulation", () => {
 		it("should accumulate tokens from a single message", () => {
 			const messages: ClineMessage[] = [createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cost: 0.01 })]

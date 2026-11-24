@@ -53,6 +53,7 @@ vi.mock("../../../core/config/ContextProxy", () => ({
 
 // Then imports
 import { getEventListeners } from "events"
+import { isDeepStrictEqual } from "node:util"
 import type { Mock, Mocked } from "vitest"
 import type { ModelRecord } from "@roo-code/types"
 import { providerIdentifiers } from "@roo-code/types"
@@ -84,6 +85,14 @@ const openRouterHandler = makeHandler(OPENROUTER_SCOPE, vi.fn())
 const authScopedHandler = makeHandler(AUTH_SCOPE, vi.fn())
 
 const DUMMY_REQUESTY_KEY = "requesty-key-for-testing"
+
+function writtenCatalogKey(mockSet: Mocked<NodeCache>["set"], catalog: ModelRecord): string {
+	const key = mockSet.mock.calls.find(([, value]) => isDeepStrictEqual(value, catalog))?.[0]
+	if (typeof key !== "string") {
+		throw new Error("Expected a cache key for the fixture catalog")
+	}
+	return key
+}
 
 describe("getModels with new GetModelsOptions", () => {
 	beforeEach(() => {
@@ -1138,10 +1147,7 @@ describe("key-scoped cache key derivation", () => {
 	})
 
 	// Returns the cache key the result was written under (first arg of the matching set call).
-	const writtenCacheKey = (): string => {
-		const call = mockSet.mock.calls.find((c) => c[1] === mockModels)
-		return call?.[0] as string
-	}
+	const writtenCacheKey = () => writtenCatalogKey(mockSet, mockModels)
 
 	it("writes different cache keys for different API keys", async () => {
 		await getModels({ provider: keyScopedProvider, apiKey: "key-one" }, handler)
@@ -1252,24 +1258,20 @@ describe("compound cache key derivation across scoping dimensions", () => {
 		},
 	}
 
-	let mockSet: Mock
+	let mockSet: Mocked<NodeCache>["set"]
 	let liteLLMHandler: ApiHandler
 	let openRouterHandler: ApiHandler
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		const MockedNodeCache = vi.mocked(NodeCache)
-		const mockCache = new MockedNodeCache()
-		;(mockCache.get as Mock).mockReturnValue(undefined)
-		mockSet = mockCache.set as unknown as Mock
+		const mockCache = vi.mocked(new NodeCache())
+		mockCache.get.mockReturnValue(undefined)
+		mockSet = mockCache.set
 		liteLLMHandler = makeHandler(LITELLM_SCOPE, vi.fn().mockResolvedValue(mockModels))
 		openRouterHandler = makeHandler(OPENROUTER_SCOPE, vi.fn().mockResolvedValue(mockModels))
 	})
 
-	const writtenCacheKey = (): string => {
-		const call = mockSet.mock.calls.find((c) => c[1] === mockModels)
-		return call?.[0] as string
-	}
+	const writtenCacheKey = () => writtenCatalogKey(mockSet, mockModels)
 
 	it("includes both the server URL and the key discriminator for url+key-scoped providers", async () => {
 		await getModels(

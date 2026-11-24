@@ -6,7 +6,7 @@ import { pbkdf2Sync } from "crypto"
 import NodeCache from "node-cache"
 import { z } from "zod"
 
-import type { ModelRecord } from "@roo-code/types"
+import type { ModelInfo, ModelRecord } from "@roo-code/types"
 import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -22,7 +22,8 @@ import { GetModelsOptions } from "../../../shared/api"
 
 import type { ApiHandler } from "../../index"
 
-const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
+// The cache owns its records. Full catalog readers copy the record, and model readers copy one entry.
+const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60, useClones: false })
 const MISSING_DISK_CACHE_TTL_MS = 5 * 60 * 1000
 const missingDiskCache = new Map<string, { path: string; until: number }>()
 const inFlightDiskReads = new Map<string, { path: string; load: Promise<ModelRecord | undefined> }>()
@@ -176,6 +177,11 @@ async function writeModels(cacheKey: string, data: ModelRecord) {
 	await safeWriteJson(path.join(cacheDir, filename), data)
 }
 
+function cacheFetchedModels(cacheKey: string, models: ModelRecord): void {
+	missingDiskCache.delete(cacheKey)
+	memoryCache.set(cacheKey, structuredClone(models))
+}
+
 /**
  * Fetch models from the provider API.
  * Extracted to avoid duplication between getModels() and refreshModels().
@@ -257,8 +263,7 @@ export const getModels = async (options: GetModelsOptions, handler: ApiHandler):
 			reportedEmptyModelResponse.delete(cacheKey)
 
 			if (!shouldSkipCache) {
-				missingDiskCache.delete(cacheKey)
-				memoryCache.set(cacheKey, fetched)
+				cacheFetchedModels(cacheKey, fetched)
 
 				await writeModels(cacheKey, fetched).catch((err) =>
 					console.error(`[MODEL_CACHE] Error writing ${cacheKey} models to file cache:`, err),
@@ -464,8 +469,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		reportedEmptyModelResponse.delete(cacheKey)
 
 		if (!shouldSkipCache) {
-			missingDiskCache.delete(cacheKey)
-			memoryCache.set(cacheKey, models)
+			cacheFetchedModels(cacheKey, models)
 
 			await writeModels(cacheKey, models).catch((err) =>
 				console.error(`[refreshModels] Error writing ${cacheKey} models to disk:`, err),
@@ -555,8 +559,8 @@ function readCatalogFile(primary: string, fallback: string | undefined): Promise
 	})
 }
 
-function copyPendingCatalog(load: Promise<ModelRecord | undefined> | undefined) {
-	return load?.then((models) => models && structuredClone(models))
+function copyCatalog(models: ModelRecord | undefined): ModelRecord | undefined {
+	return models && structuredClone(models)
 }
 
 function validateAndCacheModels(cacheKey: string, data: string): ModelRecord | undefined {
@@ -577,7 +581,7 @@ function readCachedModels(
 	signal?: AbortSignal,
 ): ModelRecord | Promise<ModelRecord | undefined> | undefined {
 	const cached = memoryCache.get<ModelRecord>(cacheKey)
-	if (cached || signal?.aborted) return cached
+	if (cached || signal?.aborted) return copyCatalog(cached)
 
 	const paths = diskCachePaths(cacheKey)
 	if (!paths) return undefined
@@ -585,7 +589,7 @@ function readCachedModels(
 
 	const pending = inFlightDiskReads.get(cacheKey)
 	// Each caller receives its own copy, as it would on a memory-cache hit.
-	if (pending?.path === primary) return copyPendingCatalog(pending.load)
+	if (pending?.path === primary) return pending.load.then(copyCatalog)
 
 	const load: Promise<ModelRecord | undefined> = readCatalogFile(primary, fallback)
 		.then((data) => {
@@ -593,14 +597,14 @@ function readCachedModels(
 			const current = memoryCache.get<ModelRecord>(cacheKey)
 			const latest = inFlightDiskReads.get(cacheKey)?.load
 			if (current) return current
-			if (latest !== load) return copyPendingCatalog(latest)
+			if (latest !== load) return latest
 			return validateAndCacheModels(cacheKey, data)
 		})
 		.catch((error: unknown) => {
 			const current = memoryCache.get<ModelRecord>(cacheKey)
 			const latest = inFlightDiskReads.get(cacheKey)?.load
 			if (current) return current
-			if (latest !== load) return copyPendingCatalog(latest)
+			if (latest !== load) return latest
 			if (isDiskCacheMissing(error)) {
 				rememberDiskMiss(cacheKey, primary)
 			} else {
@@ -612,17 +616,11 @@ function readCachedModels(
 			if (inFlightDiskReads.get(cacheKey)?.load === load) inFlightDiskReads.delete(cacheKey)
 		})
 	inFlightDiskReads.set(cacheKey, { path: primary, load })
-	return load
+	return load.then(copyCatalog)
 }
 
-/**
- * Get cached models synchronously for callers of ApiHandler.getModel().
- *
- * @param options - The options identifying the cache entry (provider, baseUrl, apiKey).
- * @param handler - The handler whose cache scope determines the compound cache key.
- * @returns Models from memory cache, disk cache, or undefined if not cached.
- */
-export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandler): ModelRecord | undefined {
+/** Read the cache-owned catalog. Copy the returned data before exposing it to callers. */
+function readModelsFromCache(options: GetModelsOptions, handler: ApiHandler): ModelRecord | undefined {
 	// Auth-scoped providers must never be served from cache --
 	// their model lists are user-specific and a stale file left over from a previous
 	// session could leak another user's list. Mirror the guards in getModels/refreshModels.
@@ -654,6 +652,17 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 
 	rememberDiskMiss(cacheKey, primary)
 	return undefined
+}
+
+/** Return a separate copy of the cached catalog for synchronous callers. */
+export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandler): ModelRecord | undefined {
+	return copyCatalog(readModelsFromCache(options, handler))
+}
+
+/** Return a copy of one cached model without copying the rest of the catalog. */
+export function getModelFromCache(options: GetModelsOptions, handler: ApiHandler, id: string): ModelInfo | undefined {
+	const models = readModelsFromCache(options, handler)
+	return models && Object.hasOwn(models, id) ? structuredClone(models[id]) : undefined
 }
 
 /**

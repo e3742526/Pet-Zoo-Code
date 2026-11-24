@@ -32,7 +32,7 @@ import type {
 	CompletePromptOptions,
 	ModelCacheScope,
 } from "../index"
-import { getModels, getModelsFromCache } from "./fetchers/modelCache"
+import { getModelFromCache, getModels } from "./fetchers/modelCache"
 import { getPoeModels } from "./fetchers/poe"
 
 const DEFAULT_THINKING_BUDGET = 8192
@@ -75,18 +75,18 @@ export class PoeHandler extends BaseProvider implements SingleCompletionHandler 
 		}, signal)
 	}
 
-	override getModel() {
+	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.options.apiModelId ?? poeDefaultModelId
-		const cached = getModelsFromCache(
+		const info = getModelFromCache(
 			{
 				provider: providerIdentifiers.poe,
 				apiKey: this.options.poeApiKey,
 				baseUrl: this.options.poeBaseUrl,
 			},
 			this,
+			id,
 		)
-		const info: ModelInfo = cached?.[id] ?? getPoeDefaultModelInfo()
-		return { id, info }
+		return { id, info: info ?? getPoeDefaultModelInfo() }
 	}
 
 	override async *createMessage(

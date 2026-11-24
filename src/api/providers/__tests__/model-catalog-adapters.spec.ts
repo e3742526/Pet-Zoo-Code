@@ -31,12 +31,14 @@ const fetchers = vi.hoisted(() => ({
 // call counts in this file meaningful and avoids touching the real disk cache.
 const modelCache = vi.hoisted(() => ({
 	getModels: vi.fn(),
+	getModelFromCache: vi.fn(),
 	getModelsFromCache: vi.fn(),
 }))
 
 vi.mock("../fetchers/modelCache", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../fetchers/modelCache")>()),
 	getModels: modelCache.getModels,
+	getModelFromCache: modelCache.getModelFromCache,
 	getModelsFromCache: modelCache.getModelsFromCache,
 }))
 
@@ -276,6 +278,7 @@ describe("model catalog adapters", () => {
 		)
 		modelCache.getModelsFromCache.mockReset()
 		modelCache.getModelsFromCache.mockReturnValue(undefined)
+		modelCache.getModelFromCache.mockReset()
 	})
 
 	describe.each(cases)("$name", ({ create, fetcher, scope, expectedArgs, forwardsSignal, prewarms }) => {

@@ -1,21 +1,21 @@
-import { poeDefaultModelId, providerIdentifiers } from "@roo-code/types"
+import { poeDefaultModelId, providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import { PoeHandler } from "../poe"
-import { getModelsFromCache } from "../fetchers/modelCache"
+import { getModelFromCache } from "../fetchers/modelCache"
 
 import { clearAllMocks } from "../../../test-utils/reset"
 
-const { mockStreamText, mockGenerateText, mockCreatePoe, mockGetModels, mockGetModelsFromCache, mockCaptureException } =
+const { mockStreamText, mockGenerateText, mockCreatePoe, mockGetModels, mockGetModelFromCache, mockCaptureException } =
 	vitest.hoisted(() => ({
 		mockStreamText: vitest.fn(),
 		mockGenerateText: vitest.fn(),
 		mockCreatePoe: vitest.fn(),
 		mockCaptureException: vitest.fn(),
 		mockGetModels: vitest.fn(),
-		mockGetModelsFromCache: vitest.fn(),
+		mockGetModelFromCache: vitest.fn<typeof getModelFromCache>(),
 	}))
 
-const cachedModels = {
+const cachedModels: ModelRecord = {
 	"anthropic/claude-sonnet-4": {
 		maxTokens: 10_000,
 		contextWindow: 200_000,
@@ -92,7 +92,7 @@ vitest.mock("ai", async (importOriginal) => {
 
 vitest.mock("../fetchers/modelCache", () => ({
 	getModels: mockGetModels,
-	getModelsFromCache: mockGetModelsFromCache,
+	getModelFromCache: mockGetModelFromCache,
 }))
 
 describe("PoeHandler", () => {
@@ -102,7 +102,7 @@ describe("PoeHandler", () => {
 	beforeEach(() => {
 		clearAllMocks()
 		mockCreatePoe.mockReturnValue(mockPoeProvider)
-		mockGetModelsFromCache.mockReturnValue(cachedModels)
+		mockGetModelFromCache.mockImplementation((_options, _handler, id) => cachedModels[id])
 	})
 
 	describe("constructor", () => {
@@ -144,13 +144,14 @@ describe("PoeHandler", () => {
 			const handler = new PoeHandler(options)
 			const result = handler.getModel()
 
-			expect(getModelsFromCache).toHaveBeenCalledWith(
+			expect(getModelFromCache).toHaveBeenCalledWith(
 				{
 					provider: providerIdentifiers.poe,
 					apiKey: options.poeApiKey,
 					baseUrl: options.poeBaseUrl,
 				},
 				expect.anything(),
+				options.apiModelId,
 			)
 			expect(result.id).toBe("anthropic/claude-sonnet-4")
 			expect(result.info.contextWindow).toBe(200_000)
@@ -178,8 +179,8 @@ describe("PoeHandler", () => {
 		it("returns default info before the pre-warm and cached info after", async () => {
 			// The pre-warm populates the shared cache that getModel() reads, so the
 			// cache starts empty and is filled by the mocked getModels() call.
-			let cacheContents: typeof cachedModels | undefined
-			mockGetModelsFromCache.mockImplementation(() => cacheContents)
+			let cacheContents: ModelRecord | undefined
+			mockGetModelFromCache.mockImplementation((_options, _handler, id) => cacheContents?.[id])
 			mockGetModels.mockImplementation(async () => {
 				cacheContents = cachedModels
 				return cachedModels

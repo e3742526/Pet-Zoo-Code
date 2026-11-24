@@ -207,6 +207,10 @@ Cold catalog reads use the configured storage path first and can reopen a file i
 
 Real-file tests wrote a catalog to custom storage and reopened it through both catalog entry points while a simulated provider was offline. They also checked default storage fallback, a change of storage path after a miss, and reopening the saved endpoint list after its memory entry expired. The three reopen checks failed with the previous code. With default storage, the 1,800-model fixture recorded a median callback delay of 0.027 ms and a median catalog lookup of 3.09 ms.
 
+LM Studio and Poe copy only the selected model from the cache. The cache keeps its own data. Catalog callers receive separate copies, and cold synchronous callers can still read saved metadata offline.
+
+The 1,800-model fixture ran nine trials after two warm-up runs. The median for 64 warm model lookups fell from 54.76 ms to 0.06 ms, with ranges of 54.37–57.72 ms and 0.04–0.08 ms. The median for 16 full catalog copies fell from 13.65 ms to 12.58 ms. The first selected-model lookup took 1.79 ms, down from 2.93 ms. The fixture used a simulated file read and included JSON parsing and validation. The regression tests verify that changes to returned model metadata and catalogs cannot change later cache results.
+
 ## Settings migration at startup
 
 Startup lists the selected settings directory and checks only the legacy filenames it could contain. When the listing includes converted YAML and legacy JSON, startup checks the YAML path and keeps both files. If listing fails, migration still tries the known paths. Each launch can recover files restored later or found after the user changes the storage directory. The separate default-command migration retains its completion flag.

@@ -24,7 +24,7 @@ import type {
 	CompletePromptOptions,
 	ModelCacheScope,
 } from "../index"
-import { getModels, getModelsFromCache } from "./fetchers/modelCache"
+import { getModelFromCache, getModels } from "./fetchers/modelCache"
 import { getLMStudioModels } from "./fetchers/lmstudio"
 import {
 	mergeAbortSignalAndTimeout,
@@ -304,24 +304,18 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 	}
 
 	override getModel(): { id: string; info: ModelInfo } {
-		const models = getModelsFromCache(
+		const id = this.options.lmStudioModelId || ""
+		if (!id) return { id, info: openAiModelInfoSaneDefaults }
+
+		const info = getModelFromCache(
 			{
 				provider: providerIdentifiers.lmstudio,
 				baseUrl: this.options.lmStudioBaseUrl,
 			},
 			this,
+			id,
 		)
-		if (models && this.options.lmStudioModelId && models[this.options.lmStudioModelId]) {
-			return {
-				id: this.options.lmStudioModelId,
-				info: models[this.options.lmStudioModelId],
-			}
-		} else {
-			return {
-				id: this.options.lmStudioModelId || "",
-				info: openAiModelInfoSaneDefaults,
-			}
-		}
+		return { id, info: info ?? openAiModelInfoSaneDefaults }
 	}
 
 	/**

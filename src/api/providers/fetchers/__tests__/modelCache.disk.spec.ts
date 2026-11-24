@@ -5,7 +5,7 @@ import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import type { ApiHandler } from "../../../index"
 import { getCustomStoragePath } from "../../../../utils/storage"
-import { flushModels, getModels, getModelsFromCache, refreshModels } from "../modelCache"
+import { flushModels, getModelFromCache, getModels, getModelsFromCache, refreshModels } from "../modelCache"
 
 vi.mock("../../../../core/config/ContextProxy", () => ({
 	ContextProxy: { instance: { globalStorageUri: { fsPath: "/test-storage" } } },
@@ -187,3 +187,57 @@ it.each(["not JSON", '{"bad":{"contextWindow":"invalid"}}'])(
 		expect(fetchModels).toHaveBeenCalledTimes(1)
 	},
 )
+
+it("reads a selected model offline and isolates copies of nested metadata", async () => {
+	const modelId = "cached-model"
+	const models: ModelRecord = {
+		[modelId]: { ...diskModels[modelId], includedTools: ["read_file"] },
+	}
+	vi.mocked(existsSync).mockReturnValue(true)
+	vi.mocked(readFileSync).mockReturnValue(JSON.stringify(models))
+
+	const selected = getModelFromCache(options, handler, modelId)
+	expect(selected).toEqual(models[modelId])
+	selected?.includedTools?.push("write_to_file")
+
+	const syncCatalog = getModelsFromCache(options, handler)
+	expect(syncCatalog).toEqual(models)
+	syncCatalog?.[modelId].includedTools?.push("list_files")
+
+	const asyncCatalog = await getModels(options, handler)
+	expect(asyncCatalog).toEqual(models)
+	asyncCatalog[modelId].includedTools?.push("apply_diff")
+
+	expect(getModelFromCache(options, handler, modelId)).toEqual(models[modelId])
+	expect(getModelFromCache(options, handler, "constructor")).toBeUndefined()
+	expect(readFileSync).toHaveBeenCalledTimes(1)
+	expect(readFromDisk).not.toHaveBeenCalled()
+	expect(fetchModels).not.toHaveBeenCalled()
+})
+
+it("stores its own copy of the catalog returned by a provider", async () => {
+	const modelId = "fresh-model"
+	const catalog: ModelRecord = {
+		[modelId]: { ...freshModels[modelId], includedTools: ["read_file"] },
+	}
+	fetchModels.mockResolvedValueOnce(catalog)
+
+	const result = await refreshModels(options, handler)
+	expect(result).toEqual(catalog)
+	result[modelId].includedTools?.push("list_files")
+
+	expect(getModelFromCache(options, handler, modelId)?.includedTools).toEqual(["read_file"])
+	expect(readFileSync).not.toHaveBeenCalled()
+})
+
+it("skips cached metadata for providers with auth-scoped catalogs", async () => {
+	await getModels(options, handler)
+
+	const authHandler: ApiHandler = {
+		...handler,
+		getModelCacheScope: () => ({ authScoped: true, urlScoped: false, keyScoped: false }),
+	}
+	expect(getModelFromCache(options, authHandler, "cached-model")).toBeUndefined()
+	expect(readFileSync).not.toHaveBeenCalled()
+	expect(fetchModels).not.toHaveBeenCalled()
+})

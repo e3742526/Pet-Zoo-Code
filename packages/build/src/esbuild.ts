@@ -1,6 +1,7 @@
 import * as fs from "fs"
 import * as path from "path"
 import { execSync } from "child_process"
+import { brotliCompressSync, constants as zlibConstants } from "node:zlib"
 
 function copyDir(srcDir: string, dstDir: string, count: number): number {
 	const entries = fs.readdirSync(srcDir, { withFileTypes: true })
@@ -144,7 +145,7 @@ const SUPPORTED_TREE_SITTER_LANGUAGE_WASMS = [
 	"tree-sitter-zig.wasm",
 ] as const
 
-export function copyWasms(srcDir: string, distDir: string): void {
+export function copyWasms(srcDir: string, distDir: string, { compressEsbuildWasm = true } = {}): void {
 	const nodeModulesDir = path.join(srcDir, "node_modules")
 
 	fs.mkdirSync(distDir, { recursive: true })
@@ -184,65 +185,59 @@ export function copyWasms(srcDir: string, distDir: string): void {
 		`[copyWasms] Copied ${SUPPORTED_TREE_SITTER_LANGUAGE_WASMS.length} tree-sitter language wasms to ${distDir}`,
 	)
 
-	// Copy esbuild-wasm files for custom tool transpilation (cross-platform).
-	copyEsbuildWasmFiles(nodeModulesDir, distDir)
+	// Package the offline compiler for custom tools.
+	copyEsbuildWasmFiles(nodeModulesDir, distDir, compressEsbuildWasm)
 }
 
-/**
- * Copy esbuild-wasm files to the dist/bin directory.
- *
- * This function copies the esbuild-wasm CLI and WASM binary, which provides
- * a cross-platform esbuild implementation that works on all platforms.
- *
- * Files copied:
- * - bin/esbuild (Node.js CLI script)
- * - esbuild.wasm (WASM binary)
- * - wasm_exec_node.js (Go WASM runtime for Node.js)
- * - wasm_exec.js (Go WASM runtime dependency)
- */
-function copyEsbuildWasmFiles(nodeModulesDir: string, distDir: string): void {
+function copyEsbuildWasmFiles(nodeModulesDir: string, distDir: string, compressWasm: boolean): void {
 	const esbuildWasmDir = path.join(nodeModulesDir, "esbuild-wasm")
 
 	if (!fs.existsSync(esbuildWasmDir)) {
 		throw new Error(`Directory does not exist: ${esbuildWasmDir}`)
 	}
 
-	// Create bin directory in dist.
 	const binDir = path.join(distDir, "bin")
 	fs.mkdirSync(binDir, { recursive: true })
 
-	// Files to copy - the esbuild CLI script expects wasm_exec_node.js and esbuild.wasm
-	// to be one directory level up from the bin directory (i.e., in distDir directly).
-	// wasm_exec_node.js requires wasm_exec.js, so we need to copy that too.
-	const filesToCopy = [
-		{ src: path.join(esbuildWasmDir, "bin", "esbuild"), dest: path.join(binDir, "esbuild") },
-		{ src: path.join(esbuildWasmDir, "esbuild.wasm"), dest: path.join(distDir, "esbuild.wasm") },
-		{ src: path.join(esbuildWasmDir, "wasm_exec_node.js"), dest: path.join(distDir, "wasm_exec_node.js") },
-		{ src: path.join(esbuildWasmDir, "wasm_exec.js"), dest: path.join(distDir, "wasm_exec.js") },
-	]
-
-	for (const { src, dest } of filesToCopy) {
-		if (src.endsWith("esbuild")) {
-			// Read the esbuild binary, patch it to prevent the V8 crash (crbug.com/1201626)
-			// by eagerly initializing process.stdout.fd and process.stderr.fd on line 2
-			// before WebAssembly execution takes place.
-			let content = fs.readFileSync(src, "utf8")
-			content = content.replace(
-				/^(#!.*$)/m,
-				"$1\n// Eagerly initialize stdout/stderr to avoid V8 crash (crbug.com/1201626) inside WASM stack\nconst _ = [process.stdout.fd, process.stderr.fd];",
-			)
-			fs.writeFileSync(dest, content)
-			try {
-				fs.chmodSync(dest, 0o755)
-			} catch {
-				// Ignore chmod errors on Windows.
-			}
-		} else {
-			fs.copyFileSync(src, dest)
-		}
+	for (const filename of ["wasm_exec_node.js", "wasm_exec.js"]) {
+		fs.copyFileSync(path.join(esbuildWasmDir, filename), path.join(distDir, filename))
 	}
 
-	console.log(`[copyWasms] Copied ${filesToCopy.length} esbuild-wasm files to ${distDir}`)
+	const wasmSource = path.join(esbuildWasmDir, "esbuild.wasm")
+	const launcherPath = path.join(binDir, "esbuild")
+	let launcher = fs.readFileSync(path.join(esbuildWasmDir, "bin", "esbuild"), "utf8")
+	if (compressWasm) {
+		const wasmFilename = "'esbuild.wasm'"
+		const compileModule = "new WebAssembly.Module(bytes)"
+		if (!launcher.includes(wasmFilename) || !launcher.includes(compileModule)) {
+			throw new Error("The esbuild-wasm launcher changed. Update the compressed compiler loader.")
+		}
+
+		// Decode the compiler in the child process only when a tool needs it.
+		launcher = launcher
+			.replace(wasmFilename, "'esbuild.wasm.br'")
+			.replace(compileModule, "new WebAssembly.Module(require('node:zlib').brotliDecompressSync(bytes))")
+		const compressed = brotliCompressSync(fs.readFileSync(wasmSource), {
+			params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 6 },
+		})
+		fs.writeFileSync(path.join(distDir, "esbuild.wasm.br"), compressed)
+	} else {
+		fs.copyFileSync(wasmSource, path.join(distDir, "esbuild.wasm"))
+	}
+
+	// Initialize stdout and stderr before running WASM to avoid crbug.com/1201626.
+	launcher = launcher.replace(
+		/^(#!.*$)/m,
+		"$1\n// Eagerly initialize stdout/stderr to avoid V8 crash (crbug.com/1201626) inside WASM stack\nconst _ = [process.stdout.fd, process.stderr.fd];",
+	)
+	fs.writeFileSync(launcherPath, launcher)
+	try {
+		fs.chmodSync(launcherPath, 0o755)
+	} catch {
+		// Ignore chmod errors on Windows.
+	}
+
+	console.log(`[copyWasms] Copied esbuild-wasm compiler to ${distDir}`)
 }
 
 export function copyLocales(srcDir: string, distDir: string): void {

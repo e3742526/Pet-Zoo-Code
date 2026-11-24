@@ -1,6 +1,8 @@
 // npx vitest __tests__/dist_assets.spec.ts
 
 import * as fs from "fs"
+import { execFileSync } from "node:child_process"
+import { tmpdir } from "node:os"
 import * as path from "path"
 import * as yaml from "yaml"
 
@@ -30,6 +32,47 @@ describe("dist assets", () => {
 			expect(fs.existsSync(path.join(distPath, "workers", "tiktoken_bg.wasm"))).toBe(false)
 		})
 	})
+
+	it("bundles and runs a TypeScript tool with the compressed compiler", () => {
+		expect(fs.existsSync(path.join(distPath, "esbuild.wasm.br"))).toBe(true)
+		expect(fs.existsSync(path.join(distPath, "esbuild.wasm"))).toBe(false)
+
+		const workspace = fs.mkdtempSync(path.join(tmpdir(), "zoo-code-compiler-"))
+		try {
+			const input = path.join(workspace, "tool.ts")
+			const output = path.join(workspace, "tool.mjs")
+			const dependency = path.join(workspace, "node_modules", "tool-example")
+			fs.mkdirSync(dependency, { recursive: true })
+			fs.writeFileSync(path.join(dependency, "index.js"), "module.exports = { multiplier: 7 }")
+			fs.writeFileSync(path.join(workspace, "values.ts"), "export enum Values { Input = 6 }")
+			fs.writeFileSync(
+				input,
+				[
+					'import { Values } from "./values.js"',
+					'import toolExample from "tool-example"',
+					"console.log(Values.Input * toolExample.multiplier)",
+				].join("\n"),
+			)
+
+			execFileSync(
+				process.execPath,
+				[
+					path.join(distPath, "bin", "esbuild"),
+					input,
+					"--bundle",
+					"--format=esm",
+					"--platform=node",
+					"--target=node18",
+					`--outfile=${output}`,
+				],
+				{ cwd: workspace, timeout: 10_000 },
+			)
+			fs.rmSync(dependency, { recursive: true })
+			expect(execFileSync(process.execPath, [output], { encoding: "utf8", timeout: 10_000 }).trim()).toBe("42")
+		} finally {
+			fs.rmSync(workspace, { recursive: true, force: true })
+		}
+	}, 25_000)
 
 	describe("tree-sitter", () => {
 		const treeSitterFiles = [

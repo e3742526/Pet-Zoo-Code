@@ -86,7 +86,7 @@ async function main() {
 		{
 			name: "copyWasms",
 			setup(build) {
-				build.onEnd(() => copyWasms(srcDir, distDir))
+				build.onEnd(() => copyWasms(srcDir, distDir, { compressEsbuildWasm: !watch }))
 			},
 		},
 		{

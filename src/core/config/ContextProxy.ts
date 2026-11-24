@@ -29,6 +29,7 @@ type SecretStateKey = keyof SecretState
 type RooCodeSettingsKey = keyof RooCodeSettings
 
 const PASS_THROUGH_STATE_KEYS = ["taskHistory"]
+const MANAGED_SECRET_KEYS: readonly SecretStateKey[] = [...SECRET_STATE_KEYS, ...GLOBAL_SECRET_KEYS]
 
 /** `ContextProxy.setValues` could not store every key: which ones it stored, which it did not, and the first failure. */
 export class SettingsWriteError extends Error {
@@ -97,28 +98,7 @@ export class ContextProxy {
 			}
 		}
 
-		const promises = [
-			...SECRET_STATE_KEYS.map(async (key) => {
-				try {
-					this.secretCache[key] = await this.originalContext.secrets.get(key)
-				} catch (error) {
-					logger.error(
-						`Error loading secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}),
-			...GLOBAL_SECRET_KEYS.map(async (key) => {
-				try {
-					this.secretCache[key] = await this.originalContext.secrets.get(key)
-				} catch (error) {
-					logger.error(
-						`Error loading global secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}),
-		]
-
-		await Promise.all(promises)
+		await this.refreshSecrets()
 
 		// Migration: Check for old nested image generation settings and migrate them
 		await this.migrateImageGenerationSettings()
@@ -486,12 +466,26 @@ export class ContextProxy {
 	 * outcome, even if it is already over, so the (older) value that was read is dropped. Otherwise the load takes over the key from a write that is
 	 * still pending, so that a failure of that write cannot replace what was just loaded.
 	 */
-	private async refreshSecret(key: SecretStateKey) {
-		const writes = this.secretWriteCount.get(key)
+	private async refreshSecret(key: SecretStateKey, writes: number | undefined) {
+		if (this.secretWriteCount.get(key) !== writes) return
 		const value = await this.originalContext.secrets.get(key)
 		if (this.secretWriteCount.get(key) !== writes) return
 		this.secretWriteOwner.delete(key)
 		this.secretCache[key] = value
+	}
+
+	private async listStoredSecretKeys(): Promise<ReadonlySet<string> | undefined> {
+		// VS Code 1.105 added keys(). The extension also supports older hosts.
+		const secrets = this.originalContext.secrets as vscode.SecretStorage & {
+			keys?(): Thenable<string[]>
+		}
+		try {
+			const keys = await secrets.keys?.()
+			return Array.isArray(keys) ? new Set(keys) : undefined
+		} catch {
+			// Alternative secret stores can reject enumeration. Read the managed keys individually.
+			return undefined
+		}
 	}
 
 	/**
@@ -499,34 +493,28 @@ export class ContextProxy {
 	 * This is useful when you need to ensure the cache has the latest values
 	 */
 	async refreshSecrets(): Promise<void> {
-		const promises = [
-			...SECRET_STATE_KEYS.map(async (key) => {
+		// Capture write counts before enumeration so a write during either read wins.
+		const writes = new Map(this.secretWriteCount)
+		const stored = await this.listStoredSecretKeys()
+		const keys = stored
+			? MANAGED_SECRET_KEYS.filter((key) => stored.has(key) || this.secretCache[key] !== undefined)
+			: MANAGED_SECRET_KEYS
+
+		await Promise.all(
+			keys.map(async (key) => {
 				try {
-					await this.refreshSecret(key)
+					await this.refreshSecret(key, writes.get(key))
 				} catch (error) {
 					logger.error(
-						`Error refreshing secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
+						`Error loading secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
 					)
 				}
 			}),
-			...GLOBAL_SECRET_KEYS.map(async (key) => {
-				try {
-					await this.refreshSecret(key)
-				} catch (error) {
-					logger.error(
-						`Error refreshing global secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}),
-		]
-		await Promise.all(promises)
+		)
 	}
 
 	private getAllSecretState(): SecretState {
-		return Object.fromEntries([
-			...SECRET_STATE_KEYS.map((key) => [key, this.getSecret(key as SecretStateKey)]),
-			...GLOBAL_SECRET_KEYS.map((key) => [key, this.getSecret(key as SecretStateKey)]),
-		])
+		return Object.fromEntries(MANAGED_SECRET_KEYS.map((key) => [key, this.getSecret(key)]))
 	}
 
 	/**
@@ -722,8 +710,7 @@ export class ContextProxy {
 
 		await Promise.all([
 			...GLOBAL_STATE_KEYS.map((key) => this.originalContext.globalState.update(key, undefined)),
-			...SECRET_STATE_KEYS.map((key) => this.originalContext.secrets.delete(key)),
-			...GLOBAL_SECRET_KEYS.map((key) => this.originalContext.secrets.delete(key)),
+			...MANAGED_SECRET_KEYS.map((key) => this.originalContext.secrets.delete(key)),
 		])
 
 		await this.initialize()

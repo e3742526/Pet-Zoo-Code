@@ -916,7 +916,7 @@
 	},
 	"core/webview/__tests__/ClineProvider.taskHistory.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 12
+			"count": 11
 		}
 	},
 	"core/webview/__tests__/diagnosticsHandler.spec.ts": {

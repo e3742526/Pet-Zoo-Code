@@ -3531,16 +3531,15 @@ export class ClineProvider
 			return
 		}
 
-		// TaskHistoryStore.getAll() already returns ts-descending order, so
-		// filtering preserves it — no re-sort needed (matches
-		// getStateToPostToWebview).
-		const taskHistory = history ?? this.taskHistoryStore.getAll()
-
-		const sortedHistory = taskHistory.filter((item: HistoryItem) => item.ts && item.task)
+		const taskHistory = (history ?? this.taskHistoryStore.getAll()).filter((item) => item.ts && item.task)
+		// The store already returns newest first. An explicit snapshot can arrive in any order.
+		if (history) {
+			taskHistory.sort((a, b) => b.ts - a.ts)
+		}
 
 		await this.postMessageToWebview({
 			type: "taskHistoryUpdated",
-			taskHistory: sortedHistory,
+			taskHistory,
 		})
 	}
 

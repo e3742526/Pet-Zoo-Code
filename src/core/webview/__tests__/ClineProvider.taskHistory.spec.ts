@@ -760,19 +760,11 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			await provider.broadcastTaskHistoryUpdate(items)
 
-			expect(mockPostMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "taskHistoryUpdated",
-					taskHistory: expect.any(Array),
-				}),
-			)
-
-			// Verify the history is sorted (newest first)
-			const calls = mockPostMessage.mock.calls as any[][]
-			const call = calls.find((c) => c[0]?.type === "taskHistoryUpdated")
-			const sentHistory = call?.[0]?.taskHistory as HistoryItem[]
-			expect(sentHistory[0].id).toBe("new") // Newest should be first
-			expect(sentHistory[1].id).toBe("old") // Oldest should be second
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "taskHistoryUpdated",
+				taskHistory: [items[1], items[0]],
+			})
+			expect(items.map(({ id }) => id)).toEqual(["old", "new"])
 		})
 
 		it("filters out invalid history items", async () => {
@@ -867,12 +859,9 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(state.currentTaskId).toBe(activeTask.taskId)
 		})
 
-		it("passes the profile's tool repetition limits to the Task when resuming from history", async () => {
-			const state = await provider.getState()
-			vi.spyOn(provider, "getState").mockResolvedValue({
-				...state,
-				apiConfiguration: { ...state.apiConfiguration, consecutiveMistakeLimit: 6, toolRepetitionSoftLimit: 4 },
-			})
+		it("passes the active profile's tool repetition limits to the Task when resuming from history", async () => {
+			const limits = { consecutiveMistakeLimit: 6, toolRepetitionSoftLimit: 4 }
+			await provider.contextProxy.setProviderSettings({ apiProvider: providerIdentifiers.ollama, ...limits })
 
 			await provider.createTaskWithHistoryItem(createHistoryItem({ id: "resumed-task", task: "Resumed task" }), {
 				startTask: false,
@@ -881,8 +870,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(vi.mocked(Task)).toHaveBeenCalledWith(
 				expect.objectContaining({
 					historyItem: expect.objectContaining({ id: "resumed-task" }),
-					consecutiveMistakeLimit: 6,
-					toolRepetitionSoftLimit: 4,
+					...limits,
 				}),
 			)
 		})

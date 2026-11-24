@@ -4,10 +4,12 @@ import type { Mock } from "vitest"
 
 import { RooIgnoreController } from "../RooIgnoreController"
 import * as path from "path"
+import * as fsSync from "fs"
 import * as fs from "fs/promises"
 import { fileExistsAtPath } from "../../../utils/fs"
 
 // Mock dependencies
+vi.mock("fs", { spy: true })
 vi.mock("fs/promises")
 vi.mock("../../../utils/fs")
 vi.mock("vscode", () => {
@@ -52,6 +54,19 @@ describe("RooIgnoreController Security Tests", () => {
 		// Create and initialize controller
 		controller = new RooIgnoreController(TEST_CWD)
 		await controller.initialize()
+	})
+
+	it("checks the current resolved location when a workspace path changes", () => {
+		const realpath = vi
+			.mocked(fsSync.realpathSync)
+			.mockReturnValueOnce(path.resolve(TEST_CWD, "public.txt"))
+			.mockReturnValueOnce(path.resolve(TEST_CWD, "private", "notes.txt"))
+		try {
+			expect(controller.validateAccess("document.txt")).toBe(true)
+			expect(controller.validateAccess("document.txt")).toBe(false)
+		} finally {
+			realpath.mockReset()
+		}
 	})
 
 	describe("validateCommand security", () => {

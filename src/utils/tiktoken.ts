@@ -88,7 +88,7 @@ export async function tiktoken(content: Anthropic.Messages.ContentBlockParam[]):
 	// Lazily initialize WASM and cache the encoder if it doesn't exist.
 	if (!encoder) {
 		await ensureTiktokenInitialized()
-		encoder = new Tiktoken(o200kBase.bpe_ranks, o200kBase.special_tokens, o200kBase.pat_str)
+		encoder ??= new Tiktoken(o200kBase.bpe_ranks, o200kBase.special_tokens, o200kBase.pat_str)
 	}
 
 	// Process each content block using the cached encoder.

@@ -131,6 +131,35 @@ describe("TaskHistoryStore", () => {
 	})
 
 	describe("getAll()", () => {
+		it("keeps a read during an in-flight write from caching the old ordering", async () => {
+			await store.initialize()
+			await store.upsert(makeHistoryItem({ id: "old", ts: 1000 }))
+			let signalWriteStarted!: () => void
+			const writeStarted = new Promise<void>((resolve) => {
+				signalWriteStarted = resolve
+			})
+			let finishWrite!: () => void
+			const writeReleased = new Promise<void>((resolve) => {
+				finishWrite = resolve
+			})
+			const originalWrite = store["writeTaskFile"].bind(store)
+			store["writeTaskFile"] = async (...args) => {
+				signalWriteStarted()
+				await writeReleased
+				return originalWrite(...args)
+			}
+
+			const writing = store.upsert(makeHistoryItem({ id: "new", ts: 2000 }))
+			await writeStarted
+			try {
+				expect(store.getAll().map(({ id }) => id)).toEqual(["old"])
+			} finally {
+				finishWrite()
+			}
+			expect((await writing).map(({ id }) => id)).toEqual(["new", "old"])
+			expect(store.getAll().map(({ id }) => id)).toEqual(["new", "old"])
+		})
+
 		it("returns items sorted by ts descending", async () => {
 			await store.initialize()
 

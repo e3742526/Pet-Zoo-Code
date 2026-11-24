@@ -87,12 +87,11 @@ export class TaskHistoryStore {
 	private readonly onWrite?: (items: HistoryItem[]) => Promise<void>
 	private cache: Map<string, HistoryItem> = new Map()
 	/**
-	 * Cached `getAll()` ordering (ts descending). Recomputed lazily on the
-	 * next read after any mutation; every mutation runs inside `withLock`,
-	 * which clears this cache on settle. Callers always receive a copy, so
-	 * in-place sorts/filters by readers never corrupt the cached order.
+	 * Reuse the timestamp ordering between writes. Reads during a write
+	 * cannot retain a snapshot because the write can still publish new items.
 	 */
 	private sortedCache: HistoryItem[] | undefined
+	private writeInProgress = false
 	private taskFileMtimes: Map<string, number> = new Map()
 	private writeLock: Promise<void> = Promise.resolve()
 	private fsWatcher: fsSync.FSWatcher | null = null
@@ -191,7 +190,7 @@ export class TaskHistoryStore {
 		let sorted = this.sortedCache
 		if (!sorted) {
 			sorted = Array.from(this.cache.values()).sort((a, b) => b.ts - a.ts)
-			this.sortedCache = sorted
+			if (!this.writeInProgress) this.sortedCache = sorted
 		}
 		return sorted.slice()
 	}
@@ -1316,15 +1315,14 @@ export class TaskHistoryStore {
 	 * host process to prevent concurrent interleaving.
 	 */
 	private withLock<T>(fn: () => Promise<T>): Promise<T> {
-		// Every locked operation is a mutation (upsert/delete/reconcile/
-		// repair/migrate/invalidate). The cached getAll() ordering is dropped
-		// when the lock is acquired — before `fn` runs — so reads inside the
-		// locked section (e.g. upsertCore's write-through payload) already
-		// observe post-mutation order. No mutation may touch `cache` outside
-		// `withLock`; that would break both the lock contract and this cache.
-		const run: () => Promise<T> = () => {
+		const run = async (): Promise<T> => {
 			this.sortedCache = undefined
-			return fn()
+			this.writeInProgress = true
+			try {
+				return await fn()
+			} finally {
+				this.writeInProgress = false
+			}
 		}
 		const result = this.writeLock.then(run, run)
 		this.writeLock = result.then(

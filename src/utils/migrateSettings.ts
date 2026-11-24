@@ -20,11 +20,6 @@ export async function migrateSettings(
 	// First, migrate commands from old defaults (security fix)
 	await migrateDefaultCommands(context, outputChannel)
 
-	const fileMigrationsKey = "fileMigrationsCompleted"
-	if (context.globalState.get(fileMigrationsKey)) {
-		return
-	}
-
 	// Legacy file names that need to be migrated to the new names in GlobalFileNames
 	const fileMigrations = [
 		// custom_modes.json to custom_modes.yaml is handled separately below
@@ -38,7 +33,6 @@ export async function migrateSettings(
 		// Check if settings directory exists first
 		if (!(await fileExistsAtPath(settingsDir))) {
 			outputChannel.appendLine("No settings directory found, no migrations necessary")
-			await context.globalState.update(fileMigrationsKey, true)
 			return
 		}
 
@@ -51,9 +45,7 @@ export async function migrateSettings(
 				// Only migrate if old file exists and new file doesn't exist yet
 				// This ensures we don't overwrite any existing new files
 				const oldFileExists = await fileExistsAtPath(oldPath)
-				const newFileExists = await fileExistsAtPath(newPath)
-
-				if (oldFileExists && !newFileExists) {
+				if (oldFileExists && !(await fileExistsAtPath(newPath))) {
 					await fs.rename(oldPath, newPath)
 					outputChannel.appendLine(`Renamed ${migration.oldName} to ${migration.newName}`)
 				} else {
@@ -65,7 +57,6 @@ export async function migrateSettings(
 
 			// Special migration for custom_modes.json to custom_modes.yaml with content transformation
 			await migrateCustomModesToYaml(settingsDir, outputChannel)
-			await context.globalState.update(fileMigrationsKey, true)
 		} catch (error) {
 			outputChannel.appendLine(`Error in file migrations: ${error}`)
 		}
@@ -82,15 +73,12 @@ async function migrateCustomModesToYaml(settingsDir: string, outputChannel: vsco
 	const newYamlPath = path.join(settingsDir, GlobalFileNames.customModes)
 
 	// Only proceed if JSON exists and YAML doesn't
-	const jsonExists = await fileExistsAtPath(oldJsonPath)
-	const yamlExists = await fileExistsAtPath(newYamlPath)
-
-	if (!jsonExists) {
+	if (!(await fileExistsAtPath(oldJsonPath))) {
 		outputChannel.appendLine("No custom_modes.json found, skipping YAML migration")
 		return
 	}
 
-	if (yamlExists) {
+	if (await fileExistsAtPath(newYamlPath)) {
 		outputChannel.appendLine("custom_modes.yaml already exists, skipping migration")
 		return
 	}

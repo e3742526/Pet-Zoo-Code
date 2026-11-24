@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react"
+import React, { createContext, memo, useContext, useMemo } from "react"
 import ReactMarkdown, { type Options } from "react-markdown"
 import styled from "styled-components"
 import { visit } from "unist-util-visit"
@@ -32,7 +32,10 @@ const ALERT_LABELS: Record<AlertType, string> = {
 
 interface MarkdownBlockProps {
 	markdown?: string
+	partial?: boolean
 }
+
+const PartialMarkdownContext = createContext(false)
 
 function remarkCodeLanguage() {
 	return (tree: Parameters<typeof visit>[0]) => {
@@ -294,7 +297,7 @@ const StyledMarkdown = styled.div`
 	}
 `
 
-const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
+const MarkdownBlock = memo(({ markdown, partial = false }: MarkdownBlockProps) => {
 	const components = useMemo(
 		() => ({
 			table: ({ children, ...props }: any) => {
@@ -344,15 +347,14 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 					</a>
 				)
 			},
-			pre: ({ children, ..._props }: any) => {
+			pre: function MarkdownPre({ children }: { children?: React.ReactNode }) {
+				const partial = useContext(PartialMarkdownContext)
 				// The structure from react-markdown v9 is: pre > code > text
-				const codeEl = children as React.ReactElement
-
-				if (!codeEl || !codeEl.props) {
+				if (!React.isValidElement<{ className?: string; children?: React.ReactNode }>(children)) {
 					return <pre>{children}</pre>
 				}
 
-				const { className = "", children: codeChildren } = codeEl.props
+				const { className = "", children: codeChildren } = children.props
 
 				// Get the actual code text
 				let codeString = ""
@@ -378,7 +380,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 				// Wrap CodeBlock in a div to ensure proper separation
 				return (
 					<div style={{ margin: "1em 0" }}>
-						<CodeBlock source={codeString} language={language} />
+						<CodeBlock source={codeString} language={language} partial={partial} />
 					</div>
 				)
 			},
@@ -417,9 +419,11 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 
 	return (
 		<StyledMarkdown>
-			<ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={components}>
-				{markdown || ""}
-			</ReactMarkdown>
+			<PartialMarkdownContext.Provider value={partial}>
+				<ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={components}>
+					{markdown || ""}
+				</ReactMarkdown>
+			</PartialMarkdownContext.Provider>
 		</StyledMarkdown>
 	)
 })

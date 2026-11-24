@@ -1,8 +1,8 @@
-import { memo, useEffect, useRef, useCallback, useState, useSyncExternalStore } from "react"
+import { memo, useEffect, useMemo, useRef, useCallback, useState, useSyncExternalStore } from "react"
 import styled from "styled-components"
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import { getHighlighter, isLanguageLoaded, normalizeLanguage } from "@src/utils/highlighter"
-import type { BundledTheme, ShikiTransformer } from "shiki"
+import type { BundledTheme, Highlighter, ShikiTransformer } from "shiki"
 import { toJsxRuntime } from "hast-util-to-jsx-runtime"
 import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react"
@@ -48,6 +48,9 @@ function subscribeToCodeBlockTheme(listener: () => void) {
 
 const readCodeBlockTheme = () => getCodeBlockTheme(document.body.className)
 
+const LONG_CODE_LENGTH = 4 * 1024
+const STREAMING_HIGHLIGHT_QUIET_MS = 320
+
 // Configuration constants
 export const WINDOW_SHADE_SETTINGS = {
 	transitionDelayS: 0.2,
@@ -69,6 +72,7 @@ interface CodeBlockProps {
 	source?: string
 	rawSource?: string // Add rawSource prop for copying raw text
 	language: string
+	partial?: boolean
 	preStyle?: React.CSSProperties
 	initialWordWrap?: boolean
 	collapsedHeight?: number
@@ -206,6 +210,7 @@ const CodeBlock = memo(
 		source,
 		rawSource,
 		language,
+		partial = false,
 		preStyle,
 		initialWordWrap = true,
 		initialWindowShade = true,
@@ -215,7 +220,22 @@ const CodeBlock = memo(
 		const wordWrap = initialWordWrap
 		const [windowShade, setWindowShade] = useState(initialWindowShade)
 		const currentLanguage = normalizeLanguage(language)
-		const [highlightedCode, setHighlightedCode] = useState<React.ReactNode>(null)
+		const codeText = source ?? ""
+		const longCode = codeText.length >= LONG_CODE_LENGTH
+		const deferHighlight = partial && longCode
+		const [highlight, setHighlight] = useState<{ text: string; language: string; element: React.ReactNode }>()
+		const fallback = useMemo(
+			() => (
+				<pre style={{ padding: 0, margin: 0 }}>
+					<code className={`hljs language-${currentLanguage}`}>{codeText}</code>
+				</pre>
+			),
+			[codeText, currentLanguage],
+		)
+		const displayedCode =
+			longCode && (highlight?.text !== codeText || highlight?.language !== currentLanguage)
+				? fallback
+				: highlight?.element
 		const [showCollapseButton, setShowCollapseButton] = useState(true)
 		const codeTheme = useSyncExternalStore(subscribeToCodeBlockTheme, readCodeBlockTheme)
 		const codeBlockRef = useRef<HTMLDivElement>(null)
@@ -230,25 +250,24 @@ const CodeBlock = memo(
 		// Each run owns its result until the source, language, or theme changes.
 		useEffect(() => {
 			let cancelled = false
+			let timer: ReturnType<typeof setTimeout> | undefined
 
-			// Create a safe fallback using React elements instead of HTML string
-			const fallback = (
-				<pre style={{ padding: 0, margin: 0 }}>
-					<code className={`hljs language-${currentLanguage || "txt"}`}>{source || ""}</code>
-				</pre>
-			)
-
-			const highlight = async () => {
-				// Show plain text if language needs to be loaded.
-				if (currentLanguage && !isLanguageLoaded(currentLanguage)) {
-					setHighlightedCode(fallback)
-				}
-
-				const highlighter = await getHighlighter(currentLanguage)
+			const publish = (element: React.ReactNode) =>
+				setHighlight({ text: codeText, language: currentLanguage, element })
+			const handleError = (error: unknown) => {
 				if (cancelled) return
+				console.error(
+					"[CodeBlock] Syntax highlighting error:",
+					error,
+					"\nStack trace:",
+					error instanceof Error ? error.stack : undefined,
+				)
+				publish(fallback)
+			}
 
-				const hast = highlighter.codeToHast(source || "", {
-					lang: currentLanguage || "txt",
+			const highlightCode = (highlighter: Highlighter) => {
+				const hast = highlighter.codeToHast(codeText, {
+					lang: currentLanguage,
 					theme: codeTheme,
 					transformers: [
 						{
@@ -271,32 +290,33 @@ const CodeBlock = memo(
 					] as ShikiTransformer[],
 				})
 
-				// Convert HAST to React elements using hast-util-to-jsx-runtime
-				// This approach eliminates XSS vulnerabilities by avoiding dangerouslySetInnerHTML
-				// while maintaining the exact same visual output and syntax highlighting
-				try {
-					const reactElement = toJsxRuntime(hast, {
-						Fragment,
-						jsx,
-						jsxs,
-						// Don't override components - let them render as-is to maintain exact output
-					})
-
-					setHighlightedCode(reactElement)
-				} catch (error) {
-					console.error("[CodeBlock] Error converting HAST to JSX:", error)
-					setHighlightedCode(fallback)
-				}
+				publish(toJsxRuntime(hast, { Fragment, jsx, jsxs }))
 			}
 
-			highlight().catch((e) => {
-				if (cancelled) return
-				console.error("[CodeBlock] Syntax highlighting error:", e, "\nStack trace:", e.stack)
-				setHighlightedCode(fallback)
-			})
+			if (!longCode && !isLanguageLoaded(currentLanguage)) publish(fallback)
+			const highlightAt = deferHighlight ? performance.now() + STREAMING_HIGHLIGHT_QUIET_MS : 0
+			// Start loading the grammar while text is still arriving.
+			void getHighlighter(currentLanguage)
+				.then((highlighter) => {
+					if (cancelled) return
+					const delay = deferHighlight ? highlightAt - performance.now() : 0
+					if (delay <= 0) {
+						highlightCode(highlighter)
+						return
+					}
+					timer = setTimeout(() => {
+						try {
+							highlightCode(highlighter)
+						} catch (error) {
+							handleError(error)
+						}
+					}, delay)
+				})
+				.catch(handleError)
 
 			return () => {
 				cancelled = true
+				clearTimeout(timer)
 				if (buttonPositionTimeoutRef.current) {
 					clearTimeout(buttonPositionTimeoutRef.current)
 					buttonPositionTimeoutRef.current = null
@@ -310,7 +330,7 @@ const CodeBlock = memo(
 					collapseTimeout2Ref.current = null
 				}
 			}
-		}, [source, currentLanguage, collapsedHeight, codeTheme])
+		}, [codeText, currentLanguage, collapsedHeight, codeTheme, deferHighlight, fallback, longCode])
 
 		// Check if content height exceeds collapsed height whenever content changes
 		useEffect(() => {
@@ -320,7 +340,7 @@ const CodeBlock = memo(
 				const actualHeight = codeBlock.scrollHeight
 				setShowCollapseButton(actualHeight >= (collapsedHeight || WINDOW_SHADE_SETTINGS.collapsedHeight))
 			}
-		}, [highlightedCode, collapsedHeight])
+		}, [displayedCode, collapsedHeight])
 
 		// Ref to track if user was scrolled up *before* the source update
 		// potentially changes scrollHeight
@@ -447,9 +467,9 @@ const CodeBlock = memo(
 			return unsubscribe
 		}, [measureToolbarLayout])
 
-		// Update button position and scroll when highlightedCode changes
+		// Update button position and scroll when the displayed code changes.
 		useEffect(() => {
-			if (highlightedCode) {
+			if (displayedCode) {
 				// Clear any existing timeout before setting a new one
 				if (buttonPositionTimeoutRef.current) {
 					clearTimeout(buttonPositionTimeoutRef.current)
@@ -460,7 +480,7 @@ const CodeBlock = memo(
 					buttonPositionTimeoutRef.current = null // Optional: Clear ref after execution
 				}, 0)
 
-				// Scroll to bottom if needed (immediately after Shiki updates)
+				// Scroll to bottom if needed after the displayed code updates.
 				if (shouldScrollAfterHighlightRef.current) {
 					// Scroll inner container
 					if (preRef.current) {
@@ -481,7 +501,7 @@ const CodeBlock = memo(
 					clearTimeout(buttonPositionTimeoutRef.current)
 				}
 			}
-		}, [highlightedCode, updateCodeBlockButtonPosition])
+		}, [displayedCode, updateCodeBlockButtonPosition])
 
 		// Advanced inertial scroll chaining
 		// This effect handles the transition between scrolling the code block and the outer container.
@@ -630,7 +650,7 @@ const CodeBlock = memo(
 					wordWrap={wordWrap}
 					windowShade={windowShade}
 					collapsedHeight={collapsedHeight}
-					highlightedCode={highlightedCode}
+					highlightedCode={displayedCode}
 					updateCodeBlockButtonPosition={updateCodeBlockButtonPosition}
 				/>
 				{!isSelecting && (

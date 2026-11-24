@@ -161,6 +161,42 @@ describe("CodeBlock", () => {
 		expect(screen.queryByText(/earlier source/)).not.toBeInTheDocument()
 	})
 
+	it("shows long partial code immediately and highlights after a pause or completion", async () => {
+		const highlighter = await getHighlighter("typescript")
+		vi.mocked(highlighter.codeToHast).mockClear()
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+		try {
+			const prefix = "const value = { name: 'draft', enabled: true };\n".repeat(100)
+			const { container, rerender, unmount } = render(<CodeBlock source={prefix} language="typescript" partial />)
+			const code = () => container.querySelector("code")
+			const latest = prefix + "Latest code"
+			expect(code()?.textContent).toBe(prefix)
+
+			await act(async () => {})
+			await act(async () => {
+				vi.advanceTimersByTime(240)
+				rerender(<CodeBlock source={latest} language="typescript" partial />)
+			})
+			expect(code()?.textContent).toBe(latest)
+			act(() => vi.advanceTimersByTime(319))
+			expect(highlighter.codeToHast).not.toHaveBeenCalled()
+			act(() => vi.advanceTimersByTime(1))
+			expect(highlighter.codeToHast).toHaveBeenCalledTimes(1)
+			expect(code()?.textContent).toBe(latest + " [dark-theme]")
+
+			const final = prefix + "Completed code"
+			await act(async () => rerender(<CodeBlock source={final} language="typescript" partial />))
+			expect(code()?.textContent).toBe(final)
+			await act(async () => rerender(<CodeBlock source={final} language="typescript" />))
+			expect(code()?.textContent).toBe(final + " [dark-theme]")
+			act(() => vi.advanceTimersByTime(320))
+			expect(highlighter.codeToHast).toHaveBeenCalledTimes(2)
+			unmount()
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
 	it("starts at the top and follows later source updates when already at the bottom", async () => {
 		const highlighter = await getHighlighter("typescript")
 		let resolveHighlighter: (value: typeof highlighter) => void = () => undefined

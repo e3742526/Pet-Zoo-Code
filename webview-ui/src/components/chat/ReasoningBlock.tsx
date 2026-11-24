@@ -72,7 +72,7 @@ export const ReasoningBlock = ({ content, isStreaming, isLast, partial }: Reason
 				<div
 					ref={contentRef}
 					className="border-l border-vscode-descriptionForeground/20 ml-2 pl-4 pb-1 text-vscode-descriptionForeground break-words">
-					<MarkdownBlock markdown={preview} />
+					<MarkdownBlock markdown={preview} partial={partial} />
 				</div>
 			)}
 		</div>

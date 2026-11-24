@@ -218,6 +218,7 @@ describe("getLiteLLMModels", () => {
 				outputPrice: 15,
 				cacheWritesPrice: undefined,
 				cacheReadsPrice: undefined,
+				requiresMaxCompletionTokens: false,
 				description: "claude-3-5-sonnet via LiteLLM proxy",
 			},
 			"gpt-4-turbo": {
@@ -229,6 +230,7 @@ describe("getLiteLLMModels", () => {
 				outputPrice: 30,
 				cacheWritesPrice: undefined,
 				cacheReadsPrice: undefined,
+				requiresMaxCompletionTokens: false,
 				description: "gpt-4-turbo via LiteLLM proxy",
 			},
 		})
@@ -310,6 +312,35 @@ describe("getLiteLLMModels", () => {
 		expect(result["astra-uppercase-route"]).not.toHaveProperty("requiresResponsesApi")
 	})
 
+	it.each([
+		["openai/gpt-6-sol", true],
+		["openai/responses/gpt-6-astra", true],
+		["gpt-5.1-mini", true],
+		["openai/o3-mini", true],
+		["o4-mini", true],
+		["azure/gpt-6-sol", true],
+		["openai/local-mistral", false],
+		["openai/gpt-4o", false],
+		["openai/gpt-oss-120b", false],
+		["anthropic/gpt-6-preview", false],
+		["gpt-50", false],
+	] as const)("records output token compatibility for %s", async (route, requiresMaxCompletionTokens) => {
+		mockedAxios.get.mockResolvedValueOnce({
+			data: {
+				data: [
+					{
+						model_name: "team-chat",
+						model_info: { max_output_tokens: 1234 },
+						litellm_params: { model: route },
+					},
+				],
+			},
+		})
+
+		const result = await getLiteLLMModels("", "http://localhost:4000")
+		expect(result["team-chat"].requiresMaxCompletionTokens).toBe(requiresMaxCompletionTokens)
+	})
+
 	it("makes request without authorization header when no API key provided", async () => {
 		const mockResponse = {
 			data: {
@@ -374,6 +405,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "test-computer-model via LiteLLM proxy",
 		})
 
@@ -386,6 +418,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "test-non-computer-model via LiteLLM proxy",
 		})
 	})
@@ -558,6 +591,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "claude-3-5-sonnet-latest via LiteLLM proxy",
 		})
 
@@ -570,6 +604,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "gpt-4-turbo via LiteLLM proxy",
 		})
 	})
@@ -634,6 +669,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "claude-3-5-sonnet-latest via LiteLLM proxy",
 		})
 
@@ -646,6 +682,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "custom-model via LiteLLM proxy",
 		})
 
@@ -658,6 +695,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "another-custom-model via LiteLLM proxy",
 		})
 	})
@@ -771,6 +809,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "claude-3-5-sonnet-4-5 via LiteLLM proxy",
 		})
 
@@ -784,6 +823,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "model-with-only-max-tokens via LiteLLM proxy",
 		})
 
@@ -797,6 +837,7 @@ describe("getLiteLLMModels", () => {
 			outputPrice: undefined,
 			cacheWritesPrice: undefined,
 			cacheReadsPrice: undefined,
+			requiresMaxCompletionTokens: false,
 			description: "model-with-only-max-output-tokens via LiteLLM proxy",
 		})
 	})

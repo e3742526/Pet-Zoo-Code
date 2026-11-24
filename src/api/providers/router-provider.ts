@@ -52,25 +52,23 @@ export abstract class RouterProvider extends BaseProvider {
 	}
 
 	private modelFetchPromise?: Promise<{ id: string; info: ModelInfo }>
-	/** Last catalog refresh attempt per missing model id (ms), for negative caching. */
-	private missingModelRefreshAt = new Map<string, number>()
-	private static readonly MISSING_MODEL_RETRY_MS = 5 * 60 * 1000
+	/** Last attempt for a missing model or stale metadata, for negative caching. */
+	private modelRefreshAttemptAt = new Map<string, number>()
+	private static readonly MODEL_REFRESH_RETRY_MS = 5 * 60 * 1000
+
+	protected isCatalogModelCurrent(info: ModelInfo | undefined): boolean {
+		return Boolean(info)
+	}
 
 	public async fetchModel() {
-		// Refetch when the selected model is missing — a stale non-empty map
-		// would otherwise keep serving defaultModelInfo prices for cost estimates.
 		const id = this.modelId || this.defaultModelId
-		if (this.models[id]) {
+		if (this.isCatalogModelCurrent(this.models[id])) {
 			return this.getModel()
 		}
 
-		// After a catalog fetch that still lacks this id, don't hammer getModels
-		// on every createMessage; retry only after the negative-cache window.
-		const lastMissingAttempt = this.missingModelRefreshAt.get(id)
-		if (
-			lastMissingAttempt !== undefined &&
-			Date.now() - lastMissingAttempt < RouterProvider.MISSING_MODEL_RETRY_MS
-		) {
+		// Allow a request to proceed with fallback metadata if a recent refresh could not update it.
+		const lastAttempt = this.modelRefreshAttemptAt.get(id)
+		if (lastAttempt !== undefined && Date.now() - lastAttempt < RouterProvider.MODEL_REFRESH_RETRY_MS) {
 			return this.getModel()
 		}
 
@@ -85,20 +83,17 @@ export abstract class RouterProvider extends BaseProvider {
 				let models = await getModels(fetchOptions, this)
 				this.models = models
 
-				// getModels may return a shared cached catalog that predates this
-				// model. Force a provider refresh before recording a miss so
-				// newly listed models are not blocked for MISSING_MODEL_RETRY_MS.
-				// Auth-scoped providers already bypass that cache in getModels;
-				// refreshModels is then a no-op extra live fetch only on true misses.
-				if (!models[id]) {
+				// A cached catalog can predate this model or one of its capabilities.
+				// refreshModels retains the cached catalog if the proxy is unavailable.
+				if (!this.isCatalogModelCurrent(models[id])) {
 					models = await refreshModels(fetchOptions, this)
 					this.models = models
 				}
 
-				if (models[id]) {
-					this.missingModelRefreshAt.delete(id)
+				if (this.isCatalogModelCurrent(models[id])) {
+					this.modelRefreshAttemptAt.delete(id)
 				} else {
-					this.missingModelRefreshAt.set(id, Date.now())
+					this.modelRefreshAttemptAt.set(id, Date.now())
 				}
 				return this.getModel()
 			})().finally(() => {

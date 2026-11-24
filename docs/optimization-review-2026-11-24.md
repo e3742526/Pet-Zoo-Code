@@ -335,3 +335,11 @@ The O1 finding in `gem-hydro-parentrepo-survey-24NOV2026.md` is implemented. The
 The production build manifest reported 3,171,482 bytes of startup JavaScript before the change and 3,168,933 bytes after. The gzip size fell from 870,292 to 869,372 bytes. The Settings chunk fell from 291,998 to 272,849 bytes, or from 82,217 to 76,696 bytes with gzip. The formatter stays in the Settings chunk. The source maps identify both packages in the original build and show their removal from the updated build.
 
 All three rendered SVGs matched their previous markup. The old and new timestamp formatters produced the same labels in 64,080 cases across five time zones. Over nine paired runs after three warm-up runs, median formatting time for 4,096 labels fell from 6.26 ms to 0.84 ms. The observed ranges were 5.92–7.98 ms and 0.83–0.86 ms. The focused tests cover calendar boundaries, midnight, noon, and numeric dates.
+
+## LiteLLM alias output limits
+
+LiteLLM discovery records the token-limit field for recognized GPT-5 and later families and o-series routes. Streaming and prompt completion use the same request builder. A local model behind an `openai/` prefix still uses its usual token field. The existing GPT-5 alias and Responses-backed rules still apply. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/issues/1865) · [LiteLLM model discovery](https://docs.litellm.ai/docs/proxy/model_management)
+
+Both values survive a disk cache round trip. When a selected model has metadata from an older cache, the extension refreshes the catalog. If the proxy cannot refresh it, the extension keeps the cached metadata and delays another attempt. The shared adapter tests also now check the OpenRouter URL scope and forwarding added in `a9bf40492`.
+
+The regression reproduced the wrong field in both request paths. All 756 focused provider and cache tests and 44 distribution checks passed. The rebuilt VSIX streamed a task through a loopback LiteLLM mock that required `max_completion_tokens`. The extension reopened the saved result, and the process sandbox denied non-loopback connections.

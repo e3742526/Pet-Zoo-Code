@@ -103,6 +103,25 @@ it.each(["catalog request", "synchronous model metadata"] as const)(
 	},
 )
 
+it("retains both LiteLLM output token capabilities in the disk cache", async () => {
+	const liteOptions = { provider: providerIdentifiers.litellm, baseUrl: "http://localhost:4000" } as const
+	const liteCatalog = {
+		modern: { contextWindow: 32768, supportsPromptCache: false, requiresMaxCompletionTokens: true },
+		legacy: { contextWindow: 32768, supportsPromptCache: false, requiresMaxCompletionTokens: false },
+	}
+	try {
+		fetchModels.mockResolvedValue(liteCatalog)
+		await refreshModels(liteOptions, handler)
+		await flushModels(liteOptions, handler)
+		fetchModels.mockClear()
+
+		await expect(getModels(liteOptions, handler)).resolves.toEqual(liteCatalog)
+		expect(fetchModels).not.toHaveBeenCalled()
+	} finally {
+		await flushModels(liteOptions, handler)
+	}
+})
+
 it("keeps a catalog in default storage available after a custom path is set", async () => {
 	const destination = customStoragePath
 	customStoragePath = ""

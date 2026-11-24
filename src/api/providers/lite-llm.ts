@@ -76,6 +76,10 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 		return { urlScoped: true, keyScoped: true, authScoped: false }
 	}
 
+	protected override isCatalogModelCurrent(info: ModelInfo | undefined): boolean {
+		return info?.requiresMaxCompletionTokens !== undefined
+	}
+
 	override getModel(): { id: string; info: ModelInfo } {
 		const model = super.getModel()
 		const preserveReasoningSetting = this.options.litellmPreserveReasoning
@@ -98,6 +102,17 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 		// Match gpt-5, gpt5, and variants like gpt-5o, gpt-5-turbo, gpt5-preview, gpt-5.1
 		// Avoid matching gpt-50, gpt-500, etc.
 		return /\bgpt-?5(?!\d)/i.test(modelId)
+	}
+
+	private getOutputTokenLimit(
+		modelId: string,
+		info: ModelInfo,
+	): Pick<OpenAI.Chat.Completions.ChatCompletionCreateParams, "max_tokens" | "max_completion_tokens"> {
+		const { maxTokens } = info
+		if (!maxTokens) return {}
+		const usesMaxCompletionTokens =
+			info.requiresMaxCompletionTokens || info.requiresResponsesApi || this.isGpt5(modelId)
+		return usesMaxCompletionTokens ? { max_completion_tokens: maxTokens } : { max_tokens: maxTokens }
 	}
 
 	private getReasoningEffort(info: ModelInfo): ReasoningEffortExtended | undefined {
@@ -222,11 +237,6 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			enhancedMessages = openAiMessages
 		}
 
-		// Required by some providers; others default to max tokens allowed
-		const maxTokens: number | undefined = info.maxTokens ?? undefined
-
-		// Check if this is a GPT-5 model that requires max_completion_tokens instead of max_tokens
-		const usesMaxCompletionTokens = this.isGpt5(modelId) || info.requiresResponsesApi
 		const reasoningEffort = this.getReasoningEffort(info)
 
 		// Gemini validates thought signatures on function calls. A tool call without a signature
@@ -258,16 +268,10 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			},
 			tools: this.convertToolsForOpenAI(metadata?.tools),
 			tool_choice: metadata?.tool_choice,
+			...this.getOutputTokenLimit(modelId, info),
 		}
 		if (reasoningEffort) {
 			;(requestOptions as { reasoning_effort?: ReasoningEffortExtended }).reasoning_effort = reasoningEffort
-		}
-
-		// Newer OpenAI models require max_completion_tokens instead of the deprecated max_tokens parameter.
-		if (usesMaxCompletionTokens && maxTokens) {
-			requestOptions.max_completion_tokens = maxTokens
-		} else if (maxTokens) {
-			requestOptions.max_tokens = maxTokens
 		}
 
 		if (info.supportsTemperature !== false && this.supportsTemperature(modelId)) {
@@ -457,8 +461,6 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 		}
 		const { id: modelId, info } = model
 
-		// Check if this is a GPT-5 model that requires max_completion_tokens instead of max_tokens
-		const usesMaxCompletionTokens = this.isGpt5(modelId) || info.requiresResponsesApi
 		const reasoningEffort = this.getReasoningEffort(info)
 
 		// The absolute deadline is enforced THROUGH the SDK call, not just as a
@@ -480,6 +482,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: modelId,
 				messages: [{ role: "user", content: prompt }],
+				...this.getOutputTokenLimit(modelId, info),
 			}
 			if (reasoningEffort) {
 				;(requestOptions as { reasoning_effort?: ReasoningEffortExtended }).reasoning_effort = reasoningEffort
@@ -487,13 +490,6 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 
 			if (info.supportsTemperature !== false && this.supportsTemperature(modelId)) {
 				requestOptions.temperature = this.options.modelTemperature ?? 0
-			}
-
-			// Newer OpenAI models require max_completion_tokens instead of the deprecated max_tokens parameter.
-			if (usesMaxCompletionTokens && info.maxTokens) {
-				requestOptions.max_completion_tokens = info.maxTokens
-			} else if (info.maxTokens) {
-				requestOptions.max_tokens = info.maxTokens
 			}
 
 			// Build request options with abortSignal and/or timeout. Per the

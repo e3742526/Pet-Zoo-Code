@@ -1,10 +1,11 @@
 import OpenAI from "openai"
 import { Anthropic } from "@anthropic-ai/sdk"
+import axios from "axios"
 
 import { providerIdentifiers } from "@roo-code/types/provider-identifiers"
 
 import { LiteLLMHandler } from "../lite-llm"
-import { getModels } from "../fetchers/modelCache"
+import { getModels, getModelsFromCache, refreshModels } from "../fetchers/modelCache"
 import { prepareApiConversationMessage } from "../../../core/task/apiConversationHistory"
 import { sanitizeToolUseId } from "../../../utils/tool-id"
 import {
@@ -37,8 +38,9 @@ const mockCreate = vi.fn()
 
 vi.mock("openai", () => {
 	return {
-		default: vi.fn().mockImplementation(function () {
+		default: vi.fn().mockImplementation(function (options: ConstructorParameters<typeof OpenAI>[0]) {
 			return {
+				baseURL: options?.baseURL,
 				chat: {
 					completions: {
 						create: mockCreate,
@@ -52,18 +54,19 @@ vi.mock("openai", () => {
 // Mock model fetching
 vi.mock("../fetchers/modelCache", () => ({
 	getModels: vi.fn().mockImplementation(function () {
+		const catalogEntry = { ...litellmDefaultModelInfo, requiresMaxCompletionTokens: false }
 		return Promise.resolve({
-			[litellmDefaultModelId]: litellmDefaultModelInfo,
-			"gpt-5": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			gpt5: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"GPT-5": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5-turbo": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt5-preview": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5o": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5.1": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5-mini": { ...litellmDefaultModelInfo, maxTokens: 8192 },
+			[litellmDefaultModelId]: catalogEntry,
+			"gpt-5": { ...catalogEntry, maxTokens: 8192 },
+			gpt5: { ...catalogEntry, maxTokens: 8192 },
+			"GPT-5": { ...catalogEntry, maxTokens: 8192 },
+			"gpt-5-turbo": { ...catalogEntry, maxTokens: 8192 },
+			"gpt5-preview": { ...catalogEntry, maxTokens: 8192 },
+			"gpt-5o": { ...catalogEntry, maxTokens: 8192 },
+			"gpt-5.1": { ...catalogEntry, maxTokens: 8192 },
+			"gpt-5-mini": { ...catalogEntry, maxTokens: 8192 },
 			"gpt-6-astra": {
-				...litellmDefaultModelInfo,
+				...catalogEntry,
 				maxTokens: 128_000,
 				contextWindow: 1_050_000,
 				supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
@@ -71,17 +74,18 @@ vi.mock("../fetchers/modelCache", () => ({
 				reasoningEffort: "medium",
 				supportsTemperature: false,
 				requiresResponsesApi: true,
+				requiresMaxCompletionTokens: true,
 			},
-			"gpt-4": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"claude-3-opus": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"llama-3": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-4-turbo": { ...litellmDefaultModelInfo, maxTokens: 8192 },
+			"gpt-4": { ...catalogEntry, maxTokens: 8192 },
+			"claude-3-opus": { ...catalogEntry, maxTokens: 8192 },
+			"llama-3": { ...catalogEntry, maxTokens: 8192 },
+			"gpt-4-turbo": { ...catalogEntry, maxTokens: 8192 },
 			// Gemini models for thought signature injection tests
-			"gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gemini-3-flash": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gemini-2.5-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"google/gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"vertex_ai/gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
+			"gemini-3-pro": { ...catalogEntry, maxTokens: 8192 },
+			"gemini-3-flash": { ...catalogEntry, maxTokens: 8192 },
+			"gemini-2.5-pro": { ...catalogEntry, maxTokens: 8192 },
+			"google/gemini-3-pro": { ...catalogEntry, maxTokens: 8192 },
+			"vertex_ai/gemini-3-pro": { ...catalogEntry, maxTokens: 8192 },
 		})
 	}),
 	refreshModels: vi.fn(async (options, handler) => {
@@ -106,7 +110,11 @@ describe("LiteLLMHandler", () => {
 	})
 
 	it("overrides fetched metadata without changing the catalog shared by other profiles", async () => {
-		const info: ModelInfo = Object.freeze({ ...litellmDefaultModelInfo, preserveReasoning: false })
+		const info: ModelInfo = Object.freeze({
+			...litellmDefaultModelInfo,
+			preserveReasoning: false,
+			requiresMaxCompletionTokens: false,
+		})
 		const catalog = { alias: info }
 		const provider = new LiteLLMHandler({
 			...mockOptions,
@@ -128,7 +136,11 @@ describe("LiteLLMHandler", () => {
 		{ setting: "auto", detected: true },
 		{ setting: "auto", detected: false },
 	] as const)("keeps detected metadata unchanged for $setting / $detected", async ({ setting, detected }) => {
-		const info: ModelInfo = Object.freeze({ ...litellmDefaultModelInfo, preserveReasoning: detected })
+		const info: ModelInfo = Object.freeze({
+			...litellmDefaultModelInfo,
+			preserveReasoning: detected,
+			requiresMaxCompletionTokens: false,
+		})
 		const provider = new LiteLLMHandler({
 			...mockOptions,
 			litellmModelId: "alias",
@@ -231,6 +243,80 @@ describe("LiteLLMHandler", () => {
 				cacheWriteTokens: 20,
 				cacheReadTokens: 30,
 			})
+		})
+	})
+
+	describe("routed output token limits", () => {
+		it.each([
+			["openai/gpt-6-sol", "max_completion_tokens"],
+			["openai/local-mistral", "max_tokens"],
+		] as const)("uses the routed model %s for streaming and prompt completion", async (route, tokenField) => {
+			const alias = "team-chat"
+			const maxTokens = 1234
+			const proxy = new LiteLLMHandler({ ...mockOptions, litellmModelId: alias })
+			const get = vi.spyOn(axios, "get").mockResolvedValue({
+				data: {
+					data: [
+						{
+							model_name: alias,
+							model_info: { max_output_tokens: maxTokens },
+							litellm_params: { model: route },
+						},
+					],
+				},
+			})
+			try {
+				vi.mocked(getModels).mockImplementationOnce((options) => proxy.fetchModels(options))
+				mockCreate.mockReturnValueOnce({ withResponse: async () => ({ data: asyncStreamFrom([]) }) })
+				mockCreate.mockResolvedValueOnce({ choices: [{ message: { content: "ok" } }] })
+				await collectStream(proxy.createMessage("system", [{ role: "user", content: "hello" }]))
+				await expect(proxy.completePrompt("hello")).resolves.toBe("ok")
+
+				const alternateField = tokenField === "max_tokens" ? "max_completion_tokens" : "max_tokens"
+				const requests = mockCreate.mock.calls.map(([request]) => ({
+					model: request.model,
+					limit: request[tokenField],
+					alternateLimit: request[alternateField],
+				}))
+				const expected = { model: alias, limit: maxTokens, alternateLimit: undefined }
+				expect(requests).toEqual([expected, expected])
+				expect(get).toHaveBeenCalledTimes(1)
+			} finally {
+				get.mockRestore()
+			}
+		})
+
+		it.each([
+			{ status: "reachable", available: true },
+			{ status: "unreachable", available: false },
+		])("refreshes a legacy catalog when the proxy is $status", async ({ available }) => {
+			const alias = "team-chat"
+			const proxy = new LiteLLMHandler({ ...mockOptions, litellmModelId: alias })
+			const previous = { ...litellmDefaultModelInfo, maxTokens: 1234 }
+			const updated = { ...previous, requiresMaxCompletionTokens: true }
+			const legacy = { [alias]: previous }
+			const refreshed = { [alias]: available ? updated : previous }
+			const refresh = vi.mocked(refreshModels)
+			const get = vi.mocked(getModels)
+			const originalRefresh = refresh.getMockImplementation()
+			const originalGet = get.getMockImplementation()
+			refresh.mockImplementation(async () => refreshed)
+			vi.mocked(getModelsFromCache).mockReturnValueOnce(legacy)
+			try {
+				expect(proxy.getModel().info).toBe(previous)
+				get.mockResolvedValueOnce(legacy)
+				const expected = { id: alias, info: refreshed[alias] }
+				await expect(Promise.all([proxy.fetchModel(), proxy.fetchModel()])).resolves.toEqual([
+					expected,
+					expected,
+				])
+				await expect(proxy.fetchModel()).resolves.toEqual(expected)
+				expect(refresh).toHaveBeenCalledTimes(1)
+			} finally {
+				get.mockReset()
+				if (originalGet) get.mockImplementation(originalGet)
+				if (originalRefresh) refresh.mockImplementation(originalRefresh)
+			}
 		})
 	})
 

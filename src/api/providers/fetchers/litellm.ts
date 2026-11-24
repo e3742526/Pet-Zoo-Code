@@ -5,6 +5,13 @@ import { isLiteLLMPreserveReasoningModel, isLiteLLMThoughtSignatureModel } from 
 
 import { DEFAULT_HEADERS } from "../constants"
 import { throwIfAborted } from "../utils/abort-signal"
+
+function requiresMaxCompletionTokens(routedModel: string): boolean {
+	// LiteLLM also uses openai/ for compatible servers. Check the model family after the prefix.
+	const model = routedModel.trim().replace(/^(?:openai(?:\/responses)?|azure)\//i, "")
+	return /^(?:gpt-?[5-9]|o[1345])(?:$|[-_.])/i.test(model)
+}
+
 /**
  * Fetches available models from a LiteLLM server
  *
@@ -42,9 +49,9 @@ export async function getLiteLLMModels(
 			for (const model of response.data.data) {
 				const modelName = model.model_name
 				const modelInfo = model.model_info
-				const litellmModelName = model?.litellm_params?.model as string | undefined
+				const litellmModelName = model?.litellm_params?.model
 
-				if (!modelName || !modelInfo || !litellmModelName) continue
+				if (!modelName || !modelInfo || typeof litellmModelName !== "string" || !litellmModelName) continue
 
 				const isGpt6Astra = litellmModelName === "openai/responses/gpt-6-astra"
 
@@ -86,6 +93,7 @@ export async function getLiteLLMModels(
 					}),
 					...(preservesReasoning && { preserveReasoning: true }),
 					...(requiresThoughtSignatures && { requiresThoughtSignatures: true }),
+					requiresMaxCompletionTokens: requiresMaxCompletionTokens(litellmModelName),
 					description: `${modelName} via LiteLLM proxy`,
 				}
 			}

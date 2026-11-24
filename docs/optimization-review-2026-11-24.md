@@ -251,6 +251,12 @@ Commit search, commit details, working tree changes, and status use the first wo
 
 A local subprocess fixture supplied a simulated machine setting with a path that contains a space and removed Git from PATH. The original status helper returned no result. The updated helper ran the configured executable and returned its branch. The retained tests check executable selection, command arguments, and existing output and error handling.
 
+## Context summary requests
+
+Manual and automatic context summaries omit stored model reasoning and replay signatures from the request. A conversation turn that contained only reasoning gets a short placeholder so it keeps its role. Text and tool activity remain available to the summarizer. Saved history keeps the original blocks for rewind. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2382)
+
+A fixture with 32 user and assistant message pairs compared the serialized message array before and after the change. With signed thinking blocks in the assistant turns, the input fell from 700,140 bytes to 10,220 bytes. Both runs used the same mocked summary response. A regression test checks the request body, original history, and the effective history after a successful summary.
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

@@ -4,9 +4,11 @@ import type { Mock } from "vitest"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 import { TelemetryService } from "@roo-code/telemetry"
+import { providerIdentifiers } from "@roo-code/types"
 
 import { ApiHandler } from "../../../api"
 import { ApiMessage } from "../../task-persistence/apiMessages"
+import { prepareApiConversationMessage } from "../../task/apiConversationHistory"
 import { maybeRemoveImageBlocks } from "../../../api/transform/image-cleaning"
 import {
 	summarizeConversation,
@@ -738,6 +740,74 @@ describe("summarizeConversation", () => {
 
 	// Default system prompt for tests
 	const defaultSystemPrompt = "You are a helpful assistant."
+
+	it("summarizes conversation and tool activity without stored reasoning", async () => {
+		const assistantWithReasoning = prepareApiConversationMessage({
+			message: {
+				role: "assistant",
+				content: [
+					{ type: "thinking", thinking: "Earlier signed thinking", signature: "signed-thinking" },
+					{ type: "redacted_thinking", data: "redacted-thinking-data" },
+					{ type: "text", text: "I will check the configuration." },
+					{ type: "tool_use", id: "tool-1", name: "read_file", input: { path: "config.json" } },
+				],
+			},
+			reasoning: "Stored model reasoning",
+			api: mockApiHandler,
+			apiConfiguration: { apiProvider: providerIdentifiers.openai, openAiModelId: "test-model" },
+			apiConversationHistory: [],
+		})
+		const replayHandler = {
+			...mockApiHandler,
+			getEncryptedContent: () => ({ encrypted_content: "encrypted-state" }),
+			getThoughtSignature: () => "provider-thought-signature",
+		}
+		const reasoningOnlyAssistant = prepareApiConversationMessage({
+			message: { role: "assistant", content: [] },
+			api: replayHandler,
+			apiConfiguration: { apiProvider: providerIdentifiers.gemini, apiModelId: "gemini-3-pro-preview" },
+			apiConversationHistory: [],
+		})
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "Check the configuration." },
+			assistantWithReasoning,
+			{
+				role: "user",
+				content: [{ type: "tool_result", tool_use_id: "tool-1", content: "Feature is enabled." }],
+			},
+			{ type: "reasoning", role: "assistant", content: [], encrypted_content: "standalone-reasoning-state" },
+			reasoningOnlyAssistant,
+		]
+		const originalMessages = structuredClone(messages)
+
+		const result = await summarizeConversation({
+			messages,
+			apiHandler: mockApiHandler,
+			systemPrompt: defaultSystemPrompt,
+			taskId,
+			customCondensingPrompt: "Summarize the conversation.",
+		})
+
+		expect(vi.mocked(mockApiHandler.createMessage).mock.calls[0]?.[1]).toEqual([
+			{ role: "user", content: "Check the configuration." },
+			{
+				role: "assistant",
+				content: [
+					{ type: "text", text: "I will check the configuration." },
+					{ type: "text", text: "[Tool Use: read_file]\npath: config.json" },
+				],
+			},
+			{ role: "user", content: [{ type: "text", text: "[Tool Result]\nFeature is enabled." }] },
+			{ role: "assistant", content: [{ type: "text", text: "[Reasoning omitted]" }] },
+			{ role: "user", content: "Summarize the conversation." },
+		])
+		expect(result.summary).toBe("This is a summary")
+		expect(messages).toEqual(originalMessages)
+		expect(result.messages.slice(0, -1)).toEqual(
+			originalMessages.map((message) => ({ ...message, condenseParent: result.condenseId })),
+		)
+		expect(getEffectiveApiHistory(result.messages)).toEqual([result.messages.at(-1)])
+	})
 
 	it("should not summarize when there are not enough messages", async () => {
 		const messages: ApiMessage[] = [{ role: "user", content: "Hello", ts: 1 }]

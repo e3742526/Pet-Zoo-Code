@@ -108,6 +108,30 @@ export function transformMessagesForCondensing<
 	}))
 }
 
+const REASONING_BLOCK_TYPES = new Set<string>(["reasoning", "thinking", "redacted_thinking", "thoughtSignature"])
+
+/** Remove model reasoning and replay data from the summary input while keeping actual conversation turns. */
+function stripReasoningForCondensing(messages: ApiMessage[]): ApiMessage[] {
+	return messages
+		.filter((message) => message.type !== "reasoning")
+		.map((message) => {
+			if (!Array.isArray(message.content)) {
+				return message
+			}
+
+			const content = message.content.filter((block) => !REASONING_BLOCK_TYPES.has(block.type))
+			if (content.length === message.content.length) {
+				return message
+			}
+
+			// Keep a nonempty turn so removing reasoning does not join adjacent user turns.
+			return {
+				...message,
+				content: content.length > 0 ? content : [{ type: "text", text: "[Reasoning omitted]" }],
+			}
+		})
+}
+
 export const MIN_CONDENSE_THRESHOLD = 5 // Minimum percentage of context window to trigger condensing
 export const MAX_CONDENSE_THRESHOLD = 100 // Maximum percentage of context window to trigger condensing
 
@@ -306,7 +330,7 @@ export async function summarizeConversation(options: SummarizeConversationOption
 
 	// Inject synthetic tool_results for orphan tool_calls to prevent API rejections
 	// (e.g., when user triggers condense after receiving attempt_completion but before responding)
-	const messagesWithToolResults = injectSyntheticToolResults(messagesToSummarize)
+	const messagesWithToolResults = injectSyntheticToolResults(stripReasoningForCondensing(messagesToSummarize))
 
 	// Transform tool_use and tool_result blocks to text representations.
 	// This is necessary because some providers (like Bedrock via LiteLLM) require the `tools` parameter

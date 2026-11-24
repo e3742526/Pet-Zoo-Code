@@ -161,6 +161,8 @@ The chat view reuses each tool row's batching classification and the serialized 
 
 The production-compiler JSDOM fixture displayed 36 tool rows in 12 batches with 480 lines of content per tool. Sixteen streamed text updates reduced tool payload parses across the view from 2,304 to 576 and batch serializations from 192 to zero. Median time fell from 57.50 ms to 17.37 ms over seven runs after two warm-up runs. The observed ranges were 53.94–60.62 ms and 16.86–18.72 ms. The fixture replaced list virtualization and row bodies with test doubles. Focused tests check reuse during text updates and refresh after a tool change for read, list, and edit batches.
 
+The todo lookup now searches from the newest row and stops at the latest valid list, including an empty list. It skips unchanged unrelated tool payloads. In the same 36-tool-row renderer fixture, 16 updates went from 576 file-tool parses to zero, both with and without a recent todo update. With no todo update, median time fell from 17.50 ms to 11.37 ms over seven runs after two warm-up runs. The observed ranges were 15.59–20.07 ms and 10.70–13.82 ms. With a recent todo update, the lookup still parsed that update once per frame. The timing ranges overlapped. Focused tests cover ordering, malformed data, changed payloads, empty lists, and independent copies of todo items.
+
 ## File diffs
 
 The File Changes panel reuses each merged diff while its original and final contents match. A reply that changes one file rebuilds that file's diff. Toggling a row or reopening the panel can reuse the merged result. The panel still displays the recorded diff when it lacks the contents needed to merge.

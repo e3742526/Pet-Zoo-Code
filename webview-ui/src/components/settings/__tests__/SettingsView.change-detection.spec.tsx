@@ -305,38 +305,8 @@ vi.mock("../Section", () => ({
 vi.mock("../SearchableSetting", () => ({
 	SearchableSetting: ({ children }: any) => <div>{children}</div>,
 }))
-vi.mock("../useSettingsSearch", () => ({
-	SearchIndexProvider: ({ children }: any) => <>{children}</>,
-	useSearchIndexRegistry: () => ({
-		contextValue: { registerSetting: vi.fn() },
-		index: [],
-	}),
-	useSettingsSearch: () => ({
-		searchQuery: "",
-		setSearchQuery: vi.fn(),
-		results: [],
-		isOpen: false,
-		setIsOpen: vi.fn(),
-		clearSearch: vi.fn(),
-	}),
-}))
 vi.mock("@src/components/settings/SearchableSetting", () => ({
 	SearchableSetting: ({ children }: any) => <div>{children}</div>,
-}))
-vi.mock("@src/components/settings/useSettingsSearch", () => ({
-	SearchIndexProvider: ({ children }: any) => <>{children}</>,
-	useSearchIndexRegistry: () => ({
-		contextValue: { registerSetting: vi.fn() },
-		index: [],
-	}),
-	useSettingsSearch: () => ({
-		searchQuery: "",
-		setSearchQuery: vi.fn(),
-		results: [],
-		isOpen: false,
-		setIsOpen: vi.fn(),
-		clearSearch: vi.fn(),
-	}),
 }))
 
 // Mock all settings components

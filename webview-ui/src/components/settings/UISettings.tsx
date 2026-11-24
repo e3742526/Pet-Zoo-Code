@@ -1,4 +1,4 @@
-import { HTMLAttributes, useMemo } from "react"
+import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import {
@@ -11,6 +11,7 @@ import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { getPrimaryModifier } from "./settingsSearchIndex"
 import { Slider, Button } from "../ui"
 import { ExtensionStateContextType } from "@/context/ExtensionStateContext"
 
@@ -40,11 +41,7 @@ export const UISettings = ({
 }: UISettingsProps) => {
 	const { t } = useAppTranslation()
 
-	// Detect platform for dynamic modifier key display
-	const primaryMod = useMemo(() => {
-		const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
-		return isMac ? "⌘" : "Ctrl"
-	}, [])
+	const primaryMod = getPrimaryModifier()
 
 	const handleReasoningBlockCollapsedChange = (value: boolean) => {
 		setCachedStateField("reasoningBlockCollapsed", value)
@@ -70,10 +67,7 @@ export const UISettings = ({
 			<Section>
 				<div className="space-y-6">
 					{/* Collapse Thinking Messages Setting */}
-					<SearchableSetting
-						settingId="ui-collapse-thinking"
-						section="ui"
-						label={t("settings:ui.collapseThinking.label")}>
+					<SearchableSetting settingId="ui-collapse-thinking">
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={reasoningBlockCollapsed}
@@ -88,10 +82,7 @@ export const UISettings = ({
 					</SearchableSetting>
 
 					{/* Enter Key Behavior Setting */}
-					<SearchableSetting
-						settingId="ui-enter-behavior"
-						section="ui"
-						label={t("settings:ui.requireCtrlEnterToSend.label", { primaryMod })}>
+					<SearchableSetting settingId="ui-enter-behavior">
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={enterBehavior === "newline"}
@@ -108,10 +99,7 @@ export const UISettings = ({
 					</SearchableSetting>
 
 					{/* Chat Font Size Setting */}
-					<SearchableSetting
-						settingId="ui-chat-font-size"
-						section="ui"
-						label={t("settings:ui.chatFontSize.label")}>
+					<SearchableSetting settingId="ui-chat-font-size">
 						<div className="flex flex-col gap-1">
 							<label className="block font-medium mb-1">{t("settings:ui.chatFontSize.label")}</label>
 							<div className="flex flex-wrap items-center gap-2">
@@ -142,10 +130,7 @@ export const UISettings = ({
 					</SearchableSetting>
 
 					{/* Auto-close Zoo opened files */}
-					<SearchableSetting
-						settingId="ui-auto-close-zoo-opened-files"
-						section="ui"
-						label={t("settings:ui.autoCloseZooOpenedFiles.label")}>
+					<SearchableSetting settingId="ui-auto-close-zoo-opened-files">
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={autoCloseZooOpenedFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES}
@@ -160,10 +145,7 @@ export const UISettings = ({
 					</SearchableSetting>
 
 					{/* Auto-close Zoo opened files after user interaction */}
-					<SearchableSetting
-						settingId="ui-auto-close-zoo-opened-files-after-user-edited"
-						section="ui"
-						label={t("settings:ui.autoCloseZooOpenedFilesAfterUserEdited.label")}>
+					<SearchableSetting settingId="ui-auto-close-zoo-opened-files-after-user-edited">
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={
@@ -185,10 +167,7 @@ export const UISettings = ({
 					</SearchableSetting>
 
 					{/* Auto-close Zoo opened new files */}
-					<SearchableSetting
-						settingId="ui-auto-close-zoo-opened-new-files"
-						section="ui"
-						label={t("settings:ui.autoCloseZooOpenedNewFiles.label")}>
+					<SearchableSetting settingId="ui-auto-close-zoo-opened-new-files">
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES}

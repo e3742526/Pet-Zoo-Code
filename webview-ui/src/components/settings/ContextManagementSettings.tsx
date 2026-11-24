@@ -147,10 +147,7 @@ export const ContextManagementSettings = ({
 			</SectionHeader>
 
 			<Section>
-				<SearchableSetting
-					settingId="context-open-tabs"
-					section="contextManagement"
-					label={t("settings:contextManagement.openTabs.label")}>
+				<SearchableSetting settingId="context-open-tabs">
 					<span className="block font-medium mb-1">{t("settings:contextManagement.openTabs.label")}</span>
 					<div className="flex items-center gap-2">
 						<Slider
@@ -168,10 +165,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-workspace-files"
-					section="contextManagement"
-					label={t("settings:contextManagement.workspaceFiles.label")}>
+				<SearchableSetting settingId="context-workspace-files">
 					<span className="block font-medium mb-1">
 						{t("settings:contextManagement.workspaceFiles.label")}
 					</span>
@@ -191,10 +185,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-max-git-status-files"
-					section="contextManagement"
-					label={t("settings:contextManagement.maxGitStatusFiles.label")}>
+				<SearchableSetting settingId="context-max-git-status-files">
 					<span className="block font-medium mb-1">
 						{t("settings:contextManagement.maxGitStatusFiles.label")}
 					</span>
@@ -214,10 +205,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-show-rooignored-files"
-					section="contextManagement"
-					label={t("settings:contextManagement.rooignore.label")}>
+				<SearchableSetting settingId="context-show-rooignored-files">
 					<VSCodeCheckbox
 						checked={showRooIgnoredFiles}
 						onChange={(e: any) => setCachedStateField("showRooIgnoredFiles", e.target.checked)}
@@ -231,10 +219,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-enable-subfolder-rules"
-					section="contextManagement"
-					label={t("settings:contextManagement.enableSubfolderRules.label")}>
+				<SearchableSetting settingId="context-enable-subfolder-rules">
 					<VSCodeCheckbox
 						checked={enableSubfolderRules}
 						onChange={(e: any) => setCachedStateField("enableSubfolderRules", e.target.checked)}
@@ -248,10 +233,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-max-image-file-size"
-					section="contextManagement"
-					label={t("settings:contextManagement.maxImageFileSize.label")}>
+				<SearchableSetting settingId="context-max-image-file-size">
 					<div className="flex flex-col gap-2">
 						<span className="font-medium">{t("settings:contextManagement.maxImageFileSize.label")}</span>
 						<div className="flex items-center gap-4">
@@ -279,10 +261,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-max-total-image-size"
-					section="contextManagement"
-					label={t("settings:contextManagement.maxTotalImageSize.label")}>
+				<SearchableSetting settingId="context-max-total-image-size">
 					<div className="flex flex-col gap-2">
 						<span className="font-medium">{t("settings:contextManagement.maxTotalImageSize.label")}</span>
 						<div className="flex items-center gap-4">
@@ -310,10 +289,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-include-diagnostic-messages"
-					section="contextManagement"
-					label={t("settings:contextManagement.diagnostics.includeMessages.label")}>
+				<SearchableSetting settingId="context-include-diagnostic-messages">
 					<VSCodeCheckbox
 						checked={includeDiagnosticMessages}
 						onChange={(e: any) => setCachedStateField("includeDiagnosticMessages", e.target.checked)}
@@ -327,10 +303,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-max-diagnostic-messages"
-					section="contextManagement"
-					label={t("settings:contextManagement.diagnostics.maxMessages.label")}>
+				<SearchableSetting settingId="context-max-diagnostic-messages">
 					<span className="block font-medium mb-1">
 						{t("settings:contextManagement.diagnostics.maxMessages.label")}
 					</span>
@@ -385,10 +358,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-write-delay"
-					section="contextManagement"
-					label={t("settings:contextManagement.diagnostics.delayAfterWrite.label")}>
+				<SearchableSetting settingId="context-write-delay">
 					<span className="block font-medium mb-1">
 						{t("settings:contextManagement.diagnostics.delayAfterWrite.label")}
 					</span>
@@ -408,10 +378,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-diff-fuzzy-threshold"
-					section="contextManagement"
-					label={t("settings:contextManagement.fileEdits.diffFuzzyThreshold.label")}>
+				<SearchableSetting settingId="context-diff-fuzzy-threshold">
 					<span className="block font-medium mb-1">
 						{t("settings:contextManagement.fileEdits.diffFuzzyThreshold.label")}
 					</span>
@@ -433,10 +400,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-include-current-time"
-					section="contextManagement"
-					label={t("settings:contextManagement.includeCurrentTime.label")}>
+				<SearchableSetting settingId="context-include-current-time">
 					<VSCodeCheckbox
 						checked={includeCurrentTime}
 						onChange={(e: any) => setCachedStateField("includeCurrentTime", e.target.checked)}
@@ -450,10 +414,7 @@ export const ContextManagementSettings = ({
 					</div>
 				</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-include-current-cost"
-					section="contextManagement"
-					label={t("settings:contextManagement.includeCurrentCost.label")}>
+				<SearchableSetting settingId="context-include-current-cost">
 					<VSCodeCheckbox
 						checked={includeCurrentCost}
 						onChange={(e: any) => setCachedStateField("includeCurrentCost", e.target.checked)}
@@ -469,10 +430,7 @@ export const ContextManagementSettings = ({
 			</Section>
 			<Section className="pt-2">
 				{/* Context Condensing Prompt Editor */}
-				<SearchableSetting
-					settingId="context-condense-prompt"
-					section="contextManagement"
-					label={t("prompts:supportPrompts.types.CONDENSE.label")}>
+				<SearchableSetting settingId="context-condense-prompt">
 					<div className="flex justify-between items-center mb-1">
 						<label className="block font-medium">{t("prompts:supportPrompts.types.CONDENSE.label")}</label>
 						<StandardTooltip content={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}>
@@ -500,10 +458,7 @@ export const ContextManagementSettings = ({
 				</SearchableSetting>
 
 				{/* Auto Condense Context */}
-				<SearchableSetting
-					settingId="context-auto-condense"
-					section="contextManagement"
-					label={t("settings:contextManagement.autoCondenseContext.name")}>
+				<SearchableSetting settingId="context-auto-condense">
 					<VSCodeCheckbox
 						checked={autoCondenseContext}
 						onChange={(e: any) => setCachedStateField("autoCondenseContext", e.target.checked)}

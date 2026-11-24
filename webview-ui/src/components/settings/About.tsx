@@ -151,8 +151,6 @@ export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
 					{setDebug && (
 						<SearchableSetting
 							settingId="about-debug-mode"
-							section="about"
-							label={t("settings:about.debugMode.label")}
 							className="mt-4 pt-4 border-t border-vscode-settings-headerBorder">
 							<VSCodeCheckbox
 								checked={debug ?? false}
@@ -171,10 +169,7 @@ export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
 			</Section>
 
 			<Section className="space-y-0">
-				<SearchableSetting
-					settingId="about-manage-settings"
-					section="about"
-					label={t("settings:about.manageSettings")}>
+				<SearchableSetting settingId="about-manage-settings">
 					<h3>{t("settings:about.manageSettings")}</h3>
 					<div className="flex flex-wrap items-center gap-2">
 						<Button onClick={() => vscode.postMessage({ type: "exportSettings" })} className="w-28">
@@ -197,10 +192,7 @@ export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
 			</Section>
 
 			<Section className="space-y-0">
-				<SearchableSetting
-					settingId="about-import-roo-history"
-					section="about"
-					label={t("settings:about.rooHistoryImport.settingLabel")}>
+				<SearchableSetting settingId="about-import-roo-history">
 					<div className="space-y-3 rounded-lg border border-vscode-focusBorder/40 bg-vscode-editorWidget-background/40 p-3">
 						<div className="flex items-start gap-3">
 							<div className="rounded-md border border-vscode-focusBorder/30 bg-vscode-button-background/15 p-2 text-vscode-button-background">

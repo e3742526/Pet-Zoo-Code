@@ -127,10 +127,7 @@ export const AutoApproveSettings = ({
 
 			<Section>
 				<div className="space-y-4">
-					<SearchableSetting
-						settingId="auto-approve-enabled"
-						section="autoApprove"
-						label={t("settings:autoApprove.enabled")}>
+					<SearchableSetting settingId="auto-approve-enabled">
 						<VSCodeCheckbox
 							checked={effectiveAutoApprovalEnabled}
 							aria-label={t("settings:autoApprove.toggleAriaLabel")}
@@ -195,10 +192,7 @@ export const AutoApproveSettings = ({
 							<span className="codicon codicon-eye" />
 							<div>{t("settings:autoApprove.readOnly.label")}</div>
 						</div>
-						<SearchableSetting
-							settingId="auto-approve-readonly-outside-workspace"
-							section="autoApprove"
-							label={t("settings:autoApprove.readOnly.outsideWorkspace.label")}>
+						<SearchableSetting settingId="auto-approve-readonly-outside-workspace">
 							<VSCodeCheckbox
 								checked={alwaysAllowReadOnlyOutsideWorkspace}
 								onChange={(e: any) =>
@@ -222,10 +216,7 @@ export const AutoApproveSettings = ({
 							<span className="codicon codicon-edit" />
 							<div>{t("settings:autoApprove.write.label")}</div>
 						</div>
-						<SearchableSetting
-							settingId="auto-approve-write-outside-workspace"
-							section="autoApprove"
-							label={t("settings:autoApprove.write.outsideWorkspace.label")}>
+						<SearchableSetting settingId="auto-approve-write-outside-workspace">
 							<VSCodeCheckbox
 								checked={alwaysAllowWriteOutsideWorkspace}
 								onChange={(e: any) =>
@@ -241,10 +232,7 @@ export const AutoApproveSettings = ({
 							</div>
 						</SearchableSetting>
 
-						<SearchableSetting
-							settingId="auto-approve-write-protected"
-							section="autoApprove"
-							label={t("settings:autoApprove.write.protected.label")}>
+						<SearchableSetting settingId="auto-approve-write-protected">
 							<VSCodeCheckbox
 								checked={alwaysAllowWriteProtected}
 								onChange={(e: any) =>
@@ -301,10 +289,7 @@ export const AutoApproveSettings = ({
 							<span className="codicon codicon-question" />
 							<div>{t("settings:autoApprove.followupQuestions.label")}</div>
 						</div>
-						<SearchableSetting
-							settingId="auto-approve-followup-timeout"
-							section="autoApprove"
-							label={t("settings:autoApprove.followupQuestions.timeoutLabel")}>
+						<SearchableSetting settingId="auto-approve-followup-timeout">
 							<div className="flex items-center gap-2">
 								<Slider
 									min={1000}
@@ -332,10 +317,7 @@ export const AutoApproveSettings = ({
 							<div>{t("settings:autoApprove.execute.label")}</div>
 						</div>
 
-						<SearchableSetting
-							settingId="auto-approve-destructive-command-guard"
-							section="autoApprove"
-							label={t("settings:autoApprove.execute.destructiveCommandGuard.label")}>
+						<SearchableSetting settingId="auto-approve-destructive-command-guard">
 							<VSCodeCheckbox
 								checked={destructiveCommandGuardEnabled}
 								onChange={(e: any) =>
@@ -353,10 +335,7 @@ export const AutoApproveSettings = ({
 
 						{/* Visible in both DCG modes: it replaces the hidden command
 							   lists as the fail-closed policy in hands-free setups. */}
-						<SearchableSetting
-							settingId="auto-approve-auto-deny-unapproved"
-							section="autoApprove"
-							label={t("settings:autoApprove.execute.autoDeny.label")}>
+						<SearchableSetting settingId="auto-approve-auto-deny-unapproved">
 							<VSCodeCheckbox
 								checked={alwaysDenyUnapprovedCommands}
 								onChange={(e: Event | FormEvent<HTMLElement>) => {
@@ -375,10 +354,7 @@ export const AutoApproveSettings = ({
 
 						{!destructiveCommandGuardEnabled && (
 							<>
-								<SearchableSetting
-									settingId="auto-approve-allowed-commands"
-									section="autoApprove"
-									label={t("settings:autoApprove.execute.allowedCommands")}>
+								<SearchableSetting settingId="auto-approve-allowed-commands">
 									<label className="block font-medium mb-1" data-testid="allowed-commands-heading">
 										{t("settings:autoApprove.execute.allowedCommands")}
 									</label>
@@ -427,11 +403,7 @@ export const AutoApproveSettings = ({
 								</div>
 
 								{/* Denied Commands Section */}
-								<SearchableSetting
-									settingId="auto-approve-denied-commands"
-									section="autoApprove"
-									label={t("settings:autoApprove.execute.deniedCommands")}
-									className="mt-6">
+								<SearchableSetting settingId="auto-approve-denied-commands" className="mt-6">
 									<label className="block font-medium mb-1" data-testid="denied-commands-heading">
 										{t("settings:autoApprove.execute.deniedCommands")}
 									</label>

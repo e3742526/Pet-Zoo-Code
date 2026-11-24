@@ -7,15 +7,28 @@ import { SettingsSearchInput } from "./SettingsSearchInput"
 import { SettingsSearchResults } from "./SettingsSearchResults"
 
 interface SettingsSearchProps {
-	index: SearchableSettingData[]
+	getIndex: () => SearchableSettingData[]
 	onNavigate: (section: SectionName, settingId: string) => void
 	sections: { id: SectionName; icon: LucideIcon }[]
 }
 
-export function SettingsSearch({ index, onNavigate, sections }: SettingsSearchProps) {
+export function SettingsSearch({ getIndex, onNavigate, sections }: SettingsSearchProps) {
 	const inputRef = useRef<HTMLInputElement>(null)
-	const { searchQuery, setSearchQuery, results, isOpen, setIsOpen, clearSearch } = useSettingsSearch({ index })
+	const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+	const { searchQuery, setSearchQuery, results, isOpen, setIsOpen, clearSearch } = useSettingsSearch({ getIndex })
 	const [highlightedResultId, setHighlightedResultId] = useState<string | undefined>(undefined)
+
+	useEffect(() => () => clearTimeout(closeTimer.current), [])
+
+	const handleFocus = () => {
+		clearTimeout(closeTimer.current)
+		setIsOpen(true)
+	}
+
+	const handleBlur = () => {
+		clearTimeout(closeTimer.current)
+		closeTimer.current = setTimeout(() => setIsOpen(false), 200)
+	}
 
 	// Handle selection of a search result
 	const handleSelectResult = useCallback(
@@ -102,8 +115,8 @@ export function SettingsSearch({ index, onNavigate, sections }: SettingsSearchPr
 			<SettingsSearchInput
 				value={searchQuery}
 				onChange={setSearchQuery}
-				onFocus={() => setIsOpen(true)}
-				onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+				onFocus={handleFocus}
+				onBlur={handleBlur}
 				onKeyDown={handleSearchKeyDown}
 				inputRef={inputRef}
 			/>

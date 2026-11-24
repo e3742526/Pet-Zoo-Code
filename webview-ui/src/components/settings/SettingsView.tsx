@@ -86,7 +86,7 @@ import ModesView from "../modes/ModesView"
 import McpView from "../mcp/McpView"
 import { WorktreesView } from "../worktrees/WorktreesView"
 import { SettingsSearch } from "./SettingsSearch"
-import { useSearchIndexRegistry, SearchIndexProvider } from "./useSettingsSearch"
+import { buildSettingsSearchIndex } from "./settingsSearchIndex"
 import { nextSaveRequestId } from "./saveRequestId"
 
 /**
@@ -653,45 +653,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		}
 	}, [scrollToActiveTab])
 
-	// Search index registry - settings register themselves on mount
-	const getSectionLabel = useCallback((section: SectionName) => t(`settings:sections.${section}`), [t])
-	const { contextValue: searchContextValue, index: searchIndex } = useSearchIndexRegistry(getSectionLabel)
-
-	// Track which tabs have been indexed (visited at least once)
-	const [indexingTabIndex, setIndexingTabIndex] = useState(0)
-	const initialTab = useRef<SectionName>(activeTab)
-	const isIndexing = indexingTabIndex < sectionNames.length
-	const isIndexingComplete = !isIndexing
-	const tabTitlesRegistered = useRef(false)
-
-	// Index all tabs by cycling through them on mount
-	useLayoutEffect(() => {
-		if (indexingTabIndex >= sectionNames.length) {
-			// All tabs indexed, now register tab titles as searchable items
-			if (!tabTitlesRegistered.current && searchContextValue) {
-				sections.forEach(({ id }) => {
-					const tabTitle = t(`settings:sections.${id}`)
-					// Register each tab title as a searchable item
-					// Using a special naming convention for tab titles: "tab-{sectionName}"
-					searchContextValue.registerSetting({
-						settingId: `tab-${id}`,
-						section: id,
-						label: tabTitle,
-					})
-				})
-				tabTitlesRegistered.current = true
-				// Return to initial tab
-				setActiveTab(initialTab.current)
-			}
-			return
-		}
-
-		// Move to the next tab on next render
-		setIndexingTabIndex((prev) => prev + 1)
-	}, [indexingTabIndex, searchContextValue, sections, t])
-
-	// Determine which tab content to render (for indexing or active display)
-	const renderTab = isIndexing ? sectionNames[indexingTabIndex] : activeTab
+	const getSearchIndex = useCallback(() => buildSettingsSearchIndex(sectionNames, t, cachedState), [t, cachedState])
 
 	// Handle search navigation - switch to the correct tab and scroll to the element
 	const handleSearchNavigate = useCallback(
@@ -731,9 +693,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					<h3 className="text-vscode-foreground m-0 flex-shrink-0">{t("settings:header.title")}</h3>
 				</div>
 				<div className="flex items-center gap-2 shrink-0">
-					{isIndexingComplete && (
-						<SettingsSearch index={searchIndex} onNavigate={handleSearchNavigate} sections={sections} />
-					)}
+					<SettingsSearch getIndex={getSearchIndex} onNavigate={handleSearchNavigate} sections={sections} />
 					<StandardTooltip
 						content={
 							!isSettingValid
@@ -812,235 +772,230 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					})}
 				</TabList>
 
-				{/* Content area - renders only the active tab (or indexing tab during initial indexing) */}
-				<TabContent
-					ref={contentRef}
-					className={cn("p-0 flex-1 overflow-auto", isIndexing && "opacity-0")}
-					data-testid="settings-content">
-					<SearchIndexProvider value={searchContextValue}>
-						{/* Providers Section */}
-						{renderTab === "providers" && (
-							<div>
-								<SectionHeader>{t("settings:sections.providers")}</SectionHeader>
+				{/* Content area */}
+				<TabContent ref={contentRef} className="p-0 flex-1 overflow-auto" data-testid="settings-content">
+					{/* Providers Section */}
+					{activeTab === "providers" && (
+						<div>
+							<SectionHeader>{t("settings:sections.providers")}</SectionHeader>
 
-								<Section>
-									<ApiConfigManager
-										currentApiConfigName={currentApiConfigName}
-										listApiConfigMeta={listApiConfigMeta}
-										onSelectConfig={(configName: string) =>
-											checkUnsaveChanges(() =>
-												vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
-											)
-										}
-										onDeleteConfig={(configName: string) =>
-											vscode.postMessage({ type: "deleteApiConfiguration", text: configName })
-										}
-										onRenameConfig={(oldName: string, newName: string) => {
-											vscode.postMessage({
-												type: "renameApiConfiguration",
-												values: { oldName, newName },
-												apiConfiguration,
-											})
-											prevApiConfigName.current = newName
-										}}
-										onUpsertConfig={(configName: string) =>
-											vscode.postMessage({
-												type: "upsertApiConfiguration",
-												text: configName,
-												apiConfiguration,
-											})
-										}
-									/>
-									<ApiOptions
-										uriScheme={uriScheme}
-										apiConfiguration={apiConfiguration}
-										setApiConfigurationField={setApiConfigurationField}
-										errorMessage={errorMessage}
-										setErrorMessage={setErrorMessage}
-									/>
-								</Section>
-							</div>
-						)}
+							<Section>
+								<ApiConfigManager
+									currentApiConfigName={currentApiConfigName}
+									listApiConfigMeta={listApiConfigMeta}
+									onSelectConfig={(configName: string) =>
+										checkUnsaveChanges(() =>
+											vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
+										)
+									}
+									onDeleteConfig={(configName: string) =>
+										vscode.postMessage({ type: "deleteApiConfiguration", text: configName })
+									}
+									onRenameConfig={(oldName: string, newName: string) => {
+										vscode.postMessage({
+											type: "renameApiConfiguration",
+											values: { oldName, newName },
+											apiConfiguration,
+										})
+										prevApiConfigName.current = newName
+									}}
+									onUpsertConfig={(configName: string) =>
+										vscode.postMessage({
+											type: "upsertApiConfiguration",
+											text: configName,
+											apiConfiguration,
+										})
+									}
+								/>
+								<ApiOptions
+									uriScheme={uriScheme}
+									apiConfiguration={apiConfiguration}
+									setApiConfigurationField={setApiConfigurationField}
+									errorMessage={errorMessage}
+									setErrorMessage={setErrorMessage}
+								/>
+							</Section>
+						</div>
+					)}
 
-						{/* Auto-Approve Section */}
-						{renderTab === "autoApprove" && (
-							<AutoApproveSettings
-								alwaysAllowReadOnly={alwaysAllowReadOnly}
-								alwaysAllowReadOnlyOutsideWorkspace={alwaysAllowReadOnlyOutsideWorkspace}
-								allowedReadFiles={allowedReadFiles}
-								alwaysAllowWrite={alwaysAllowWrite}
-								alwaysAllowWriteOutsideWorkspace={alwaysAllowWriteOutsideWorkspace}
-								alwaysAllowWriteProtected={alwaysAllowWriteProtected}
-								allowedWriteFiles={allowedWriteFiles}
-								alwaysAllowMcp={alwaysAllowMcp}
-								alwaysAllowModeSwitch={alwaysAllowModeSwitch}
-								alwaysAllowSubtasks={alwaysAllowSubtasks}
-								alwaysAllowExecute={alwaysAllowExecute}
-								destructiveCommandGuardEnabled={destructiveCommandGuardEnabled}
-								alwaysDenyUnapprovedCommands={alwaysDenyUnapprovedCommands}
-								alwaysAllowFollowupQuestions={alwaysAllowFollowupQuestions}
-								followupAutoApproveTimeoutMs={followupAutoApproveTimeoutMs}
-								allowedCommands={allowedCommands}
-								allowedMaxRequests={allowedMaxRequests ?? undefined}
-								allowedMaxCost={allowedMaxCost ?? undefined}
-								deniedCommands={deniedCommands}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* Auto-Approve Section */}
+					{activeTab === "autoApprove" && (
+						<AutoApproveSettings
+							alwaysAllowReadOnly={alwaysAllowReadOnly}
+							alwaysAllowReadOnlyOutsideWorkspace={alwaysAllowReadOnlyOutsideWorkspace}
+							allowedReadFiles={allowedReadFiles}
+							alwaysAllowWrite={alwaysAllowWrite}
+							alwaysAllowWriteOutsideWorkspace={alwaysAllowWriteOutsideWorkspace}
+							alwaysAllowWriteProtected={alwaysAllowWriteProtected}
+							allowedWriteFiles={allowedWriteFiles}
+							alwaysAllowMcp={alwaysAllowMcp}
+							alwaysAllowModeSwitch={alwaysAllowModeSwitch}
+							alwaysAllowSubtasks={alwaysAllowSubtasks}
+							alwaysAllowExecute={alwaysAllowExecute}
+							destructiveCommandGuardEnabled={destructiveCommandGuardEnabled}
+							alwaysDenyUnapprovedCommands={alwaysDenyUnapprovedCommands}
+							alwaysAllowFollowupQuestions={alwaysAllowFollowupQuestions}
+							followupAutoApproveTimeoutMs={followupAutoApproveTimeoutMs}
+							allowedCommands={allowedCommands}
+							allowedMaxRequests={allowedMaxRequests ?? undefined}
+							allowedMaxCost={allowedMaxCost ?? undefined}
+							deniedCommands={deniedCommands}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* Slash Commands Section */}
-						{renderTab === "slashCommands" && <SlashCommandsSettings />}
+					{/* Slash Commands Section */}
+					{activeTab === "slashCommands" && <SlashCommandsSettings />}
 
-						{/* Skills Section */}
-						{renderTab === "skills" && <SkillsSettings />}
+					{/* Skills Section */}
+					{activeTab === "skills" && <SkillsSettings />}
 
-						{/* Rules Section */}
-						{renderTab === "rules" && <RulesSettings />}
+					{/* Rules Section */}
+					{activeTab === "rules" && <RulesSettings />}
 
-						{/* Checkpoints Section */}
-						{renderTab === "checkpoints" && (
-							<CheckpointSettings
-								enableCheckpoints={enableCheckpoints}
-								checkpointTimeout={checkpointTimeout}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* Checkpoints Section */}
+					{activeTab === "checkpoints" && (
+						<CheckpointSettings
+							enableCheckpoints={enableCheckpoints}
+							checkpointTimeout={checkpointTimeout}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* Notifications Section */}
-						{renderTab === "notifications" && (
-							<NotificationSettings
-								ttsEnabled={ttsEnabled}
-								ttsSpeed={ttsSpeed}
-								soundEnabled={soundEnabled}
-								soundVolume={soundVolume}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* Notifications Section */}
+					{activeTab === "notifications" && (
+						<NotificationSettings
+							ttsEnabled={ttsEnabled}
+							ttsSpeed={ttsSpeed}
+							soundEnabled={soundEnabled}
+							soundVolume={soundVolume}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* Context Management Section */}
-						{renderTab === "contextManagement" && (
-							<ContextManagementSettings
-								autoCondenseContext={autoCondenseContext}
-								autoCondenseContextPercent={autoCondenseContextPercent}
-								listApiConfigMeta={listApiConfigMeta ?? []}
-								maxOpenTabsContext={maxOpenTabsContext}
-								maxWorkspaceFiles={maxWorkspaceFiles ?? 200}
-								showRooIgnoredFiles={showRooIgnoredFiles}
-								enableSubfolderRules={enableSubfolderRules}
-								maxImageFileSize={maxImageFileSize}
-								maxTotalImageSize={maxTotalImageSize}
-								profileThresholds={profileThresholds}
-								includeDiagnosticMessages={includeDiagnosticMessages}
-								maxDiagnosticMessages={maxDiagnosticMessages}
-								writeDelayMs={writeDelayMs}
-								diffFuzzyThreshold={diffFuzzyThreshold}
-								includeCurrentTime={includeCurrentTime}
-								includeCurrentCost={includeCurrentCost}
-								maxGitStatusFiles={maxGitStatusFiles}
-								customSupportPrompts={customSupportPrompts || {}}
-								setCustomSupportPrompts={setCustomSupportPromptsField}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* Context Management Section */}
+					{activeTab === "contextManagement" && (
+						<ContextManagementSettings
+							autoCondenseContext={autoCondenseContext}
+							autoCondenseContextPercent={autoCondenseContextPercent}
+							listApiConfigMeta={listApiConfigMeta ?? []}
+							maxOpenTabsContext={maxOpenTabsContext}
+							maxWorkspaceFiles={maxWorkspaceFiles ?? 200}
+							showRooIgnoredFiles={showRooIgnoredFiles}
+							enableSubfolderRules={enableSubfolderRules}
+							maxImageFileSize={maxImageFileSize}
+							maxTotalImageSize={maxTotalImageSize}
+							profileThresholds={profileThresholds}
+							includeDiagnosticMessages={includeDiagnosticMessages}
+							maxDiagnosticMessages={maxDiagnosticMessages}
+							writeDelayMs={writeDelayMs}
+							diffFuzzyThreshold={diffFuzzyThreshold}
+							includeCurrentTime={includeCurrentTime}
+							includeCurrentCost={includeCurrentCost}
+							maxGitStatusFiles={maxGitStatusFiles}
+							customSupportPrompts={customSupportPrompts || {}}
+							setCustomSupportPrompts={setCustomSupportPromptsField}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* Terminal Section */}
-						{renderTab === "terminal" && (
-							<TerminalSettings
-								terminalOutputPreviewSize={terminalOutputPreviewSize}
-								terminalShellIntegrationTimeout={terminalShellIntegrationTimeout}
-								terminalShellIntegrationDisabled={terminalShellIntegrationDisabled}
-								collapseCommandOutputByDefault={collapseCommandOutputByDefault}
-								terminalCommandDelay={terminalCommandDelay}
-								terminalPowershellCounter={terminalPowershellCounter}
-								terminalZshClearEolMark={terminalZshClearEolMark}
-								terminalZshOhMy={terminalZshOhMy}
-								terminalZshP10k={terminalZshP10k}
-								terminalZdotdir={terminalZdotdir}
-								terminalProfile={terminalProfile}
-								onTerminalProfilePickerOpened={() => setChangeDetected(true)}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* Terminal Section */}
+					{activeTab === "terminal" && (
+						<TerminalSettings
+							terminalOutputPreviewSize={terminalOutputPreviewSize}
+							terminalShellIntegrationTimeout={terminalShellIntegrationTimeout}
+							terminalShellIntegrationDisabled={terminalShellIntegrationDisabled}
+							collapseCommandOutputByDefault={collapseCommandOutputByDefault}
+							terminalCommandDelay={terminalCommandDelay}
+							terminalPowershellCounter={terminalPowershellCounter}
+							terminalZshClearEolMark={terminalZshClearEolMark}
+							terminalZshOhMy={terminalZshOhMy}
+							terminalZshP10k={terminalZshP10k}
+							terminalZdotdir={terminalZdotdir}
+							terminalProfile={terminalProfile}
+							onTerminalProfilePickerOpened={() => setChangeDetected(true)}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* Modes Section */}
-						{renderTab === "modes" && <ModesView />}
+					{/* Modes Section */}
+					{activeTab === "modes" && <ModesView />}
 
-						{/* MCP Section */}
-						{renderTab === "mcp" && (
-							<McpView
-								mcpEnabled={mcpEnabled}
-								setMcpEnabled={(value) => setCachedStateField("mcpEnabled", value)}
-							/>
-						)}
+					{/* MCP Section */}
+					{activeTab === "mcp" && (
+						<McpView
+							mcpEnabled={mcpEnabled}
+							setMcpEnabled={(value) => setCachedStateField("mcpEnabled", value)}
+						/>
+					)}
 
-						{/* Worktrees Section */}
-						{renderTab === "worktrees" && <WorktreesView />}
+					{/* Worktrees Section */}
+					{activeTab === "worktrees" && <WorktreesView />}
 
-						{/* Prompts Section */}
-						{renderTab === "prompts" && (
-							<PromptsSettings
-								customSupportPrompts={customSupportPrompts || {}}
-								setCustomSupportPrompts={setCustomSupportPromptsField}
-								includeTaskHistoryInEnhance={includeTaskHistoryInEnhance}
-								setIncludeTaskHistoryInEnhance={(value) =>
-									setCachedStateField("includeTaskHistoryInEnhance", value)
-								}
-								taskTitleGenerationEnabled={
-									taskTitleGenerationEnabled ?? DEFAULT_TASK_TITLE_GENERATION_ENABLED
-								}
-								setTaskTitleGenerationEnabled={(value) =>
-									setCachedStateField("taskTitleGenerationEnabled", value)
-								}
-								taskTitleApiConfigId={taskTitleApiConfigId}
-								setTaskTitleApiConfigId={(value) => setCachedStateField("taskTitleApiConfigId", value)}
-							/>
-						)}
+					{/* Prompts Section */}
+					{activeTab === "prompts" && (
+						<PromptsSettings
+							customSupportPrompts={customSupportPrompts || {}}
+							setCustomSupportPrompts={setCustomSupportPromptsField}
+							includeTaskHistoryInEnhance={includeTaskHistoryInEnhance}
+							setIncludeTaskHistoryInEnhance={(value) =>
+								setCachedStateField("includeTaskHistoryInEnhance", value)
+							}
+							taskTitleGenerationEnabled={
+								taskTitleGenerationEnabled ?? DEFAULT_TASK_TITLE_GENERATION_ENABLED
+							}
+							setTaskTitleGenerationEnabled={(value) =>
+								setCachedStateField("taskTitleGenerationEnabled", value)
+							}
+							taskTitleApiConfigId={taskTitleApiConfigId}
+							setTaskTitleApiConfigId={(value) => setCachedStateField("taskTitleApiConfigId", value)}
+						/>
+					)}
 
-						{/* UI Section */}
-						{renderTab === "ui" && (
-							<UISettings
-								reasoningBlockCollapsed={reasoningBlockCollapsed ?? true}
-								enterBehavior={enterBehavior ?? "send"}
-								chatFontSize={chatFontSize ?? undefined}
-								autoCloseZooOpenedFiles={autoCloseZooOpenedFiles}
-								autoCloseZooOpenedFilesAfterUserEdited={autoCloseZooOpenedFilesAfterUserEdited}
-								autoCloseZooOpenedNewFiles={autoCloseZooOpenedNewFiles}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* UI Section */}
+					{activeTab === "ui" && (
+						<UISettings
+							reasoningBlockCollapsed={reasoningBlockCollapsed ?? true}
+							enterBehavior={enterBehavior ?? "send"}
+							chatFontSize={chatFontSize ?? undefined}
+							autoCloseZooOpenedFiles={autoCloseZooOpenedFiles}
+							autoCloseZooOpenedFilesAfterUserEdited={autoCloseZooOpenedFilesAfterUserEdited}
+							autoCloseZooOpenedNewFiles={autoCloseZooOpenedNewFiles}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* Experimental Section */}
-						{renderTab === "experimental" && (
-							<ExperimentalSettings
-								setExperimentEnabled={setExperimentEnabled}
-								experiments={experiments}
-								apiConfiguration={apiConfiguration}
-								setApiConfigurationField={setApiConfigurationField}
-								imageGenerationProvider={imageGenerationProvider}
-								openRouterImageApiKey={openRouterImageApiKey as string | undefined}
-								openRouterImageGenerationSelectedModel={
-									openRouterImageGenerationSelectedModel as string | undefined
-								}
-								setImageGenerationProvider={setImageGenerationProvider}
-								setOpenRouterImageApiKey={setOpenRouterImageApiKey}
-								setImageGenerationSelectedModel={setImageGenerationSelectedModel}
-							/>
-						)}
+					{/* Experimental Section */}
+					{activeTab === "experimental" && (
+						<ExperimentalSettings
+							setExperimentEnabled={setExperimentEnabled}
+							experiments={experiments}
+							apiConfiguration={apiConfiguration}
+							setApiConfigurationField={setApiConfigurationField}
+							imageGenerationProvider={imageGenerationProvider}
+							openRouterImageApiKey={openRouterImageApiKey as string | undefined}
+							openRouterImageGenerationSelectedModel={
+								openRouterImageGenerationSelectedModel as string | undefined
+							}
+							setImageGenerationProvider={setImageGenerationProvider}
+							setOpenRouterImageApiKey={setOpenRouterImageApiKey}
+							setImageGenerationSelectedModel={setImageGenerationSelectedModel}
+						/>
+					)}
 
-						{/* Language Section */}
-						{renderTab === "language" && (
-							<LanguageSettings
-								language={language || "en"}
-								timeFormat={timeFormat}
-								dateFormat={dateFormat}
-								showRelativeTimes={showRelativeTimes}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+					{/* Language Section */}
+					{activeTab === "language" && (
+						<LanguageSettings
+							language={language || "en"}
+							timeFormat={timeFormat}
+							dateFormat={dateFormat}
+							showRelativeTimes={showRelativeTimes}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
 
-						{/* About Section */}
-						{renderTab === "about" && <About debug={cachedState.debug} setDebug={setDebug} />}
-					</SearchIndexProvider>
+					{/* About Section */}
+					{activeTab === "about" && <About debug={cachedState.debug} setDebug={setDebug} />}
 				</TabContent>
 			</div>
 

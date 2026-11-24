@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useRef, createContext, useContext } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { Fzf } from "fzf"
 
-import { SectionName } from "./SettingsView"
+import type { SectionName } from "./SettingsView"
 
 export interface SearchableSettingData {
 	settingId: string
@@ -19,82 +19,27 @@ export interface SearchResult {
 	positions: Set<number>
 }
 
-/**
- * Context for collecting searchable settings as they mount.
- * This allows building the search index without rendering all sections.
- */
-interface SearchIndexContextValue {
-	registerSetting: (setting: Omit<SearchableSettingData, "sectionLabel">) => void
-}
-
-const SearchIndexContext = createContext<SearchIndexContextValue | null>(null)
-
-export const SearchIndexProvider = SearchIndexContext.Provider
-
-export function useSearchIndexContext() {
-	return useContext(SearchIndexContext)
-}
-
-/**
- * Hook to create a search index registry.
- * Returns the context value and the current index.
- */
-export function useSearchIndexRegistry(getSectionLabel: (section: SectionName) => string) {
-	const settingsRef = useRef<Map<string, Omit<SearchableSettingData, "sectionLabel">>>(new Map())
-	const [index, setIndex] = useState<SearchableSettingData[]>([])
-	const updateScheduled = useRef(false)
-
-	const scheduleUpdate = useCallback(() => {
-		if (updateScheduled.current) return
-		updateScheduled.current = true
-
-		// Batch updates to avoid frequent re-renders
-		requestAnimationFrame(() => {
-			const settings = Array.from(settingsRef.current.values()).map((s) => ({
-				...s,
-				sectionLabel: getSectionLabel(s.section),
-			}))
-			setIndex(settings)
-			updateScheduled.current = false
-		})
-	}, [getSectionLabel])
-
-	const contextValue = useMemo<SearchIndexContextValue>(
-		() => ({
-			registerSetting: (setting) => {
-				settingsRef.current.set(setting.settingId, setting)
-				scheduleUpdate()
-			},
-		}),
-		[scheduleUpdate],
-	)
-
-	return { contextValue, index }
-}
-
 interface UseSettingsSearchOptions {
-	index: SearchableSettingData[]
+	getIndex: () => SearchableSettingData[]
 }
 
 /**
  * Hook for searching settings using fuzzy matching.
  */
-export function useSettingsSearch({ index }: UseSettingsSearchOptions) {
+export function useSettingsSearch({ getIndex }: UseSettingsSearchOptions) {
 	const [searchQuery, setSearchQuery] = useState("")
 	const [isOpen, setIsOpen] = useState(false)
 
-	// Create Fzf instance for fuzzy searching
+	const hasQuery = searchQuery.trim().length > 0
 	const fzf = useMemo(
 		() =>
-			new Fzf(index, {
-				selector: (item) => `${item.label} ${item.sectionLabel}`,
-			}),
-		[index],
+			hasQuery ? new Fzf(getIndex(), { selector: (item) => `${item.label} ${item.sectionLabel}` }) : undefined,
+		[getIndex, hasQuery],
 	)
 
 	// Search results
 	const results = useMemo((): SearchResult[] => {
-		if (!searchQuery.trim()) {
+		if (!fzf) {
 			return []
 		}
 

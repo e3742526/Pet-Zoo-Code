@@ -115,10 +115,7 @@ const PromptsSettings = ({
 			</SectionHeader>
 
 			<Section>
-				<SearchableSetting
-					settingId="prompts-support-prompt-select"
-					section="prompts"
-					label={t("settings:sections.prompts")}>
+				<SearchableSetting settingId="prompts-support-prompt-select">
 					<Select
 						value={activeSupportOption}
 						onValueChange={(type) => setActiveSupportOption(type as SupportPromptType)}>

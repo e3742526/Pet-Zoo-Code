@@ -5,6 +5,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 import { SetCachedStateField } from "./types"
 import { SearchableSetting } from "./SearchableSetting"
+import type { SearchableSettingId } from "./settingsSearchIndex"
 
 type AllowlistField = "allowedReadFiles" | "allowedWriteFiles"
 
@@ -14,7 +15,7 @@ interface FilePatternAllowlistProps {
 	/** Key under `settings:autoApprove.allowlists` holding this list's strings. */
 	translationKey: "readFiles" | "writeFiles"
 	/** Id this list is registered under in the settings search index. */
-	settingId: string
+	settingId: SearchableSettingId
 	/** Prefix for this list's `data-testid`s, so the two lists stay distinguishable. */
 	testIdPrefix: string
 	patterns?: string[]
@@ -65,7 +66,7 @@ export const FilePatternAllowlist = ({
 	const descriptionId = `${settingId}-description`
 
 	return (
-		<SearchableSetting settingId={settingId} section="autoApprove" label={label}>
+		<SearchableSetting settingId={settingId}>
 			{/* The heading names the textarea rather than wrapping it: the toolkit
 			    renders a custom element, which a native `<label for>` cannot reach.  */}
 			<label id={headingId} className="block font-medium mb-1" data-testid={`${testIdPrefix}s-heading`}>

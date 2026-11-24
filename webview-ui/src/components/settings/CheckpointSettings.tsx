@@ -33,10 +33,7 @@ export const CheckpointSettings = ({
 			<SectionHeader>{t("settings:sections.checkpoints")}</SectionHeader>
 
 			<Section>
-				<SearchableSetting
-					settingId="checkpoints-enable"
-					section="checkpoints"
-					label={t("settings:checkpoints.enable.label")}>
+				<SearchableSetting settingId="checkpoints-enable">
 					<VSCodeCheckbox
 						checked={enableCheckpoints}
 						onChange={(e: any) => {
@@ -56,11 +53,7 @@ export const CheckpointSettings = ({
 				</SearchableSetting>
 
 				{enableCheckpoints && (
-					<SearchableSetting
-						settingId="checkpoints-timeout"
-						section="checkpoints"
-						label={t("settings:checkpoints.timeout.label")}
-						className="mt-4">
+					<SearchableSetting settingId="checkpoints-timeout" className="mt-4">
 						<label className="block text-sm font-medium mb-2">
 							{t("settings:checkpoints.timeout.label")}
 						</label>

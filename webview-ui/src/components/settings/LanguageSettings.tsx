@@ -59,10 +59,7 @@ export const LanguageSettings = ({
 				<div className="flex flex-col gap-6">
 					<div className="flex flex-col gap-3">
 						<SubTitle>{t("settings:language.languageTitle")}</SubTitle>
-						<SearchableSetting
-							settingId="language-select"
-							section="language"
-							label={t("settings:sections.language")}>
+						<SearchableSetting settingId="language-select">
 							<div className="flex flex-col gap-1">
 								<label htmlFor="display-language-select" className="font-medium">
 									{t("settings:language.displayLanguage")}
@@ -95,10 +92,7 @@ export const LanguageSettings = ({
 						<SubTitle>{t("settings:language.dateTimeTitle")}</SubTitle>
 
 						{/* Time format: segmented control, as in the design */}
-						<SearchableSetting
-							settingId="language-time-format"
-							section="language"
-							label={t("settings:language.timeFormat.label")}>
+						<SearchableSetting settingId="language-time-format">
 							<div className="flex flex-col gap-1.5">
 								<label className="font-medium">{t("settings:language.timeFormat.label")}</label>
 								{/* A radio group: one tab stop, the arrow keys move between the options and select them. */}
@@ -138,10 +132,7 @@ export const LanguageSettings = ({
 						</SearchableSetting>
 
 						{/* Date format: select + live example */}
-						<SearchableSetting
-							settingId="language-date-format"
-							section="language"
-							label={t("settings:language.dateFormat.label")}>
+						<SearchableSetting settingId="language-date-format">
 							<div className="flex flex-col gap-1.5">
 								<label htmlFor="date-format-select" className="font-medium">
 									{t("settings:language.dateFormat.label")}
@@ -175,10 +166,7 @@ export const LanguageSettings = ({
 							</div>
 						</SearchableSetting>
 
-						<SearchableSetting
-							settingId="language-relative-times"
-							section="language"
-							label={t("settings:language.relativeTimes.label")}>
+						<SearchableSetting settingId="language-relative-times">
 							<VSCodeCheckbox
 								checked={showRelativeTimes}
 								onChange={(e: Event | FormEvent<HTMLElement>) =>

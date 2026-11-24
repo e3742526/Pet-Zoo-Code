@@ -1,10 +1,36 @@
+import * as fs from "fs"
+import * as path from "path"
 import { Anthropic } from "@anthropic-ai/sdk"
-import { Tiktoken } from "tiktoken/lite"
+import { init, Tiktoken } from "tiktoken/lite/init"
 import o200kBase from "tiktoken/encoders/o200k_base"
 
 const TOKEN_FUDGE_FACTOR = 1.5
 
 let encoder: Tiktoken | null = null
+let initPromise: Promise<void> | null = null
+
+function resolveTiktokenWasmPath(): string {
+	const candidates = [path.join(__dirname, "tiktoken_bg.wasm"), path.join(__dirname, "..", "tiktoken_bg.wasm")]
+	for (const candidate of candidates) {
+		if (fs.existsSync(candidate)) {
+			return candidate
+		}
+	}
+	return require.resolve("tiktoken/lite/tiktoken_bg.wasm")
+}
+
+async function ensureTiktokenInitialized(): Promise<void> {
+	if (!initPromise) {
+		initPromise = init((imports) => {
+			const wasmBytes = fs.readFileSync(resolveTiktokenWasmPath())
+			return WebAssembly.instantiate(wasmBytes, imports)
+		}).catch((error) => {
+			initPromise = null
+			throw error
+		})
+	}
+	await initPromise
+}
 
 /**
  * Serializes a tool_use block to text for token counting.
@@ -59,8 +85,9 @@ export async function tiktoken(content: Anthropic.Messages.ContentBlockParam[]):
 
 	let totalTokens = 0
 
-	// Lazily create and cache the encoder if it doesn't exist.
+	// Lazily initialize WASM and cache the encoder if it doesn't exist.
 	if (!encoder) {
+		await ensureTiktokenInitialized()
 		encoder = new Tiktoken(o200kBase.bpe_ranks, o200kBase.special_tokens, o200kBase.pat_str)
 	}
 

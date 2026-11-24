@@ -18,6 +18,11 @@ export const NORMALIZATION_MAPS = {
 	},
 }
 
+const SMART_QUOTES_MAP: Record<string, string> = NORMALIZATION_MAPS.SMART_QUOTES
+const TYPOGRAPHIC_MAP: Record<string, string> = NORMALIZATION_MAPS.TYPOGRAPHIC
+const SMART_QUOTES_REGEX = new RegExp(`[${Object.keys(NORMALIZATION_MAPS.SMART_QUOTES).join("")}]`, "g")
+const TYPOGRAPHIC_REGEX = new RegExp(`[${Object.keys(NORMALIZATION_MAPS.TYPOGRAPHIC).join("")}]`, "g")
+
 /**
  * Options for string normalization
  */
@@ -51,16 +56,12 @@ export function normalizeString(str: string, options: NormalizeOptions = DEFAULT
 
 	// Replace smart quotes
 	if (opts.smartQuotes) {
-		for (const [smart, regular] of Object.entries(NORMALIZATION_MAPS.SMART_QUOTES)) {
-			normalized = normalized.replace(new RegExp(smart, "g"), regular)
-		}
+		normalized = normalized.replace(SMART_QUOTES_REGEX, (ch) => SMART_QUOTES_MAP[ch] ?? ch)
 	}
 
 	// Replace typographic characters
 	if (opts.typographicChars) {
-		for (const [typographic, regular] of Object.entries(NORMALIZATION_MAPS.TYPOGRAPHIC)) {
-			normalized = normalized.replace(new RegExp(typographic, "g"), regular)
-		}
+		normalized = normalized.replace(TYPOGRAPHIC_REGEX, (ch) => TYPOGRAPHIC_MAP[ch] ?? ch)
 	}
 
 	// Normalize whitespace

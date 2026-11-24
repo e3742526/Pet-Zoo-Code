@@ -6,17 +6,17 @@ import * as yaml from "yaml"
 
 describe("dist assets", () => {
 	const distPath = path.join(__dirname, "../dist")
-	const marketplaceAssetsPath = path.join(distPath, "assets/marketplace")
+	const marketplaceAssetsPath = path.join(__dirname, "../assets/marketplace")
 
 	describe("tiktoken", () => {
-		it("should have tiktoken wasm file", () => {
+		it("should have a single shared tiktoken wasm file", () => {
 			expect(fs.existsSync(path.join(distPath, "tiktoken_bg.wasm"))).toBe(true)
+			expect(fs.existsSync(path.join(distPath, "workers", "tiktoken_bg.wasm"))).toBe(false)
 		})
 	})
 
 	describe("tree-sitter", () => {
 		const treeSitterFiles = [
-			"tree-sitter-bash.wasm",
 			"tree-sitter-cpp.wasm",
 			"tree-sitter-c_sharp.wasm",
 			"tree-sitter-css.wasm",
@@ -24,21 +24,16 @@ describe("dist assets", () => {
 			"tree-sitter-dart.wasm",
 			"tree-sitter-elisp.wasm",
 			"tree-sitter-elixir.wasm",
-			"tree-sitter-elm.wasm",
 			"tree-sitter-embedded_template.wasm",
 			"tree-sitter-go.wasm",
 			"tree-sitter-html.wasm",
 			"tree-sitter-javascript.wasm",
 			"tree-sitter-java.wasm",
-			"tree-sitter-json.wasm",
 			"tree-sitter-kotlin.wasm",
 			"tree-sitter-lua.wasm",
-			"tree-sitter-objc.wasm",
 			"tree-sitter-ocaml.wasm",
 			"tree-sitter-php.wasm",
 			"tree-sitter-python.wasm",
-			"tree-sitter-ql.wasm",
-			"tree-sitter-rescript.wasm",
 			"tree-sitter-ruby.wasm",
 			"tree-sitter-rust.wasm",
 			"tree-sitter-scala.wasm",
@@ -51,12 +46,25 @@ describe("dist assets", () => {
 			"tree-sitter-typescript.wasm",
 			"tree-sitter-vue.wasm",
 			"tree-sitter.wasm",
-			"tree-sitter-yaml.wasm",
 			"tree-sitter-zig.wasm",
+		]
+
+		const unusedTreeSitterFiles = [
+			"tree-sitter-bash.wasm",
+			"tree-sitter-elm.wasm",
+			"tree-sitter-json.wasm",
+			"tree-sitter-objc.wasm",
+			"tree-sitter-ql.wasm",
+			"tree-sitter-rescript.wasm",
+			"tree-sitter-yaml.wasm",
 		]
 
 		test.each(treeSitterFiles)("should have %s file", (filename) => {
 			expect(fs.existsSync(path.join(distPath, filename))).toBe(true)
+		})
+
+		test.each(unusedTreeSitterFiles)("should not package unused %s file", (filename) => {
+			expect(fs.existsSync(path.join(distPath, filename))).toBe(false)
 		})
 	})
 

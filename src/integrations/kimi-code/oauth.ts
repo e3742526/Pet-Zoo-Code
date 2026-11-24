@@ -178,6 +178,7 @@ const delay = (milliseconds: number, signal: AbortSignal) =>
 export class KimiCodeOAuthManager {
 	private context: ExtensionContext | null = null
 	private credentials: KimiCodeCredentials | null = null
+	private credentialsLoaded = false
 	private state: KimiCodeOAuthState = { status: "idle" }
 	private refreshPromise: Promise<KimiCodeCredentials | null> | null = null
 	private pollingPromise: Promise<KimiCodeCredentials> | null = null
@@ -187,6 +188,8 @@ export class KimiCodeOAuthManager {
 
 	initialize(context: ExtensionContext): void {
 		this.context = context
+		this.credentials = null
+		this.credentialsLoaded = false
 	}
 
 	getState(): KimiCodeOAuthState {
@@ -194,14 +197,22 @@ export class KimiCodeOAuthManager {
 	}
 
 	private async loadCredentials(): Promise<KimiCodeCredentials | null> {
-		if (this.credentials) return this.credentials
-		const stored = await this.context?.secrets.get(KIMI_CODE_CREDENTIALS_KEY)
-		if (!stored) return null
+		if (!this.context) return null
+		if (this.credentialsLoaded) return this.credentials
+		const stored = await this.context.secrets.get(KIMI_CODE_CREDENTIALS_KEY)
+		if (!stored) {
+			this.credentials = null
+			this.credentialsLoaded = true
+			return null
+		}
 		try {
 			this.credentials = credentialsSchema.parse(JSON.parse(stored))
+			this.credentialsLoaded = true
 			return this.credentials
 		} catch {
-			await this.context?.secrets.delete(KIMI_CODE_CREDENTIALS_KEY)
+			await this.context.secrets.delete(KIMI_CODE_CREDENTIALS_KEY)
+			this.credentials = null
+			this.credentialsLoaded = true
 			return null
 		}
 	}
@@ -221,6 +232,7 @@ export class KimiCodeOAuthManager {
 			return false
 		}
 		this.credentials = credentials
+		this.credentialsLoaded = true
 		this.state = { status: "authenticated" }
 		return true
 	}
@@ -232,6 +244,7 @@ export class KimiCodeOAuthManager {
 		if (refreshPromise) await refreshPromise.catch(() => null)
 		await this.context?.secrets.delete(KIMI_CODE_CREDENTIALS_KEY)
 		this.credentials = null
+		this.credentialsLoaded = true
 		this.state = { status: "idle" }
 	}
 

@@ -466,13 +466,33 @@ export class ClineProvider
 			this.log(`Failed to initialize TaskHistoryStore: ${error}`)
 		})
 
+		// The title service calls getSettings/resolveProfile/isProfileAllowed in
+		// quick succession per job, and each only needs disjoint settings fields.
+		// Share a single in-flight getState() across the burst so one job costs
+		// one hydration instead of three. The share is released once settled, so
+		// later jobs re-read fresh state; a rejected fetch releases too, so an
+		// error never poisons subsequent jobs.
+		let taskTitleStateInFlight: Promise<Awaited<ReturnType<ClineProvider["getState"]>>> | undefined
+		const getTaskTitleState = () => {
+			if (!taskTitleStateInFlight) {
+				const pending = this.getState({ includeTaskHistory: false })
+				taskTitleStateInFlight = pending
+				const release = () => {
+					if (taskTitleStateInFlight === pending) {
+						taskTitleStateInFlight = undefined
+					}
+				}
+				void pending.then(release, release)
+			}
+			return taskTitleStateInFlight
+		}
+
 		this.taskTitleService = new TaskTitleService({
 			getHistoryItem: (taskId) => this.taskHistoryStore.get(taskId),
 			setAutoTitle: (taskId, autoTitle) => this.setAutoTitle(taskId, autoTitle),
 			getSettings: async () => {
-				const { taskTitleGenerationEnabled, taskTitleApiConfigId, customSupportPrompts } = await this.getState({
-					includeTaskHistory: false,
-				})
+				const { taskTitleGenerationEnabled, taskTitleApiConfigId, customSupportPrompts } =
+					await getTaskTitleState()
 				return {
 					enabled: taskTitleGenerationEnabled ?? DEFAULT_TASK_TITLE_GENERATION_ENABLED,
 					apiConfigId: taskTitleApiConfigId,
@@ -480,7 +500,7 @@ export class ClineProvider
 				}
 			},
 			resolveProfile: async (apiConfigId) => {
-				const { listApiConfigMeta = [] } = await this.getState({ includeTaskHistory: false })
+				const { listApiConfigMeta = [] } = await getTaskTitleState()
 				if (!listApiConfigMeta.some(({ id }) => id === apiConfigId)) {
 					return undefined
 				}
@@ -488,7 +508,7 @@ export class ClineProvider
 				return profile.apiProvider ? profile : undefined
 			},
 			isProfileAllowed: async (profile) => {
-				const { organizationAllowList } = await this.getState({ includeTaskHistory: false })
+				const { organizationAllowList } = await getTaskTitleState()
 				return ProfileValidator.isProfileAllowed(profile, organizationAllowList)
 			},
 			log: (message) => this.log(message),
@@ -707,10 +727,13 @@ export class ClineProvider
 		// Perform special setup provider specific tasks.
 		await this.performPreparationTasks(task)
 
-		// Ensure getState() resolves correctly.
-		const state = await this.getState()
+		// Ensure the current mode resolves correctly. Only `mode` is needed,
+		// so read it directly instead of a full getState() hydration.
+		// The default mirrors getState(): an unset mode resolves to the
+		// default slug instead of throwing on first run.
+		const mode = this.getValue("mode") ?? defaultModeSlug
 
-		if (!state || typeof state.mode !== "string") {
+		if (typeof mode !== "string") {
 			throw new Error(t("common:errors.retrieve_current_mode"))
 		}
 	}
@@ -1126,7 +1149,9 @@ export class ClineProvider
 		// Capture telemetry for code action usage
 		TelemetryService.instance.captureCodeActionUsed(promptType)
 
-		const { customSupportPrompts } = await this.getState()
+		// Only customSupportPrompts is needed here; read it directly instead of
+		// a full getState() hydration.
+		const customSupportPrompts = this.getValue("customSupportPrompts") ?? {}
 
 		// TODO: Improve type safety for promptType.
 		// Only the typed input is a user segment. The template and its other params are generated.
@@ -1160,7 +1185,9 @@ export class ClineProvider
 			return
 		}
 
-		const { customSupportPrompts } = await visibleProvider.getState()
+		// Only customSupportPrompts is needed here; read it directly instead of
+		// a full getState() hydration.
+		const customSupportPrompts = visibleProvider.getValue("customSupportPrompts") ?? {}
 		const segments = supportPrompt.createSegments(promptType, params, customSupportPrompts)
 		const prompt = joinSegments(segments)
 
@@ -1292,6 +1319,11 @@ export class ClineProvider
 
 		// Initialize out-of-scope variables that need to receive persistent
 		// global state values.
+		// NOTE: this intentionally stays a full getState() hydration (not a
+		// targeted sync read): the awaited rejection path is load-bearing for
+		// webview recovery — the watchdog/retry tests pin failed-hydration
+		// propagation and stale-resolve guards here. View resolution is cold
+		// (once per view lifetime), so hydrating once is acceptable.
 		await this.getState().then(
 			({
 				terminalShellIntegrationTimeout = Terminal.defaultShellIntegrationTimeout,
@@ -1582,8 +1614,22 @@ export class ClineProvider
 			)
 		}
 
-		const { apiConfiguration, enableCheckpoints, checkpointTimeout, experiments, diffFuzzyThreshold } =
-			await this.getState()
+		// Only task-construction fields are needed here; read them directly
+		// instead of a full getState() hydration (which also loads custom
+		// modes, retained policy, and builds the whole webview state object).
+		const stateValues = this.getValues()
+		const taskApiProvider: ProviderName =
+			stateValues.apiProvider && !isRetiredProvider(stateValues.apiProvider)
+				? stateValues.apiProvider
+				: providerIdentifiers.anthropic
+		const apiConfiguration = this.contextProxy.getProviderSettings()
+		if (!apiConfiguration.apiProvider) {
+			apiConfiguration.apiProvider = taskApiProvider
+		}
+		const enableCheckpoints = stateValues.enableCheckpoints ?? true
+		const checkpointTimeout = stateValues.checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS
+		const experiments = stateValues.experiments ?? experimentDefault
+		const diffFuzzyThreshold = stateValues.diffFuzzyThreshold ?? DEFAULT_DIFF_FUZZY_THRESHOLD
 		const task = new Task({
 			provider: this,
 			apiConfiguration,
@@ -3319,30 +3365,33 @@ export class ClineProvider
 			autoCloseZooOpenedFilesAfterUserEdited:
 				autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 			autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
-			openAiCodexIsAuthenticated: await (async () => {
-				try {
-					const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
-					return await openAiCodexOAuthManager.isAuthenticated()
-				} catch {
-					return false
+			...(await (async () => {
+				const [openAiCodexIsAuthenticated, kimiCodeAuth] = await Promise.all([
+					(async () => {
+						try {
+							const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
+							return await openAiCodexOAuthManager.isAuthenticated()
+						} catch {
+							return false
+						}
+					})(),
+					(async () => {
+						try {
+							const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
+							const isAuthenticated = await kimiCodeOAuthManager.isAuthenticated()
+							return { isAuthenticated, state: kimiCodeOAuthManager.getState() }
+						} catch {
+							return { isAuthenticated: false, state: undefined }
+						}
+					})(),
+				])
+
+				return {
+					openAiCodexIsAuthenticated,
+					kimiCodeIsAuthenticated: kimiCodeAuth.isAuthenticated,
+					kimiCodeOAuthState: kimiCodeAuth.state,
 				}
-			})(),
-			kimiCodeIsAuthenticated: await (async () => {
-				try {
-					const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
-					return await kimiCodeOAuthManager.isAuthenticated()
-				} catch {
-					return false
-				}
-			})(),
-			kimiCodeOAuthState: await (async () => {
-				try {
-					const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
-					return kimiCodeOAuthManager.getState()
-				} catch {
-					return undefined
-				}
-			})(),
+			})()),
 			platform: process.platform,
 			arch: process.arch,
 			debug: vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false),
@@ -3550,12 +3599,12 @@ export class ClineProvider
 			return
 		}
 
+		// TaskHistoryStore.getAll() already returns ts-descending order, so
+		// filtering preserves it — no re-sort needed (matches
+		// getStateToPostToWebview).
 		const taskHistory = history ?? this.taskHistoryStore.getAll()
 
-		// Sort and filter the history the same way as getStateToPostToWebview
-		const sortedHistory = taskHistory
-			.filter((item: HistoryItem) => item.ts && item.task)
-			.sort((a: HistoryItem, b: HistoryItem) => b.ts - a.ts)
+		const sortedHistory = taskHistory.filter((item: HistoryItem) => item.ts && item.task)
 
 		await this.postMessageToWebview({
 			type: "taskHistoryUpdated",
@@ -4112,7 +4161,9 @@ export class ClineProvider
 			return this.recentTasksCache
 		}
 
-		workspaceTasks.sort((a, b) => b.ts - a.ts)
+		// `history` comes from TaskHistoryStore.getAll(), which is already
+		// ts-descending, and filtering preserves that order — the 7-day cutoff
+		// scan below depends on it.
 		let recentTaskIds: string[] = []
 
 		if (workspaceTasks.length >= 100) {

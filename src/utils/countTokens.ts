@@ -2,9 +2,21 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import workerpool from "workerpool"
 
 import { countTokensResultSchema } from "../workers/types"
-import { tiktoken } from "./tiktoken"
 
 let pool: workerpool.Pool | null | undefined = undefined
+
+async function countTokensInMainThread(content: Anthropic.Messages.ContentBlockParam[]): Promise<number> {
+	const { tiktoken } = await import("./tiktoken")
+	return tiktoken(content)
+}
+
+export async function terminateCountTokensPool(): Promise<void> {
+	const currentPool = pool
+	pool = undefined
+	if (currentPool) {
+		await currentPool.terminate()
+	}
+}
 
 export type CountTokensOptions = {
 	useWorker?: boolean
@@ -25,7 +37,7 @@ export async function countTokens(
 	// If the worker pool doesn't exist or the caller doesn't want to use it
 	// then, use the non-worker implementation.
 	if (!useWorker || !pool) {
-		return tiktoken(content)
+		return countTokensInMainThread(content)
 	}
 
 	try {
@@ -38,8 +50,10 @@ export async function countTokens(
 
 		return result.count
 	} catch (error) {
+		const failedPool = pool
 		pool = null
+		void failedPool?.terminate()
 		console.error(error)
-		return tiktoken(content)
+		return countTokensInMainThread(content)
 	}
 }

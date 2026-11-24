@@ -22,6 +22,8 @@ import { GetModelsOptions } from "../../../shared/api"
 import type { ApiHandler } from "../../index"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
+const MISSING_DISK_CACHE_TTL_MS = 5 * 60 * 1000
+const missingDiskCache = new Map<string, number>()
 
 // Zod schema for validating ModelRecord structure from disk cache
 const modelRecordSchema = z.record(z.string(), modelInfoSchema)
@@ -249,6 +251,7 @@ export const getModels = async (options: GetModelsOptions, handler: ApiHandler):
 			reportedEmptyModelResponse.delete(cacheKey)
 
 			if (!shouldSkipCache) {
+				missingDiskCache.delete(cacheKey)
 				memoryCache.set(cacheKey, fetched)
 
 				await writeModels(cacheKey, fetched).catch((err) =>
@@ -459,6 +462,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		reportedEmptyModelResponse.delete(cacheKey)
 
 		if (!shouldSkipCache) {
+			missingDiskCache.delete(cacheKey)
 			memoryCache.set(cacheKey, models)
 
 			await writeModels(cacheKey, models).catch((err) =>
@@ -500,7 +504,9 @@ export const flushModels = async (
 		// Only delete memory cache when not refreshing. Use the compound cache key so that
 		// URL-scoped providers (litellm, poe, etc.) actually evict the per-server entry rather
 		// than a bare provider-name entry that was never written.
-		memoryCache.del(getCacheKey(options, handler))
+		const key = getCacheKey(options, handler)
+		memoryCache.del(key)
+		missingDiskCache.delete(key)
 	}
 }
 
@@ -526,6 +532,14 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 	const memoryModels = memoryCache.get<ModelRecord>(cacheKey)
 	if (memoryModels) {
 		return memoryModels
+	}
+
+	const missingUntil = missingDiskCache.get(cacheKey)
+	if (missingUntil !== undefined) {
+		if (Date.now() < missingUntil) {
+			return undefined
+		}
+		missingDiskCache.delete(cacheKey)
 	}
 
 	// Memory cache miss - try to load from disk synchronously
@@ -556,10 +570,13 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 			}
 
 			// Populate memory cache for future fast access
+			missingDiskCache.delete(cacheKey)
 			memoryCache.set(cacheKey, validation.data)
 
 			return validation.data
 		}
+
+		missingDiskCache.set(cacheKey, Date.now() + MISSING_DISK_CACHE_TTL_MS)
 	} catch (error) {
 		console.error(`[MODEL_CACHE] Error loading ${cacheKey} models from disk:`, error)
 	}

@@ -13,9 +13,11 @@ export const LOCK_TEXT_SYMBOL = "\u{1F512}"
  * Uses the 'ignore' library to support standard .gitignore syntax in .rooignore files.
  */
 export class RooIgnoreController {
+	private static readonly MAX_REALPATH_CACHE_SIZE = 2000
 	private cwd: string
 	private ignoreInstance: Ignore
 	private disposables: vscode.Disposable[] = []
+	private realpathCache: Map<string, string> = new Map()
 	rooIgnoreContent: string | undefined
 
 	constructor(cwd: string) {
@@ -63,8 +65,9 @@ export class RooIgnoreController {
 	 */
 	private async loadRooIgnore(): Promise<void> {
 		try {
-			// Reset ignore instance to prevent duplicate patterns
+			// Reset ignore instance and realpath cache to prevent stale patterns/symlinks
 			this.ignoreInstance = ignore()
+			this.realpathCache.clear()
 			const ignorePath = path.join(this.cwd, ".rooignore")
 			if (await fileExistsAtPath(ignorePath)) {
 				const content = await fs.readFile(ignorePath, "utf8")
@@ -94,14 +97,20 @@ export class RooIgnoreController {
 		try {
 			const absolutePath = path.resolve(this.cwd, filePath)
 
-			// Follow symlinks to get the real path
-			let realPath: string
-			try {
-				realPath = fsSync.realpathSync(absolutePath)
-			} catch {
-				// If realpath fails (file doesn't exist, broken symlink, etc.),
-				// use the original path
-				realPath = absolutePath
+			// Follow symlinks to get the real path (memoized to avoid repeated sync syscalls in loops)
+			let realPath = this.realpathCache.get(absolutePath)
+			if (realPath === undefined) {
+				try {
+					realPath = fsSync.realpathSync(absolutePath)
+				} catch {
+					// If realpath fails (file doesn't exist, broken symlink, etc.),
+					// use the original path
+					realPath = absolutePath
+				}
+				if (this.realpathCache.size >= RooIgnoreController.MAX_REALPATH_CACHE_SIZE) {
+					this.realpathCache.clear()
+				}
+				this.realpathCache.set(absolutePath, realPath)
 			}
 
 			// Convert real path to relative for .rooignore checking

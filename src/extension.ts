@@ -41,6 +41,7 @@ import { CodeIndexScope } from "./services/code-index/code-index-scope"
 import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
 import { autoImportSettings } from "./utils/autoImportSettings"
+import { terminateCountTokensPool } from "./utils/countTokens"
 import { API } from "./extension/api"
 
 import {
@@ -350,4 +351,5 @@ export async function deactivate() {
 	Terminal.setTerminalProfile(undefined)
 	TerminalRegistry.cleanup()
 	CodeIndexManagerRegistry.disposeAll()
+	await terminateCountTokensPool()
 }

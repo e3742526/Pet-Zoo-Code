@@ -369,31 +369,20 @@ export class CustomModesManager {
 		const roomodesPath = await this.getWorkspaceRoomodes()
 		const roomodesModes = roomodesPath ? await this.loadModesFromFile(roomodesPath) : []
 
-		// Create maps to store modes by source.
-		const projectModes = new Map<string, ModeConfig>()
-		const globalModes = new Map<string, ModeConfig>()
-
-		// Add project modes (they take precedence).
-		for (const mode of roomodesModes) {
-			projectModes.set(mode.slug, { ...mode, source: "project" as const })
-		}
-
-		// Add global modes.
-		for (const mode of settingsModes) {
-			if (!projectModes.has(mode.slug)) {
-				globalModes.set(mode.slug, { ...mode, source: "global" as const })
-			}
-		}
+		// Track project mode slugs (project modes take precedence over global modes).
+		const projectModeSlugs = new Set<string>(roomodesModes.map((mode) => mode.slug))
 
 		// Combine modes in the correct order: project modes first, then global modes.
 		const mergedModes = [
 			...roomodesModes.map((mode) => ({ ...mode, source: "project" as const })),
 			...settingsModes
-				.filter((mode) => !projectModes.has(mode.slug))
+				.filter((mode) => !projectModeSlugs.has(mode.slug))
 				.map((mode) => ({ ...mode, source: "global" as const })),
 		]
 
-		await this.context.globalState.update("customModes", mergedModes)
+		if (!this.cachedModes || JSON.stringify(this.cachedModes) !== JSON.stringify(mergedModes)) {
+			await this.context.globalState.update("customModes", mergedModes)
+		}
 
 		this.cachedModes = mergedModes
 		this.cachedAt = now

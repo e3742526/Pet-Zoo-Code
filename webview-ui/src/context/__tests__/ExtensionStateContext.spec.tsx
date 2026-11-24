@@ -1,11 +1,12 @@
 import { providerIdentifiers } from "@roo-code/types"
-import { render, screen, act } from "@/utils/test-utils"
+import { render, renderHook, screen, act } from "@/utils/test-utils"
 import React from "react"
 
 import {
 	type ProviderSettings,
 	type ExperimentId,
 	type ExtensionState,
+	type HistoryItem,
 	type ClineMessage,
 	type ExtensionMessage,
 	type MarketplaceItem,
@@ -231,6 +232,83 @@ describe("ExtensionStateContext", () => {
 			expectHistory([moved, added, first, renamed])
 		},
 	)
+
+	it.each(["state", "taskHistoryUpdated"] as const)(
+		"reuses equal history from %s and rebuilds the cache when records change",
+		(type) => {
+			const item: HistoryItem = {
+				id: "task-a",
+				number: 1,
+				ts: 1,
+				task: "Prompt",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				childIds: ["first-child"],
+			}
+			const initialHistory = [item]
+			const intern = vi.spyOn(StringCache.prototype, "intern")
+			const clear = vi.spyOn(StringCache.prototype, "clear")
+			const { result } = renderHook(() => useExtensionState(), {
+				wrapper: ({ children }) => (
+					<ExtensionStateContextProvider initialState={{ taskHistory: initialHistory }}>
+						{children}
+					</ExtensionStateContextProvider>
+				),
+			})
+			const post = (taskHistory: HistoryItem[]) => {
+				const data: ExtensionMessage =
+					type === "state" ? { type, state: { taskHistory, soundEnabled: true } } : { type, taskHistory }
+				act(() => window.dispatchEvent(new MessageEvent("message", { data })))
+			}
+			intern.mockClear()
+			post([{ ...item, childIds: ["first-child"] }])
+			expect(result.current.taskHistory).toBe(initialHistory)
+			expect(intern).not.toHaveBeenCalled()
+			expect(clear).not.toHaveBeenCalled()
+			if (type === "state") expect(result.current.soundEnabled).toBe(true)
+
+			const changedHistory = [{ ...item, childIds: ["next-child"] }]
+			post(changedHistory)
+			expect(result.current.taskHistory).toBe(changedHistory)
+			expect(intern).toHaveBeenCalledWith(changedHistory)
+			expect(clear).toHaveBeenCalledTimes(1)
+			expect(cacheFor(intern, "history")["cache"].has("first-child")).toBe(false)
+		},
+	)
+
+	it("compares a full snapshot with the preceding item update before React renders", () => {
+		const item: HistoryItem = {
+			id: "task-a",
+			number: 1,
+			ts: 1,
+			task: "Prompt",
+			tokensIn: 0,
+			tokensOut: 0,
+			totalCost: 0,
+		}
+		const clear = vi.spyOn(StringCache.prototype, "clear")
+		const { result } = renderHook(() => useExtensionState(), {
+			wrapper: ({ children }) => (
+				<ExtensionStateContextProvider
+					initialState={{ taskHistory: [item], currentTaskId: item.id, clineMessages: [] }}>
+					{children}
+				</ExtensionStateContextProvider>
+			),
+		})
+		const renamed = { ...item, title: "New title" }
+		const messages: ExtensionMessage[] = [
+			{ type: "taskHistoryItemUpdated", taskHistoryItem: renamed },
+			{ type: "taskHistoryUpdated", taskHistory: [{ ...renamed }] },
+		]
+		act(() => {
+			for (const data of messages) window.dispatchEvent(new MessageEvent("message", { data }))
+		})
+
+		expect(result.current.taskHistory[0]).toBe(renamed)
+		expect(result.current.currentTaskItem).toBe(renamed)
+		expect(clear).not.toHaveBeenCalled()
+	})
 
 	it.each([
 		["the item matches the pinned task id and no item is loaded yet", "task-a", undefined, "task-a", true],

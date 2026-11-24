@@ -1,5 +1,6 @@
 import { isRetiredProvider, providerIdentifiers } from "@roo-code/types"
 import React, { createContext, useCallback, useEffect, useRef, useState } from "react"
+import deepEqual from "fast-deep-equal"
 
 import {
 	type ProviderSettings,
@@ -198,6 +199,21 @@ const orderTaskHistory = (history: HistoryItem[]) =>
 		? [...history].sort(newestTaskFirst)
 		: history
 
+function upsertTaskHistoryItem(history: HistoryItem[], item: HistoryItem): HistoryItem[] {
+	const existingIndex = history.findIndex((entry) => entry.id === item.id)
+	const nextHistory = existingIndex === -1 ? [item, ...history] : [...history]
+	const index = Math.max(existingIndex, 0)
+	nextHistory[index] = item
+
+	// A single update can only break the order next to the new item.
+	const before = nextHistory[index - 1]
+	const after = nextHistory[index + 1]
+	if ((before && before.ts < item.ts) || (after && after.ts > item.ts)) {
+		nextHistory.sort(newestTaskFirst)
+	}
+	return nextHistory
+}
+
 export const mergeExtensionState = (prevState: ExtensionState, newState: Partial<ExtensionState>) => {
 	const { customModePrompts: prevCustomModePrompts, experiments: prevExperiments, ...prevRest } = prevState
 
@@ -240,7 +256,10 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 	// with new ones since the state that is broadcast is the entire objects so merging is not necessary.
 	return {
 		...rest,
-		taskHistory: taskHistory === undefined ? prevState.taskHistory : orderTaskHistory(taskHistory),
+		taskHistory:
+			taskHistory === undefined || taskHistory === prevState.taskHistory
+				? prevState.taskHistory
+				: orderTaskHistory(taskHistory),
 		apiConfiguration: apiConfiguration ?? prevState.apiConfiguration,
 		customModePrompts,
 		customSupportPrompts: customSupportPrompts ?? prevState.customSupportPrompts,
@@ -356,6 +375,25 @@ export const ExtensionStateContextProvider: React.FC<{
 		}
 		return mergedState
 	})
+	// Track accepted history in message arrival order, including updates batched by React.
+	const historyRef = useRef(state.taskHistory)
+	const acceptHistorySnapshot = useCallback(
+		(history: HistoryItem[]) => {
+			const previous = historyRef.current
+			const ordered = orderTaskHistory(history)
+			const unchanged =
+				ordered === previous ||
+				(ordered.length === previous.length && ordered.every((item, index) => deepEqual(item, previous[index])))
+			// An explicit empty snapshot flushes retained history strings.
+			if (!unchanged || ordered.length === 0) {
+				historyCache.clear()
+				historyCache.intern(ordered)
+			}
+			if (!unchanged) historyRef.current = ordered
+			return historyRef.current
+		},
+		[historyCache],
+	)
 
 	useEffect(() => {
 		recordDiagnosticsExtensionState({
@@ -446,14 +484,14 @@ export const ExtensionStateContextProvider: React.FC<{
 					) {
 						clineMessagesSeqRef.current = newState.clineMessagesSeq
 					}
-					if (newState.taskHistory) {
-						historyCache.clear()
-						historyCache.intern(newState.taskHistory)
-					}
+					const stateUpdate =
+						newState.taskHistory === undefined
+							? newState
+							: { ...newState, taskHistory: acceptHistorySnapshot(newState.taskHistory) }
 					if (newState.currentTaskItem) {
 						historyCache.intern(newState.currentTaskItem)
 					}
-					setState((prevState) => mergeExtensionState(prevState, newState))
+					setState((prevState) => mergeExtensionState(prevState, stateUpdate))
 					const provider = newState.apiConfiguration?.apiProvider
 					setShowWelcome(
 						!(provider && isRetiredProvider(provider)) && !checkExistKey(newState.apiConfiguration),
@@ -591,13 +629,10 @@ export const ExtensionStateContextProvider: React.FC<{
 					// Efficiently update just the task history without replacing entire state
 					const history = message.taskHistory
 					if (history !== undefined) {
-						historyCache.clear()
-						historyCache.intern(history)
-						const taskHistory = orderTaskHistory(history)
-						setState((prevState) => ({
-							...prevState,
-							taskHistory,
-						}))
+						const taskHistory = acceptHistorySnapshot(history)
+						setState((prevState) =>
+							prevState.taskHistory === taskHistory ? prevState : { ...prevState, taskHistory },
+						)
 					}
 					break
 				}
@@ -607,23 +642,12 @@ export const ExtensionStateContextProvider: React.FC<{
 						break
 					}
 					historyCache.intern(item)
+					const taskHistory = upsertTaskHistoryItem(historyRef.current, item)
+					historyRef.current = taskHistory
 					setState((prevState) => {
-						const previousHistory = prevState.taskHistory
-						const existingIndex = previousHistory.findIndex((entry) => entry.id === item.id)
-						const nextHistory = existingIndex === -1 ? [item, ...previousHistory] : [...previousHistory]
-						const index = Math.max(existingIndex, 0)
-						if (existingIndex !== -1) {
-							nextHistory[index] = item
-						}
-						// A single update can only break the order next to the new item.
-						const before = nextHistory[index - 1]
-						const after = nextHistory[index + 1]
-						if ((before && before.ts < item.ts) || (after && after.ts > item.ts)) {
-							nextHistory.sort(newestTaskFirst)
-						}
 						return {
 							...prevState,
-							taskHistory: nextHistory,
+							taskHistory,
 							currentTaskItem:
 								prevState.currentTaskItem?.id === item.id ||
 								(!prevState.currentTaskItem && prevState.currentTaskId === item.id)
@@ -635,7 +659,7 @@ export const ExtensionStateContextProvider: React.FC<{
 				}
 			}
 		},
-		[historyCache, messageCache, setListApiConfigMeta],
+		[acceptHistorySnapshot, historyCache, messageCache, setListApiConfigMeta],
 	)
 
 	useEffect(() => {

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { OpenAI } from "openai"
 import { OpenRouterEmbedder, OPENROUTER_DEFAULT_PROVIDER_NAME } from "../openrouter"
 import { getModelDimension, getDefaultModelId } from "../../../../shared/embeddingModels"
+import { Package } from "../../../../shared/package"
 import { clearAllMocks, restoreGlobals } from "../../../../test-utils/reset"
 import { providerIdentifiers } from "@roo-code/types/provider-identifiers"
 
@@ -93,8 +94,7 @@ describe("OpenRouterEmbedder", () => {
 				baseURL: "https://openrouter.ai/api/v1",
 				apiKey: mockApiKey,
 				defaultHeaders: {
-					"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-					"X-Title": "Zoo Code",
+					"User-Agent": `PetZooCode/${Package.version}`,
 				},
 			})
 		})

@@ -1,4 +1,5 @@
 import { t } from "../../../i18n"
+import { DEFAULT_HEADERS } from "../constants"
 
 // Image generation types
 interface ImageGenerationResponse {
@@ -59,7 +60,7 @@ interface ImagesApiOptions {
 }
 
 /**
- * Shared image generation implementation for OpenRouter and Zoo Code Cloud providers
+ * Generate an image through a provider's chat completions endpoint.
  */
 export async function generateImageWithProvider(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
 	const { baseURL, authToken, model, prompt, inputImage } = options
@@ -68,10 +69,9 @@ export async function generateImageWithProvider(options: ImageGenerationOptions)
 		const response = await fetch(`${baseURL}/chat/completions`, {
 			method: "POST",
 			headers: {
+				...DEFAULT_HEADERS,
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
 			},
 			body: JSON.stringify({
 				model,
@@ -216,10 +216,9 @@ export async function generateImageWithImagesApi(options: ImagesApiOptions): Pro
 		const fetchOptions: RequestInit = {
 			method: "POST",
 			headers: {
+				...DEFAULT_HEADERS,
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
 			},
 			body: JSON.stringify(requestBody),
 		}

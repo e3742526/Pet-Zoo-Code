@@ -7,9 +7,9 @@ import { waitUntilCompleted } from "../utils"
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 
 type CapturedOpenRouterRequest = {
-	xTitle: string | undefined
-	httpReferer: string | undefined
-	userAgent: string | undefined
+	appTitle: string | null
+	httpReferer: string | null
+	userAgent: string | null
 	userMessageContent?: unknown
 }
 
@@ -17,52 +17,32 @@ function getRequestUrl(input: RequestInfo | URL): string {
 	return typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url
 }
 
-function getHeaderValue(init: RequestInit | undefined, name: string): string | undefined {
-	if (!init?.headers) return undefined
-	const lower = name.toLowerCase()
-	if (Array.isArray(init.headers)) {
-		const found = (init.headers as string[][]).find(([k]) => k?.toLowerCase() === lower)
-		return found?.[1]
-	}
-	if (init.headers instanceof Headers) {
-		return init.headers.get(name) ?? undefined
-	}
-	const record = init.headers as Record<string, string>
-	return record[name] ?? Object.entries(record).find(([k]) => k.toLowerCase() === lower)?.[1]
-}
-
 function installOpenRouterRequestCapture(capture: CapturedOpenRouterRequest[], baseUrl: string): () => void {
 	const originalFetch = globalThis.fetch
-	const targetOrigin = new URL(baseUrl).origin
+	const target = new URL(`${baseUrl.replace(/\/+$/, "")}/chat/completions`)
 
 	globalThis.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
 		const url = getRequestUrl(input)
 
 		try {
-			if (new URL(url).origin === targetOrigin) {
-				const xTitle = getHeaderValue(init, "X-Title") ?? getHeaderValue(init, "x-title")
-				if (xTitle !== undefined) {
-					let userMessageContent: unknown
-					if (init?.body && typeof init.body === "string") {
-						try {
-							const body = JSON.parse(init.body)
-							const messages: Array<{ role?: string; content?: unknown }> = body.messages ?? []
-							const lastUser = [...messages].reverse().find((m) => m.role === "user")
-							userMessageContent = lastUser?.content
-						} catch {
-							// ignore parse errors
-						}
-					}
-					capture.push({
-						xTitle,
-						httpReferer: getHeaderValue(init, "HTTP-Referer") ?? getHeaderValue(init, "http-referer"),
-						userAgent: getHeaderValue(init, "User-Agent") ?? getHeaderValue(init, "user-agent"),
-						userMessageContent,
-					})
+			const request = new URL(url)
+			if (request.origin === target.origin && request.pathname === target.pathname) {
+				let userMessageContent: unknown
+				if (typeof init?.body === "string") {
+					const body = JSON.parse(init.body)
+					const messages: Array<{ role?: string; content?: unknown }> = body.messages ?? []
+					userMessageContent = messages.reverse().find((message) => message.role === "user")?.content
 				}
+				const headers = new Headers(init?.headers)
+				capture.push({
+					appTitle: headers.get("X-OpenRouter-Title") ?? headers.get("X-Title"),
+					httpReferer: headers.get("HTTP-Referer"),
+					userAgent: headers.get("User-Agent"),
+					userMessageContent,
+				})
 			}
 		} catch {
-			// ignore invalid URLs
+			// Ignore invalid capture data and let fetch handle the request.
 		}
 
 		return originalFetch.call(globalThis, input, init as RequestInit)
@@ -141,7 +121,7 @@ suite("OpenRouter provider", function () {
 		)
 	})
 
-	test("Should identify as Zoo Code in outbound DEFAULT_HEADERS", async () => {
+	test("Sends the fork's user agent without app attribution headers", async () => {
 		requests.length = 0
 
 		const api = globalThis.api
@@ -157,16 +137,9 @@ suite("OpenRouter provider", function () {
 		// actual task request.
 		assert.ok(requests.length > 0, "OpenRouter provider should issue at least one outbound request")
 		for (const captured of requests) {
-			assert.strictEqual(captured.xTitle, "Zoo Code", "X-Title header should identify the extension as Zoo Code")
-			assert.strictEqual(
-				captured.httpReferer,
-				"https://github.com/Zoo-Code-Org/Zoo-Code",
-				"HTTP-Referer header should point to the Zoo Code repository",
-			)
-			assert.ok(
-				captured.userAgent?.startsWith("ZooCode/"),
-				`User-Agent should start with "ZooCode/" — got: ${captured.userAgent}`,
-			)
+			assert.strictEqual(captured.appTitle, null)
+			assert.strictEqual(captured.httpReferer, null)
+			assert.match(captured.userAgent ?? "", /^PetZooCode\//)
 		}
 	})
 })

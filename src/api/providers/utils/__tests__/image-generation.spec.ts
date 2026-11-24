@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { Package } from "../../../../shared/package"
 import { generateImageWithImagesApi, generateImageWithProvider } from "../image-generation"
 
 // Mock the i18n module
@@ -62,10 +63,11 @@ describe("generateImageWithImagesApi", () => {
 				"https://api.example.com/v1/images/generations",
 				expect.objectContaining({
 					method: "POST",
-					headers: expect.objectContaining({
+					headers: {
 						Authorization: "Bearer test-token",
 						"Content-Type": "application/json",
-					}),
+						"User-Agent": `PetZooCode/${Package.version}`,
+					},
 				}),
 			)
 		})
@@ -391,9 +393,17 @@ describe("generateImageWithProvider (chat completions)", () => {
 
 		expect(result.success).toBe(true)
 
-		// Verify /chat/completions endpoint was used
-		const callUrl = vi.mocked(global.fetch).mock.calls[0][0]
-		expect(callUrl).toContain("/chat/completions")
+		expect(global.fetch).toHaveBeenCalledWith(
+			"https://api.example.com/v1/chat/completions",
+			expect.objectContaining({
+				method: "POST",
+				headers: {
+					Authorization: "Bearer test-token",
+					"Content-Type": "application/json",
+					"User-Agent": `PetZooCode/${Package.version}`,
+				},
+			}),
+		)
 	})
 
 	it("should handle missing images in response", async () => {

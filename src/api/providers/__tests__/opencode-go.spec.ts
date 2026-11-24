@@ -103,7 +103,7 @@ describe("OpencodeGoHandler", () => {
 			expect.objectContaining({
 				baseURL: "https://opencode.ai/zen/go/v1",
 				apiKey: "test-key",
-				defaultHeaders: expect.objectContaining({ "User-Agent": `ZooCode/${Package.version}` }),
+				defaultHeaders: expect.objectContaining({ "User-Agent": `PetZooCode/${Package.version}` }),
 			}),
 		)
 	})
@@ -116,7 +116,7 @@ describe("OpencodeGoHandler", () => {
 				// NOT include the trailing `/v1` used by the OpenAI client.
 				baseURL: "https://opencode.ai/zen/go",
 				apiKey: "test-key",
-				defaultHeaders: expect.objectContaining({ "User-Agent": `ZooCode/${Package.version}` }),
+				defaultHeaders: expect.objectContaining({ "User-Agent": `PetZooCode/${Package.version}` }),
 			}),
 		)
 	})

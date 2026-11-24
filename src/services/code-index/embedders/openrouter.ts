@@ -12,6 +12,7 @@ import { withValidationErrorHandling, HttpError, formatEmbeddingError } from "..
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { Mutex } from "async-mutex"
+import { DEFAULT_HEADERS } from "../../../api/providers/constants"
 import { handleOpenAIError } from "../../../api/providers/utils/error-handler"
 
 // Default provider name when no specific provider is selected
@@ -73,10 +74,7 @@ export class OpenRouterEmbedder implements IEmbedder {
 			this.embeddingsClient = new OpenAI({
 				baseURL: this.baseUrl,
 				apiKey: apiKey,
-				defaultHeaders: {
-					"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-					"X-Title": "Zoo Code",
-				},
+				defaultHeaders: DEFAULT_HEADERS,
 			})
 		} catch (error) {
 			// Use the error handler to transform ByteString conversion errors

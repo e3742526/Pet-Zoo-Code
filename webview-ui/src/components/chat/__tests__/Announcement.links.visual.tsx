@@ -41,7 +41,7 @@ test("announcement links open exactly once through the extension host", async ({
 	})
 
 	// The dialog portals outside the mount wrapper, so scope to the page.
-	await page.getByRole("link", { name: "https://zoocode.dev/pass" }).click()
+	await expect(page.locator('a[href="https://zoocode.dev/pass"]')).toHaveCount(0)
 	await page.getByRole("link", { name: "GitHub" }).click()
 	await page.getByRole("link", { name: "X", exact: true }).click()
 	await page.getByRole("link", { name: "Discord" }).click()
@@ -55,7 +55,6 @@ test("announcement links open exactly once through the extension host", async ({
 	// Exactly one host message per link, in render order.
 	const hostMessages = (await getCapturedVscodeMessages(page)).filter((message) => message.type === "openExternal")
 	expect(hostMessages).toEqual([
-		{ type: "openExternal", url: "https://zoocode.dev/pass" },
 		{ type: "openExternal", url: "https://github.com/Zoo-Code-Org/Zoo-Code" },
 		{ type: "openExternal", url: "https://x.com/ZooCodeDev" },
 		{ type: "openExternal", url: "https://discord.gg/VxfP4Vx3gX" },

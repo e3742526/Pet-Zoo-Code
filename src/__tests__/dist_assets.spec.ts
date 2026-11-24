@@ -12,9 +12,9 @@ describe("dist assets", () => {
 	const marketplaceAssetsPath = path.join(__dirname, "../assets/marketplace")
 	const webviewAssetsPath = path.join(__dirname, "../webview-ui/build/assets")
 
-	it("excludes retired Zoo Gateway, account, and analytics endpoints from both runtimes", () => {
+	it("excludes retired Zoo Gateway, Zoo Pass, account, and analytics URLs from both runtimes", () => {
 		const retiredEndpoints =
-			/https?:\/\/(?:(?:app|clerk)\.roocode\.com|(?:[\w-]+\.)*posthog\.com)\b|\/api\/(?:gateway\/v1|extension\/auth\/(?:verify|revoke))\b/g
+			/https?:\/\/(?:(?:app|clerk)\.roocode\.com\b|(?:[\w-]+\.)*posthog\.com\b|(?:www\.)?zoocode\.dev\/pass\b)|\/api\/(?:gateway\/v1|extension\/auth\/(?:verify|revoke))\b/g
 		const webviewScripts = fs
 			.readdirSync(webviewAssetsPath)
 			.filter((filename) => filename.endsWith(".js"))

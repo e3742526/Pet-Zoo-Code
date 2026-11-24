@@ -348,8 +348,6 @@
 		"support": "請在 <githubLink>GitHub</githubLink> 上為 Zoo Code 加星支持我們。",
 		"release": {
 			"heading": "Zoo Code v3.98.2 新功能",
-			"highlight0": "💫預覽 Zoo Pass：只要你的 Zoo Gateway 帳戶中有任意金額的餘額，即可在 12 月 1 日前免費無限使用 GLM-5.3-Flash。",
-			"highlight0Url": "https://zoocode.dev/pass",
 			"highlight1": "🔌 模型：支援 Gemini 3.8 Flash 和新的 Gemini 4 Carbon、Hydrogen、Neon 模型。可為 Gemini 設定 xhigh 思考層級。",
 			"highlight2": "🌐 Responses API：可為 OpenAI Compatible 供應商啟用 Responses API 支援。在需要該 API 的端點上，含工具使用的推理也能正常運作。",
 			"highlight3": "🔧 修正：Vertex 的 Gemini 請求不再以模型輪次結尾；LiteLLM 下的 Gemini 思考簽章保持完整；Ollama 工作會在設定的上下文限制處壓縮。"

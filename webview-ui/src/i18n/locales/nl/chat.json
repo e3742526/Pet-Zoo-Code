@@ -302,8 +302,6 @@
 		"support": "Steun Zoo Code door ons een ster te geven op <githubLink>GitHub</githubLink>.",
 		"release": {
 			"heading": "Nieuw in Zoo Code v3.98.2",
-			"highlight0": "💫Probeer Zoo Pass met onbeperkt GLM-5.3-Flash gratis tot 1 december met elk geldbedrag op je Zoo Gateway-account.",
-			"highlight0Url": "https://zoocode.dev/pass",
 			"highlight1": "🔌 Modellen: Gebruik Gemini 3.8 Flash en de nieuwe modellen Gemini 4 Carbon, Hydrogen en Neon. Stel xhigh-denkniveaus in voor Gemini.",
 			"highlight2": "🌐 Responses API: Zet Responses API-ondersteuning aan voor OpenAI Compatible-providers. Redeneren met toolgebruik werkt op endpoints die dit vereisen.",
 			"highlight3": "🔧 Oplossingen: Vertex Gemini-verzoeken eindigen niet langer op een modelbeurt. Gemini-thought-signatures blijven via LiteLLM intact. Ollama-taken condenseren op de ingestelde contextlimiet."

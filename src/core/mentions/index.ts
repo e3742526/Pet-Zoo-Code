@@ -20,6 +20,10 @@ import { getCommand, type Command } from "../../services/command/commands"
 import { buildSkillResult, resolveSkillContentForMode, type SkillLookup } from "../../services/skills/skillInvocation"
 import type { SkillContent } from "../../shared/skills"
 
+// Limit automatic file reads and the formatted text added by each folder mention.
+const MAX_FOLDER_MENTION_FILE_READS = 20
+const MAX_FOLDER_MENTION_INLINE_BYTES = 64 * 1024
+
 export async function openMention(cwd: string, mention?: string): Promise<void> {
 	if (!mention) {
 		return
@@ -265,7 +269,7 @@ export async function parseMentions(
 async function getFileOrFolderContentWithMetadata(
 	mentionPath: string,
 	cwd: string,
-	rooIgnoreController?: any,
+	rooIgnoreController?: RooIgnoreController,
 	showRooIgnoredFiles: boolean = false,
 	fileContextTracker?: FileContextTracker,
 ): Promise<MentionContentBlock> {
@@ -325,6 +329,9 @@ async function getFileOrFolderContentWithMetadata(
 			const entries = await fs.readdir(absPath, { withFileTypes: true })
 			let folderListing = ""
 			const fileReadResults: string[] = []
+			let fileReads = 0
+			let inlinedBytes = 0
+			let omittedFileContents = false
 			const LOCK_SYMBOL = "🔒"
 
 			for (let index = 0; index < entries.length; index++) {
@@ -343,26 +350,36 @@ async function getFileOrFolderContentWithMetadata(
 				}
 
 				const displayName = isIgnored ? `${LOCK_SYMBOL} ${entry.name}` : entry.name
+				folderListing += `${linePrefix}${displayName}${entry.isDirectory() ? "/" : ""}\n`
 
-				if (entry.isFile()) {
-					folderListing += `${linePrefix}${displayName}\n`
-					if (!isIgnored) {
-						const filePath = path.join(mentionPath, entry.name)
-						const absoluteFilePath = path.resolve(absPath, entry.name)
-						try {
-							const isBinary = await isBinaryFile(absoluteFilePath).catch(() => false)
-							if (!isBinary) {
-								const result = await extractTextFromFileWithMetadata(absoluteFilePath)
-								fileReadResults.push(formatFileReadResult(filePath.toPosix(), result))
-							}
-						} catch {
-							// Skip files that can't be read
-						}
+				if (isIgnored || !entry.isFile()) {
+					continue
+				}
+				if (fileReads >= MAX_FOLDER_MENTION_FILE_READS || inlinedBytes >= MAX_FOLDER_MENTION_INLINE_BYTES) {
+					omittedFileContents = true
+					continue
+				}
+
+				try {
+					const isBinary = await isBinaryFile(entryPath).catch(() => false)
+					if (isBinary) {
+						continue
 					}
-				} else if (entry.isDirectory()) {
-					folderListing += `${linePrefix}${displayName}/\n`
-				} else {
-					folderListing += `${linePrefix}${displayName}\n`
+
+					fileReads++
+					const result = await extractTextFromFileWithMetadata(entryPath)
+					const filePath = path.join(mentionPath, entry.name).toPosix()
+					const formatted = formatFileReadResult(filePath, result)
+					const bytes = Buffer.byteLength(formatted) + (fileReadResults.length > 0 ? 2 : 0)
+					if (inlinedBytes + bytes > MAX_FOLDER_MENTION_INLINE_BYTES) {
+						omittedFileContents = true
+						continue
+					}
+
+					inlinedBytes += bytes
+					fileReadResults.push(formatted)
+				} catch {
+					// Skip files that cannot be read.
 				}
 			}
 
@@ -370,6 +387,10 @@ async function getFileOrFolderContentWithMetadata(
 			let content = `[read_file for folder '${mentionPath}']\nFolder listing:\n${folderListing}`
 			if (fileReadResults.length > 0) {
 				content += `\n\n--- File Contents ---\n\n${fileReadResults.join("\n\n")}`
+			}
+			if (omittedFileContents) {
+				content +=
+					"\n\nFolder content limit reached. Use read_file with paths from the listing to open more files."
 			}
 
 			return {

@@ -227,3 +227,11 @@ The fixture alternated the original and updated store against 1,000 real history
 | Default storage, no changed files |      9.79 ms (9.36–10.72) | 10.58 ms (10.04–10.79) |
 
 Storage setting reads fell from 2,001 per initial scan and 1,001 per unchanged scan to one in both cases. The median for an unchanged scan in default storage rose by 0.79 ms, within the 1 ms comparison limit. The timings measure the store scan, with a simulated VS Code configuration and real filesystem checks. The regression test also changes the configured root between scans. The file replacement and restart model still checks the same lock and recovery rules.
+
+## Folder mentions
+
+The O3 finding in `gem-hydro-parentrepo-survey-24NOV2026.md` is implemented in `src/core/mentions/index.ts`. Each folder mention lists its entries and extracts text from up to 20 files. It includes up to 64 KiB of formatted file contents. The byte limit covers long lines and multibyte text. Files whose contents do not fit remain listed, and the prompt tells the model how to open them with `read_file`. Explicit file mentions retain their own limits. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2680)
+
+The 48-file fixture used 150 lines per file. The expanded folder block fell from 624,794 to 65,960 bytes, including the directory listing and note. The extension's tokenizer estimate fell from 301,419 to 31,901 tokens. The median expansion time fell from 9.73 ms to 4.39 ms over nine paired runs after two warm-up runs. The observed ranges were 8.35–14.97 ms and 3.42–8.64 ms. The three-file fixture produced byte-for-byte identical text, with a median time of 0.44 ms before and 0.46 ms after, within the 0.1 ms comparison limit.
+
+The focused tests verify the file read limit, the combined UTF-8 size, the listing, and a direct mention of an omitted file. They also verify that the folder still applies ignore rules and omits binary contents. The limits apply per folder mention. Directory listings and explicit file mentions can still add tokens.

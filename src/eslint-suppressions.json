@@ -579,11 +579,6 @@
 			"count": 1
 		}
 	},
-	"core/mentions/index.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 1
-		}
-	},
 	"core/mentions/processUserContentMentions.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 1

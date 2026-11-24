@@ -10,11 +10,73 @@ declare module "exceljs" {
 }
 
 const ROW_LIMIT = 50000
+const MILLISECONDS_PER_DAY = 86_400_000
+const EXCEL_EPOCH = Date.UTC(1899, 11, 30)
+const EXCEL_1904_EPOCH = Date.UTC(1904, 0, 1)
+
+function formatElapsedTime(seconds: number, elapsedUnit: string, format: string): string {
+	const duration = Math.abs(seconds)
+	const unit = elapsedUnit[0]
+	const unitSeconds = unit === "h" ? 3600 : unit === "m" ? 60 : 1
+	const parts = [String(Math.floor(duration / unitSeconds)).padStart(elapsedUnit.length, "0")]
+	if (unit === "h" && format.includes("m")) {
+		parts.push(String(Math.floor(duration / 60) % 60).padStart(2, "0"))
+	}
+	if (unit !== "s" && format.includes("s")) {
+		parts.push(String(duration % 60).padStart(2, "0"))
+	}
+	return (seconds < 0 ? "-" : "") + parts.join(":")
+}
+
+/** ExcelJS can return either a UTC Date or the original day count for an elapsed format. */
+function formatTemporalValue(value: Date | number, cell: ExcelJS.Cell): string {
+	// Remove literals before reading elapsed directives such as [h] or [mm].
+	const format = (cell.numFmt ?? "")
+		.replace(/"[^"]*"|[\\_*]./g, "")
+		.split(";")[0]
+		.toLowerCase()
+	const elapsedUnit = format.match(/\[(h+|m+|s+)\]/)?.[1]
+	// The loader can remove escape markers, leaving literal words in the format.
+	const tokens =
+		format
+			.replace(/\[[^\]]*\]/g, "")
+			.match(/\b[ymdhs]+\b/g)
+			?.join(" ") ?? ""
+	const hasTime = /[hs]/.test(tokens)
+	if (typeof value === "number" && !elapsedUnit && !hasTime) {
+		return String(value)
+	}
+
+	const epoch = cell.worksheet.workbook.properties.date1904 ? EXCEL_1904_EPOCH : EXCEL_EPOCH
+	const timestamp = typeof value === "number" ? epoch + value * MILLISECONDS_PER_DAY : value.getTime()
+	if (elapsedUnit) {
+		const seconds = Math.round((timestamp - epoch) / 1000)
+		return Number.isSafeInteger(seconds) ? formatElapsedTime(seconds, elapsedUnit, tokens) : String(value)
+	}
+
+	const date = new Date(hasTime ? Math.round(timestamp / 1000) * 1000 : timestamp)
+	if (Number.isNaN(date.getTime())) {
+		return String(value)
+	}
+
+	const [calendar, clock] = date.toISOString().split("T")
+	if (!hasTime) {
+		return calendar
+	}
+	const time = clock.slice(0, 8)
+	return /[dy]|m{3,}/.test(tokens) ? `${calendar} ${time}` : time
+}
 
 function formatCellValue(cell: ExcelJS.Cell): string {
-	const value = cell.value
+	const isFormula = cell.type === ExcelJS.ValueType.Formula
+	// Formula values omit false and zero in ExcelJS's value getter. Read the cached result directly.
+	const value = isFormula ? cell.result : cell.value
 	if (value === null || value === undefined) {
-		return ""
+		if (!isFormula) {
+			return ""
+		}
+		const formula = cell.formula
+		return formula ? `[Formula: ${formula}]` : "[Formula]"
 	}
 
 	// Handle error values (#DIV/0!, #N/A, etc.)
@@ -22,9 +84,8 @@ function formatCellValue(cell: ExcelJS.Cell): string {
 		return `[Error: ${value.error}]`
 	}
 
-	// Handle dates - ExcelJS can parse them as Date objects
-	if (value instanceof Date) {
-		return value.toISOString().split("T")[0]
+	if (value instanceof Date || (typeof value === "number" && /[hs]|\[/i.test(cell.numFmt ?? ""))) {
+		return formatTemporalValue(value, cell)
 	}
 
 	// Handle rich text
@@ -35,15 +96,6 @@ function formatCellValue(cell: ExcelJS.Cell): string {
 	// Handle hyperlinks
 	if (typeof value === "object" && "text" in value && "hyperlink" in value) {
 		return `${value.text} (${value.hyperlink})`
-	}
-
-	// Handle formulas - get the calculated result
-	if (typeof value === "object" && "formula" in value) {
-		if ("result" in value && value.result !== undefined && value.result !== null) {
-			return value.result.toString()
-		} else {
-			return `[Formula: ${value.formula}]`
-		}
 	}
 
 	return value.toString()

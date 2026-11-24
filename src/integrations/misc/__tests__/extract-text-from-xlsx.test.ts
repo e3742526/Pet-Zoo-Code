@@ -40,6 +40,68 @@ describe("XLSX buffer decoding", () => {
 	it("rejects invalid workbook bytes instead of returning empty workbook text", async () => {
 		await expect(extractTextFromXLSX(Buffer.from("not an XLSX archive"))).rejects.toThrow()
 	})
+
+	it("reads shared formulas and cached results that include zero, false, and errors", async () => {
+		const workbook = new ExcelJS.Workbook()
+		const worksheet = workbook.addWorksheet("Formulas")
+		worksheet.getColumn("A").values = [4, -1, 20]
+		worksheet.fillFormula("B1:B3", "A1+1", [5, 0])
+		worksheet.getCell("C1").value = { formula: "A1<0", result: false }
+		worksheet.getCell("C2").value = { formula: "1/0", result: { error: "#DIV/0!" } }
+		worksheet.getCell("C3").value = {
+			formula: "DATE(2024,10,30)+TIME(14,5,6)",
+			result: new Date("2024-10-30T14:05:06Z"),
+		}
+		worksheet.getCell("C3").numFmt = "yyyy-mm-dd hh:mm:ss"
+
+		const expected = [
+			"--- Sheet: Formulas ---",
+			"4\t5\tfalse",
+			"-1\t0\t[Error: #DIV/0!]",
+			"20\t[Formula: A3+1]\t2024-10-30 14:05:06",
+		].join("\n")
+		expect(formatWorkbook(workbook)).toBe(expected)
+		expect(await extractTextFromXLSX(Buffer.from(await workbook.xlsx.writeBuffer()))).toBe(expected)
+	})
+
+	it.each([false, true])("reads clock times and elapsed formats with date1904=%s", async (date1904) => {
+		const workbook = new ExcelJS.Workbook()
+		workbook.properties.date1904 = date1904
+		const worksheet = workbook.addWorksheet("Times")
+		const cases = [
+			{ serial: 0.75, format: 'h:mm" [m]"', expected: "18:00:00" },
+			{ serial: 0.25, format: "h:mm\\ \\d\\a\\i\\l\\y", expected: "06:00:00" },
+			{ serial: 1.5, format: "[h]:mm", expected: "36:00" },
+			{ serial: 1.5, format: "[h]", expected: "36" },
+			{ serial: 1 + 3630 / 86400, format: "[mm]:ss", expected: "1500:30" },
+			{ serial: 1 / 16, format: "[ss]", expected: "5400" },
+		]
+		cases.forEach(({ serial, format }, index) => {
+			const cell = worksheet.getCell(index + 1, 1)
+			cell.value = serial
+			cell.numFmt = format
+		})
+
+		const expected = ["--- Sheet: Times ---", ...cases.map(({ expected }) => expected)].join("\n")
+		expect(formatWorkbook(workbook)).toBe(expected)
+		expect(await extractTextFromXLSX(Buffer.from(await workbook.xlsx.writeBuffer()))).toBe(expected)
+	})
+
+	it("keeps the original day in date-only cells and rounds visible times", async () => {
+		const workbook = new ExcelJS.Workbook()
+		const worksheet = workbook.addWorksheet("Dates")
+		const nearMidnight = new Date("2024-09-30T23:59:59.900Z")
+		worksheet.getCell("A1").value = nearMidnight
+		worksheet.getCell("A1").numFmt = "yyyy-mm-dd"
+		worksheet.getCell("B1").value = nearMidnight
+		worksheet.getCell("B1").numFmt = "yyyy-mm-dd hh:mm:ss"
+		worksheet.getCell("C1").value = nearMidnight
+		worksheet.getCell("C1").numFmt = "hh:mm:ss"
+
+		const expected = "--- Sheet: Dates ---\n2024-09-30\t2024-10-01 00:00:00\t00:00:00"
+		expect(formatWorkbook(workbook)).toBe(expected)
+		expect(await extractTextFromXLSX(Buffer.from(await workbook.xlsx.writeBuffer()))).toBe(expected)
+	})
 })
 
 describe("formatWorkbook", () => {

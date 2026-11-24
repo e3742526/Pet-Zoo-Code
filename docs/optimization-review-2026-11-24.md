@@ -263,6 +263,12 @@ The file watcher creates fresh batch event channels for each run. Repeated start
 
 The regression tests reproduce the missing notifications and duplicate progress listeners. They check start, progress, completion, deletion errors, and delayed callbacks after restart. The tests use a simulated VS Code watcher and vector store.
 
+## Excel formula and time extraction
+
+XLSX extraction reads cached formula results, including zero, false, and error values. A shared formula without a cached result shows its translated expression. The extractor uses the cell format and workbook date system to distinguish a calendar date, a clock time, and an elapsed duration. Clock times use a consistent 24-hour format with seconds. Elapsed durations use the bracketed unit from the cell format. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1781)
+
+The regression tests exercise both in-memory workbooks and XLSX bytes. They cover filled-down formulas, formula date-times, date-only cells near midnight, quoted literals, and elapsed hours, minutes, and seconds in the 1900 and 1904 date systems.
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

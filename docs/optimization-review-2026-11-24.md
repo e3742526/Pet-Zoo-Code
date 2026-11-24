@@ -235,3 +235,11 @@ The O3 finding in `gem-hydro-parentrepo-survey-24NOV2026.md` is implemented in `
 The 48-file fixture used 150 lines per file. The expanded folder block fell from 624,794 to 65,960 bytes, including the directory listing and note. The extension's tokenizer estimate fell from 301,419 to 31,901 tokens. The median expansion time fell from 9.73 ms to 4.39 ms over nine paired runs after two warm-up runs. The observed ranges were 8.35–14.97 ms and 3.42–8.64 ms. The three-file fixture produced byte-for-byte identical text, with a median time of 0.44 ms before and 0.46 ms after, within the 0.1 ms comparison limit.
 
 The focused tests verify the file read limit, the combined UTF-8 size, the listing, and a direct mention of an omitted file. They also verify that the folder still applies ignore rules and omits binary contents. The limits apply per folder mention. Directory listings and explicit file mentions can still add tokens.
+
+## Webview icon and date dependencies
+
+The O1 finding in `gem-hydro-parentrepo-survey-24NOV2026.md` is implemented. The announcement uses the same three Simple Icons paths with inline SVGs. The MCP error log formats its English timestamps with native dates. The webview manifest and workspace lockfile no longer include `react-icons` or `date-fns`.
+
+The production build manifest reported 3,171,482 bytes of startup JavaScript before the change and 3,168,933 bytes after. The gzip size fell from 870,292 to 869,372 bytes. The Settings chunk fell from 291,998 to 272,849 bytes, or from 82,217 to 76,696 bytes with gzip. The formatter stays in the Settings chunk. The source maps identify both packages in the original build and show their removal from the updated build.
+
+All three rendered SVGs matched their previous markup. The old and new timestamp formatters produced the same labels in 64,080 cases across five time zones. Over nine paired runs after three warm-up runs, median formatting time for 4,096 labels fell from 6.26 ms to 0.84 ms. The observed ranges were 5.92–7.98 ms and 0.83–0.86 ms. The focused tests cover calendar boundaries, midnight, noon, and numeric dates.

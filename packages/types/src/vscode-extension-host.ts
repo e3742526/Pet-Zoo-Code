@@ -63,7 +63,6 @@ export interface ExtensionMessage {
 		| "taskHistoryUpdated"
 		| "taskHistoryItemUpdated"
 		| "selectedImages"
-		| "theme"
 		| "workspaceUpdated"
 		| "invoke"
 		| "messageUpdated"

@@ -3922,7 +3922,7 @@ describe("ClineProvider", () => {
 		expect(remainingTask.dispose).toHaveBeenCalledOnce()
 	})
 
-	test("handles webviewDidLaunch message", async () => {
+	test("hydrates the webview on launch without sending a theme payload", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 
 		// Get the message handler from onDidReceiveMessage
@@ -3932,8 +3932,8 @@ describe("ClineProvider", () => {
 		// Simulate webviewDidLaunch message
 		await messageHandler({ type: "webviewDidLaunch" })
 
-		// Should post state and theme to webview
-		expect(mockPostMessage).toHaveBeenCalled()
+		expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
+		expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "theme" }))
 	})
 
 	test("logs detached workspace initialization failures", async () => {

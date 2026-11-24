@@ -77,7 +77,6 @@ import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { openFile } from "../../integrations/misc/open-file"
 import { openImage, saveImage } from "../../integrations/misc/image-handler"
 import { selectImages } from "../../integrations/misc/process-images"
-import { getTheme } from "../../integrations/theme/getTheme"
 import { searchWorkspaceFiles } from "../../services/search/file-search"
 import { fileExistsAtPath } from "../../utils/fs"
 import { playTts, setTtsEnabled, setTtsSpeed, stopTts } from "../../utils/tts"
@@ -611,10 +610,6 @@ export const webviewMessageHandler = async (
 			void provider.workspaceTracker
 				?.initializeFilePaths()
 				.catch((err) => provider.log(`Workspace initialization error: ${err}`)) // Don't await.
-
-			await getTheme().then((theme) =>
-				provider.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }),
-			)
 
 			// If MCP Hub is already initialized, update the webview with
 			// current server list.

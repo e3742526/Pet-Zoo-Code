@@ -35,7 +35,6 @@ import { CustomSupportPrompts } from "@roo/support-prompt"
 import { experimentDefault } from "@roo/experiments"
 
 import { vscode } from "@src/utils/vscode"
-import { convertTextMateToHljs } from "@src/utils/textMateToHljs"
 import { StringCache } from "@src/utils/stringCache"
 import {
 	recordDiagnosticsHydration,
@@ -48,7 +47,6 @@ export interface ExtensionStateContextType extends ExtensionState {
 	historyPreviewCollapsed?: boolean // Add the new state property
 	didHydrateState: boolean
 	showWelcome: boolean
-	theme: any
 	mcpServers: McpServer[]
 	currentCheckpoint?: string
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
@@ -360,7 +358,6 @@ export const ExtensionStateContextProvider: React.FC<{
 
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
-	const [theme, setTheme] = useState<any>(undefined)
 	const [filePaths, setFilePaths] = useState<string[]>([])
 	const [openedTabs, setOpenedTabs] = useState<Array<{ label: string; isActive: boolean; path?: string }>>([])
 	const [commands, setCommands] = useState<Command[]>([])
@@ -491,12 +488,6 @@ export const ExtensionStateContextProvider: React.FC<{
 							vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 							return { ...prevState, autoApprovalEnabled: newValue }
 						})
-					}
-					break
-				}
-				case "theme": {
-					if (message.text) {
-						setTheme(convertTextMateToHljs(JSON.parse(message.text)))
 					}
 					break
 				}
@@ -668,7 +659,6 @@ export const ExtensionStateContextProvider: React.FC<{
 		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? true,
 		didHydrateState,
 		showWelcome,
-		theme,
 		mcpServers,
 		currentCheckpoint,
 		filePaths,

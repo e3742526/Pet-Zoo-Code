@@ -19,10 +19,6 @@ vi.mock("../../../api/providers/fetchers/lmstudio", () => ({
 	getLMStudioModels: vi.fn(),
 }))
 
-vi.mock("../../../integrations/theme/getTheme", () => ({
-	getTheme: vi.fn().mockResolvedValue({}),
-}))
-
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
 	openAiCodexOAuthManager: {
 		getAccessToken: vi.fn(),

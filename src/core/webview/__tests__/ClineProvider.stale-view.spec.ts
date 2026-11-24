@@ -126,10 +126,6 @@ vi.mock("@roo-code/cloud", () => ({
 	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
 }))
 
-vi.mock("../../../integrations/theme/getTheme", () => ({
-	getTheme: vi.fn().mockResolvedValue({ kind: "dark" }),
-}))
-
 vi.mock("../webviewMessageHandler", () => ({
 	webviewMessageHandler: vi.fn().mockResolvedValue(undefined),
 }))
@@ -422,19 +418,6 @@ describe("ClineProvider - stale view lifecycle", () => {
 		expect(second.postMessage).toHaveBeenCalledWith({ type: "action", action: "didBecomeVisible" })
 	})
 
-	test("a queued configuration callback from a replaced view sends no theme", async () => {
-		const first = createSidebarView()
-		const second = createSidebarView()
-		await provider.resolveWebviewView(first.view)
-		const listener = vi.mocked(vscode.workspace.onDidChangeConfiguration).mock.calls.at(-1)![0]
-		await provider.resolveWebviewView(second.view)
-
-		await listener({ affectsConfiguration: () => true })
-
-		expect(first.postMessage).not.toHaveBeenCalled()
-		expect(second.postMessage).not.toHaveBeenCalled()
-	})
-
 	test.each(["html", "state"] as const)("disposing a view during %s loading stops its resolve", async (stage) => {
 		const first = createSidebarView()
 		const html = makeDeferred<string>()
@@ -509,7 +492,7 @@ describe("ClineProvider - stale view lifecycle", () => {
 		expect(ClineProvider.getAllInstances()).toContain(provider)
 	})
 
-	test("the current view keeps dispatching messages, visibility, and theme refreshes", async () => {
+	test("the current view keeps dispatching messages and visibility events", async () => {
 		const first = createSidebarView()
 		await provider.resolveWebviewView(first.view)
 
@@ -521,13 +504,5 @@ describe("ClineProvider - stale view lifecycle", () => {
 		first.visibility.fire()
 		await flushAsync()
 		expect(first.postMessage).toHaveBeenCalledWith({ type: "action", action: "didBecomeVisible" })
-
-		const onDidChangeConfiguration = vi.mocked(vscode.workspace.onDidChangeConfiguration)
-		const configListener = onDidChangeConfiguration.mock.calls.at(-1)![0]
-		const colorThemeChange: vscode.ConfigurationChangeEvent = { affectsConfiguration: () => true }
-		await configListener(colorThemeChange)
-		expect(first.postMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ type: "theme", text: JSON.stringify({ kind: "dark" }) }),
-		)
 	})
 })

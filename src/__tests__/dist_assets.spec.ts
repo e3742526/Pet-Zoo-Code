@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import * as path from "path"
 import * as yaml from "yaml"
+import workerpool from "workerpool"
 
 describe("dist assets", () => {
 	const distPath = path.join(__dirname, "../dist")
@@ -27,9 +28,49 @@ describe("dist assets", () => {
 	})
 
 	describe("tiktoken", () => {
+		const encodingFilename = "tiktoken_o200k_base.json"
+		const workerPath = path.join(distPath, "workers", "countTokens.js")
+
 		it("should have a single shared tiktoken wasm file", () => {
 			expect(fs.existsSync(path.join(distPath, "tiktoken_bg.wasm"))).toBe(true)
 			expect(fs.existsSync(path.join(distPath, "workers", "tiktoken_bg.wasm"))).toBe(false)
+		})
+
+		it("stores tokenizer ranks once outside the JavaScript bundles", () => {
+			const encoding: { bpe_ranks: string } = JSON.parse(
+				fs.readFileSync(path.join(distPath, encodingFilename), "utf8"),
+			)
+			const rankPrefix = JSON.stringify(encoding.bpe_ranks.slice(0, 256)).slice(1, -1)
+
+			for (const file of [path.join(distPath, "extension.js"), workerPath]) {
+				expect(fs.readFileSync(file, "utf8").includes(rankPrefix), path.basename(file)).toBe(false)
+			}
+			expect(fs.existsSync(path.join(distPath, "workers", encodingFilename))).toBe(false)
+		})
+
+		it("counts tokens using only the copied worker and its shared assets", async () => {
+			const root = fs.mkdtempSync(path.join(tmpdir(), "zoo-code-tokenizer-"))
+			try {
+				const workersDir = path.join(root, "workers")
+				const script = path.join(workersDir, "countTokens.js")
+				fs.mkdirSync(workersDir)
+				fs.copyFileSync(workerPath, script)
+				for (const filename of ["tiktoken_bg.wasm", encodingFilename]) {
+					fs.copyFileSync(path.join(distPath, filename), path.join(root, filename))
+				}
+
+				const pool = workerpool.pool(script, { maxWorkers: 1 })
+				try {
+					await expect(pool.exec("countTokens", [[{ type: "text", text: "Hello world" }]])).resolves.toEqual({
+						success: true,
+						count: 3,
+					})
+				} finally {
+					await pool.terminate(true)
+				}
+			} finally {
+				fs.rmSync(root, { recursive: true, force: true })
+			}
 		})
 	})
 

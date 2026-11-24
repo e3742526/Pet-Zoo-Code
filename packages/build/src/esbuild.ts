@@ -150,13 +150,17 @@ export function copyWasms(srcDir: string, distDir: string, { compressEsbuildWasm
 
 	fs.mkdirSync(distDir, { recursive: true })
 
-	// Single shared Tiktoken WASM file (used by both dist/extension.js and dist/workers/countTokens.js).
+	// The extension host and token-counting worker share these assets.
 	fs.copyFileSync(
 		path.join(nodeModulesDir, "tiktoken", "lite", "tiktoken_bg.wasm"),
 		path.join(distDir, "tiktoken_bg.wasm"),
 	)
+	fs.copyFileSync(
+		path.join(nodeModulesDir, "tiktoken", "encoders", "o200k_base.json"),
+		path.join(distDir, "tiktoken_o200k_base.json"),
+	)
 
-	console.log(`[copyWasms] Copied tiktoken WASM to ${distDir}`)
+	console.log(`[copyWasms] Copied tiktoken assets to ${distDir}`)
 
 	// Main tree-sitter WASM file.
 	fs.copyFileSync(

@@ -2,34 +2,46 @@ import * as fs from "fs"
 import * as path from "path"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { init, Tiktoken } from "tiktoken/lite/init"
-import o200kBase from "tiktoken/encoders/o200k_base"
+import type o200kBase from "tiktoken/encoders/o200k_base"
 
 const TOKEN_FUDGE_FACTOR = 1.5
+const TIKTOKEN_ASSET_MODULES = {
+	"tiktoken_bg.wasm": "tiktoken/lite/tiktoken_bg.wasm",
+	"tiktoken_o200k_base.json": "tiktoken/encoders/o200k_base.json",
+} as const
 
-let encoder: Tiktoken | null = null
-let initPromise: Promise<void> | null = null
+let encoder: Tiktoken | undefined
+let initPromise: Promise<Tiktoken> | undefined
 
-function resolveTiktokenWasmPath(): string {
-	const candidates = [path.join(__dirname, "tiktoken_bg.wasm"), path.join(__dirname, "..", "tiktoken_bg.wasm")]
+function resolveTiktokenAssetPath(filename: keyof typeof TIKTOKEN_ASSET_MODULES): string {
+	const candidates = [path.join(__dirname, filename), path.join(__dirname, "..", filename)]
 	for (const candidate of candidates) {
 		if (fs.existsSync(candidate)) {
 			return candidate
 		}
 	}
-	return require.resolve("tiktoken/lite/tiktoken_bg.wasm")
+	return require.resolve(TIKTOKEN_ASSET_MODULES[filename])
 }
 
-async function ensureTiktokenInitialized(): Promise<void> {
-	if (!initPromise) {
-		initPromise = init((imports) => {
-			const wasmBytes = fs.readFileSync(resolveTiktokenWasmPath())
-			return WebAssembly.instantiate(wasmBytes, imports)
-		}).catch((error) => {
-			initPromise = null
-			throw error
-		})
-	}
-	await initPromise
+async function loadTiktokenEncoder(): Promise<Tiktoken> {
+	const wasmPath = resolveTiktokenAssetPath("tiktoken_bg.wasm")
+	const encodingPath = resolveTiktokenAssetPath("tiktoken_o200k_base.json")
+	const [wasmBytes, encodingJson] = await Promise.all([
+		fs.promises.readFile(wasmPath),
+		fs.promises.readFile(encodingPath, "utf8"),
+	])
+	const encoding: typeof o200kBase = JSON.parse(encodingJson)
+	await init((imports) => WebAssembly.instantiate(wasmBytes, imports))
+	encoder = new Tiktoken(encoding.bpe_ranks, encoding.special_tokens, encoding.pat_str)
+	return encoder
+}
+
+function initializeTiktokenEncoder(): Promise<Tiktoken> {
+	initPromise ??= loadTiktokenEncoder().catch((error) => {
+		initPromise = undefined
+		throw error
+	})
+	return initPromise
 }
 
 /**
@@ -85,11 +97,7 @@ export async function tiktoken(content: Anthropic.Messages.ContentBlockParam[]):
 
 	let totalTokens = 0
 
-	// Lazily initialize WASM and cache the encoder if it doesn't exist.
-	if (!encoder) {
-		await ensureTiktokenInitialized()
-		encoder ??= new Tiktoken(o200kBase.bpe_ranks, o200kBase.special_tokens, o200kBase.pat_str)
-	}
+	const activeEncoder = encoder ?? (await initializeTiktokenEncoder())
 
 	// Process each content block using the cached encoder.
 	for (const block of content) {
@@ -97,7 +105,7 @@ export async function tiktoken(content: Anthropic.Messages.ContentBlockParam[]):
 			const text = block.text || ""
 
 			if (text.length > 0) {
-				const tokens = encoder.encode(text, undefined, [])
+				const tokens = activeEncoder.encode(text, undefined, [])
 				totalTokens += tokens.length
 			}
 		} else if (block.type === "image") {
@@ -114,14 +122,14 @@ export async function tiktoken(content: Anthropic.Messages.ContentBlockParam[]):
 			// Serialize tool_use block to text and count tokens
 			const serialized = serializeToolUse(block as Anthropic.Messages.ToolUseBlockParam)
 			if (serialized.length > 0) {
-				const tokens = encoder.encode(serialized, undefined, [])
+				const tokens = activeEncoder.encode(serialized, undefined, [])
 				totalTokens += tokens.length
 			}
 		} else if (block.type === "tool_result") {
 			// Serialize tool_result block to text and count tokens
 			const serialized = serializeToolResult(block as Anthropic.Messages.ToolResultBlockParam)
 			if (serialized.length > 0) {
-				const tokens = encoder.encode(serialized, undefined, [])
+				const tokens = activeEncoder.encode(serialized, undefined, [])
 				totalTokens += tokens.length
 			}
 		}

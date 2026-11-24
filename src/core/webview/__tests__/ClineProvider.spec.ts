@@ -4463,6 +4463,28 @@ describe("ClineProvider", () => {
 		expect(state.allowedReadFiles).toEqual(["notes.md"])
 	})
 
+	test.each([true, false, undefined])("round trips the OpenAI Compatible output limit setting %s", async (value) => {
+		await provider.resolveWebviewView(mockWebviewView)
+
+		const profileName = "compatible-output-limit"
+		await webviewMessageHandler(provider, {
+			type: "upsertApiConfiguration",
+			text: profileName,
+			apiConfiguration: {
+				apiProvider: providerIdentifiers.openai,
+				openAiBaseUrl: "http://127.0.0.1:1234/v1",
+				openAiModelId: "test-model",
+				...(value !== undefined && { includeMaxTokens: value }),
+			},
+		})
+
+		const savedProfile = await provider.providerSettingsManager.getProfile({ name: profileName })
+		expect(savedProfile.includeMaxTokens).toBe(value)
+		const posted = await provider.getStateToPostToWebview()
+		expect(posted.currentApiConfigName).toBe(profileName)
+		expect(posted.apiConfiguration.includeMaxTokens).toBe(value)
+	})
+
 	describe("prompt cache TTL round trip", () => {
 		// The provider-settings route: the knob rides `apiConfiguration`, so the
 		// round trip is the profile write plus the state post, with no dedicated

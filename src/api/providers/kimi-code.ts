@@ -48,6 +48,8 @@ export class KimiCodeHandler extends OpenAiHandler {
 			openAiApiKey: options.kimiCodeApiKey ?? NOT_PROVIDED,
 			openAiModelId: options.apiModelId ?? kimiCodeDefaultModelId,
 			openAiStreamingEnabled: true,
+			// Kimi Code keeps its own opt-in limit policy.
+			includeMaxTokens: options.includeMaxTokens ?? false,
 		})
 		this.kimiOptions = options
 	}

@@ -1104,6 +1104,8 @@ export function isAzureOpenAiBaseUrl(baseUrl?: string, useAzure?: boolean): bool
 
 export const OPEN_AI_MODEL_ID_FIELD = "openAiModelId"
 
+export const DEFAULT_OPEN_AI_INCLUDE_MAX_TOKENS = true
+
 /**
  * Default for the OpenAI `openAiStrictToolSchemas` setting.
  * When true (default), non-MCP tools are sent with strict: true and their

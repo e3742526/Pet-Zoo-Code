@@ -214,6 +214,33 @@ describe("KimiCodeHandler", () => {
 		expect(model.info.maxTokens).toBe(8000)
 	})
 
+	it.each([
+		{ includeMaxTokens: undefined, expectedLimit: undefined },
+		{ includeMaxTokens: false, expectedLimit: undefined },
+		{ includeMaxTokens: true, expectedLimit: 8000 },
+	])("keeps the Kimi Code output limit opt-in for $includeMaxTokens", async ({ includeMaxTokens, expectedLimit }) => {
+		const fetchMock = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValueOnce(Response.json({ choices: [{ message: { content: "ok" } }] }))
+		const handler = new KimiCodeHandler({
+			kimiCodeAuthMethod: "api-key",
+			kimiCodeApiKey: "key",
+			includeMaxTokens,
+			modelMaxTokens: 8000,
+		})
+
+		await expect(handler.completePrompt("Test prompt")).resolves.toBe("ok")
+
+		const body = fetchMock.mock.calls[0]?.[1]?.body
+		expect(typeof body).toBe("string")
+		const request: unknown = JSON.parse(String(body))
+		if (expectedLimit === undefined) {
+			expect(request).not.toHaveProperty("max_completion_tokens")
+		} else {
+			expect(request).toHaveProperty("max_completion_tokens", expectedLimit)
+		}
+	})
+
 	it("defaults to max reasoning effort and advertises low/high/max support", () => {
 		const handler = new KimiCodeHandler({ kimiCodeAuthMethod: "api-key", kimiCodeApiKey: "key" })
 		const model = handler.getModel()

@@ -10,6 +10,7 @@ import {
 	isAzureOpenAiBaseUrl,
 	openAiModelInfoSaneDefaults,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
+	DEFAULT_OPEN_AI_INCLUDE_MAX_TOKENS,
 	DEFAULT_OPEN_AI_STRICT_TOOL_SCHEMAS,
 	OPENAI_AZURE_AI_INFERENCE_PATH,
 	parseOpenAiExtraBody,
@@ -79,7 +80,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	constructor(options: ApiHandlerOptions) {
 		super()
-		this.options = options
+		this.options = {
+			...options,
+			includeMaxTokens: options.includeMaxTokens ?? DEFAULT_OPEN_AI_INCLUDE_MAX_TOKENS,
+		}
 		this.extraBody = parseOpenAiExtraBody(options.openAiExtraBody).data
 
 		const baseURL = this.options.openAiBaseUrl || "https://api.openai.com/v1"
@@ -762,22 +766,16 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		return isAzureAiInferenceBaseUrl(baseUrl) && !isAzureV1BaseUrl(baseUrl)
 	}
 
-	/**
-	 * Adds max_completion_tokens to the request body if needed based on provider configuration
-	 * Note: max_tokens is deprecated in favor of max_completion_tokens as per OpenAI documentation
-	 * O3 family models handle max_tokens separately in handleO3FamilyMessage
-	 */
+	/** Applies the enabled output limit to Chat Completions requests, including o-series requests. */
 	protected addMaxTokensIfNeeded(
 		requestOptions:
 			| OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming
 			| OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
 		modelInfo: ModelInfo,
 	): void {
-		// Only add max_completion_tokens if includeMaxTokens is true
-		if (this.options.includeMaxTokens === true) {
-			// Use user-configured modelMaxTokens if available, otherwise fall back to model's default maxTokens
-			// Using max_completion_tokens as max_tokens is deprecated
-			requestOptions.max_completion_tokens = this.options.modelMaxTokens || modelInfo.maxTokens
+		const maxTokens = this.options.modelMaxTokens || modelInfo.maxTokens
+		if (this.options.includeMaxTokens === true && maxTokens !== undefined) {
+			requestOptions.max_completion_tokens = maxTokens
 		}
 	}
 

@@ -233,6 +233,12 @@ LM Studio and Poe copy only the selected model from the cache. The cache keeps i
 
 The 1,800-model fixture ran nine trials after two warm-up runs. The median for 64 warm model lookups fell from 54.76 ms to 0.06 ms, with ranges of 54.37–57.72 ms and 0.04–0.08 ms. The median for 16 full catalog copies fell from 13.65 ms to 12.58 ms. The first selected-model lookup took 1.79 ms, down from 2.93 ms. The fixture used a simulated file read and included JSON parsing and validation. The regression tests verify that changes to returned model metadata and catalogs cannot change later cache results.
 
+## OpenAI Compatible output limits
+
+The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)
+
+Request tests reproduced the omission before the fix. They check task messages and single prompts without a live API. A profile test sends the settings save message and checks that the stored profile and the state returned to the webview preserve true, false, and unset values.
+
 ## Settings migration at startup
 
 Startup lists the selected settings directory and checks only the legacy filenames it could contain. When the listing includes converted YAML and legacy JSON, startup checks the YAML path and keeps both files. If listing fails, migration still tries the known paths. Each launch can recover files restored later or found after the user changes the storage directory. The separate default-command migration retains its completion flag.

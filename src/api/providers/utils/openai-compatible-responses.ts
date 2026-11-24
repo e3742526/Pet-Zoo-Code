@@ -88,8 +88,7 @@ export function buildResponsesRequest({
 		if (String(reasoning.reasoning_effort) !== "none") requestBody.include = ["reasoning.encrypted_content"]
 	}
 
-	// Mirror the Chat Completions max-tokens policy: only cap output when the
-	// user opted in via includeMaxTokens.
+	// OpenAiHandler resolves the profile default for both request formats.
 	const maxTokens = options.modelMaxTokens || modelInfo.maxTokens
 	if (options.includeMaxTokens === true && maxTokens !== undefined) {
 		requestBody.max_output_tokens = maxTokens

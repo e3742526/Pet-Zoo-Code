@@ -1194,11 +1194,6 @@
 			"count": 17
 		}
 	},
-	"services/marketplace/__tests__/marketplace-setting-check.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 3
-		}
-	},
 	"services/mcp/McpHub.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 7

@@ -1180,20 +1180,25 @@ describe("mergeExtensionState", () => {
 			expect(result.clineMessagesSeq).toBe(4)
 		})
 
-		it("preserves clineMessages when newState does not include them (cloud event path)", () => {
+		it("keeps the transcript and task history during a settings refresh", () => {
 			const existingMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
+			const existingHistory = [
+				{ id: "saved-task", number: 1, ts: 3, task: "Saved task", tokensIn: 0, tokensOut: 0, totalCost: 0 },
+			]
 
 			const prevState: ExtensionState = {
 				...baseState,
 				clineMessages: existingMessages,
 				clineMessagesSeq: 5,
+				taskHistory: existingHistory,
 			}
 
-			// Simulate a cloud event push that omits clineMessages and clineMessagesSeq
 			const result = mergeExtensionState(prevState, {
-				cloudIsAuthenticated: true,
+				autoApprovalEnabled: true,
 			})
 
+			expect(result.autoApprovalEnabled).toBe(true)
+			expect(result.taskHistory).toBe(existingHistory)
 			expect(result.clineMessages).toBe(existingMessages)
 			expect(result.clineMessagesSeq).toBe(5)
 		})

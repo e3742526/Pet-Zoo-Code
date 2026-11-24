@@ -910,7 +910,7 @@ export const webviewMessageHandler = async (
 
 			// A failed refresh must neither undo a stored save nor keep the webview from getting the result.
 			try {
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			} catch (error) {
 				provider.log(
 					`[updateSettings] Could not refresh the webview state: ${error instanceof Error ? error.message : String(error)}`,
@@ -945,7 +945,7 @@ export const webviewMessageHandler = async (
 			break
 		case "didShowAnnouncement":
 			await updateGlobalState("lastShownAnnouncementId", provider.latestAnnouncementId)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		case "selectImages":
 			const images = await selectImages()
@@ -2024,7 +2024,7 @@ export const webviewMessageHandler = async (
 				provider.log(`Successfully deleted MCP server: ${message.serverName}`)
 
 				// Refresh the webview state
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				provider.log(`Failed to delete MCP server: ${errorMessage}`)
@@ -2110,13 +2110,13 @@ export const webviewMessageHandler = async (
 			const ttsEnabled = message.bool ?? true
 			await updateGlobalState("ttsEnabled", ttsEnabled)
 			setTtsEnabled(ttsEnabled)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		case "ttsSpeed":
 			const ttsSpeed = message.value ?? 1.0
 			await updateGlobalState("ttsSpeed", ttsSpeed)
 			setTtsSpeed(ttsSpeed)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		case "playTts":
 			if (message.text) {
@@ -2254,14 +2254,14 @@ export const webviewMessageHandler = async (
 
 		case "hasOpenedModeSelector":
 			await updateGlobalState("hasOpenedModeSelector", message.bool ?? true)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 
 		case "lockApiConfigAcrossModes": {
 			const enabled = message.bool ?? false
 			await provider.context.workspaceState.update("lockApiConfigAcrossModes", enabled)
 
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		}
 
@@ -2277,17 +2277,17 @@ export const webviewMessageHandler = async (
 				}
 
 				await updateGlobalState("pinnedApiConfigs", updatedPinned)
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			}
 			break
 		case "enhancementApiConfigId":
 			await updateGlobalState("enhancementApiConfigId", message.text)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 
 		case "autoApprovalEnabled":
 			await updateGlobalState("autoApprovalEnabled", message.bool ?? false)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		case "enhancePrompt":
 			if (message.text) {
@@ -2669,7 +2669,7 @@ export const webviewMessageHandler = async (
 					const customModes = await provider.customModesManager.getCustomModes()
 					await updateGlobalState("customModes", customModes)
 					await updateGlobalState("mode", message.modeConfig.slug)
-					await provider.postStateToWebview()
+					await provider.postStateToWebviewWithoutClineMessages()
 
 					// Track telemetry for custom mode creation or update
 					if (TelemetryService.hasInstance()) {
@@ -2765,7 +2765,7 @@ export const webviewMessageHandler = async (
 
 				// Switch back to default mode after deletion
 				await updateGlobalState("mode", defaultModeSlug)
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			}
 			break
 		case "exportMode":
@@ -2893,7 +2893,7 @@ export const webviewMessageHandler = async (
 						// Update state after importing
 						const customModes = await provider.customModesManager.getCustomModes()
 						await updateGlobalState("customModes", customModes)
-						await provider.postStateToWebview()
+						await provider.postStateToWebviewWithoutClineMessages()
 
 						// Send success message to webview, include the imported slug so UI can switch
 						await provider.postMessageToWebview({
@@ -2985,7 +2985,7 @@ export const webviewMessageHandler = async (
 						TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, telemetrySetting)
 					}
 
-					await provider.postStateToWebview()
+					await provider.postStateToWebviewWithoutClineMessages()
 				})
 			telemetrySettingQueue = thisUpdate
 
@@ -2996,7 +2996,7 @@ export const webviewMessageHandler = async (
 			await vscode.workspace
 				.getConfiguration(Package.name)
 				.update("debug", message.bool ?? false, vscode.ConfigurationTarget.Global)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		}
 		// Older webviews can send these messages after the extension updates.
@@ -3006,7 +3006,7 @@ export const webviewMessageHandler = async (
 			vscode.window.showInformationMessage(getRouterUnavailableSignInMessage())
 			break
 		case "rooCloudSignOut":
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			await provider.postMessageToWebview({ type: "authenticatedUser", userInfo: undefined })
 			break
 		case "openAiCodexSignIn": {
@@ -3022,7 +3022,7 @@ export const webviewMessageHandler = async (
 					.waitForCallback()
 					.then(async () => {
 						vscode.window.showInformationMessage("Successfully signed in to OpenAI Codex")
-						await provider.postStateToWebview()
+						await provider.postStateToWebviewWithoutClineMessages()
 					})
 					.catch((error) => {
 						provider.log(`OpenAI Codex OAuth callback failed: ${error}`)
@@ -3041,7 +3041,7 @@ export const webviewMessageHandler = async (
 				const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
 				await openAiCodexOAuthManager.clearCredentials()
 				vscode.window.showInformationMessage("Signed out from OpenAI Codex")
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			} catch (error) {
 				provider.log(`OpenAI Codex sign out failed: ${error}`)
 				vscode.window.showErrorMessage("OpenAI Codex sign out failed.")
@@ -3052,7 +3052,7 @@ export const webviewMessageHandler = async (
 			try {
 				const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
 				const device = await kimiCodeOAuthManager.startAuthorization()
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 				await vscode.env.openExternal(
 					vscode.Uri.parse(device.verificationUriComplete ?? device.verificationUri),
 				)
@@ -3060,18 +3060,18 @@ export const webviewMessageHandler = async (
 					.waitForAuthorization()
 					.then(async () => {
 						vscode.window.showInformationMessage("Successfully signed in to Kimi Code")
-						await provider.postStateToWebview()
+						await provider.postStateToWebviewWithoutClineMessages()
 					})
 					.catch(async (error) => {
 						provider.log(`Kimi Code OAuth failed: ${error}`)
-						await provider.postStateToWebview()
+						await provider.postStateToWebviewWithoutClineMessages()
 					})
 			} catch (error) {
 				provider.log(`Kimi Code OAuth failed: ${error}`)
 				vscode.window.showErrorMessage(
 					`Kimi Code sign in failed: ${error instanceof Error ? error.message : error}`,
 				)
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			}
 			break
 		}
@@ -3080,7 +3080,7 @@ export const webviewMessageHandler = async (
 				const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
 				await kimiCodeOAuthManager.clearCredentials()
 				vscode.window.showInformationMessage("Signed out from Kimi Code")
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 			} catch (error) {
 				provider.log(`Kimi Code sign out failed: ${error}`)
 				vscode.window.showErrorMessage("Kimi Code sign out failed.")
@@ -3090,7 +3090,7 @@ export const webviewMessageHandler = async (
 		case "clearCloudAuthSkipModel": {
 			// Clear the flag that indicates auth completed without model selection
 			await provider.context.globalState.update("roo-auth-skip-model", undefined)
-			await provider.postStateToWebview()
+			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		}
 		case "switchOrganization": {
@@ -3184,7 +3184,7 @@ export const webviewMessageHandler = async (
 				})
 
 				// Update webview state
-				await provider.postStateToWebview()
+				await provider.postStateToWebviewWithoutClineMessages()
 
 				// Then handle validation and initialization for the current workspace
 				const scope = provider.getCurrentWorkspaceCodeIndexScope()
@@ -3479,7 +3479,7 @@ export const webviewMessageHandler = async (
 						search: message.filters.search,
 						tags: message.filters.tags,
 					})
-					await provider.postStateToWebview()
+					await provider.postStateToWebviewWithoutClineMessages()
 				} catch (error) {
 					console.error("Marketplace: Error filtering items:", error)
 					vscode.window.showErrorMessage("Failed to filter marketplace items")
@@ -3501,7 +3501,7 @@ export const webviewMessageHandler = async (
 						message.mpItem,
 						message.mpInstallOptions,
 					)
-					await provider.postStateToWebview()
+					await provider.postStateToWebviewWithoutClineMessages()
 					console.log(`Marketplace item installed and config file opened: ${configFilePath}`)
 
 					// Send success message to webview
@@ -3528,7 +3528,7 @@ export const webviewMessageHandler = async (
 			if (marketplaceManager && message.mpItem && message.mpInstallOptions) {
 				try {
 					await marketplaceManager.removeInstalledMarketplaceItem(message.mpItem, message.mpInstallOptions)
-					await provider.postStateToWebview()
+					await provider.postStateToWebviewWithoutClineMessages()
 
 					// Send success message to webview
 					await provider.postMessageToWebview({
@@ -3579,7 +3579,7 @@ export const webviewMessageHandler = async (
 					const configFilePath = await marketplaceManager.installMarketplaceItem(message.payload.item, {
 						parameters: message.payload.parameters,
 					})
-					await provider.postStateToWebview()
+					await provider.postStateToWebviewWithoutClineMessages()
 					console.log(`Marketplace item with parameters installed and config file opened: ${configFilePath}`)
 				} catch (error) {
 					console.error(`Error installing marketplace item with parameters: ${error}`)

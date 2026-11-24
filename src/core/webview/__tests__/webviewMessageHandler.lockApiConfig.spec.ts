@@ -1,68 +1,22 @@
-// npx vitest run core/webview/__tests__/webviewMessageHandler.lockApiConfig.spec.ts
-
-import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
+import { webviewMessageHandler } from "../webviewMessageHandler"
 
 describe("webviewMessageHandler - lockApiConfigAcrossModes", () => {
-	let mockProvider: {
-		context: {
-			workspaceState: {
-				get: ReturnType<typeof vi.fn>
-				update: ReturnType<typeof vi.fn>
-			}
-		}
-		getState: ReturnType<typeof vi.fn>
-		postStateToWebview: ReturnType<typeof vi.fn>
-		providerSettingsManager: {
-			setModeConfig: ReturnType<typeof vi.fn>
-		}
-		postMessageToWebview: ReturnType<typeof vi.fn>
-		getCurrentTask: ReturnType<typeof vi.fn>
-	}
+	it.each([true, false])("stores %s and refreshes settings without updating individual modes", async (enabled) => {
+		const update = vi.fn<ClineProvider["context"]["workspaceState"]["update"]>().mockResolvedValue(undefined)
+		const setModeConfig = vi.fn<ClineProvider["providerSettingsManager"]["setModeConfig"]>()
+		const postStateToWebviewWithoutClineMessages = vi.fn<ClineProvider["postStateToWebviewWithoutClineMessages"]>()
+		// The double provides workspace settings, the mode config writer, and the settings reply.
+		const provider = {
+			context: { workspaceState: { update } },
+			providerSettingsManager: { setModeConfig },
+			postStateToWebviewWithoutClineMessages,
+		} as unknown as ClineProvider
 
-	beforeEach(() => {
-		vi.clearAllMocks()
+		await webviewMessageHandler(provider, { type: "lockApiConfigAcrossModes", bool: enabled })
 
-		mockProvider = {
-			context: {
-				workspaceState: {
-					get: vi.fn(),
-					update: vi.fn().mockResolvedValue(undefined),
-				},
-			},
-			getState: vi.fn().mockResolvedValue({
-				currentApiConfigName: "test-config",
-				listApiConfigMeta: [{ name: "test-config", id: "config-123" }],
-				customModes: [],
-			}),
-			postStateToWebview: vi.fn(),
-			providerSettingsManager: {
-				setModeConfig: vi.fn(),
-			},
-			postMessageToWebview: vi.fn(),
-			getCurrentTask: vi.fn(),
-		}
-	})
-
-	it("sets lockApiConfigAcrossModes to true and posts state without mode config fan-out", async () => {
-		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
-			type: "lockApiConfigAcrossModes",
-			bool: true,
-		})
-
-		expect(mockProvider.context.workspaceState.update).toHaveBeenCalledWith("lockApiConfigAcrossModes", true)
-		expect(mockProvider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
-		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
-	})
-
-	it("sets lockApiConfigAcrossModes to false without applying to all modes", async () => {
-		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
-			type: "lockApiConfigAcrossModes",
-			bool: false,
-		})
-
-		expect(mockProvider.context.workspaceState.update).toHaveBeenCalledWith("lockApiConfigAcrossModes", false)
-		expect(mockProvider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
-		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
+		expect(update).toHaveBeenCalledWith("lockApiConfigAcrossModes", enabled)
+		expect(setModeConfig).not.toHaveBeenCalled()
+		expect(postStateToWebviewWithoutClineMessages).toHaveBeenCalledOnce()
 	})
 })

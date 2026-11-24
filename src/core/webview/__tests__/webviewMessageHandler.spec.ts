@@ -125,6 +125,7 @@ const mockClineProvider = {
 	},
 	log: vi.fn(),
 	postStateToWebview: vi.fn(),
+	postStateToWebviewWithoutClineMessages: vi.fn(),
 	resolveWebviewThemeFixtureProbe: vi.fn(),
 	getCurrentTask: vi.fn(),
 	getTaskWithId: vi.fn(),
@@ -1892,7 +1893,7 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
 		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledTimes(1)
 		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledWith(true)
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	it("delegates enable=false to McpHub and posts updated state", async () => {
@@ -1904,7 +1905,7 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
 		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledTimes(1)
 		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledWith(false)
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	it("handles missing McpHub instance gracefully and still posts state", async () => {
@@ -1916,7 +1917,7 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 		})
 
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 })
 
@@ -2003,7 +2004,7 @@ it("persists alwaysDenyUnapprovedCommands through the generic updateSettings loo
 	})
 
 	expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("alwaysDenyUnapprovedCommands", true)
-	expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+	expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 
 	vi.clearAllMocks()
 	await webviewMessageHandler(mockClineProvider, {
@@ -2012,7 +2013,7 @@ it("persists alwaysDenyUnapprovedCommands through the generic updateSettings loo
 	})
 
 	expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("alwaysDenyUnapprovedCommands", false)
-	expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+	expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 
 	vi.clearAllMocks()
 	await webviewMessageHandler(mockClineProvider, {
@@ -2021,7 +2022,7 @@ it("persists alwaysDenyUnapprovedCommands through the generic updateSettings loo
 	})
 
 	expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("alwaysDenyUnapprovedCommands", undefined)
-	expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+	expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 })
 
 // Both allowlists are normalized by the same branch, so both are held to the
@@ -2535,7 +2536,7 @@ describe("webviewMessageHandler - kimiCodeSignIn", () => {
 
 		expect(mockStartAuthorization).toHaveBeenCalled()
 		expect(mockOpenExternal).toHaveBeenCalled()
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalled()
 	})
 
 	it("shows success message after successful authorization", async () => {
@@ -2590,7 +2591,7 @@ describe("webviewMessageHandler - kimiCodeSignIn", () => {
 		await webviewMessageHandler(mockClineProvider, { type: "kimiCodeSignIn" })
 		await new Promise((resolve) => setTimeout(resolve, 10))
 
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalled()
 	})
 
 	it("handles startAuthorization error", async () => {
@@ -2605,7 +2606,7 @@ describe("webviewMessageHandler - kimiCodeSignIn", () => {
 		await webviewMessageHandler(mockClineProvider, { type: "kimiCodeSignIn" })
 
 		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining("Kimi Code sign in failed"))
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalled()
 	})
 })
 
@@ -2628,7 +2629,7 @@ describe("webviewMessageHandler - kimiCodeSignOut", () => {
 
 		expect(mockClearCredentials).toHaveBeenCalled()
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("Signed out from Kimi Code")
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalled()
 	})
 
 	it("handles sign out error", async () => {
@@ -2926,7 +2927,7 @@ describe("webviewMessageHandler - experiments", () => {
 			preventFocusDisruption: true,
 			dynamicThinkingEffort: true,
 		})
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	it("persists dynamicThinkingEffort false over a previously enabled value", async () => {
@@ -2942,7 +2943,7 @@ describe("webviewMessageHandler - experiments", () => {
 		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("experiments", {
 			dynamicThinkingEffort: false,
 		})
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	it("persists the experiment defaults when no experiments are saved yet", async () => {
@@ -2957,7 +2958,7 @@ describe("webviewMessageHandler - experiments", () => {
 			...experimentDefault,
 			dynamicThinkingEffort: false,
 		})
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 })
 
@@ -2981,7 +2982,7 @@ describe("webviewMessageHandler - collapseCommandOutputByDefault", () => {
 				"terminalShellIntegrationDisabled",
 				expect.anything(),
 			)
-			expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+			expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 		},
 	)
 })
@@ -3074,7 +3075,7 @@ describe("updateSettings with the display settings", () => {
 
 		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith(key, value)
 		expect(mockClineProvider.log).not.toHaveBeenCalled()
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	it.each([["de"], ["ja"], ["zh-TW"]])("applies and stores the display language %s", async (language) => {
@@ -3113,7 +3114,7 @@ describe("updateSettings with the display settings", () => {
 		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalledWith("timeFormat", expect.anything())
 		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("dateFormat", "ymd")
 		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("soundEnabled", true)
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	it("is not a transaction: if a write fails, the earlier ones stay, the later ones are not written, and the error is thrown", async () => {
@@ -3127,7 +3128,7 @@ describe("updateSettings with the display settings", () => {
 		const written = vi.mocked(mockClineProvider.contextProxy.setValue).mock.calls.map(([key]) => key)
 		expect(written).toEqual(["timeFormat", "dateFormat"])
 		// The webview is refreshed even so, to show what is really stored.
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 
 	describe("the save result", () => {
@@ -3145,7 +3146,8 @@ describe("updateSettings with the display settings", () => {
 			await saveAs({ timeFormat: "24h" })
 
 			expect(results()).toEqual([{ type: "settingsSaveResult", requestId: "save-1", success: true }])
-			const [refreshOrder] = vi.mocked(mockClineProvider.postStateToWebview).mock.invocationCallOrder
+			const [refreshOrder] = vi.mocked(mockClineProvider.postStateToWebviewWithoutClineMessages).mock
+				.invocationCallOrder
 			const [resultOrder] = vi.mocked(mockClineProvider.postMessageToWebview).mock.invocationCallOrder
 			expect(refreshOrder).toBeLessThan(resultOrder)
 		})
@@ -3167,7 +3169,7 @@ describe("updateSettings with the display settings", () => {
 			await webviewMessageHandler(mockClineProvider, { type: "updateSettings", requestId: "save-1" })
 
 			expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalled()
-			expect(mockClineProvider.postStateToWebview).not.toHaveBeenCalled()
+			expect(mockClineProvider.postStateToWebviewWithoutClineMessages).not.toHaveBeenCalled()
 			expect(results()).toEqual([])
 		})
 
@@ -3178,7 +3180,9 @@ describe("updateSettings with the display settings", () => {
 		})
 
 		it("still reports a stored save when refreshing the state fails", async () => {
-			vi.mocked(mockClineProvider.postStateToWebview).mockRejectedValueOnce(new Error("webview gone"))
+			vi.mocked(mockClineProvider.postStateToWebviewWithoutClineMessages).mockRejectedValueOnce(
+				new Error("webview gone"),
+			)
 
 			await saveAs({ timeFormat: "24h" })
 
@@ -3190,7 +3194,7 @@ describe("updateSettings with the display settings", () => {
 
 		it("reports a failed save when refreshing the state fails too", async () => {
 			vi.mocked(mockClineProvider.contextProxy.setValue).mockRejectedValue(new Error("no"))
-			vi.mocked(mockClineProvider.postStateToWebview).mockRejectedValueOnce("webview gone")
+			vi.mocked(mockClineProvider.postStateToWebviewWithoutClineMessages).mockRejectedValueOnce("webview gone")
 
 			await expect(saveAs({ timeFormat: "24h" })).rejects.toThrow("no")
 
@@ -3219,7 +3223,7 @@ describe("updateSettings with the display settings", () => {
 
 		const written = vi.mocked(mockClineProvider.contextProxy.setValue).mock.calls.map(([key]) => key)
 		expect(written).toEqual(["timeFormat", "dateFormat", "showRelativeTimes"])
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(2) // once for the failed save, once for this one
+		expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(2) // once for the failed save, once for this one
 	})
 
 	it("does not take a key that only exists on every object for a display setting", async () => {

@@ -330,6 +330,20 @@ describe("ExtensionClient", () => {
 			client.handleMessage(createStateMessage([createMessage({ say: "text", ts: Date.now() + 1 })], "code"))
 			expect(modeChangeCount).toBe(1)
 		})
+
+		it("applies mode updates without replacing the current transcript or approval state", () => {
+			const { client } = createMockClient()
+			const messages = [createMessage({ type: "ask", ask: "tool", partial: false })]
+			client.handleMessage(createStateMessage(messages, "code"))
+			const modeChanged = vi.fn()
+			client.onModeChanged(modeChanged)
+
+			client.handleMessage({ type: "state", state: { mode: "architect" } })
+
+			expect(modeChanged).toHaveBeenCalledWith({ previousMode: "code", currentMode: "architect" })
+			expect(client.getMessages()).toEqual(messages)
+			expect(client.getAgentState().requiredAction).toBe("approve")
+		})
 	})
 
 	describe("Response methods", () => {

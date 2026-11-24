@@ -2935,15 +2935,8 @@ export class ClineProvider
 	}
 
 	/**
-	 * Like postStateToWebview but intentionally omits both clineMessages and taskHistory.
-	 *
-	 * Rationale:
-	 * - Cloud event handlers (auth, settings, user-info) and mode changes trigger state pushes
-	 *   that have nothing to do with chat messages. Including clineMessages in these pushes
-	 *   creates race conditions where a stale snapshot of clineMessages (captured during async
-	 *   getStateToPostToWebview) overwrites newer messages the task has streamed in the meantime.
-	 * - This method ensures cloud/mode events only push the state fields they actually affect
-	 *   (cloud auth, org settings, profiles, etc.) without interfering with task message streaming.
+	 * Send settings and other state without the transcript or task history. Use this when
+	 * an action leaves those lists intact so the webview can keep its current copies.
 	 */
 	async postStateToWebviewWithoutClineMessages(): Promise<void> {
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })

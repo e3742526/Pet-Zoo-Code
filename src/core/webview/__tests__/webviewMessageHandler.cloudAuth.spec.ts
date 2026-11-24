@@ -16,9 +16,9 @@ vi.mock("vscode", () => ({
 describe("legacy Roo Cloud webview messages", () => {
 	const unavailable = "Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue."
 	const postMessageToWebview = vi.fn<ClineProvider["postMessageToWebview"]>()
-	const postStateToWebview = vi.fn<ClineProvider["postStateToWebview"]>()
+	const postStateToWebviewWithoutClineMessages = vi.fn<ClineProvider["postStateToWebviewWithoutClineMessages"]>()
 	// The compatibility handlers use only these methods to reply to the webview.
-	const provider = { postMessageToWebview, postStateToWebview } as unknown as ClineProvider
+	const provider = { postMessageToWebview, postStateToWebviewWithoutClineMessages } as unknown as ClineProvider
 
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -38,7 +38,7 @@ describe("legacy Roo Cloud webview messages", () => {
 	it("clears the older webview's signed-in state", async () => {
 		await webviewMessageHandler(provider, { type: "rooCloudSignOut" })
 
-		expect(postStateToWebview).toHaveBeenCalledOnce()
+		expect(postStateToWebviewWithoutClineMessages).toHaveBeenCalledOnce()
 		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "authenticatedUser", userInfo: undefined })
 	})
 

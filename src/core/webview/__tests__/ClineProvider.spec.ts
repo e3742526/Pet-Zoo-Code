@@ -3561,6 +3561,45 @@ describe("ClineProvider", () => {
 		expect(postMessageSpy.mock.calls[0]?.[0].state).not.toHaveProperty("taskHistory")
 	})
 
+	test.each<{ request: WebviewMessage; expected: Partial<ExtensionState> }>([
+		{
+			request: { type: "autoApprovalEnabled", bool: true },
+			expected: { autoApprovalEnabled: true },
+		},
+		{
+			request: { type: "updateSettings", updatedSettings: { chatFontSize: 17 } },
+			expected: { chatFontSize: 17 },
+		},
+	])("posts updated $request.type without sending the task transcript or history", async ({ request, expected }) => {
+		const task = new Task(defaultTaskOptions)
+		task.clineMessages = [{ ts: 1, type: "say", say: "text", text: "An existing task message" }]
+		vi.spyOn(provider, "getCurrentTask").mockReturnValue(task)
+		const history = [
+			{ id: "saved-task", number: 1, ts: 2, task: "Saved task", tokensIn: 0, tokensOut: 0, totalCost: 0 },
+		]
+		const getAllSpy = vi.spyOn(provider.taskHistoryStore, "getAll").mockReturnValue(history)
+		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+		await provider.postStateToWebview()
+		expect(postMessageSpy.mock.lastCall?.[0].state).toMatchObject({
+			clineMessages: task.clineMessages,
+			clineMessagesSeq: 1,
+			taskHistory: history,
+		})
+		postMessageSpy.mockClear()
+		getAllSpy.mockClear()
+
+		await webviewMessageHandler(provider, request)
+
+		expect(getAllSpy).not.toHaveBeenCalled()
+		expect(postMessageSpy).toHaveBeenCalledOnce()
+		const state = postMessageSpy.mock.lastCall?.[0].state
+		expect(state).toMatchObject(expected)
+		expect(state).not.toHaveProperty("taskHistory")
+		expect(state).not.toHaveProperty("clineMessages")
+		expect(state).not.toHaveProperty("clineMessagesSeq")
+	})
+
 	test("getStateToPostToWebview computes task history once after its base state resolves", async () => {
 		const historyItem = {
 			id: "history-task",
@@ -6138,6 +6177,7 @@ describe("webviewMessageHandler no-floating-promises coverage", () => {
 				},
 				postMessageToWebview: vi.fn().mockResolvedValue(true),
 				postStateToWebview: vi.fn().mockResolvedValue(undefined),
+				postStateToWebviewWithoutClineMessages: vi.fn().mockResolvedValue(undefined),
 				getCurrentTask: vi.fn(),
 				getCurrentWorkspaceCodeIndexScope: vi.fn(),
 				getMcpHub: vi.fn().mockReturnValue({

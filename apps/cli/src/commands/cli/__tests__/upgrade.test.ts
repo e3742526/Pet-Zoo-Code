@@ -1,4 +1,6 @@
-import { compareVersions, getLatestCliVersion, upgrade } from "../upgrade.js"
+import { ChildProcess } from "node:child_process"
+
+import { compareVersions, getLatestCliVersion, runUpgradeInstaller, upgrade } from "../upgrade.js"
 
 function createFetchResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
 	const { ok = true, status = 200 } = init
@@ -33,22 +35,48 @@ describe("compareVersions", () => {
 })
 
 describe("getLatestCliVersion", () => {
-	it("returns the highest cli-v release tag from GitHub releases", async () => {
-		const fetchImpl = (async () =>
-			createFetchResponse([
-				{ tag_name: "cli-v0.1.9" },
-				{ tag_name: "v9.9.9" },
-				{ tag_name: "cli-v0.1.10" },
-				{ tag_name: "cli-v0.1.8" },
-			])) as typeof fetch
+	it("returns the highest cli-v release tag from Pet-Zoo-Code releases", async () => {
+		const fetchImpl = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(
+				createFetchResponse([
+					{ tag_name: "cli-v0.1.9" },
+					{ tag_name: "v9.9.9" },
+					{ tag_name: "cli-v0.1.10" },
+					{ tag_name: "cli-v0.1.8" },
+				]),
+			)
 
 		await expect(getLatestCliVersion(fetchImpl)).resolves.toBe("0.1.10")
+		expect(fetchImpl).toHaveBeenCalledWith(
+			"https://api.github.com/repos/e3742526/Pet-Zoo-Code/releases?per_page=100",
+			expect.any(Object),
+		)
 	})
 
 	it("throws when release check fails", async () => {
 		const fetchImpl = (async () => createFetchResponse({}, { ok: false, status: 503 })) as typeof fetch
 
 		await expect(getLatestCliVersion(fetchImpl)).rejects.toThrow("Failed to check latest version")
+	})
+})
+
+describe("runUpgradeInstaller", () => {
+	it("downloads the Pet-Zoo-Code installer for the selected version", async () => {
+		const child = new ChildProcess()
+		const spawnImpl = vi.fn<NonNullable<Parameters<typeof runUpgradeInstaller>[1]>>().mockReturnValue(child)
+		const result = runUpgradeInstaller("0.2.0", spawnImpl)
+		child.emit("close", 0, null)
+
+		await expect(result).resolves.toBeUndefined()
+		expect(spawnImpl).toHaveBeenCalledOnce()
+		const call = spawnImpl.mock.lastCall
+		expect(call?.[0]).toBe("sh")
+		expect(call?.[1]).toEqual([
+			"-c",
+			expect.stringContaining("https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh"),
+		])
+		expect(call?.[2].env?.ROO_VERSION).toBe("0.2.0")
 	})
 })
 
@@ -89,5 +117,15 @@ describe("upgrade", () => {
 
 		expect(runInstaller).toHaveBeenCalledTimes(1)
 		expect(logSpy).toHaveBeenCalledWith("✓ Upgrade completed.")
+	})
+
+	it("leaves the installation in place when the fork has no CLI release", async () => {
+		const runInstaller = vi.fn(async () => undefined)
+		const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(createFetchResponse([{ tag_name: "v3.98.2" }]))
+
+		await expect(upgrade({ currentVersion: "0.1.4", fetchImpl, runInstaller })).rejects.toThrow(
+			"No CLI release is available for Pet-Zoo-Code.",
+		)
+		expect(runInstaller).not.toHaveBeenCalled()
 	})
 })

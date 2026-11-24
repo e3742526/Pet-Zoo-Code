@@ -1,11 +1,12 @@
-import { spawn } from "child_process"
+import { spawn, type ChildProcess, type SpawnOptions } from "child_process"
 
 import { VERSION } from "@/lib/utils/version.js"
 import { isRecord } from "@/lib/utils/guards.js"
 
-const RELEASES_URL = "https://api.github.com/repos/RooCodeInc/Roo-Code/releases?per_page=100"
-export const INSTALL_SCRIPT_COMMAND =
-	"curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh"
+const RELEASE_REPOSITORY = "e3742526/Pet-Zoo-Code"
+const RELEASES_URL = `https://api.github.com/repos/${RELEASE_REPOSITORY}/releases?per_page=100`
+const INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${RELEASE_REPOSITORY}/main/apps/cli/install.sh`
+export const INSTALL_SCRIPT_COMMAND = `installer=$(curl -fsSL ${INSTALL_SCRIPT_URL}) && [ -n "$installer" ] && sh -c "$installer"`
 
 export interface UpgradeOptions {
 	currentVersion?: string
@@ -106,10 +107,12 @@ export async function getLatestCliVersion(fetchImpl: typeof fetch = fetch): Prom
 		return latestVersion
 	}
 
-	throw new Error("Could not determine the latest CLI release version.")
+	throw new Error("No CLI release is available for Pet-Zoo-Code.")
 }
 
-export function runUpgradeInstaller(version?: string, spawnImpl: typeof spawn = spawn): Promise<void> {
+type SpawnInstaller = (command: string, args: readonly string[], options: SpawnOptions) => ChildProcess
+
+export function runUpgradeInstaller(version?: string, spawnImpl: SpawnInstaller = spawn): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const env = version ? { ...process.env, ROO_VERSION: version } : process.env
 		const child = spawnImpl("sh", ["-c", INSTALL_SCRIPT_COMMAND], { stdio: "inherit", env })

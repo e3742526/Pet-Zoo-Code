@@ -10,10 +10,10 @@ This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compat
 
 ### Quick Install (Recommended)
 
-Install the Roo Code CLI with a single command:
+When Pet-Zoo-Code has a published CLI release, use this command to install it. See Development Installation to build from source.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | sh
 ```
 
 **Requirements:**
@@ -24,13 +24,13 @@ curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/i
 **Custom installation directory:**
 
 ```bash
-ROO_INSTALL_DIR=/opt/roo-code ROO_BIN_DIR=/usr/local/bin curl -fsSL ... | sh
+curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | ROO_INSTALL_DIR=/opt/roo-code ROO_BIN_DIR=/usr/local/bin sh
 ```
 
 **Install a specific version:**
 
 ```bash
-ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | ROO_VERSION=0.1.0 sh
 ```
 
 ### Updating
@@ -38,7 +38,7 @@ ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Co
 Re-run the install script to update to the latest version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | sh
 ```
 
 Or run:

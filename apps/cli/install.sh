@@ -1,6 +1,6 @@
 #!/bin/sh
-# Roo Code CLI Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+# Pet-Zoo-Code CLI installer
+# Usage: curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | sh
 #
 # Environment variables:
 #   ROO_INSTALL_DIR   - Installation directory (default: ~/.roo/cli)
@@ -13,7 +13,7 @@ set -e
 # Configuration
 INSTALL_DIR="${ROO_INSTALL_DIR:-$HOME/.roo/cli}"
 BIN_DIR="${ROO_BIN_DIR:-$HOME/.local/bin}"
-REPO="RooCodeInc/Roo-Code"
+REPO="e3742526/Pet-Zoo-Code"
 MIN_NODE_VERSION=20
 
 # Color output (only if terminal supports it)
@@ -160,7 +160,7 @@ if (latestVersion) {
 ')
     
     if [ -z "$VERSION" ]; then
-        error "Could not find any CLI releases. The CLI may not have been released yet."
+        error "No CLI release is available for Pet-Zoo-Code."
     fi
     
     info "Latest version: $VERSION"

@@ -39,7 +39,7 @@ function mergeTimestampedSnapshots(
 		return incoming
 	}
 
-	const existingGroups = new Map<number, MessageRecord[]>()
+	const existingGroups = new Map<number, (MessageRecord | undefined)[]>()
 	const existingLegacy: unknown[] = []
 
 	for (const message of existing) {
@@ -52,7 +52,6 @@ function mergeTimestampedSnapshots(
 		}
 	}
 
-	const consumedByTimestamp = new Map<number, Set<number>>()
 	let incomingLegacyCount = 0
 	const merged = incoming.map((message) => {
 		if (!isRecord(message) || typeof message.ts !== "number") {
@@ -60,38 +59,29 @@ function mergeTimestampedSnapshots(
 			return message
 		}
 
-		const existingGroup = existingGroups.get(message.ts) ?? []
-		const consumed = consumedByTimestamp.get(message.ts) ?? new Set<number>()
+		const existingGroup = existingGroups.get(message.ts)
+		if (!existingGroup) return message
 		const messageId = typeof message.messageId === "string" ? message.messageId : undefined
-		let diskIndex =
-			messageId === undefined
-				? existingGroup.findIndex(
-						(candidate, index) => !consumed.has(index) && candidate.messageId === undefined,
-					)
-				: existingGroup.findIndex(
-						(candidate, index) => !consumed.has(index) && candidate.messageId === messageId,
-					)
+		let diskIndex = existingGroup.findIndex((candidate) => candidate && candidate.messageId === messageId)
 		if (diskIndex === -1 && messageId !== undefined) {
 			// Match one legacy record while persisted histories are upgraded with identifiers.
-			diskIndex = existingGroup.findIndex(
-				(candidate, index) => !consumed.has(index) && candidate.messageId === undefined,
-			)
+			diskIndex = existingGroup.findIndex((candidate) => candidate && candidate.messageId === undefined)
 		}
 		const diskMessage = diskIndex === -1 ? undefined : existingGroup[diskIndex]
-		if (diskIndex !== -1) {
-			consumed.add(diskIndex)
-			consumedByTimestamp.set(message.ts, consumed)
-		}
-		if (mergeMatch !== undefined && diskMessage !== undefined) {
-			return mergeMatch(diskMessage, message)
+		if (diskMessage !== undefined) {
+			// Clear a consumed slot without shifting equal-timestamp siblings.
+			existingGroup[diskIndex] = undefined
+			if (mergeMatch !== undefined) return mergeMatch(diskMessage, message)
 		}
 		return message
 	})
 
-	const diskOnlyTimestamped = [...existingGroups.entries()].flatMap(([timestamp, messages]) => {
-		const consumed = consumedByTimestamp.get(timestamp)
-		return messages.filter((_message, index) => !consumed?.has(index))
-	})
+	const diskOnlyTimestamped: MessageRecord[] = []
+	for (const messages of existingGroups.values()) {
+		for (const message of messages) {
+			if (message !== undefined) diskOnlyTimestamped.push(message)
+		}
+	}
 
 	const timestampMerged: unknown[] = []
 	let diskOnlyIndex = 0

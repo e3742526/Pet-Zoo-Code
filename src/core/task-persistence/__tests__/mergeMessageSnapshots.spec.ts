@@ -121,6 +121,29 @@ describe("mergeClineMessageSnapshots", () => {
 		])
 	})
 
+	it("uses each disk match once when several messages share a timestamp", () => {
+		const shared = { ts: 1, type: "say", say: "subtask_result" }
+		const legacyOne = { ...shared, text: "First legacy", childTaskId: "first-child" }
+		const legacyTwo = { ...shared, text: "Second legacy", childTaskId: "second-child" }
+		const identified = { ...shared, messageId: "identified", text: "Existing", childTaskId: "identified-child" }
+		const diskOnly = { ...shared, messageId: "disk-only", text: "Disk-only result" }
+		const upgradedOne = { ...shared, messageId: "first", text: "First update" }
+		const updatedIdentified = { ...shared, messageId: "identified", text: "Identified update" }
+		const upgradedTwo = { ...shared, messageId: "second", text: "Second update" }
+		const newLegacy = { ...shared, text: "New legacy result" }
+		const existing = [legacyOne, identified, legacyTwo, diskOnly]
+		const original = structuredClone(existing)
+
+		expect(mergeClineMessageSnapshots(existing, [upgradedOne, updatedIdentified, upgradedTwo, newLegacy])).toEqual([
+			{ ...upgradedOne, childTaskId: "first-child" },
+			{ ...updatedIdentified, childTaskId: "identified-child" },
+			{ ...upgradedTwo, childTaskId: "second-child" },
+			newLegacy,
+			diskOnly,
+		])
+		expect(existing).toEqual(original)
+	})
+
 	it("keeps a disk childTaskId when the matching incoming message omits the key", () => {
 		const result = mergeClineMessageSnapshots(
 			[{ messageId: "msg-1", ts: 1, type: "say", say: "subtask_result", text: "done", childTaskId: "child-1" }],

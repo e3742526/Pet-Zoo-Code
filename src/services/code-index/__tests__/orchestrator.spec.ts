@@ -145,6 +145,29 @@ describe("CodeIndexOrchestrator - error path cleanup gating", () => {
 		},
 	)
 
+	it("attaches one set of batch listeners for each watcher run", async () => {
+		vectorStore.initialize.mockResolvedValue(false)
+		vectorStore.hasIndexedData.mockResolvedValue(true)
+		scanner.scanDirectory.mockResolvedValue({ stats: { processed: 0, skipped: 0 }, totalBlockCount: 0 })
+		const orchestrator = new CodeIndexOrchestrator(
+			configManager,
+			stateManager,
+			workspacePath,
+			cacheManager,
+			vectorStore,
+			scanner,
+			fileWatcher,
+		)
+
+		await orchestrator.startIndexing()
+		await orchestrator.startIndexing()
+		expect(fileWatcher.onBatchProgressUpdate).toHaveBeenCalledOnce()
+
+		orchestrator.stopWatcher()
+		await orchestrator.startIndexing()
+		expect(fileWatcher.onBatchProgressUpdate).toHaveBeenCalledTimes(2)
+	})
+
 	it.each([false, true])(
 		"keeps returned cancellation cleanup in the owner (incremental: %s)",
 		async (incremental) => {

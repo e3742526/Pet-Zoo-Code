@@ -19,6 +19,14 @@ import { TelemetryEventName } from "@roo-code/types"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
 import { Package } from "../../../shared/package"
 
+type FileEvent = { uri: vscode.Uri; type: "create" | "change" | "delete" }
+type BatchProgress = { processedInBatch: number; totalInBatch: number; currentFile?: string }
+type BatchEventEmitters = {
+	start: vscode.EventEmitter<string[]>
+	progress: vscode.EventEmitter<BatchProgress>
+	finish: vscode.EventEmitter<BatchProcessingSummary>
+}
+
 /**
  * Implementation of the file watcher interface
  */
@@ -27,34 +35,42 @@ export class FileWatcher implements IFileWatcher {
 	private ignoreInstance?: Ignore
 	private fileWatcher?: vscode.FileSystemWatcher
 	private ignoreController: RooIgnoreController
-	private accumulatedEvents: Map<string, { uri: vscode.Uri; type: "create" | "change" | "delete" }> = new Map()
+	private readonly accumulatedEvents = new Map<string, FileEvent>()
 	private batchProcessDebounceTimer?: NodeJS.Timeout
 	private readonly BATCH_DEBOUNCE_DELAY_MS = 500
 	private readonly FILE_PROCESSING_CONCURRENCY_LIMIT = 10
 	private readonly batchSegmentThreshold: number
 
-	private readonly _onDidStartBatchProcessing = new vscode.EventEmitter<string[]>()
-	private readonly _onBatchProgressUpdate = new vscode.EventEmitter<{
-		processedInBatch: number
-		totalInBatch: number
-		currentFile?: string
-	}>()
-	private readonly _onDidFinishBatchProcessing = new vscode.EventEmitter<BatchProcessingSummary>()
+	private batchEvents?: BatchEventEmitters
+
+	private getBatchEvents(): BatchEventEmitters {
+		return (this.batchEvents ??= {
+			start: new vscode.EventEmitter<string[]>(),
+			progress: new vscode.EventEmitter<BatchProgress>(),
+			finish: new vscode.EventEmitter<BatchProcessingSummary>(),
+		})
+	}
 
 	/**
 	 * Event emitted when a batch of files begins processing
 	 */
-	public readonly onDidStartBatchProcessing = this._onDidStartBatchProcessing.event
+	public get onDidStartBatchProcessing(): vscode.Event<string[]> {
+		return this.getBatchEvents().start.event
+	}
 
 	/**
 	 * Event emitted to report progress during batch processing
 	 */
-	public readonly onBatchProgressUpdate = this._onBatchProgressUpdate.event
+	public get onBatchProgressUpdate(): vscode.Event<BatchProgress> {
+		return this.getBatchEvents().progress.event
+	}
 
 	/**
 	 * Event emitted when a batch of files has finished processing
 	 */
-	public readonly onDidFinishBatchProcessing = this._onDidFinishBatchProcessing.event
+	public get onDidFinishBatchProcessing(): vscode.Event<BatchProcessingSummary> {
+		return this.getBatchEvents().finish.event
+	}
 
 	/**
 	 * Creates a new file watcher
@@ -107,58 +123,49 @@ export class FileWatcher implements IFileWatcher {
 	 * Initializes the file watcher
 	 */
 	async initialize(): Promise<void> {
+		if (this.fileWatcher) {
+			return
+		}
+
 		// Create file watcher
 		const filePattern = new vscode.RelativePattern(
 			this.workspacePath,
 			`**/*{${scannerExtensions.map((e) => e.substring(1)).join(",")}}`,
 		)
-		this.fileWatcher = vscode.workspace.createFileSystemWatcher(filePattern)
+		const watcher = vscode.workspace.createFileSystemWatcher(filePattern)
 
-		// Register event handlers
-		this.fileWatcher.onDidCreate(this.handleFileCreated.bind(this))
-		this.fileWatcher.onDidChange(this.handleFileChanged.bind(this))
-		this.fileWatcher.onDidDelete(this.handleFileDeleted.bind(this))
+		const queueEvent = (type: FileEvent["type"]) => (uri: vscode.Uri) => {
+			if (watcher === this.fileWatcher) {
+				this.accumulatedEvents.set(uri.fsPath, { uri, type })
+				this.scheduleBatchProcessing()
+			}
+		}
+		try {
+			watcher.onDidCreate(queueEvent("create"))
+			watcher.onDidChange(queueEvent("change"))
+			watcher.onDidDelete(queueEvent("delete"))
+			this.fileWatcher = watcher
+		} catch (error) {
+			watcher.dispose()
+			throw error
+		}
 	}
 
 	/**
 	 * Disposes the file watcher
 	 */
 	dispose(): void {
-		this.fileWatcher?.dispose()
-		if (this.batchProcessDebounceTimer) {
-			clearTimeout(this.batchProcessDebounceTimer)
-		}
-		this._onDidStartBatchProcessing.dispose()
-		this._onBatchProgressUpdate.dispose()
-		this._onDidFinishBatchProcessing.dispose()
+		const watcher = this.fileWatcher
+		this.fileWatcher = undefined
+		clearTimeout(this.batchProcessDebounceTimer)
+		this.batchProcessDebounceTimer = undefined
 		this.accumulatedEvents.clear()
-	}
-
-	/**
-	 * Handles file creation events
-	 * @param uri URI of the created file
-	 */
-	private async handleFileCreated(uri: vscode.Uri): Promise<void> {
-		this.accumulatedEvents.set(uri.fsPath, { uri, type: "create" })
-		this.scheduleBatchProcessing()
-	}
-
-	/**
-	 * Handles file change events
-	 * @param uri URI of the changed file
-	 */
-	private async handleFileChanged(uri: vscode.Uri): Promise<void> {
-		this.accumulatedEvents.set(uri.fsPath, { uri, type: "change" })
-		this.scheduleBatchProcessing()
-	}
-
-	/**
-	 * Handles file deletion events
-	 * @param uri URI of the deleted file
-	 */
-	private async handleFileDeleted(uri: vscode.Uri): Promise<void> {
-		this.accumulatedEvents.set(uri.fsPath, { uri, type: "delete" })
-		this.scheduleBatchProcessing()
+		const batchEvents = this.batchEvents
+		this.batchEvents = undefined
+		batchEvents?.start.dispose()
+		batchEvents?.progress.dispose()
+		batchEvents?.finish.dispose()
+		watcher?.dispose()
 	}
 
 	/**
@@ -168,7 +175,10 @@ export class FileWatcher implements IFileWatcher {
 		if (this.batchProcessDebounceTimer) {
 			clearTimeout(this.batchProcessDebounceTimer)
 		}
-		this.batchProcessDebounceTimer = setTimeout(() => this.triggerBatchProcessing(), this.BATCH_DEBOUNCE_DELAY_MS)
+		this.batchProcessDebounceTimer = setTimeout(() => {
+			this.batchProcessDebounceTimer = undefined
+			void this.triggerBatchProcessing()
+		}, this.BATCH_DEBOUNCE_DELAY_MS)
 	}
 
 	/**
@@ -182,10 +192,10 @@ export class FileWatcher implements IFileWatcher {
 		const eventsToProcess = new Map(this.accumulatedEvents)
 		this.accumulatedEvents.clear()
 
-		const filePathsInBatch = Array.from(eventsToProcess.keys())
-		this._onDidStartBatchProcessing.fire(filePathsInBatch)
-
-		await this.processBatch(eventsToProcess)
+		// A start listener can stop or restart the watcher before this batch awaits work.
+		const batchEvents = this.getBatchEvents()
+		batchEvents.start.fire(Array.from(eventsToProcess.keys()))
+		await this.processBatch(eventsToProcess, batchEvents)
 	}
 
 	/**
@@ -198,6 +208,7 @@ export class FileWatcher implements IFileWatcher {
 		totalFilesInBatch: number,
 		pathsToExplicitlyDelete: string[],
 		filesToUpsertDetails: Array<{ path: string; uri: vscode.Uri; originalType: "create" | "change" }>,
+		progress: vscode.EventEmitter<BatchProgress>,
 	): Promise<{ overallBatchError?: Error; clearedPaths: Set<string>; processedCount: number }> {
 		let overallBatchError: Error | undefined
 		const allPathsToClearFromDB = new Set<string>(pathsToExplicitlyDelete)
@@ -216,7 +227,7 @@ export class FileWatcher implements IFileWatcher {
 					this.cacheManager.deleteHash(path)
 					batchResults.push({ path, status: "success" })
 					processedCountInBatch++
-					this._onBatchProgressUpdate.fire({
+					progress.fire({
 						processedInBatch: processedCountInBatch,
 						totalInBatch: totalFilesInBatch,
 						currentFile: path,
@@ -239,7 +250,7 @@ export class FileWatcher implements IFileWatcher {
 				for (const path of pathsToExplicitlyDelete) {
 					batchResults.push({ path, status: "error", error: error as Error })
 					processedCountInBatch++
-					this._onBatchProgressUpdate.fire({
+					progress.fire({
 						processedInBatch: processedCountInBatch,
 						totalInBatch: totalFilesInBatch,
 						currentFile: path,
@@ -257,6 +268,7 @@ export class FileWatcher implements IFileWatcher {
 		processedCountInBatch: number,
 		totalFilesInBatch: number,
 		pathsToExplicitlyDelete: string[],
+		progress: vscode.EventEmitter<BatchProgress>,
 	): Promise<{
 		pointsForBatchUpsert: PointStruct[]
 		successfullyProcessedForUpsert: Array<{ path: string; newHash?: string }>
@@ -270,7 +282,7 @@ export class FileWatcher implements IFileWatcher {
 			const chunkToProcess = filesToProcessConcurrently.slice(i, i + this.FILE_PROCESSING_CONCURRENCY_LIMIT)
 
 			const chunkProcessingPromises = chunkToProcess.map(async (fileDetail) => {
-				this._onBatchProgressUpdate.fire({
+				progress.fire({
 					processedInBatch: processedCountInBatch,
 					totalInBatch: totalFilesInBatch,
 					currentFile: fileDetail.path,
@@ -336,7 +348,7 @@ export class FileWatcher implements IFileWatcher {
 				if (!pathsToExplicitlyDelete.includes(resultPath || "")) {
 					processedCountInBatch++
 				}
-				this._onBatchProgressUpdate.fire({
+				progress.fire({
 					processedInBatch: processedCountInBatch,
 					totalInBatch: totalFilesInBatch,
 					currentFile: resultPath,
@@ -420,7 +432,8 @@ export class FileWatcher implements IFileWatcher {
 	}
 
 	private async processBatch(
-		eventsToProcess: Map<string, { uri: vscode.Uri; type: "create" | "change" | "delete" }>,
+		eventsToProcess: Map<string, FileEvent>,
+		batchEvents: BatchEventEmitters,
 	): Promise<void> {
 		const batchResults: FileProcessingResult[] = []
 		let processedCountInBatch = 0
@@ -428,7 +441,7 @@ export class FileWatcher implements IFileWatcher {
 		let overallBatchError: Error | undefined
 
 		// Initial progress update
-		this._onBatchProgressUpdate.fire({
+		batchEvents.progress.fire({
 			processedInBatch: 0,
 			totalInBatch: totalFilesInBatch,
 			currentFile: undefined,
@@ -457,6 +470,7 @@ export class FileWatcher implements IFileWatcher {
 			totalFilesInBatch,
 			pathsToExplicitlyDelete,
 			filesToUpsertDetails,
+			batchEvents.progress,
 		)
 		overallBatchError = deletionError
 		processedCountInBatch = deletionCount
@@ -472,6 +486,7 @@ export class FileWatcher implements IFileWatcher {
 			processedCountInBatch,
 			totalFilesInBatch,
 			pathsToExplicitlyDelete,
+			batchEvents.progress,
 		)
 		processedCountInBatch = upsertCount
 
@@ -484,17 +499,17 @@ export class FileWatcher implements IFileWatcher {
 		)
 
 		// Finalize
-		this._onDidFinishBatchProcessing.fire({
+		batchEvents.finish.fire({
 			processedFiles: batchResults,
 			batchError: overallBatchError,
 		})
-		this._onBatchProgressUpdate.fire({
+		batchEvents.progress.fire({
 			processedInBatch: totalFilesInBatch,
 			totalInBatch: totalFilesInBatch,
 		})
 
 		if (this.accumulatedEvents.size === 0) {
-			this._onBatchProgressUpdate.fire({
+			batchEvents.progress.fire({
 				processedInBatch: 0,
 				totalInBatch: 0,
 				currentFile: undefined,

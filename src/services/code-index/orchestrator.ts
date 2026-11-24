@@ -38,6 +38,9 @@ export class CodeIndexOrchestrator {
 		if (!this.configManager.isFeatureConfigured) {
 			throw new Error("Cannot start watcher: Service not configured.")
 		}
+		if (this._fileWatcherSubscriptions.length > 0) {
+			return
+		}
 
 		this.stateManager.setSystemState("Indexing", "Initializing file watcher...")
 

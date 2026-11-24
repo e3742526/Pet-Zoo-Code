@@ -257,6 +257,12 @@ Manual and automatic context summaries omit stored model reasoning and replay si
 
 A fixture with 32 user and assistant message pairs compared the serialized message array before and after the change. With signed thinking blocks in the assistant turns, the input fell from 700,140 bytes to 10,220 bytes. Both runs used the same mocked summary response. A regression test checks the request body, original history, and the effective history after a successful summary.
 
+## Code index watcher restart
+
+The file watcher creates fresh batch event channels for each run. Repeated starts reuse the active native watcher and its listeners. A stop clears the queued events and debounce timer. A batch that was already running keeps its original event channels, even if a start listener stops and restarts the watcher. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1835)
+
+The regression tests reproduce the missing notifications and duplicate progress listeners. They check start, progress, completion, deletion errors, and delayed callbacks after restart. The tests use a simulated VS Code watcher and vector store.
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

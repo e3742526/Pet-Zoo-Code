@@ -4,40 +4,25 @@ import { webviewMessageHandler } from "../../../core/webview/webviewMessageHandl
 import type { ClineProvider } from "../../../core/webview/ClineProvider"
 import type { MarketplaceManager } from "../MarketplaceManager"
 
+const fetchMarketplaceData = vi.fn<ClineProvider["fetchMarketplaceData"]>()
 const postStateToWebviewWithoutClineMessages = vi.fn<ClineProvider["postStateToWebviewWithoutClineMessages"]>()
 const postMessageToWebview = vi.fn<ClineProvider["postMessageToWebview"]>()
-// These routes only use the provider to send state and action results.
+// These routes use the provider to load the catalog or send installation results.
 const mockProvider = {
+	fetchMarketplaceData,
 	postStateToWebviewWithoutClineMessages,
 	postMessageToWebview,
 } as unknown as ClineProvider
-
-const updateWithFilteredItems = vi.fn<MarketplaceManager["updateWithFilteredItems"]>().mockResolvedValue([])
-// The filter route uses only this marketplace method.
-const mockMarketplaceManager = {
-	updateWithFilteredItems,
-} as unknown as MarketplaceManager
 
 describe("Marketplace General Availability", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
 
-	it("should allow marketplace API calls (marketplace is generally available)", async () => {
-		const message = {
-			type: "filterMarketplaceItems" as const,
-			filters: { type: "mcp", search: "", tags: [] },
-		}
+	it("loads the marketplace catalog on request", async () => {
+		await webviewMessageHandler(mockProvider, { type: "fetchMarketplaceData" })
 
-		await webviewMessageHandler(mockProvider, message, mockMarketplaceManager)
-
-		// Should call marketplace manager methods since marketplace is generally available
-		expect(updateWithFilteredItems).toHaveBeenCalledWith({
-			type: "mcp",
-			search: "",
-			tags: [],
-		})
-		expect(postStateToWebviewWithoutClineMessages).toHaveBeenCalledOnce()
+		expect(fetchMarketplaceData).toHaveBeenCalledOnce()
 	})
 
 	it("should allow marketplace installation (marketplace is generally available)", async () => {

@@ -13,9 +13,6 @@
 
 import { MarketplaceItem, MarketplaceInstalledMetadata } from "@roo-code/types"
 
-import { vscode } from "../../utils/vscode"
-import { WebviewMessage } from "../../../../src/shared/WebviewMessage"
-
 export interface ViewState {
 	allItems: MarketplaceItem[]
 	organizationMcps: MarketplaceItem[]
@@ -280,12 +277,6 @@ export class MarketplaceViewStateManager {
 					displayItems: newDisplayItems,
 					displayOrganizationMcps: newDisplayOrganizationMcps,
 				}
-
-				// Send filter message
-				vscode.postMessage({
-					type: "filterMarketplaceItems",
-					filters: updatedFilters,
-				} as WebviewMessage)
 
 				this.notifyStateChange()
 

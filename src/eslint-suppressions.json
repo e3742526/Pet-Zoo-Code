@@ -1184,11 +1184,6 @@
 			"count": 7
 		}
 	},
-	"services/marketplace/__tests__/MarketplaceManager.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 1
-		}
-	},
 	"services/marketplace/__tests__/SimpleInstaller.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 17

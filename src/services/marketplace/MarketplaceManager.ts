@@ -4,7 +4,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 import * as yaml from "yaml"
 
-import type { MarketplaceItem, MarketplaceItemType } from "@roo-code/types"
+import type { MarketplaceItem } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
@@ -51,55 +51,6 @@ export class MarketplaceManager {
 				errors: [errorMessage],
 			}
 		}
-	}
-
-	async getCurrentItems(): Promise<MarketplaceItem[]> {
-		const result = await this.getMarketplaceItems()
-		return [...result.organizationMcps, ...result.marketplaceItems]
-	}
-
-	filterItems(
-		items: MarketplaceItem[],
-		filters: { type?: MarketplaceItemType; search?: string; tags?: string[] },
-	): MarketplaceItem[] {
-		return items.filter((item) => {
-			// Type filter
-			if (filters.type && item.type !== filters.type) {
-				return false
-			}
-
-			// Search filter
-			if (filters.search) {
-				const searchTerm = filters.search.toLowerCase()
-				const searchableText = `${item.name} ${item.description}`.toLowerCase()
-				if (!searchableText.includes(searchTerm)) {
-					return false
-				}
-			}
-
-			// Tags filter
-			if (filters.tags?.length) {
-				if (!item.tags?.some((tag) => filters.tags!.includes(tag))) {
-					return false
-				}
-			}
-
-			return true
-		})
-	}
-
-	async updateWithFilteredItems(filters: {
-		type?: MarketplaceItemType
-		search?: string
-		tags?: string[]
-	}): Promise<MarketplaceItem[]> {
-		const allItems = await this.getCurrentItems()
-
-		if (!filters.type && !filters.search && (!filters.tags || filters.tags.length === 0)) {
-			return allItems
-		}
-
-		return this.filterItems(allItems, filters)
 	}
 
 	async installMarketplaceItem(

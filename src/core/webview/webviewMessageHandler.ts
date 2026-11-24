@@ -115,7 +115,7 @@ const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 // entire read-write-apply sequence completes before the next one starts.
 let telemetrySettingQueue: Promise<void> = Promise.resolve()
 
-import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
+import { MarketplaceManager } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/UpdateTodoListTool"
 import {
 	handleListWorktrees,
@@ -3471,23 +3471,6 @@ export const webviewMessageHandler = async (
 			await vscode.commands.executeCommand(getCommand("focusPanel"))
 			break
 		}
-		case "filterMarketplaceItems": {
-			if (marketplaceManager && message.filters) {
-				try {
-					await marketplaceManager.updateWithFilteredItems({
-						type: message.filters.type as MarketplaceItemType | undefined,
-						search: message.filters.search,
-						tags: message.filters.tags,
-					})
-					await provider.postStateToWebviewWithoutClineMessages()
-				} catch (error) {
-					console.error("Marketplace: Error filtering items:", error)
-					vscode.window.showErrorMessage("Failed to filter marketplace items")
-				}
-			}
-			break
-		}
-
 		case "fetchMarketplaceData": {
 			// Fetch marketplace data on demand
 			await provider.fetchMarketplaceData()

@@ -2,6 +2,8 @@
 
 import type { MarketplaceItem } from "@roo-code/types"
 
+import { makeExtensionContext, makeUri } from "../../../test-utils/vscode"
+
 import { MarketplaceManager } from "../MarketplaceManager"
 
 // Mock TelemetryService
@@ -39,19 +41,6 @@ vi.mock("vscode", () => ({
 	}),
 }))
 
-const mockContext = {
-	subscriptions: [],
-	workspaceState: {
-		get: vi.fn(),
-		update: vi.fn(),
-	},
-	globalState: {
-		get: vi.fn(),
-		update: vi.fn(),
-	},
-	extensionUri: { fsPath: "/test/extension" },
-} as any
-
 // Mock fs
 vi.mock("fs/promises", () => ({
 	readFile: vi.fn(),
@@ -70,75 +59,8 @@ describe("MarketplaceManager", () => {
 	let manager: MarketplaceManager
 
 	beforeEach(() => {
-		manager = new MarketplaceManager(mockContext)
+		manager = new MarketplaceManager(makeExtensionContext({ extensionUri: makeUri("/test/extension") }))
 		vi.clearAllMocks()
-	})
-
-	describe("filterItems", () => {
-		it("should filter items by search term", () => {
-			const items: MarketplaceItem[] = [
-				{
-					id: "test-mode",
-					name: "Test Mode",
-					description: "A test mode for testing",
-					type: "mode",
-					content: "# Test Mode\nThis is a test mode.",
-				},
-				{
-					id: "other-mode",
-					name: "Other Mode",
-					description: "Another mode",
-					type: "mode",
-					content: "# Other Mode\nThis is another mode.",
-				},
-			]
-
-			const filtered = manager.filterItems(items, { search: "test" })
-
-			expect(filtered).toHaveLength(1)
-			expect(filtered[0].name).toBe("Test Mode")
-		})
-
-		it("should filter items by type", () => {
-			const items: MarketplaceItem[] = [
-				{
-					id: "test-mode",
-					name: "Test Mode",
-					description: "A test mode",
-					type: "mode",
-					content: "# Test Mode",
-				},
-				{
-					id: "test-mcp",
-					name: "Test MCP",
-					description: "A test MCP",
-					type: "mcp",
-					url: "https://example.com/test-mcp",
-					content: '{"command": "node", "args": ["server.js"]}',
-				},
-			]
-
-			const filtered = manager.filterItems(items, { type: "mode" })
-
-			expect(filtered).toHaveLength(1)
-			expect(filtered[0].type).toBe("mode")
-		})
-
-		it("should return empty array when no items match", () => {
-			const items: MarketplaceItem[] = [
-				{
-					id: "test-mode",
-					name: "Test Mode",
-					description: "A test mode",
-					type: "mode",
-					content: "# Test Mode",
-				},
-			]
-
-			const filtered = manager.filterItems(items, { search: "nonexistent" })
-
-			expect(filtered).toHaveLength(0)
-		})
 	})
 
 	describe("getMarketplaceItems", () => {

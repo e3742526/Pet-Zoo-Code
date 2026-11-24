@@ -667,7 +667,6 @@ export interface WebviewMessage {
 		| "setAutoEnableDefault"
 		| "focusPanelRequest"
 		| "openExternal"
-		| "filterMarketplaceItems"
 		| "marketplaceButtonClicked"
 		| "installMarketplaceItem"
 		| "installMarketplaceItemWithParameters"
@@ -794,7 +793,6 @@ export interface WebviewMessage {
 	messageId?: string
 	restoreCheckpoint?: boolean
 	historyPreviewCollapsed?: boolean
-	filters?: { type?: string; search?: string; tags?: string[] }
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	settings?: any
 	url?: string // For openExternal

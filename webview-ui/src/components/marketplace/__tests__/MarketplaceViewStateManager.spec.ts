@@ -4,6 +4,7 @@ import {
 	type StateChangeHandler,
 } from "../MarketplaceViewStateManager"
 import { MarketplaceItem } from "@roo-code/types"
+import { vscode } from "@/utils/vscode"
 
 // Mock vscode module
 vi.mock("@/utils/vscode", () => ({
@@ -179,14 +180,14 @@ describe("MarketplaceViewStateManager", () => {
 
 	describe("filtering behavior", () => {
 		beforeEach(async () => {
-			// Set up initial state with items
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
+			await stateManager.handleMessage({
+				type: "marketplaceData",
+				marketplaceItems: mockMarketplaceItems,
+				marketplaceInstalledMetadata: {
+					project: { "test-mcp-1": { type: "mcp" } },
+					global: { "test-mode-1": { type: "mode" } },
 				},
-			}
-			await stateManager.handleMessage(message)
+			})
 		})
 
 		it("should show all items when no filters are active", () => {
@@ -196,107 +197,47 @@ describe("MarketplaceViewStateManager", () => {
 			expect(state.displayItems).toEqual(mockMarketplaceItems)
 		})
 
-		it("should filter items when filters are applied", async () => {
-			// First update the filters
-			const filterTransition: ViewStateTransition = {
-				type: "UPDATE_FILTERS",
-				payload: {
-					filters: { type: "mcp" },
-				},
-			}
-
-			await stateManager.transition(filterTransition)
-
-			// Then simulate a state message that would trigger filtering
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			const state = stateManager.getState()
+		it.each([
+			{ filters: { type: "mcp" }, visibleIds: ["test-mcp-1", "test-mcp-2"] },
+			{ filters: { search: "MODE" }, visibleIds: ["test-mode-1"] },
+			{ filters: { search: "Another" }, visibleIds: ["test-mcp-2"] },
+			{ filters: { search: "nonexistent" }, visibleIds: [] },
+			{ filters: { tags: ["server"] }, visibleIds: ["test-mcp-2"] },
+			{ filters: { installed: "installed" as const }, visibleIds: ["test-mcp-1", "test-mode-1"] },
+			{ filters: { installed: "not_installed" as const }, visibleIds: ["test-mcp-2"] },
+			{ filters: { type: "mcp", search: "test", tags: ["server"] }, visibleIds: ["test-mcp-2"] },
+		])("applies $filters locally and clears it without contacting the host", async ({ filters, visibleIds }) => {
+			await stateManager.transition({ type: "UPDATE_FILTERS", payload: { filters } })
 
 			expect(stateManager.isFilterActive()).toBe(true)
-			expect(state.displayItems?.length).toBe(2) // Only MCP items
-			expect(state.displayItems?.every((item) => item.type === "mcp")).toBe(true)
-		})
+			expect(stateManager.getState().displayItems?.map((item) => item.id)).toEqual(visibleIds)
 
-		it("should restore all items when filters are cleared", async () => {
-			// First apply a filter
 			await stateManager.transition({
 				type: "UPDATE_FILTERS",
-				payload: { filters: { type: "mcp" } },
+				payload: { filters: { type: "", search: "", tags: [], installed: "all" } },
 			})
 
-			// Simulate state message with filter active
-			let message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			// Then clear the filter
-			await stateManager.transition({
-				type: "UPDATE_FILTERS",
-				payload: { filters: { type: "" } },
-			})
-
-			// Simulate state message with filter cleared
-			message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			const state = stateManager.getState()
 			expect(stateManager.isFilterActive()).toBe(false)
-			expect(state.displayItems).toEqual(mockMarketplaceItems)
+			expect(stateManager.getState().displayItems).toEqual(mockMarketplaceItems)
+			expect(vscode.postMessage).not.toHaveBeenCalled()
 		})
 
-		it("should handle search filters correctly", async () => {
+		it("reapplies the current installation filter when the catalog refreshes", async () => {
 			await stateManager.transition({
 				type: "UPDATE_FILTERS",
-				payload: { filters: { search: "Mode" } },
+				payload: { filters: { installed: "installed" } },
 			})
 
-			// Simulate state message to trigger filtering
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
+			await stateManager.handleMessage({
+				type: "marketplaceData",
+				marketplaceItems: mockMarketplaceItems,
+				marketplaceInstalledMetadata: {
+					project: { "test-mcp-2": { type: "mcp" } },
+					global: {},
 				},
-			}
-			await stateManager.handleMessage(message)
-
-			const state = stateManager.getState()
-			expect(state.displayItems?.length).toBe(1)
-			expect(state.displayItems?.[0].name).toBe("Test Mode 1")
-		})
-
-		it("should handle tag filters correctly", async () => {
-			await stateManager.transition({
-				type: "UPDATE_FILTERS",
-				payload: { filters: { tags: ["server"] } },
 			})
 
-			// Simulate state message to trigger filtering
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			const state = stateManager.getState()
-			expect(state.displayItems?.length).toBe(1)
-			expect(state.displayItems?.[0].name).toBe("Test MCP Server 2")
+			expect(stateManager.getState().displayItems?.map((item) => item.id)).toEqual(["test-mcp-2"])
 		})
 	})
 

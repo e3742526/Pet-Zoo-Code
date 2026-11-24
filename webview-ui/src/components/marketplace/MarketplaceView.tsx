@@ -51,10 +51,7 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 
 	// Ensure marketplace state manager processes messages when component mounts
 	useEffect(() => {
-		// When the marketplace view first mounts, we need to trigger a state update
-		// to ensure we get the current marketplace items. We do this by sending
-		// a filter message with empty filters, which will cause the extension to
-		// send back the full state including all marketplace items.
+		// Request the catalog when the marketplace opens before it has received any items.
 		if (!hasReceivedInitialState && state.allItems.length === 0) {
 			// Fetch marketplace data on demand
 			// Note: isFetching is already true by default for initial load

@@ -10,7 +10,7 @@ import React, {
 import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import { FALLBACK_LANGUAGE, loadLanguage } from "./setup"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionShellState } from "@/context/ExtensionStateContext"
 
 export type TranslationContextValue = {
 	t: TFunction
@@ -28,9 +28,8 @@ export const TranslationContext = createContext<TranslationContextValue>({
 const TranslationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 	// Initialize with default configuration
 	const { i18n } = useTranslation()
-	// Get the extension state directly - it already contains all state properties
-	const extensionState = useExtensionState()
-	const requestedLanguage = extensionState.language || FALLBACK_LANGUAGE
+	const { language: extensionLanguage } = useExtensionShellState()
+	const requestedLanguage = extensionLanguage || FALLBACK_LANGUAGE
 
 	// Only the fallback locale ships in the entry chunk, so any other language
 	// has to fetch its bundles before i18next can resolve a key. Switching after

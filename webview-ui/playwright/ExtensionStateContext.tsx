@@ -41,3 +41,5 @@ export function ExtensionStateContextProvider({
 }
 
 export const useExtensionState = () => useContext(ExtensionStateContext)
+export const useExtensionHistoryState = useExtensionState
+export const useExtensionShellState = useExtensionState

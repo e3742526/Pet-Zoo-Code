@@ -1,5 +1,5 @@
 import { render, screen } from "@/utils/test-utils"
-import { ExtensionStateContext } from "@/context/ExtensionStateContext"
+import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 import { formatDateTime } from "@/utils/format"
 
 import TaskItemFooter from "../TaskItemFooter"
@@ -159,11 +159,13 @@ describe("TaskItemFooter", () => {
 			translation.language = "en"
 		})
 
-		const renderWith = (state: Record<string, unknown>) =>
+		const renderWith = (
+			state: NonNullable<React.ComponentProps<typeof ExtensionStateContextProvider>["initialState"]>,
+		) =>
 			render(
-				<ExtensionStateContext.Provider value={state as never}>
+				<ExtensionStateContextProvider initialState={state}>
 					<TaskItemFooter item={mockItem} variant="compact" />
-				</ExtensionStateContext.Provider>,
+				</ExtensionStateContextProvider>,
 			)
 
 		it("shows a relative time by default", () => {

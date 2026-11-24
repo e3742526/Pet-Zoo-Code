@@ -1,5 +1,5 @@
 import { isRetiredProvider, providerIdentifiers } from "@roo-code/types"
-import React, { createContext, useCallback, useEffect, useRef, useState } from "react"
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import deepEqual from "fast-deep-equal"
 
 import {
@@ -167,6 +167,31 @@ export interface ExtensionStateContextType extends ExtensionState {
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
+
+type ExtensionShellState = Pick<
+	ExtensionStateContextType,
+	| "didHydrateState"
+	| "showWelcome"
+	| "settingsImportedAt"
+	| "shouldShowAnnouncement"
+	| "renderContext"
+	| "mdmCompliant"
+	| "language"
+>
+
+type ExtensionHistoryState = Pick<
+	ExtensionStateContextType,
+	"cwd" | "taskHistory" | "timeFormat" | "dateFormat" | "showRelativeTimes"
+>
+
+const ExtensionShellContext = createContext<ExtensionShellState | undefined>(undefined)
+const ExtensionHistoryContext = createContext<ExtensionHistoryState>({
+	cwd: "",
+	taskHistory: [],
+	timeFormat: "auto",
+	dateFormat: "auto",
+	showRelativeTimes: true,
+})
 
 const messagesAreStale = (incoming: Partial<ExtensionState>, currentSequence: number | undefined): boolean =>
 	incoming.clineMessages !== undefined &&
@@ -688,17 +713,47 @@ export const ExtensionStateContextProvider: React.FC<{
 		}
 	}, [state.chatFontSize])
 
+	const { settingsImportedAt, shouldShowAnnouncement, renderContext, mdmCompliant, language } = state
+	const shellState = useMemo<ExtensionShellState>(
+		() => ({
+			didHydrateState,
+			showWelcome,
+			settingsImportedAt,
+			shouldShowAnnouncement,
+			renderContext,
+			mdmCompliant,
+			language,
+		}),
+		[
+			didHydrateState,
+			showWelcome,
+			settingsImportedAt,
+			shouldShowAnnouncement,
+			renderContext,
+			mdmCompliant,
+			language,
+		],
+	)
+	const { cwd, taskHistory, timeFormat, dateFormat, showRelativeTimes } = state
+	const historyState = useMemo<ExtensionHistoryState>(
+		() => ({
+			cwd,
+			taskHistory,
+			timeFormat: timeFormat ?? "auto",
+			dateFormat: dateFormat ?? "auto",
+			showRelativeTimes: showRelativeTimes ?? true,
+		}),
+		[cwd, taskHistory, timeFormat, dateFormat, showRelativeTimes],
+	)
+
 	const contextValue: ExtensionStateContextType = {
 		...state,
+		...shellState,
+		...historyState,
 		// `chatFontSize` is persisted as nullish (null on reset); normalize null to
 		// undefined so it matches the context type and means "use VS Code default".
 		chatFontSize: state.chatFontSize ?? undefined,
-		timeFormat: state.timeFormat ?? "auto",
-		dateFormat: state.dateFormat ?? "auto",
-		showRelativeTimes: state.showRelativeTimes ?? true,
 		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? true,
-		didHydrateState,
-		showWelcome,
 		mcpServers,
 		currentCheckpoint,
 		filePaths,
@@ -821,8 +876,22 @@ export const ExtensionStateContextProvider: React.FC<{
 			setState((prevState) => ({ ...prevState, showWorktreesInHomeScreen: value })),
 	}
 
-	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+	return (
+		<ExtensionShellContext.Provider value={shellState}>
+			<ExtensionHistoryContext.Provider value={historyState}>
+				<ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+			</ExtensionHistoryContext.Provider>
+		</ExtensionShellContext.Provider>
+	)
 }
+
+export function useExtensionShellState() {
+	const state = React.useContext(ExtensionShellContext)
+	if (!state) throw new Error("useExtensionShellState must be used within an ExtensionStateContextProvider")
+	return state
+}
+
+export const useExtensionHistoryState = () => React.useContext(ExtensionHistoryContext)
 
 export const useExtensionState = () => {
 	const context = React.useContext(ExtensionStateContext)

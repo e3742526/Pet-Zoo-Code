@@ -5,17 +5,17 @@ import type { HistoryItem } from "@roo-code/types"
 import { useTaskSearch } from "../useTaskSearch"
 
 vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionHistoryState: vi.fn(),
 }))
 
 vi.mock("@/utils/highlight", () => ({
 	highlightFzfMatch: vi.fn((text) => `<mark>${text}</mark>`),
 }))
 
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionHistoryState } from "@/context/ExtensionStateContext"
 import { highlightFzfMatch } from "@/utils/highlight"
 
-const mockUseExtensionState = useExtensionState as ReturnType<typeof vi.fn>
+const mockUseExtensionHistoryState = vi.mocked(useExtensionHistoryState)
 const mockHighlightFzfMatch = highlightFzfMatch as ReturnType<typeof vi.fn>
 
 const mockTaskHistory: HistoryItem[] = [
@@ -56,10 +56,10 @@ const mockTaskHistory: HistoryItem[] = [
 describe("useTaskSearch", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionHistoryState.mockReturnValue({
 			taskHistory: mockTaskHistory,
 			cwd: "/workspace/project1",
-		} as any)
+		})
 	})
 
 	it("returns all tasks by default", () => {
@@ -153,11 +153,11 @@ describe("useTaskSearch", () => {
 
 		expect(result.current.tasks).toHaveLength(1)
 		expect(result.current.tasks[0].id).toBe("task-1")
-		expect((result.current.tasks[0] as any).highlight).toBe("<mark>Create a React component</mark>")
+		expect(result.current.tasks[0]).toMatchObject({ highlight: "<mark>Create a React component</mark>" })
 	})
 
 	it("searches and highlights the custom title of a renamed task", () => {
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionHistoryState.mockReturnValue({
 			taskHistory: [{ ...mockTaskHistory[1], title: "Coverage sprint" }],
 			cwd: "/workspace/project1",
 		})
@@ -173,7 +173,7 @@ describe("useTaskSearch", () => {
 	})
 
 	it("searches the generated title and the original prompt of an auto-titled task", () => {
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionHistoryState.mockReturnValue({
 			taskHistory: [{ ...mockTaskHistory[1], autoTitle: "Coverage sprint" }],
 			cwd: "/workspace/project1",
 		})
@@ -206,7 +206,7 @@ describe("useTaskSearch", () => {
 			{ name: "only the original prompt", query: "unit tests" },
 			{ name: "the title", query: "Docs" },
 		])("escapes an HTML-bearing title when the search matches $name", ({ query }) => {
-			mockUseExtensionState.mockReturnValue({
+			mockUseExtensionHistoryState.mockReturnValue({
 				taskHistory: [{ ...mockTaskHistory[1], autoTitle: '<a href="x">Docs</a>' }],
 				cwd: "/workspace/project1",
 			})
@@ -226,7 +226,7 @@ describe("useTaskSearch", () => {
 	it("keeps match positions from a custom title that is longer than the task", () => {
 		// "Write unit tests" (16 chars) vs "Coverage sprint with deep tests" (31 chars):
 		// with the old task.length bound, every position of "deep" (21-24) would be filtered out.
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionHistoryState.mockReturnValue({
 			taskHistory: [{ ...mockTaskHistory[1], title: "Coverage sprint with deep tests" }],
 			cwd: "/workspace/project1",
 		})
@@ -303,10 +303,10 @@ describe("useTaskSearch", () => {
 	})
 
 	it("handles empty task history", () => {
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionHistoryState.mockReturnValue({
 			taskHistory: [],
 			cwd: "/workspace/project1",
-		} as any)
+		})
 
 		const { result } = renderHook(() => useTaskSearch())
 
@@ -336,10 +336,10 @@ describe("useTaskSearch", () => {
 			},
 		] as HistoryItem[]
 
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionHistoryState.mockReturnValue({
 			taskHistory: incompleteTaskHistory,
 			cwd: "/workspace/project1",
-		} as any)
+		})
 
 		const { result } = renderHook(() => useTaskSearch())
 

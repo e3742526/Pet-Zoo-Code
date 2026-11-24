@@ -1,10 +1,8 @@
-import { render, screen, fireEvent } from "@/utils/test-utils"
-
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { renderWithExtensionState, screen, fireEvent } from "@/utils/test-utils"
+import type { HistoryItem } from "@roo-code/types"
 
 import HistoryView from "../HistoryView"
 
-vi.mock("@src/context/ExtensionStateContext")
 vi.mock("@src/utils/vscode")
 
 vi.mock("@src/i18n/TranslationContext", () => ({
@@ -13,9 +11,10 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 	}),
 }))
 
-const mockTaskHistory = [
+const mockTaskHistory: HistoryItem[] = [
 	{
 		id: "1",
+		number: 1,
 		task: "Test task 1",
 		ts: Date.now(),
 		tokensIn: 100,
@@ -25,6 +24,7 @@ const mockTaskHistory = [
 	},
 	{
 		id: "2",
+		number: 2,
 		task: "Test task 2",
 		ts: Date.now() + 1000,
 		tokensIn: 200,
@@ -34,18 +34,16 @@ const mockTaskHistory = [
 	},
 ]
 
-describe("HistoryView", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-		;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-			taskHistory: mockTaskHistory,
-			cwd: "/test/workspace",
-		})
+function renderHistory(onDone: () => void) {
+	return renderWithExtensionState(<HistoryView onDone={onDone} />, {
+		state: { taskHistory: mockTaskHistory, cwd: "/test/workspace" },
 	})
+}
 
+describe("HistoryView", () => {
 	it("renders the history interface", () => {
 		const onDone = vi.fn()
-		render(<HistoryView onDone={onDone} />)
+		renderHistory(onDone)
 
 		// Check for main UI elements
 		expect(screen.getByText("history:history")).toBeInTheDocument()
@@ -55,7 +53,7 @@ describe("HistoryView", () => {
 
 	it("calls onDone when done button is clicked", () => {
 		const onDone = vi.fn()
-		render(<HistoryView onDone={onDone} />)
+		renderHistory(onDone)
 
 		const doneButton = screen.getByText("history:done")
 		fireEvent.click(doneButton)

@@ -20,6 +20,8 @@ import {
 import {
 	ExtensionStateContextProvider,
 	useExtensionState,
+	useExtensionShellState,
+	useExtensionHistoryState,
 	mergeExtensionState,
 	createInitialExtensionState,
 } from "../ExtensionStateContext"
@@ -191,6 +193,55 @@ describe("ExtensionStateContext", () => {
 		postWorkspaceUpdate({ filePaths: [], openedTabs: [] })
 		expect(screen.getByTestId("file-paths")).toHaveTextContent("[]")
 		expect(screen.getByTestId("opened-tabs")).toHaveTextContent("[]")
+	})
+
+	it("delivers streaming updates without invalidating shell and history subscribers", () => {
+		const shellRender = vi.fn()
+		const historyRender = vi.fn()
+		const Shell = () => {
+			const { language } = useExtensionShellState()
+			shellRender(language)
+			return <span data-testid="shell-language">{language}</span>
+		}
+		const History = () => {
+			const { taskHistory, timeFormat } = useExtensionHistoryState()
+			historyRender(timeFormat)
+			return <span data-testid="history-state">{`${taskHistory.length} ${timeFormat}`}</span>
+		}
+		const first: ClineMessage = { type: "say", say: "text", ts: 1, text: "Initial", partial: true }
+		render(
+			<ExtensionStateContextProvider initialState={{ clineMessages: [first], language: "en" }}>
+				<Shell />
+				<History />
+				<TestComponent />
+			</ExtensionStateContextProvider>,
+		)
+		const post = (data: ExtensionMessage) => act(() => window.dispatchEvent(new MessageEvent("message", { data })))
+		shellRender.mockClear()
+		historyRender.mockClear()
+
+		const latest = { ...first, text: "Latest" }
+		post({ type: "messageUpdated", clineMessage: latest })
+		expectMessages([latest])
+		expect(shellRender).not.toHaveBeenCalled()
+		expect(historyRender).not.toHaveBeenCalled()
+
+		const item: HistoryItem = {
+			id: "task-a",
+			number: 1,
+			ts: 1,
+			task: "Latest",
+			tokensIn: 0,
+			tokensOut: 0,
+			totalCost: 0,
+		}
+		post({ type: "taskHistoryItemUpdated", taskHistoryItem: item })
+		expect(screen.getByTestId("history-state")).toHaveTextContent("1 auto")
+		expect(shellRender).not.toHaveBeenCalled()
+
+		post({ type: "state", state: { language: "fr", timeFormat: "24h" } })
+		expect(screen.getByTestId("shell-language")).toHaveTextContent("fr")
+		expect(screen.getByTestId("history-state")).toHaveTextContent("1 24h")
 	})
 
 	it.each(["initial", "state", "taskHistoryUpdated"] as const)(

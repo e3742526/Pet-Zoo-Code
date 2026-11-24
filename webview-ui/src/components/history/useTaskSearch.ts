@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from "react"
 import { Fzf } from "fzf"
 
 import { highlightFzfMatch } from "@/utils/highlight"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionHistoryState } from "@/context/ExtensionStateContext"
 
 import { getTaskDisplayTitle } from "./types"
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
 
 export const useTaskSearch = () => {
-	const { taskHistory, cwd } = useExtensionState()
+	const { taskHistory, cwd } = useExtensionHistoryState()
 	const [searchQuery, setSearchQuery] = useState("")
 	const [sortOption, setSortOption] = useState<SortOption>("newest")
 	const [lastNonRelevantSort, setLastNonRelevantSort] = useState<SortOption | null>("newest")

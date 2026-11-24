@@ -85,7 +85,7 @@ vi.mock("@src/components/marketplace/MarketplaceView", () => ({
 	},
 }))
 
-const mockUseExtensionState = vi.fn()
+const mockUseExtensionShellState = vi.fn()
 
 // Mock i18next and react-i18next
 vi.mock("i18next", () => {
@@ -143,7 +143,7 @@ vi.mock("@src/i18n/TranslationContext", () => {
 })
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: () => mockUseExtensionState(),
+	useExtensionShellState: () => mockUseExtensionShellState(),
 	ExtensionStateContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
@@ -160,7 +160,7 @@ describe("App", () => {
 		window.removeEventListener("message", () => {})
 
 		// Set up default mock return value
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionShellState.mockReturnValue({
 			didHydrateState: true,
 			showWelcome: false,
 			shouldShowAnnouncement: false,
@@ -212,7 +212,7 @@ describe("App", () => {
 			telemetrySetting: "enabled",
 			currentTaskId: "task-a" as string | undefined,
 		}
-		mockUseExtensionState.mockImplementation(() => state)
+		mockUseExtensionShellState.mockImplementation(() => state)
 
 		const { rerender } = render(<AppWithProviders />)
 		const firstInstance = screen.getByTestId("chat-view").getAttribute("data-instance")
@@ -234,7 +234,7 @@ describe("App", () => {
 	it.each(["sidebar", "editor"])(
 		"reports direct pointer and keyboard interaction in the %s webview",
 		(renderContext) => {
-			mockUseExtensionState.mockReturnValue({
+			mockUseExtensionShellState.mockReturnValue({
 				didHydrateState: true,
 				showWelcome: false,
 				renderContext,
@@ -291,7 +291,7 @@ describe("App", () => {
 	})
 
 	it("shows welcome view when setup is incomplete", () => {
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionShellState.mockReturnValue({
 			didHydrateState: true,
 			showWelcome: true,
 			shouldShowAnnouncement: false,
@@ -324,7 +324,7 @@ describe("App", () => {
 		["settings", "settings-view"],
 		["marketplace", "marketplace-view"],
 	])("still switches to %s while welcome gating is active", async (action, testId) => {
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionShellState.mockReturnValue({
 			didHydrateState: true,
 			showWelcome: true,
 			shouldShowAnnouncement: false,
@@ -344,7 +344,7 @@ describe("App", () => {
 	})
 
 	it("keeps history behind the welcome gate while setup is incomplete", () => {
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionShellState.mockReturnValue({
 			didHydrateState: true,
 			showWelcome: true,
 			shouldShowAnnouncement: false,
@@ -372,7 +372,7 @@ describe("App", () => {
 			settingsImportedAt: undefined as number | undefined,
 		}
 
-		mockUseExtensionState.mockImplementation(() => state)
+		mockUseExtensionShellState.mockImplementation(() => state)
 
 		const { rerender } = render(<AppWithProviders />)
 
@@ -426,7 +426,7 @@ describe("App", () => {
 				settingsImportedAt: undefined as number | undefined,
 			}
 
-			mockUseExtensionState.mockImplementation(() => state)
+			mockUseExtensionShellState.mockImplementation(() => state)
 
 			const { rerender } = render(<AppWithProviders />)
 
@@ -462,7 +462,7 @@ describe("App", () => {
 	it("does not bounce back to settings after the import redirect has already fired", async () => {
 		const importedAt = Date.now()
 
-		mockUseExtensionState.mockReturnValue({
+		mockUseExtensionShellState.mockReturnValue({
 			...createSetupIncompleteState(),
 			settingsImportedAt: importedAt,
 		})

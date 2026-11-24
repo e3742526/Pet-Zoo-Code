@@ -1,7 +1,7 @@
-import React, { useContext } from "react"
+import React from "react"
 import type { HistoryItem } from "@roo-code/types"
 import { formatDateTime, formatTimeAgo } from "@/utils/format"
-import { ExtensionStateContext } from "@/context/ExtensionStateContext"
+import { useExtensionHistoryState } from "@/context/ExtensionStateContext"
 import { CopyButton } from "./CopyButton"
 import { ExportButton } from "./ExportButton"
 import { DeleteButton } from "./DeleteButton"
@@ -29,11 +29,7 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 	onRename,
 }) => {
 	const { t, language } = useAppTranslation()
-	// Optional read: this leaf renders standalone (tests, previews) without a provider.
-	const ext = useContext(ExtensionStateContext)
-	const timeFormat = ext?.timeFormat
-	const dateFormat = ext?.dateFormat
-	const showRelativeTimes = ext?.showRelativeTimes ?? true
+	const { timeFormat, dateFormat, showRelativeTimes = true } = useExtensionHistoryState()
 
 	return (
 		<div className="text-xs text-vscode-descriptionForeground flex justify-between items-center">

@@ -9,7 +9,7 @@ import TranslationProvider, { useAppTranslation } from "../TranslationContext"
 const extensionState: { language: string } = { language: "en" }
 
 vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionState: () => extensionState,
+	useExtensionShellState: () => extensionState,
 }))
 
 const Probe = () => {

@@ -343,3 +343,11 @@ LiteLLM discovery records the token-limit field for recognized GPT-5 and later f
 Both values survive a disk cache round trip. When a selected model has metadata from an older cache, the extension refreshes the catalog. If the proxy cannot refresh it, the extension keeps the cached metadata and delays another attempt. The shared adapter tests also now check the OpenRouter URL scope and forwarding added in `a9bf40492`.
 
 The regression reproduced the wrong field in both request paths. All 756 focused provider and cache tests and 44 distribution checks passed. The rebuilt VSIX streamed a task through a loopback LiteLLM mock that required `max_completion_tokens`. The extension reopened the saved result, and the process sandbox denied non-loopback connections.
+
+## Settings drafts and host updates
+
+Settings keeps a local draft for both general settings and individual provider fields. Fields that the form has not changed follow host updates. Save sends the current draft using the existing settings messages. Profile changes, mode changes, imports, and discard reset the draft. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2662)
+
+A successful time or date save clears only the edits it sent. If the host changed a submitted field before acknowledgement, the field takes the latest host value when it becomes clean. A subsequent local edit stays in the draft. An earlier save answer cannot clear edits made after an import resets the form.
+
+The regression tests reproduced stale values in the general settings and provider payloads. The focused checks cover settings editing, save results, provider selection, and the packaged build.

@@ -39,6 +39,7 @@ import {
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_TASK_TITLE_GENERATION_ENABLED,
+	GLOBAL_SETTINGS_KEYS,
 	ImageGenerationProvider,
 } from "@roo-code/types"
 
@@ -88,6 +89,9 @@ import { WorktreesView } from "../worktrees/WorktreesView"
 import { SettingsSearch } from "./SettingsSearch"
 import { buildSettingsSearchIndex } from "./settingsSearchIndex"
 import { nextSaveRequestId } from "./saveRequestId"
+import { useSettingsDraft } from "./useSettingsDraft"
+
+const settingsDraftFields = [...GLOBAL_SETTINGS_KEYS.filter((key) => key !== "taskHistory"), "debug"]
 
 /**
  * How long the form waits for the host to answer a save that changes a time or date setting. The host always answers
@@ -159,15 +163,45 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const handledSettingsImportedAt = useRef<number | undefined>(undefined)
 	const confirmDialogHandler = useRef<() => void>()
 
-	const [cachedState, setCachedState] = useState(() => extensionState)
+	const {
+		draft: settingsDraft,
+		update: updateSetting,
+		captureSave: captureSettingsSave,
+		markSaved: markSettingsSaved,
+		reset: resetSettings,
+	} = useSettingsDraft(extensionState, settingsDraftFields)
+	const {
+		draft: providerDraft,
+		update: updateProviderSetting,
+		captureSave: captureProviderSave,
+		markSaved: markProviderSaved,
+		reset: resetProvider,
+	} = useSettingsDraft(extensionState.apiConfiguration)
+	const cachedState = useMemo(
+		() => ({ ...settingsDraft, apiConfiguration: providerDraft }),
+		[settingsDraft, providerDraft],
+	)
 	// The save waiting for the host's answer, and the form state it sent. The "unsaved changes" flag stays on until the
 	// host says it was stored, and then goes off only if the user has not edited anything since.
 	const [pendingSaveId, setPendingSaveId] = useState<string | undefined>(undefined)
-	const sentState = useRef<typeof extensionState | undefined>(undefined)
-	const latestCachedState = useRef(cachedState)
-	latestCachedState.current = cachedState
+	const sentState = useRef<
+		| {
+				id: string
+				settings: ReturnType<typeof captureSettingsSave>
+				provider: ReturnType<typeof captureProviderSave>
+		  }
+		| undefined
+	>(undefined)
+	const discardEdits = useCallback(() => {
+		sentState.current = undefined
+		setPendingSaveId(undefined)
+		resetSettings()
+		resetProvider()
+		setChangeDetected(false)
+	}, [resetSettings, resetProvider])
 
 	const {
+		apiConfiguration,
 		alwaysAllowReadOnly,
 		alwaysAllowReadOnlyOutsideWorkspace,
 		allowedReadFiles,
@@ -241,149 +275,93 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCloseZooOpenedNewFiles,
 	} = cachedState
 
-	const apiConfiguration = cachedState.apiConfiguration
-
-	useEffect(() => {
+	useLayoutEffect(() => {
 		// Update when currentApiConfigName or mode changes.
 		// Expected to be triggered by loadApiConfiguration/upsertApiConfiguration or mode switch.
 		if (prevApiConfigName.current === currentApiConfigName && prevMode.current === mode) {
 			return
 		}
 
-		setCachedState((prevCachedState) => ({ ...prevCachedState, ...extensionState }))
+		discardEdits()
 		prevApiConfigName.current = currentApiConfigName
 		prevMode.current = mode
-		setChangeDetected(false)
-	}, [currentApiConfigName, mode, extensionState])
+	}, [currentApiConfigName, mode, discardEdits])
 
 	// Bust the cache when settings are imported.
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!settingsImportedAt || handledSettingsImportedAt.current === settingsImportedAt) {
 			return
 		}
 
 		handledSettingsImportedAt.current = settingsImportedAt
-		setCachedState((prevCachedState) => ({ ...prevCachedState, ...extensionState }))
-		setChangeDetected(false)
-	}, [settingsImportedAt, extensionState])
+		discardEdits()
+	}, [settingsImportedAt, discardEdits])
 
-	const setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType> = useCallback((field, value) => {
-		setCachedState((prevState) => {
-			if (prevState[field] === value) {
-				return prevState
-			}
-
-			setChangeDetected(true)
-			return { ...prevState, [field]: value }
-		})
+	const markChanged = useCallback(<Value,>(value: Value) => {
+		setChangeDetected(true)
+		return value
 	}, [])
+
+	const setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType> = useCallback(
+		(field, value) => updateSetting(field, (previous) => (previous === value ? previous : markChanged(value))),
+		[markChanged, updateSetting],
+	)
 
 	const setApiConfigurationField = useCallback(
 		<K extends keyof ProviderSettings>(field: K, value: ProviderSettings[K], isUserAction: boolean = true) => {
-			setCachedState((prevState) => {
-				if (prevState.apiConfiguration[field] === value) {
-					return prevState
+			updateProviderSetting(field, (previous) => {
+				if (previous === value) return previous
+
+				if (!isUserAction) {
+					// Automatic writes that leave the same value do not pin it against host updates.
+					const sameValue =
+						(previous == null && value == null) ||
+						(typeof previous === "object" &&
+							typeof value === "object" &&
+							JSON.stringify(previous) === JSON.stringify(value))
+					if (sameValue) return previous
+
+					const isInitialSync = (previous == null || previous === "") && value != null && value !== ""
+					if (isInitialSync) return value
 				}
-
-				const previousValue = prevState.apiConfiguration[field]
-
-				// Helper to check if two values are semantically equal
-				const areValuesEqual = (a: any, b: any): boolean => {
-					if (a === b) return true
-					if (a == null && b == null) return true
-					if (typeof a !== typeof b) return false
-					if (typeof a === "object" && typeof b === "object") {
-						return JSON.stringify(a) === JSON.stringify(b)
-					}
-					return false
-				}
-
-				// Only skip change detection for automatic initialization (not user actions)
-				// This prevents the dirty state when the component initializes and auto-syncs values
-				const isInitialSync =
-					!isUserAction &&
-					(previousValue === undefined || previousValue === "" || previousValue === null) &&
-					value !== undefined &&
-					value !== "" &&
-					value !== null
-
-				// Also skip if it's an automatic sync with semantically equal values
-				const isAutomaticNoOpSync = !isUserAction && areValuesEqual(previousValue, value)
-
-				if (!isInitialSync && !isAutomaticNoOpSync) {
-					setChangeDetected(true)
-				}
-				return { ...prevState, apiConfiguration: { ...prevState.apiConfiguration, [field]: value } }
+				return markChanged(value)
 			})
 		},
-		[],
+		[markChanged, updateProviderSetting],
 	)
 
-	const setExperimentEnabled: SetExperimentEnabled = useCallback((id: ExperimentId, enabled: boolean) => {
-		setCachedState((prevState) => {
-			if (prevState.experiments?.[id] === enabled) {
-				return prevState
-			}
+	const setExperimentEnabled: SetExperimentEnabled = useCallback(
+		(id: ExperimentId, enabled: boolean) =>
+			updateSetting("experiments", (previous) =>
+				previous?.[id] === enabled ? previous : markChanged({ ...previous, [id]: enabled }),
+			),
+		[markChanged, updateSetting],
+	)
 
-			setChangeDetected(true)
-			return { ...prevState, experiments: { ...prevState.experiments, [id]: enabled } }
-		})
-	}, [])
+	const setDebug = useCallback((debug: boolean) => setCachedStateField("debug", debug), [setCachedStateField])
 
-	const setDebug = useCallback((debug: boolean) => {
-		setCachedState((prevState) => {
-			if (prevState.debug === debug) {
-				return prevState
-			}
+	const setImageGenerationProvider = useCallback(
+		(provider: ImageGenerationProvider) => setCachedStateField("imageGenerationProvider", provider),
+		[setCachedStateField],
+	)
 
-			setChangeDetected(true)
-			return { ...prevState, debug }
-		})
-	}, [])
+	const setOpenRouterImageApiKey = useCallback(
+		(apiKey: string) => setCachedStateField("openRouterImageApiKey", apiKey),
+		[setCachedStateField],
+	)
 
-	const setImageGenerationProvider = useCallback((provider: ImageGenerationProvider) => {
-		setCachedState((prevState) => {
-			if (prevState.imageGenerationProvider !== provider) {
-				setChangeDetected(true)
-			}
+	const setImageGenerationSelectedModel = useCallback(
+		(model: string) => setCachedStateField("openRouterImageGenerationSelectedModel", model),
+		[setCachedStateField],
+	)
 
-			return { ...prevState, imageGenerationProvider: provider }
-		})
-	}, [])
-
-	const setOpenRouterImageApiKey = useCallback((apiKey: string) => {
-		setCachedState((prevState) => {
-			if (prevState.openRouterImageApiKey !== apiKey) {
-				setChangeDetected(true)
-			}
-
-			return { ...prevState, openRouterImageApiKey: apiKey }
-		})
-	}, [])
-
-	const setImageGenerationSelectedModel = useCallback((model: string) => {
-		setCachedState((prevState) => {
-			if (prevState.openRouterImageGenerationSelectedModel !== model) {
-				setChangeDetected(true)
-			}
-
-			return { ...prevState, openRouterImageGenerationSelectedModel: model }
-		})
-	}, [])
-
-	const setCustomSupportPromptsField = useCallback((prompts: Record<string, string | undefined>) => {
-		setCachedState((prevState) => {
-			const previousStr = JSON.stringify(prevState.customSupportPrompts)
-			const newStr = JSON.stringify(prompts)
-
-			if (previousStr === newStr) {
-				return prevState
-			}
-
-			setChangeDetected(true)
-			return { ...prevState, customSupportPrompts: prompts }
-		})
-	}, [])
+	const setCustomSupportPromptsField = useCallback(
+		(prompts: Record<string, string | undefined>) =>
+			updateSetting("customSupportPrompts", (previous) =>
+				JSON.stringify(previous) === JSON.stringify(prompts) ? previous : markChanged(prompts),
+			),
+		[markChanged, updateSetting],
+	)
 
 	const isSettingValid = !errorMessage
 
@@ -397,8 +375,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const handleSubmit = () => {
 		if (isSettingValid) {
 			const saveId = displayChanged ? nextSaveRequestId() : undefined
+			const savedSettings = captureSettingsSave()
+			const savedProvider = captureProviderSave()
 			if (saveId) {
-				sentState.current = cachedState
+				sentState.current = { id: saveId, settings: savedSettings, provider: savedProvider }
 				setPendingSaveId(saveId)
 			}
 
@@ -492,7 +472,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			// With a time or date edit the flag is cleared when the host reports the save (see below). A failed save
 			// leaves the user's edits in place to retry.
-			if (!saveId) setChangeDetected(false)
+			if (!saveId) {
+				markSettingsSaved(savedSettings)
+				markProviderSaved(savedProvider)
+				setChangeDetected(false)
+			}
 		}
 	}
 
@@ -500,9 +484,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		if (!pendingSaveId) return
 
 		const settle = (success: boolean) => {
+			const saved = sentState.current
+			if (saved?.id !== pendingSaveId) return
+			sentState.current = undefined
 			setPendingSaveId(undefined)
-			// An edit made while the save was in flight is not in what was sent: it stays unsaved.
-			if (success && latestCachedState.current === sentState.current) setChangeDetected(false)
+			if (success) {
+				const settingsUnedited = markSettingsSaved(saved.settings)
+				const providerUnedited = markProviderSaved(saved.provider)
+				if (settingsUnedited && providerUnedited) setChangeDetected(false)
+			}
 		}
 
 		const onResult = (event: MessageEvent) => {
@@ -517,7 +507,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			clearTimeout(timer)
 			window.removeEventListener("message", onResult)
 		}
-	}, [pendingSaveId])
+	}, [pendingSaveId, markSettingsSaved, markProviderSaved])
 
 	const checkUnsaveChanges = useCallback(
 		(then: () => void) => {
@@ -536,14 +526,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const onConfirmDialogResult = useCallback(
 		(confirm: boolean) => {
 			if (confirm) {
-				// Discard changes: Reset state and flag
-				setCachedState(extensionState) // Revert to original state
-				setChangeDetected(false) // Reset change flag
+				discardEdits()
 				confirmDialogHandler.current?.() // Execute the pending action (e.g., tab switch)
 			}
 			// If confirm is false (Cancel), do nothing, dialog closes automatically
 		},
-		[extensionState], // Depend on extensionState to get the latest original state
+		[discardEdits],
 	)
 
 	// Handle tab changes with unsaved changes check

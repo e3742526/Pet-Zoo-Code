@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react"
 import { QueryClient } from "@tanstack/react-query"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { ExtensionState } from "@roo-code/types"
 
 import { renderWithExtensionState } from "@/utils/test-utils"
 import { vscode } from "@src/utils/vscode"
@@ -18,6 +19,11 @@ const posted = (type: string) =>
 const renderTab = (targetSection: string) =>
 	renderWithExtensionState(<SettingsView onDone={vi.fn()} targetSection={targetSection} />, {
 		queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+	})
+
+const pushHostState = (state: Partial<ExtensionState>) =>
+	act(() => {
+		window.dispatchEvent(new MessageEvent("message", { data: { type: "state", state } }))
 	})
 
 /** Edit a time or date setting (the relative times checkbox, on by default) so Save becomes available. */
@@ -50,6 +56,49 @@ describe("SettingsView – saving the time and date settings", () => {
 
 		await waitFor(() => expect(screen.getByTestId("save-button")).toBeDisabled())
 		expect(posted("updateSettings")).toHaveLength(1)
+	})
+
+	it("accepts a host field change while a save is waiting for its answer", async () => {
+		renderTab("language")
+		await editDisplaySetting()
+		fireEvent.click(screen.getByTestId("save-button"))
+		const id = lastSaveRequestId(postMessage)
+
+		pushHostState({ timeFormat: "24h", showRelativeTimes: false })
+		expect(screen.getByTestId("time-format-24h")).toHaveAttribute("aria-checked", "true")
+		answerSave(id, { success: true })
+
+		expect(screen.getByTestId("save-button")).toBeDisabled()
+		expect(screen.getByTestId("relative-times-checkbox")).not.toBeChecked()
+	})
+
+	it("uses the latest host value for a sent field once its save is confirmed", async () => {
+		renderTab("language")
+		fireEvent.click(await screen.findByTestId("time-format-24h"))
+		fireEvent.click(screen.getByTestId("save-button"))
+		const id = lastSaveRequestId(postMessage)
+
+		pushHostState({ timeFormat: "12h" })
+		expect(screen.getByTestId("time-format-24h")).toHaveAttribute("aria-checked", "true")
+		answerSave(id, { success: true })
+
+		expect(screen.getByTestId("time-format-12h")).toHaveAttribute("aria-checked", "true")
+		expect(screen.getByTestId("save-button")).toBeDisabled()
+	})
+
+	it("ignores an earlier save answer after settings are imported", async () => {
+		renderTab("language")
+		await editDisplaySetting()
+		fireEvent.click(screen.getByTestId("save-button"))
+		const id = lastSaveRequestId(postMessage)
+
+		pushHostState({ settingsImportedAt: 123, showRelativeTimes: true })
+		expect(screen.getByTestId("relative-times-checkbox")).toBeChecked()
+		await editDisplaySetting()
+		answerSave(id, { success: true })
+
+		expect(screen.getByTestId("relative-times-checkbox")).not.toBeChecked()
+		expect(screen.getByTestId("save-button")).toBeEnabled()
 	})
 
 	it("keeps the edit unsaved and Save available after a failed save, and a retry sends a new request", async () => {

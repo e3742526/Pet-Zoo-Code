@@ -486,6 +486,28 @@ describe("SettingsView - Sound Settings", () => {
 			}),
 		)
 	})
+	it("saves the latest host value for an untouched setting alongside a local edit", () => {
+		renderWithExtensionState(<SettingsView onDone={vi.fn()} targetSection="ui" />, {
+			state: { chatFontSize: 14, reasoningBlockCollapsed: true },
+		})
+		fireEvent.click(screen.getByTestId("collapse-thinking-checkbox"))
+		act(() =>
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: { type: "state", state: { chatFontSize: 22, reasoningBlockCollapsed: true } },
+				}),
+			),
+		)
+
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateSettings",
+				updatedSettings: expect.objectContaining({ chatFontSize: 22, reasoningBlockCollapsed: false }),
+			}),
+		)
+	})
+
 	it("saves the selected chat font size and persists null on reset", () => {
 		const { activateTab, getSettingsContent } = renderSettingsView()
 
@@ -1201,6 +1223,33 @@ describe("SettingsView - openAiStrictToolSchemas save round trip", () => {
 		fireEvent.click(screen.getByTestId("set-strict-true"))
 		fireEvent.click(screen.getByTestId("save-button"))
 		expect(posted()?.apiConfiguration?.openAiStrictToolSchemas).toBe(true)
+	})
+
+	it("keeps a local provider edit alongside another provider field from the host", () => {
+		renderWithConfig({ openAiStrictToolSchemas: true, openAiBaseUrl: "https://old.example.test" })
+		fireEvent.click(screen.getByTestId("set-strict-false"))
+		act(() =>
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							currentApiConfigName: "test-config",
+							apiConfiguration: {
+								openAiStrictToolSchemas: true,
+								openAiBaseUrl: "https://new.example.test",
+							},
+						},
+					},
+				}),
+			),
+		)
+
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(posted()?.apiConfiguration).toMatchObject({
+			openAiStrictToolSchemas: false,
+			openAiBaseUrl: "https://new.example.test",
+		})
 	})
 
 	it("saves a loaded false back as false when toggled on and off again", () => {

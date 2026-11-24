@@ -16,6 +16,7 @@ import {
 	type ClineMessage,
 	type ExtensionMessage,
 	type ExtensionState,
+	type HistoryItem,
 	type RooCodeSettings,
 	type WebviewMessage,
 	ORGANIZATION_ALLOW_ALL,
@@ -37,6 +38,7 @@ import { ProviderSettingsManager } from "../../config/ProviderSettingsManager"
 import { importSettingsFromPath } from "../../config/importExport"
 import { WorkspaceIndexingEnablementManager } from "../../../services/code-index/workspace-indexing-enablement-manager"
 import { Task, TaskOptions } from "../../task/Task"
+import { TaskHistoryStore } from "../../task-persistence/TaskHistoryStore"
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 import { OrganizationAllowListViolationError } from "../../../utils/errors"
 
@@ -45,7 +47,7 @@ import { webviewMessageHandler } from "../webviewMessageHandler"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../../api/providers/fetchers/lmstudio"
-import { makeCompositeDisposable, makeEventEmitter } from "../../../test-utils/vscode"
+import { makeCompositeDisposable, makeEventEmitter, makeExtensionContext } from "../../../test-utils/vscode"
 import { WebviewFocusTracker } from "../WebviewFocusTracker"
 import { resolveChatProvider } from "../../../activate/resolveChatProvider"
 
@@ -3949,6 +3951,7 @@ describe("ClineProvider", () => {
 	})
 
 	test("hydrates the webview on launch without sending a theme payload", async () => {
+		await provider["taskHistoryInitialization"]
 		await provider.resolveWebviewView(mockWebviewView)
 
 		// Get the message handler from onDidReceiveMessage
@@ -3958,8 +3961,151 @@ describe("ClineProvider", () => {
 		// Simulate webviewDidLaunch message
 		await messageHandler({ type: "webviewDidLaunch" })
 
-		expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "state",
+			state: expect.objectContaining({ taskHistory: [] }),
+		})
 		expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "theme" }))
+	})
+
+	describe("webview launch with pending history", () => {
+		const saved: HistoryItem = {
+			id: "saved",
+			number: 1,
+			ts: 10,
+			task: "Saved task",
+			tokensIn: 100,
+			tokensOut: 10,
+			totalCost: 0,
+		}
+
+		async function prepareLaunch(stage: "scan" | "migration", failure?: Error) {
+			await provider.taskHistoryStore.initialized
+			let finishHistory!: () => void
+			const pendingHistory = new Promise<void>((resolve) => {
+				finishHistory = resolve
+			})
+			const startupContext = makeExtensionContext({ globalStorageUri: mockContext.globalStorageUri })
+			vi.mocked(startupContext.globalState.get).mockImplementation((key: string) =>
+				key === "taskHistory" && stage === "migration" ? [saved] : undefined,
+			)
+			const seedHistory = async function (this: TaskHistoryStore) {
+				await pendingHistory
+				if (failure) throw failure
+				this["cache"].set(saved.id, saved)
+			}
+			const initStep = vi
+				.spyOn(TaskHistoryStore.prototype, stage === "scan" ? "reconcile" : "migrateFromGlobalState")
+				.mockImplementationOnce(seedHistory)
+			const subject = new ClineProvider(
+				startupContext,
+				mockOutputChannel,
+				"sidebar",
+				new ContextProxy(startupContext),
+				new WebviewFocusTracker(),
+			)
+			Object.assign(subject, { customModesManager: provider.customModesManager, getMcpHub: provider.getMcpHub })
+			const post = vi.spyOn(subject, "postMessageToWebview").mockResolvedValue(undefined)
+			const snapshots = () =>
+				post.mock.calls.flatMap(([message]) => (message.state?.taskHistory ? [message.state.taskHistory] : []))
+			return {
+				subject,
+				post,
+				snapshots,
+				finishHistory,
+				async cleanUp() {
+					finishHistory()
+					await subject["taskHistoryInitialization"]
+					await subject.dispose()
+					initStep.mockRestore()
+				},
+			}
+		}
+
+		const afterCurrentTurn = () => new Promise<false>((resolve) => setImmediate(() => resolve(false)))
+
+		async function expectEarlyReply(operation: Promise<void>) {
+			expect(await Promise.race([operation.then(() => true), afterCurrentTurn()])).toBe(true)
+		}
+
+		test.each(["scan", "migration"] as const)("hydrates before the %s finishes", async (stage) => {
+			const fixture = await prepareLaunch(stage)
+			const { subject, post, finishHistory } = fixture
+			try {
+				await expectEarlyReply(webviewMessageHandler(subject, { type: "webviewDidLaunch" }))
+				const state = post.mock.calls.find(([message]) => message.type === "state")?.[0].state
+				expect(state).toBeDefined()
+				expect(state).not.toHaveProperty("taskHistory")
+
+				await expectEarlyReply(
+					webviewMessageHandler(subject, {
+						type: "updateSettings",
+						requestId: "save-on-launch",
+						updatedSettings: { timeFormat: "24h" },
+					}),
+				)
+				expect(post).toHaveBeenCalledWith({
+					type: "settingsSaveResult",
+					requestId: "save-on-launch",
+					success: true,
+				})
+
+				finishHistory()
+				await vi.waitFor(() => {
+					expect(post).toHaveBeenCalledWith({
+						type: "state",
+						state: expect.objectContaining({ taskHistory: [saved], timeFormat: "24h" }),
+					})
+				})
+			} finally {
+				await fixture.cleanUp()
+			}
+		})
+
+		test("publishes available history after startup fails", async () => {
+			const fixture = await prepareLaunch("scan", new Error("Scan failed"))
+			const { subject, snapshots, finishHistory } = fixture
+			try {
+				await expectEarlyReply(webviewMessageHandler(subject, { type: "webviewDidLaunch" }))
+				finishHistory()
+				await subject["taskHistoryInitialization"]
+				await afterCurrentTurn()
+				expect(snapshots()).toEqual([[]])
+			} finally {
+				await fixture.cleanUp()
+			}
+		})
+
+		test.each(["same view", "replacement view"] as const)(
+			"keeps pending history scoped to the current launch after a %s",
+			async (view) => {
+				const fixture = await prepareLaunch("scan")
+				const { subject, snapshots, finishHistory } = fixture
+				try {
+					await subject.resolveWebviewView(mockWebviewView)
+					await expectEarlyReply(webviewMessageHandler(subject, { type: "webviewDidLaunch" }))
+					if (view === "replacement view") {
+						const replacement: vscode.WebviewView = {
+							...mockWebviewView,
+							webview: { ...mockWebviewView.webview },
+						}
+						await subject.resolveWebviewView(replacement)
+					} else {
+						await expectEarlyReply(webviewMessageHandler(subject, { type: "webviewDidLaunch" }))
+					}
+					finishHistory()
+					await subject["taskHistoryInitialization"]
+					await afterCurrentTurn()
+					if (view === "replacement view") {
+						expect(snapshots()).toEqual([])
+						await webviewMessageHandler(subject, { type: "webviewDidLaunch" })
+					}
+					expect(snapshots()).toEqual([[saved]])
+				} finally {
+					await fixture.cleanUp()
+				}
+			},
+		)
 	})
 
 	test("logs detached workspace initialization failures", async () => {

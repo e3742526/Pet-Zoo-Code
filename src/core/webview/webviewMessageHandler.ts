@@ -594,11 +594,7 @@ export const webviewMessageHandler = async (
 			}
 			break
 		case "webviewDidLaunch":
-			// Load custom modes first
-			const customModes = await provider.customModesManager.getCustomModes()
-			await updateGlobalState("customModes", customModes)
-
-			await provider.postStateToWebview()
+			if (!(await provider.postInitialStateToWebview())) break
 			void provider.workspaceTracker
 				?.initializeFilePaths()
 				.catch((err) => provider.log(`Workspace initialization error: ${err}`)) // Don't await.

@@ -326,6 +326,7 @@ export class ClineProvider
 	public readonly taskHistoryStore: TaskHistoryStore
 	private readonly taskTitleService: TaskTitleService
 	private taskHistoryStoreInitialized = false
+	private taskHistoryInitialization?: Promise<void>
 	public static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
 	private providerProfileMutationQueue = Promise.resolve()
 	private historyTaskCreationQueue = Promise.resolve()
@@ -408,6 +409,7 @@ export class ClineProvider
 	 * Used by the frontend to reject stale state that arrives out-of-order.
 	 */
 	private clineMessagesSeq = 0
+	private webviewLaunchSequence = 0
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -450,9 +452,11 @@ export class ClineProvider
 
 		// Initialize the authoritative per-task file-based history store.
 		this.taskHistoryStore = new TaskHistoryStore(this.contextProxy.globalStorageUri.fsPath)
-		this.initializeTaskHistoryStore().catch((error) => {
-			this.log(`Failed to initialize TaskHistoryStore: ${error}`)
-		})
+		this.taskHistoryInitialization = this.initializeTaskHistoryStore()
+			.catch((error) => this.log(`Failed to initialize TaskHistoryStore: ${error}`))
+			.finally(() => {
+				this.taskHistoryInitialization = undefined
+			})
 
 		// The title service calls getSettings/resolveProfile/isProfileAllowed in
 		// quick succession per job, and each only needs disjoint settings fields.
@@ -2890,10 +2894,30 @@ export class ClineProvider
 	}
 
 	async postStateToWebview() {
-		const clineMessagesSeq = ++this.clineMessagesSeq
-		const state = await this.getStateToPostToWebview()
-		state.clineMessagesSeq = clineMessagesSeq
-		await this.postMessageToWebview({ type: "state", state })
+		await this.postWebviewState(true)
+	}
+
+	/** Hydrate the current view while the history scan and any migration finish. */
+	async postInitialStateToWebview(): Promise<boolean> {
+		const view = this.view
+		const launch = ++this.webviewLaunchSequence
+		const isCurrent = () => !this._disposed && view === this.view && launch === this.webviewLaunchSequence
+
+		const customModes = await this.customModesManager.getCustomModes()
+		if (!isCurrent()) return false
+		await this.contextProxy.setValue("customModes", customModes)
+		if (!isCurrent()) return false
+
+		const pendingHistory = this.taskHistoryInitialization
+		await this.postWebviewState(!pendingHistory, isCurrent)
+		if (pendingHistory && isCurrent()) {
+			void pendingHistory
+				.then(async () => {
+					if (isCurrent()) await this.postWebviewState(true, isCurrent)
+				})
+				.catch((error) => this.log(`Task history state update error: ${error}`))
+		}
+		return isCurrent()
 	}
 
 	/**
@@ -2905,11 +2929,21 @@ export class ClineProvider
 	 *   `taskHistoryUpdated` / `taskHistoryItemUpdated`.
 	 */
 	async postStateToWebviewWithoutTaskHistory(): Promise<void> {
+		await this.postWebviewState(false)
+	}
+
+	private async postWebviewState(includeTaskHistory: boolean, isCurrent?: () => boolean): Promise<void> {
 		const clineMessagesSeq = ++this.clineMessagesSeq
-		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
+		const state = await this.getStateToPostToWebview({ includeTaskHistory })
+		if (isCurrent && !isCurrent()) return
+
 		state.clineMessagesSeq = clineMessagesSeq
-		const { taskHistory: _omit, ...rest } = state
-		await this.postMessageToWebview({ type: "state", state: rest })
+		if (includeTaskHistory) {
+			await this.postMessageToWebview({ type: "state", state })
+		} else {
+			const { taskHistory: _omit, ...rest } = state
+			await this.postMessageToWebview({ type: "state", state: rest })
+		}
 	}
 
 	/**
@@ -3046,8 +3080,7 @@ export class ClineProvider
 	}
 
 	async getStateToPostToWebview({ includeTaskHistory = true }: GetStateOptions = {}): Promise<ExtensionState> {
-		// Ensure the store is initialized before reading task history
-		await this.taskHistoryStore.initialized
+		if (includeTaskHistory) await this.taskHistoryInitialization
 
 		const {
 			apiConfiguration,

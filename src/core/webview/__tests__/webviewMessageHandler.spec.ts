@@ -125,6 +125,7 @@ const mockClineProvider = {
 	},
 	log: vi.fn(),
 	postStateToWebview: vi.fn(),
+	postInitialStateToWebview: vi.fn<ClineProvider["postInitialStateToWebview"]>().mockResolvedValue(true),
 	postStateToWebviewWithoutClineMessages: vi.fn(),
 	resolveWebviewThemeFixtureProbe: vi.fn(),
 	getCurrentTask: vi.fn(),

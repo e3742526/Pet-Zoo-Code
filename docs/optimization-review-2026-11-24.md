@@ -215,7 +215,9 @@ In the real-file fixture, a clean migration went from four path checks to one di
 
 ## Task history scan and sidebar startup
 
-The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is partially addressed. `TaskHistoryStore.reconcile()` uses the directory it listed for all file checks, reads, and recovery in that scan. It resolves the storage setting again at the start of the next scan. The sidebar still waits for the initial history load.
+The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)
+
+`TaskHistoryStore.reconcile()` uses the directory it listed for all file checks, reads, and recovery in that scan. It resolves the storage setting again at the start of the next scan.
 
 The fixture alternated the original and updated store against 1,000 real history files. It checked the complete newest-first result after the initial scan and again after a scan with no changed files. Across nine timed runs after four warm-up runs, the results were:
 
@@ -227,6 +229,8 @@ The fixture alternated the original and updated store against 1,000 real history
 | Default storage, no changed files |      9.79 ms (9.36–10.72) | 10.58 ms (10.04–10.79) |
 
 Storage setting reads fell from 2,001 per initial scan and 1,001 per unchanged scan to one in both cases. The median for an unchanged scan in default storage rose by 0.79 ms, within the 1 ms comparison limit. The timings measure the store scan, with a simulated VS Code configuration and real filesystem checks. The regression test also changes the configured root between scans. The file replacement and restart model still checks the same lock and recovery rules.
+
+The launch fixture held history initialization for 70 ms and supplied 1,000 saved tasks. The median time to the first state message fell from 74.59 ms to 0.40 ms over seven runs after two warm-up runs. The observed ranges were 72.97–75.80 ms and 0.26–0.49 ms. The median for the complete history was 74.59 ms before and 73.58 ms after, within the 2 ms comparison limit. These timings measure the host and message serialization with a controlled scan delay. Focused tests cover saves during initialization, legacy migration, failed scans, and relaunched and replaced views.
 
 ## Folder mentions
 

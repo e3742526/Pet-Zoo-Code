@@ -7,12 +7,12 @@ import { getSettingsDirectoryPath } from "./storage"
 import * as yaml from "yaml"
 
 const deprecatedCustomModesJSONFilename = "custom_modes.json"
+const fileMigrations = [
+	{ oldName: "cline_custom_modes.json", newName: deprecatedCustomModesJSONFilename },
+	{ oldName: "cline_mcp_settings.json", newName: GlobalFileNames.mcpSettings },
+]
 
-/**
- * Migrates old settings files to new file names and removes commands from old defaults
- *
- * TODO: Remove this migration code in September 2025 (6 months after implementation)
- */
+/** Migrates legacy settings files and removes commands from old defaults. */
 export async function migrateSettings(
 	context: vscode.ExtensionContext,
 	outputChannel: vscode.OutputChannel,
@@ -20,25 +20,26 @@ export async function migrateSettings(
 	// First, migrate commands from old defaults (security fix)
 	await migrateDefaultCommands(context, outputChannel)
 
-	// Legacy file names that need to be migrated to the new names in GlobalFileNames
-	const fileMigrations = [
-		// custom_modes.json to custom_modes.yaml is handled separately below
-		{ oldName: "cline_custom_modes.json", newName: deprecatedCustomModesJSONFilename },
-		{ oldName: "cline_mcp_settings.json", newName: GlobalFileNames.mcpSettings },
-	]
-
 	try {
 		const settingsDir = await getSettingsDirectoryPath(context.globalStorageUri.fsPath)
 
-		// Check if settings directory exists first
-		if (!(await fileExistsAtPath(settingsDir))) {
-			outputChannel.appendLine("No settings directory found, no migrations necessary")
-			return
+		let entries: string[] | undefined
+		try {
+			entries = await fs.readdir(settingsDir)
+		} catch {
+			// Some directories allow access to known paths even when listing fails.
+			if (!(await fileExistsAtPath(settingsDir))) {
+				outputChannel.appendLine("No settings directory found, no migrations necessary")
+				return
+			}
 		}
+		// Find possible legacy names on both case-sensitive and case-insensitive filesystems.
+		const candidates = entries && new Set(entries.map((entry) => entry.toLowerCase()))
 
-		// Process each file migration
 		try {
 			for (const migration of fileMigrations) {
+				if (candidates?.has(migration.oldName) === false) continue
+
 				const oldPath = path.join(settingsDir, migration.oldName)
 				const newPath = path.join(settingsDir, migration.newName)
 
@@ -47,6 +48,7 @@ export async function migrateSettings(
 				const oldFileExists = await fileExistsAtPath(oldPath)
 				if (oldFileExists && !(await fileExistsAtPath(newPath))) {
 					await fs.rename(oldPath, newPath)
+					candidates?.add(migration.newName)
 					outputChannel.appendLine(`Renamed ${migration.oldName} to ${migration.newName}`)
 				} else {
 					outputChannel.appendLine(
@@ -55,7 +57,14 @@ export async function migrateSettings(
 				}
 			}
 
-			// Special migration for custom_modes.json to custom_modes.yaml with content transformation
+			if (candidates?.has(deprecatedCustomModesJSONFilename) === false) return
+			if (
+				candidates?.has(GlobalFileNames.customModes) &&
+				(await fileExistsAtPath(path.join(settingsDir, GlobalFileNames.customModes)))
+			) {
+				outputChannel.appendLine("custom_modes.yaml already exists, skipping migration")
+				return
+			}
 			await migrateCustomModesToYaml(settingsDir, outputChannel)
 		} catch (error) {
 			outputChannel.appendLine(`Error in file migrations: ${error}`)

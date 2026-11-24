@@ -9,6 +9,7 @@ import { migrateSettings } from "../utils/migrateSettings"
 vitest.mock("vscode")
 vitest.mock("fs/promises", () => ({
 	mkdir: vitest.fn().mockResolvedValue(undefined),
+	readdir: vitest.fn().mockRejectedValue(new Error("Directory listing is unavailable")),
 	readFile: vitest.fn(),
 	writeFile: vitest.fn().mockResolvedValue(undefined),
 	rename: vitest.fn().mockResolvedValue(undefined),

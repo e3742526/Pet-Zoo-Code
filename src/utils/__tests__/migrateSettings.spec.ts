@@ -16,13 +16,10 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-// Mock fs module
-vi.mock("fs/promises")
-
-// Mock fs utils
-vi.mock("../fs", () => ({
-	fileExistsAtPath: vi.fn(),
-}))
+vi.mock("fs/promises", () => {
+	const fs = { mkdir: vi.fn(async () => undefined), readdir: vi.fn(async () => []) }
+	return { ...fs, default: fs }
+})
 
 // Mock yaml module
 vi.mock("yaml", () => ({
@@ -76,10 +73,6 @@ describe("migrateSettings", () => {
 			const initialCommands = ["npm install", "npm test", "tsc", "git log"]
 			mockGlobalState.set("allowedCommands", initialCommands)
 
-			// Mock file system
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
-
 			// Run migration first time
 			await migrateSettings(mockContext, mockOutputChannel)
 
@@ -106,10 +99,6 @@ describe("migrateSettings", () => {
 			// Set up initial state with old default commands
 			const initialCommands = ["git log", "npm install", "npm test", "tsc", "git diff", "echo hello"]
 			mockGlobalState.set("allowedCommands", initialCommands)
-
-			// Mock file system to indicate no settings directory exists
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
 			// Run migration
 			await migrateSettings(mockContext, mockOutputChannel)
@@ -145,10 +134,6 @@ describe("migrateSettings", () => {
 			]
 			mockGlobalState.set("allowedCommands", initialCommands)
 
-			// Mock file system
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
-
 			// Run migration
 			await migrateSettings(mockContext, mockOutputChannel)
 
@@ -176,10 +161,6 @@ describe("migrateSettings", () => {
 			const initialCommands = ["NPM INSTALL", "Npm Test", "TSC", "git log"]
 			mockGlobalState.set("allowedCommands", initialCommands)
 
-			// Mock file system
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
-
 			// Run migration
 			await migrateSettings(mockContext, mockOutputChannel)
 
@@ -192,10 +173,6 @@ describe("migrateSettings", () => {
 			// Set up initial state with only safe commands
 			const initialCommands = ["git log", "git diff", "ls -la", "echo hello"]
 			mockGlobalState.set("allowedCommands", initialCommands)
-
-			// Mock file system
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
 			// Run migration
 			await migrateSettings(mockContext, mockOutputChannel)
@@ -213,8 +190,6 @@ describe("migrateSettings", () => {
 
 		it("should handle missing or invalid allowedCommands gracefully", async () => {
 			// Test with no allowedCommands set
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
 			await migrateSettings(mockContext, mockOutputChannel)
 			// Should still mark migration as complete
@@ -229,9 +204,6 @@ describe("migrateSettings", () => {
 		it("should handle non-array allowedCommands gracefully", async () => {
 			// Test with non-array value
 			mockGlobalState.set("allowedCommands", "not an array")
-
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
 			await migrateSettings(mockContext, mockOutputChannel)
 
@@ -250,10 +222,6 @@ describe("migrateSettings", () => {
 
 			// Make update throw an error
 			mockContext.globalState.update = vi.fn().mockRejectedValue(new Error("Update failed"))
-
-			// Mock file system
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
 			// Run migration - should not throw
 			await expect(migrateSettings(mockContext, mockOutputChannel)).resolves.toBeUndefined()
@@ -276,10 +244,6 @@ describe("migrateSettings", () => {
 				"git log --oneline",
 			]
 			mockGlobalState.set("allowedCommands", initialCommands)
-
-			// Mock file system
-			const { fileExistsAtPath } = await import("../fs")
-			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
 			// Run migration
 			await migrateSettings(mockContext, mockOutputChannel)

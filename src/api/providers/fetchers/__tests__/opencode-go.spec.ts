@@ -7,7 +7,7 @@ import { opencodeGoDefaultModelInfo, opencodeGoModels, getOpencodeGoModelInfo } 
 import { getOpencodeGoModels, parseOpencodeGoModel } from "../opencode-go"
 
 vitest.mock("axios")
-const mockedAxios = axios as any
+const mockedAxios = vitest.mocked(axios)
 
 describe("Opencode Go Fetchers", () => {
 	beforeEach(() => {
@@ -15,6 +15,62 @@ describe("Opencode Go Fetchers", () => {
 	})
 
 	describe("getOpencodeGoModels", () => {
+		it("uses nested catalog fields and lists only chat and untyped models", async () => {
+			mockedAxios.get.mockResolvedValue({
+				data: {
+					data: [
+						{
+							id: "deepseek-v4.1-flash",
+							type: "chat",
+							limit: { context: 200_000, output: 96_000 },
+							modalities: { input: ["text", "image/png"] },
+							context_window: 100_000,
+							max_output_tokens: 32_768,
+							supports_images: false,
+						},
+						{
+							id: "new-vision-model",
+							type: "chat",
+							limit: { context: 256_000, output: 65_536 },
+							modalities: { input: ["text", "image/jpeg"] },
+						},
+						{
+							id: "new-text-model",
+							type: "chat",
+							modalities: { input: ["text", "application/pdf"] },
+							supports_images: true,
+							max_tokens: 8_192,
+						},
+						{ id: "legacy-model", context_length: 64_000, supports_images: true },
+						{ id: "decision-model", type: "decision", limit: { context: 64_000 } },
+						{ id: "embedding-model", type: "embedding", limit: { context: 8_192, output: 0 } },
+					],
+				},
+			})
+
+			const models = await getOpencodeGoModels()
+
+			expect(Object.keys(models)).toEqual([
+				"deepseek-v4.1-flash",
+				"new-vision-model",
+				"new-text-model",
+				"legacy-model",
+			])
+			expect(models["deepseek-v4.1-flash"]).toMatchObject({
+				contextWindow: 1_000_000,
+				maxTokens: 96_000,
+				supportsImages: true,
+				preserveReasoning: true,
+			})
+			expect(models["new-vision-model"]).toMatchObject({
+				contextWindow: 256_000,
+				maxTokens: 65_536,
+				supportsImages: true,
+			})
+			expect(models["new-text-model"]).toMatchObject({ maxTokens: 8_192, supportsImages: false })
+			expect(models["legacy-model"]).toMatchObject({ contextWindow: 64_000, supportsImages: true })
+		})
+
 		it("maps the /models response and sends the API key as a Bearer header", async () => {
 			mockedAxios.get.mockResolvedValue({
 				data: {
@@ -39,17 +95,15 @@ describe("Opencode Go Fetchers", () => {
 			})
 
 			expect(Object.keys(models).sort()).toEqual(["deepseek-v4-pro", "glm-5.1"])
-			// Live endpoint values override the native registry for volatile fields,
-			// while capability flags and pricing come from the native registry.
 			expect(models["glm-5.1"]).toMatchObject({
-				contextWindow: 202752,
+				contextWindow: 204_800,
 				maxTokens: 32768,
 				supportsPromptCache: true,
 				supportsReasoningEffort: ["disable", "medium"],
 				preserveReasoning: true,
 				description: "Zhipu GLM 5.1",
 			})
-			expect(models["deepseek-v4-pro"].contextWindow).toBe(1048576)
+			expect(models["deepseek-v4-pro"].contextWindow).toBe(1_000_000)
 			expect(models["deepseek-v4-pro"].supportsReasoningEffort).toEqual([
 				"disable",
 				"low",
@@ -88,11 +142,9 @@ describe("Opencode Go Fetchers", () => {
 
 			const models = await getOpencodeGoModels("k")
 
-			// Live limits never override the curated temperature capability
-			// (Zoo-Code-Org/Zoo-Code#2055).
-			expect(models["grok-4.6"]).toMatchObject({ contextWindow: 400_000, supportsTemperature: true })
+			expect(models["grok-4.6"]).toMatchObject({ contextWindow: 500_000, supportsTemperature: true })
 			expect(models["muse-spark-1.2-contributor"]).toMatchObject({ maxTokens: 65_536, supportsTemperature: true })
-			expect(models["gpt-5.6-luna"]).toMatchObject({ contextWindow: 900_000, supportsTemperature: false })
+			expect(models["gpt-5.6-luna"]).toMatchObject({ contextWindow: 1_050_000, supportsTemperature: false })
 		})
 
 		it("uses curated gpt-6-luna metadata when the live model omits metadata", async () => {
@@ -240,7 +292,7 @@ describe("Opencode Go Fetchers", () => {
 
 		it("rejects with an AbortError when the signal aborts the pending request", async () => {
 			const controller = new AbortController()
-			mockedAxios.get.mockImplementation((_url: string, config?: { signal?: AbortSignal }) => {
+			mockedAxios.get.mockImplementation((_url, config) => {
 				// Mirror the HTTP client: a pending request rejects when its signal fires.
 				return new Promise<never>((_resolve, reject) => {
 					config?.signal?.addEventListener?.("abort", () => reject(new Error("canceled")), { once: true })
@@ -313,10 +365,9 @@ describe("Opencode Go Fetchers", () => {
 			}
 		})
 
-		it("merges live endpoint values over the native registry for a curated model", () => {
+		it("keeps the curated context window and uses the live output limit", () => {
 			const info = parseOpencodeGoModel({ id: "glm-5.1", context_window: 150000, max_output_tokens: 8000 })
-			// Live values win for volatile fields.
-			expect(info.contextWindow).toBe(150000)
+			expect(info.contextWindow).toBe(204_800)
 			expect(info.maxTokens).toBe(8000)
 			// Capability flags and pricing come from the native registry.
 			expect(info.supportsPromptCache).toBe(true)
@@ -326,14 +377,14 @@ describe("Opencode Go Fetchers", () => {
 			expect(info.inputPrice).toBe(1.4)
 		})
 
-		it("keeps gpt-6-luna live limits authoritative over its curated metadata", () => {
+		it("keeps the curated gpt-6-luna context and uses its live output limit", () => {
 			const info = parseOpencodeGoModel({
 				id: "gpt-6-luna",
 				context_window: 1_000_000,
 				max_output_tokens: 64_000,
 			})
 
-			expect(info.contextWindow).toBe(1_000_000)
+			expect(info.contextWindow).toBe(1_050_000)
 			expect(info.maxTokens).toBe(64_000)
 			expect(info.supportsImages).toBe(true)
 			expect(info.inputPrice).toBe(0.1)

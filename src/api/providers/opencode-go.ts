@@ -10,6 +10,7 @@ import {
 	opencodeGoDefaultModelId,
 	opencodeGoDefaultModelInfo,
 	OPENCODE_GO_DEFAULT_TEMPERATURE,
+	getOpencodeGoModelInfo,
 	isOpencodeGoAnthropicFormatModel,
 	isOpencodeGoResponsesFormatModel,
 	opencodeGoResponsesSupportsTemperature,
@@ -116,6 +117,7 @@ export class OpencodeGoHandler extends RouterProvider implements SingleCompletio
 
 	/** Creates a new handler bound to the user's Go API key and selected model. */
 	constructor(options: ApiHandlerOptions) {
+		const modelId = options.opencodeGoModelId || opencodeGoDefaultModelId
 		super({
 			options,
 			name: providerIdentifiers.opencodeGo,
@@ -123,7 +125,11 @@ export class OpencodeGoHandler extends RouterProvider implements SingleCompletio
 			apiKey: options.opencodeGoApiKey,
 			modelId: options.opencodeGoModelId,
 			defaultModelId: opencodeGoDefaultModelId,
-			defaultModelInfo: opencodeGoDefaultModelInfo,
+			defaultModelInfo: {
+				...opencodeGoDefaultModelInfo,
+				contextWindow:
+					getOpencodeGoModelInfo(modelId)?.contextWindow ?? opencodeGoDefaultModelInfo.contextWindow,
+			},
 		})
 
 		this.sessionId = uuidv7()

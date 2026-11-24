@@ -7,9 +7,7 @@ import { baseProviderSettingsShape, createModelIdAccessor, createProviderDefinit
 // Opencode "Go" plan — OpenAI-compatible gateway.
 // https://opencode.ai/docs/go/ · base URL: https://opencode.ai/zen/go/v1
 //
-// Model IDs are fetched dynamically from `https://opencode.ai/zen/go/v1/models`
-// so models can be switched on the fly. The endpoint currently omits metadata,
-// so Zoo Code supplies limits and capabilities from the registries below.
+// Model IDs and optional metadata come from https://opencode.ai/zen/go/v1/models.
 export const opencodeGoDefaultModelId = "glm-5.2"
 
 export const opencodeGoDefaultModelInfo: ModelInfo = {
@@ -28,21 +26,14 @@ export const OPENCODE_GO_DEFAULT_TEMPERATURE = 0
 /**
  * Native per-model configuration for the Opencode Go plan.
  *
- * The Go `/v1/models` endpoint only reliably returns `id` and (sometimes)
- * `context_window`/`max_tokens`. It does NOT advertise capability flags such
- * as `supportsReasoningEffort`, `preserveReasoning`, `supportsMaxTokens`,
- * `supportsPromptCache`, or pricing — all of which are required for the
- * extension to drive reasoning controls, interleaved-thinking tool calls,
- * the max-output-tokens slider, and accurate cost reporting.
- *
  * This registry encodes the native capabilities of each curated Go model,
  * sourced from the same vendor specs used by the dedicated providers
  * (zai/moonshot/mimo/minimax/deepseek/qwen) and the Go pricing table at
  * https://opencode.ai/docs/go/#usage-limits. It also includes explicitly
  * curated Responses-format models whose gateway metadata is not available
- * through `/models`. The fetcher merges the live `/models` payload on top of
- * these defaults so that context-window and max-token values stay in sync
- * with the gateway while capability flags and pricing remain correct.
+ * through `/models`. The registry supplies the context window for each
+ * curated model. The fetcher reads live output limits and image support
+ * when available, and uses live context windows for models outside the registry.
  *
  * `supportsPromptCache` has two distinct meanings depending on the wire format:
  *

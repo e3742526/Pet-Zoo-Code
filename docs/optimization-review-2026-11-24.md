@@ -233,6 +233,12 @@ LM Studio and Poe copy only the selected model from the cache. The cache keeps i
 
 The 1,800-model fixture ran nine trials after two warm-up runs. The median for 64 warm model lookups fell from 54.76 ms to 0.06 ms, with ranges of 54.37–57.72 ms and 0.04–0.08 ms. The median for 16 full catalog copies fell from 13.65 ms to 12.58 ms. The first selected-model lookup took 1.79 ms, down from 2.93 ms. The fixture used a simulated file read and included JSON parsing and validation. The regression tests verify that changes to returned model metadata and catalogs cannot change later cache results.
 
+## OpenCode Go model limits
+
+Curated OpenCode Go models use the registry context window in live catalogs, when the host reads a saved catalog, and while the handler waits for model metadata. Models outside the registry use the live context window when available. The fetcher reads nested limits and image input types, and accepts flat fields from older responses. It lists chat models and entries without a type. A catalog refresh applies the type filter to new data because older cache files contain no model types. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2646) · [Public model catalog](https://opencode.ai/zen/go/v1/models)
+
+Regression tests reproduced the 200,000-token window for a 1,000,000-token model through both cold disk readers and before the provider loads a catalog. They also cover nested and flat fields, an image MIME type, and embedding and decision entries. The production fetcher returned 31 chat models from the public endpoint and reported a 1,000,000-token context window, a 384,000-token output limit, and image support for DeepSeek V4.1 Flash.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

@@ -244,11 +244,6 @@
 			"count": 9
 		}
 	},
-	"api/providers/fetchers/__tests__/opencode-go.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 1
-		}
-	},
 	"api/providers/fetchers/__tests__/openrouter.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 2

@@ -8,17 +8,15 @@ import { throwIfAborted } from "../utils/abort-signal"
 
 const OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1"
 
-// The Opencode Go `/models` endpoint follows the OpenAI `/models` shape. The
-// `id` is the only guaranteed field; metadata is optional and best-effort, so
-// the schema is intentionally permissive. Pricing is intentionally NOT parsed:
-// the units returned by the endpoint aren't documented, and reporting a wrong
-// cost is worse than reporting "unknown" — so cost stays sourced from the
-// native registry (or undefined for unknown models) until the pricing shape is
-// confirmed against the live endpoint.
+// The current catalog uses nested limits, input modalities, and a model type.
+// Older responses can contain flat metadata or only an ID.
 const opencodeGoModelSchema = z.object({
 	id: z.string(),
+	type: z.string().optional(),
 	name: z.string().optional(),
 	description: z.string().optional(),
+	limit: z.object({ context: z.number().optional(), output: z.number().optional() }).optional(),
+	modalities: z.object({ input: z.array(z.string()).optional() }).optional(),
 	context_window: z.number().optional(),
 	context_length: z.number().optional(),
 	max_tokens: z.number().optional(),
@@ -35,20 +33,9 @@ const opencodeGoModelsResponseSchema = z.object({
 /**
  * Maps a raw Opencode Go model entry to the internal {@link ModelInfo} shape.
  *
- * The Go `/models` endpoint only reliably returns `id` and (sometimes)
- * `context_window`/`max_tokens`. It does NOT advertise capability flags
- * (`supportsReasoningEffort`, `preserveReasoning`, `supportsMaxTokens`,
- * `supportsPromptCache`) or pricing, all of which the extension needs to drive
- * reasoning controls, interleaved-thinking tool calls, the max-output-tokens
- * slider, and accurate cost reporting.
- *
- * Resolution order for a fully-populated {@link ModelInfo}:
- *   1. Use the native registry ({@link getOpencodeGoModelInfo}) when the model
- *      is curated, including its capabilities and pricing.
- *   2. Override static limits and image support with live `/models` values when
- *      present, keeping the gateway authoritative for volatile fields.
- *   3. Fall back to {@link opencodeGoDefaultModelInfo} for an unknown model,
- *      ensuring downstream consumers always receive a fully-populated object.
+ * The registry supplies curated context windows, reasoning settings, and pricing.
+ * Live metadata supplies output limits and image support when present. Unknown
+ * models use the live context window or the provider default.
  *
  * @param model - Validated model entry from the `/models` response.
  * @returns Normalised model metadata suitable for the model picker.
@@ -56,15 +43,14 @@ const opencodeGoModelsResponseSchema = z.object({
 export const parseOpencodeGoModel = (model: OpencodeGoModel): ModelInfo => {
 	const native = getOpencodeGoModelInfo(model.id)
 
-	// Live endpoint values take precedence over the registry for volatile fields.
-	const liveContextWindow = model.context_window ?? model.context_length
-	const liveMaxTokens = model.max_output_tokens ?? model.max_tokens
-	const liveSupportsImages = model.supports_images
+	const liveMaxTokens = model.limit?.output ?? model.max_output_tokens ?? model.max_tokens
+	const liveSupportsImages =
+		model.modalities?.input?.some((modality) => modality === "image" || modality.startsWith("image/")) ??
+		model.supports_images
 
 	if (native) {
 		return {
 			...native,
-			...(liveContextWindow !== undefined && { contextWindow: liveContextWindow }),
 			...(liveMaxTokens !== undefined && { maxTokens: liveMaxTokens }),
 			...(liveSupportsImages !== undefined && { supportsImages: liveSupportsImages }),
 			description: model.description ?? model.name ?? native.description,
@@ -73,7 +59,11 @@ export const parseOpencodeGoModel = (model: OpencodeGoModel): ModelInfo => {
 
 	return {
 		maxTokens: liveMaxTokens ?? opencodeGoDefaultModelInfo.maxTokens,
-		contextWindow: liveContextWindow ?? opencodeGoDefaultModelInfo.contextWindow,
+		contextWindow:
+			model.limit?.context ??
+			model.context_window ??
+			model.context_length ??
+			opencodeGoDefaultModelInfo.contextWindow,
 		supportsImages: liveSupportsImages ?? false,
 		supportsPromptCache: false,
 		description: model.description ?? model.name,
@@ -120,7 +110,11 @@ export async function getOpencodeGoModels(
 				console.warn(`Skipping invalid Opencode Go model entry: ${JSON.stringify(rawModel)}`)
 				continue
 			}
-			models[parsed.data.id] = parseOpencodeGoModel(parsed.data)
+			const model = parsed.data
+			if (model.type !== undefined && model.type !== "chat") {
+				continue
+			}
+			models[model.id] = parseOpencodeGoModel(model)
 		}
 	} catch (error) {
 		// Surface cancellation as a rejection: logging and returning here would

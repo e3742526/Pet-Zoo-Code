@@ -121,6 +121,21 @@ describe("OpencodeGoHandler", () => {
 		)
 	})
 
+	describe("getModel", () => {
+		it.each([
+			{ modelId: "deepseek-v4.1-flash", contextWindow: 1_000_000 },
+			{ modelId: "new-chat-model", contextWindow: 200_000 },
+		])(
+			"uses the appropriate context window for $modelId before loading the catalog",
+			({ modelId, contextWindow }) => {
+				const handler = new OpencodeGoHandler({ opencodeGoModelId: modelId })
+
+				expect(handler.getModel()).toMatchObject({ id: modelId, info: { contextWindow } })
+				expect(getModels).not.toHaveBeenCalled()
+			},
+		)
+	})
+
 	describe("fetchModel", () => {
 		it("returns the configured model info with native capability flags", async () => {
 			const handler = new OpencodeGoHandler(mockOptions)

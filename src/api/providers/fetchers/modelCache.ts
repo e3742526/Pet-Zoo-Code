@@ -7,7 +7,7 @@ import NodeCache from "node-cache"
 import { z } from "zod"
 
 import type { ModelInfo, ModelRecord } from "@roo-code/types"
-import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
+import { getOpencodeGoModelInfo, modelInfoSchema, providerIdentifiers, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { safeWriteJson } from "../../../utils/safeWriteJson"
@@ -568,6 +568,16 @@ function validateAndCacheModels(cacheKey: string, data: string): ModelRecord | u
 	if (!validation.success) {
 		console.error(`[MODEL_CACHE] Invalid disk cache data structure for ${cacheKey}:`, validation.error.format())
 		return undefined
+	}
+
+	// Older Go catalogs may have replaced registry context windows with live limits.
+	if (cacheKey === providerIdentifiers.opencodeGo) {
+		for (const [id, info] of Object.entries(validation.data)) {
+			const curatedWindow = getOpencodeGoModelInfo(id)?.contextWindow
+			if (curatedWindow !== undefined) {
+				info.contextWindow = curatedWindow
+			}
+		}
 	}
 
 	missingDiskCache.delete(cacheKey)

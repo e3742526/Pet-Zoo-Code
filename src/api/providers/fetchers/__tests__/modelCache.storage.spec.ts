@@ -73,6 +73,36 @@ it.each(["catalog request", "synchronous model metadata"] as const)(
 	},
 )
 
+it.each(["catalog request", "synchronous model metadata"] as const)(
+	"repairs a cached OpenCode Go context window for a cold %s",
+	async (caller) => {
+		const opencodeOptions = { provider: providerIdentifiers.opencodeGo } as const
+		const staleCatalog: ModelRecord = {
+			"deepseek-v4.1-flash": { contextWindow: 200_000, maxTokens: 96_000, supportsPromptCache: true },
+			"new-chat-model": { contextWindow: 150_000, maxTokens: 24_000, supportsPromptCache: false },
+		}
+		try {
+			fetchModels.mockResolvedValue(staleCatalog)
+			await refreshModels(opencodeOptions, handler)
+			await flushModels(opencodeOptions, handler)
+			fetchModels.mockClear().mockRejectedValue(new Error("Provider offline"))
+
+			const models =
+				caller === "catalog request"
+					? await getModels(opencodeOptions, handler)
+					: getModelsFromCache(opencodeOptions, handler)
+
+			expect(models).toEqual({
+				...staleCatalog,
+				"deepseek-v4.1-flash": { ...staleCatalog["deepseek-v4.1-flash"], contextWindow: 1_000_000 },
+			})
+			expect(fetchModels).not.toHaveBeenCalled()
+		} finally {
+			await flushModels(opencodeOptions, handler)
+		}
+	},
+)
+
 it("keeps a catalog in default storage available after a custom path is set", async () => {
 	const destination = customStoragePath
 	customStoragePath = ""

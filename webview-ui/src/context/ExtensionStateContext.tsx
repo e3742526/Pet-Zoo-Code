@@ -492,11 +492,12 @@ export const ExtensionStateContextProvider: React.FC<{
 					break
 				}
 				case "workspaceUpdated": {
-					const paths = message.filePaths ?? []
-					const tabs = message.openedTabs ?? []
-
-					setFilePaths(paths)
-					setOpenedTabs(tabs)
+					if (message.filePaths !== undefined) {
+						setFilePaths(message.filePaths)
+					}
+					if (message.openedTabs !== undefined) {
+						setOpenedTabs(message.openedTabs)
+					}
 					break
 				}
 				case "commands": {

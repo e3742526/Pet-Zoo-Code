@@ -36,6 +36,8 @@ const TestComponent = () => {
 		currentTaskId,
 		taskHistory,
 		currentTaskItem,
+		filePaths,
+		openedTabs,
 	} = useExtensionState()
 
 	return (
@@ -46,6 +48,8 @@ const TestComponent = () => {
 			<div data-testid="current-task-id">{currentTaskId ?? "no-task"}</div>
 			<div data-testid="allowed-commands">{JSON.stringify(allowedCommands)}</div>
 			<div data-testid="sound-enabled">{JSON.stringify(soundEnabled)}</div>
+			<div data-testid="file-paths">{JSON.stringify(filePaths)}</div>
+			<div data-testid="opened-tabs">{JSON.stringify(openedTabs)}</div>
 			<div data-testid="show-rooignored-files">{JSON.stringify(showRooIgnoredFiles)}</div>
 			<button data-testid="update-button" onClick={() => setAllowedCommands(["npm install", "git status"])}>
 				Update Commands
@@ -163,6 +167,29 @@ describe("ExtensionStateContext", () => {
 
 		expect(postMessage.mock.calls).toEqual([[{ type: "webviewDidLaunch" }]])
 		expect(screen.getByTestId("sound-enabled")).toHaveTextContent("true")
+	})
+
+	it("preserves file paths on tab updates and clears them on an explicit reset", () => {
+		render(
+			<ExtensionStateContextProvider>
+				<TestComponent />
+			</ExtensionStateContextProvider>,
+		)
+
+		const postWorkspaceUpdate = (fields: Omit<ExtensionMessage, "type">) => {
+			act(() =>
+				window.dispatchEvent(new MessageEvent("message", { data: { type: "workspaceUpdated", ...fields } })),
+			)
+		}
+		postWorkspaceUpdate({ filePaths: ["existing.ts"], openedTabs: [] })
+		const tab = { label: "existing.ts", isActive: true, path: "existing.ts" }
+		postWorkspaceUpdate({ openedTabs: [tab] })
+		expect(screen.getByTestId("file-paths")).toHaveTextContent('["existing.ts"]')
+		expect(screen.getByTestId("opened-tabs")).toHaveTextContent(JSON.stringify([tab]))
+
+		postWorkspaceUpdate({ filePaths: [], openedTabs: [] })
+		expect(screen.getByTestId("file-paths")).toHaveTextContent("[]")
+		expect(screen.getByTestId("opened-tabs")).toHaveTextContent("[]")
 	})
 
 	it.each([

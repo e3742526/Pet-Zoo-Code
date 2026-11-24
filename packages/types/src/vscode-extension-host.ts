@@ -169,6 +169,7 @@ export interface ExtensionMessage {
 	 */
 	state?: Partial<ExtensionState>
 	images?: string[]
+	/** In workspace updates, omit unchanged fields. Send an empty array to clear a field. */
 	filePaths?: string[]
 	openedTabs?: Array<{
 		label: string

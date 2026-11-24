@@ -15,6 +15,7 @@ import { TriangleAlert } from "lucide-react"
 import {
 	type IndexingStatus,
 	type EmbedderProvider,
+	type ExtensionMessage,
 	CODEBASE_INDEX_DEFAULTS,
 	providerIdentifiers,
 } from "@roo-code/types"
@@ -298,13 +299,10 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			vscode.postMessage({ type: "requestIndexingStatus" })
 			vscode.postMessage({ type: "requestCodeIndexSecretStatus" })
 		}
-		const handleMessage = (event: MessageEvent) => {
-			if (event.data.type === "workspaceUpdated") {
-				// When workspace changes, request updated indexing status
-				if (open) {
-					vscode.postMessage({ type: "requestIndexingStatus" })
-					vscode.postMessage({ type: "requestCodeIndexSecretStatus" })
-				}
+		const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
+			if (open && event.data?.type === "workspaceUpdated" && event.data.filePaths !== undefined) {
+				vscode.postMessage({ type: "requestIndexingStatus" })
+				vscode.postMessage({ type: "requestCodeIndexSecretStatus" })
 			}
 		}
 

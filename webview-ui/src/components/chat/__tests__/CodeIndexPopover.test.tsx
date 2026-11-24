@@ -3,7 +3,8 @@ import React from "react"
 import type { EmbedderProvider, ExtensionState } from "@roo-code/types"
 import { providerIdentifiers } from "@roo-code/types"
 
-import { fireEvent, renderWithExtensionState, screen } from "@/utils/test-utils"
+import { act, fireEvent, renderWithExtensionState, screen } from "@/utils/test-utils"
+import { vscode } from "@/utils/vscode"
 import { useOpenRouterModelProviders } from "@src/components/ui/hooks/useOpenRouterModelProviders"
 
 import { CodeIndexPopover, createValidationSchema } from "../CodeIndexPopover"
@@ -148,6 +149,33 @@ describe("CodeIndexPopover OpenRouter provider lookup", () => {
 		renderPopover(providerIdentifiers.openai, "text-embedding-3-small")
 
 		expect(mockedUseOpenRouterModelProviders).toHaveBeenLastCalledWith(undefined, undefined, { enabled: false })
+	})
+
+	it("refreshes indexing status on a workspace reset and skips tab-only updates", () => {
+		const postMessage = vi.spyOn(vscode, "postMessage").mockImplementation(() => undefined)
+		try {
+			renderPopover(providerIdentifiers.openai, "text-embedding-3-small")
+			postMessage.mockClear()
+
+			act(() =>
+				window.dispatchEvent(
+					new MessageEvent("message", { data: { type: "workspaceUpdated", openedTabs: [] } }),
+				),
+			)
+			expect(postMessage).not.toHaveBeenCalled()
+
+			act(() =>
+				window.dispatchEvent(
+					new MessageEvent("message", { data: { type: "workspaceUpdated", openedTabs: [], filePaths: [] } }),
+				),
+			)
+			expect(postMessage.mock.calls).toEqual([
+				[{ type: "requestIndexingStatus" }],
+				[{ type: "requestCodeIndexSecretStatus" }],
+			])
+		} finally {
+			postMessage.mockRestore()
+		}
 	})
 
 	it("waits for an OpenRouter model selection before enabling lookup", () => {

@@ -12,6 +12,7 @@ class WorkspaceTracker {
 	private providerRef: WeakRef<ClineProvider>
 	private disposables: vscode.Disposable[] = []
 	private filePaths: Set<string> = new Set()
+	private filePathsChanged = false
 	private updateTimer: NodeJS.Timeout | null = null
 	private prevWorkSpacePath: string | undefined
 	private resetTimer: NodeJS.Timeout | null = null
@@ -25,13 +26,13 @@ class WorkspaceTracker {
 	}
 
 	async initializeFilePaths() {
+		const cwd = this.cwd
 		// should not auto get filepaths for desktop since it would immediately show permission popup before cline ever creates a file
-		if (!this.cwd) {
+		if (!cwd) {
 			return
 		}
-		const tempCwd = this.cwd
-		const [files, _] = await listFiles(tempCwd, true, MAX_INITIAL_FILES)
-		if (this.prevWorkSpacePath !== tempCwd) {
+		const [files] = await listFiles(cwd, true, MAX_INITIAL_FILES)
+		if (this.cwd !== cwd || this.prevWorkSpacePath !== cwd) {
 			return
 		}
 		files.slice(0, MAX_INITIAL_FILES).forEach((file) => this.filePaths.add(this.normalizeFilePath(file)))
@@ -66,8 +67,7 @@ class WorkspaceTracker {
 				if (this.prevWorkSpacePath !== this.cwd) {
 					this.workspaceDidReset()
 				} else {
-					// Otherwise just update
-					this.workspaceDidUpdate()
+					this.workspaceDidUpdate(false)
 				}
 			}),
 		)
@@ -115,22 +115,28 @@ class WorkspaceTracker {
 		}
 	}
 
-	private workspaceDidUpdate() {
+	private workspaceDidUpdate(filePathsChanged = true) {
+		// A tab event must not drop a file change already waiting for this timer.
+		this.filePathsChanged ||= filePathsChanged
 		if (this.updateTimer) {
 			clearTimeout(this.updateTimer)
 		}
 		this.updateTimer = setTimeout(() => {
-			if (!this.cwd) {
+			this.updateTimer = null
+			const cwd = this.cwd
+			if (!cwd || this.prevWorkSpacePath !== cwd) {
 				return
 			}
 
-			const relativeFilePaths = Array.from(this.filePaths).map((file) => toRelativePath(file, this.cwd))
+			const fileUpdate = this.filePathsChanged
+				? { filePaths: Array.from(this.filePaths, (file) => toRelativePath(file, cwd)) }
+				: {}
+			this.filePathsChanged = false
 			void this.providerRef.deref()?.postMessageToWebview({
 				type: "workspaceUpdated",
-				filePaths: relativeFilePaths,
+				...fileUpdate,
 				openedTabs: this.getOpenedTabsInfo(),
 			})
-			this.updateTimer = null
 		}, 300) // Debounce for 300ms
 	}
 

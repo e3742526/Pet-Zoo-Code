@@ -129,6 +129,29 @@ describe("WorkspaceTracker", () => {
 		})
 	})
 
+	it("sends only opened tabs unless a file change is pending", async () => {
+		vitest.mocked(listFiles).mockResolvedValue([["/test/workspace/existing.ts"], false])
+		await workspaceTracker.initializeFilePaths()
+		vitest.runAllTimers()
+
+		await registeredTabChangeCallback!()
+		vitest.runAllTimers()
+		expect(mockProvider.postMessageToWebview).toHaveBeenLastCalledWith({
+			type: "workspaceUpdated",
+			openedTabs: [],
+		})
+
+		const [[createFile]] = mockOnDidCreate.mock.calls
+		await createFile({ fsPath: "/test/workspace/new.ts" })
+		await registeredTabChangeCallback!()
+		vitest.runAllTimers()
+		expect(mockProvider.postMessageToWebview).toHaveBeenLastCalledWith({
+			type: "workspaceUpdated",
+			filePaths: ["existing.ts", "new.ts"],
+			openedTabs: [],
+		})
+	})
+
 	it("should handle file deletion events", async () => {
 		// First add a file
 		const [[createCallback]] = mockOnDidCreate.mock.calls
@@ -302,24 +325,7 @@ describe("WorkspaceTracker", () => {
 		await initPromise
 		vitest.runAllTimers()
 
-		// Should not update file paths because workspace changed during initialization
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "workspaceUpdated",
-				openedTabs: [],
-			}),
-		)
-
-		// Extract the actual file paths to verify format
-		const actualFilePaths = (mockProvider.postMessageToWebview as Mock).mock.calls[0][0].filePaths
-
-		// Verify file path array length
-		expect(actualFilePaths).toHaveLength(2)
-
-		// Verify file paths contain the expected file names regardless of platform specifics
-		expect(actualFilePaths.every((path: string) => path.includes("file1.ts") || path.includes("file2.ts"))).toBe(
-			true,
-		)
+		expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
 
 	it("should clear resetTimer when calling workspaceDidReset multiple times", async () => {

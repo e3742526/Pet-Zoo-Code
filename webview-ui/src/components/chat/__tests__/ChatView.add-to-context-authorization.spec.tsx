@@ -281,6 +281,31 @@ describe("ChatView - add-to-context mention segments", () => {
 		expect(message).toMatchObject({ segments: [user("mine"), generated(" ctx @/secret")] })
 	})
 
+	it("keeps consecutive context additions and their images in arrival order", async () => {
+		const { getByTestId } = renderChatView()
+		const firstImage = "data:image/png;base64,Zmlyc3Q="
+		const secondImage = "data:image/png;base64,c2Vjb25k"
+		act(() => {
+			for (const [text, image] of [
+				["First @/generated", firstImage],
+				["Second @/selected", secondImage],
+			]) {
+				window.dispatchEvent(
+					new MessageEvent("message", {
+						data: { type: "invoke", invoke: "setChatBoxMessage", text, images: [image] },
+					}),
+				)
+			}
+		})
+
+		const message = await sendNewTask(getByTestId)
+		expect(message).toMatchObject({
+			text: "First @/generated Second @/selected",
+			images: [firstImage, secondImage],
+			segments: [generated("First @/generated Second @/selected")],
+		})
+	})
+
 	it("makes an enhanced prompt all generated, even over a typed draft", async () => {
 		const { getByTestId } = renderChatView()
 

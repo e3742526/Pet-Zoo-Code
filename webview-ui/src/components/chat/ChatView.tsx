@@ -7,6 +7,7 @@ import React, {
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react"
 import { useDeepCompareEffect, useEvent } from "react-use"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
@@ -39,14 +40,7 @@ import {
 } from "@roo-code/types"
 
 import { findLast } from "@roo/array"
-import {
-	applyEdit,
-	generatedSegments,
-	joinSegments,
-	normalizeSegments,
-	trimSegments,
-	userSegments,
-} from "@roo/mentionSegments"
+import { generatedSegments, normalizeSegments, trimSegments } from "@roo/mentionSegments"
 import { combineApiRequests } from "@roo/combineApiRequests"
 import { combineCommandSequences } from "@roo/combineCommandSequences"
 import { getApiMetrics } from "@roo/getApiMetrics"
@@ -67,7 +61,8 @@ import HistoryPreview from "../history/HistoryPreview"
 import Announcement from "./Announcement"
 import ChatRow from "./ChatRow"
 import WarningRow from "./WarningRow"
-import { ChatTextArea } from "./ChatTextArea"
+import { ChatComposer } from "./ChatComposer"
+import { createChatDraft } from "./chatDraft"
 import TaskHeader from "./TaskHeader"
 import ProfileViolationWarning from "./ProfileViolationWarning"
 import { CheckpointWarning } from "./CheckpointWarning"
@@ -94,6 +89,7 @@ const CHAT_VIEWPORT_BUFFER = {
 } as const
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
+const followUpNotPaused = () => false
 
 const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> = (
 	{ isHidden, showAnnouncement, hideAnnouncement },
@@ -189,8 +185,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// Has to be after api_req_finished are all reduced into api_req_started messages.
 	const apiMetrics = useMemo(() => getApiMetrics(modifiedMessages), [modifiedMessages])
 
-	const [inputValue, setInputValue] = useState("")
-	const inputValueRef = useRef(inputValue)
+	const [draft] = useState(createChatDraft)
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
@@ -227,13 +222,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	)
 	const autoApproveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const userRespondedRef = useRef<boolean>(false)
-	// Origin of each part of the chat box value. Null means all of it is user text.
-	const segmentsRef = useRef<MentionSegment[] | null>(null)
-	// Trimmed chat box segments for the text. A value that does not match the text is all generated.
-	const segmentsFor = useCallback((text: string) => {
-		const trimmed = segmentsRef.current ? trimSegments(segmentsRef.current) : userSegments(text)
-		return joinSegments(trimmed) === text ? trimmed : generatedSegments(text)
-	}, [])
 	const [currentFollowUpTs, setCurrentFollowUpTs] = useState<number | null>(null)
 	const [aggregatedCostsMap, setAggregatedCostsMap] = useState<
 		Map<
@@ -251,15 +239,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		clineAskRef.current = clineAsk
 	}, [clineAsk])
 
-	// Keep inputValueRef in sync with inputValue state
-	useEffect(() => {
-		inputValueRef.current = inputValue
-	}, [inputValue])
-
-	// Compute whether auto-approval is paused (user is typing in a followup)
-	const isFollowUpAutoApprovalPaused = useMemo(() => {
-		return !!(inputValue && inputValue.trim().length > 0 && clineAsk === "followup")
-	}, [inputValue, clineAsk])
+	// Only draft changes that pause or resume a follow-up affect the transcript.
+	const isFollowUpAutoApprovalPaused = useSyncExternalStore(
+		draft.subscribe,
+		clineAsk === "followup" ? draft.hasText : followUpNotPaused,
+	)
 
 	// Cancel auto-approval timeout when user starts typing
 	useEffect(() => {
@@ -655,34 +639,31 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		userRespondedRef.current = false
 
 		// Only reset message-specific state, preserving mode.
-		setInputValue("")
+		draft.clear()
 		setSendingDisabled(true)
 		setSelectedImages([])
 		setClineAsk(undefined)
 		setEnableButtons(false)
-		segmentsRef.current = null
 		// Do not reset mode here as it should persist.
 		// setPrimaryButtonKey(undefined)
 		// setSecondaryButtonKey(undefined)
-	}, [])
+	}, [draft])
 
 	/**
-	 * Sends the chat box as one message and clears it. The only place that reads the segments for a send,
-	 * so a send site cannot pass its own source. A caller passes `segments` only for text it generated.
+	 * Posts the text with its segments and clears the draft.
 	 */
 	const postDraft = useCallback(
 		(
 			message: { type: "queueMessage" } | { type: "askResponse"; askResponse: ClineAskResponse },
 			text: string,
 			images: string[] | undefined,
-			segments: MentionSegment[] = segmentsFor(text),
+			segments: MentionSegment[] = draft.segmentsFor(text),
 		) => {
 			vscode.postMessage({ ...message, text, images: images ?? [], segments })
-			segmentsRef.current = null
-			setInputValue("")
+			draft.clear()
 			setSelectedImages([])
 		},
-		[segmentsFor],
+		[draft],
 	)
 
 	/**
@@ -693,7 +674,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const handleSendMessage = useCallback(
 		(text: string, images: string[], segmentsOverride?: MentionSegment[]) => {
 			text = text.trim()
-			const segments = segmentsOverride ? trimSegments(segmentsOverride) : segmentsFor(text)
+			const segments = segmentsOverride ? trimSegments(segmentsOverride) : draft.segmentsFor(text)
 
 			if (text || images.length > 0) {
 				// Intercept when the active provider is retired — show a
@@ -736,7 +717,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						images,
 						segments,
 					})
-					segmentsRef.current = null
 				} else if (clineAskRef.current) {
 					if (clineAskRef.current === "followup") {
 						markFollowUpAsAnswered()
@@ -785,7 +765,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			isStreaming,
 			messageQueue.length,
 			apiConfiguration.apiProvider,
-			segmentsFor,
+			draft,
 			postDraft,
 		], // messagesRef and clineAskRef are stable
 	)
@@ -793,55 +773,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const handleSetChatBoxMessage = useCallback(
 		(text: string, images: string[], inserted?: MentionSegment[]) => {
 			// Segments that are missing or do not match the text are all generated.
-			const insertedSegments = normalizeSegments(text, inserted)
-			if (inputValue === "") {
-				segmentsRef.current = insertedSegments
-				setInputValue(text)
-			} else {
-				segmentsRef.current = [
-					...(segmentsRef.current ?? userSegments(inputValue)),
-					...generatedSegments(" "),
-					...insertedSegments,
-				]
-				setInputValue(inputValue + " " + text)
-			}
-			setSelectedImages([...selectedImages, ...images])
+			draft.append(text, " ", normalizeSegments(text, inserted))
+			if (images.length > 0) setSelectedImages((previous) => [...previous, ...images])
 		},
-		[inputValue, selectedImages],
+		[draft],
 	)
 
 	const startNewTask = useCallback(() => {
 		setShowRetiredProviderWarning(false)
 		vscode.postMessage({ type: "clearTask" })
-	}, [])
-
-	// A manual edit marks only the changed text as user text.
-	const setInputValueFromUser = useCallback(
-		(value: string | ((prev: string) => string)) => {
-			const previous = inputValueRef.current
-			const next = typeof value === "function" ? value(previous) : value
-			if (segmentsRef.current) {
-				segmentsRef.current = applyEdit(segmentsRef.current, previous, next)
-			}
-			inputValueRef.current = next
-			setInputValue(next)
-		},
-		[setInputValue],
-	)
-
-	// Generated text replaces the whole value and authorizes nothing.
-	const setInputValueGenerated = useCallback((value: string) => {
-		segmentsRef.current = generatedSegments(value)
-		inputValueRef.current = value
-		setInputValue(value)
-	}, [])
-
-	// Prompt history restores a draft together with its segments.
-	const getInputSegments = useCallback(() => segmentsRef.current, [])
-	const setInputValueWithSegments = useCallback((value: string, segments: MentionSegment[] | null) => {
-		segmentsRef.current = segments
-		inputValueRef.current = value
-		setInputValue(value)
 	}, [])
 
 	// Handle stop button click from textarea
@@ -852,11 +792,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	// Handle enqueue button click from textarea
 	const handleEnqueueCurrentMessage = useCallback(() => {
-		const text = inputValue.trim()
+		const text = draft.getText().trim()
 		if (text || selectedImages.length > 0) {
 			postDraft({ type: "queueMessage" }, text, selectedImages)
 		}
-	}, [inputValue, selectedImages, postDraft])
+	}, [draft, selectedImages, postDraft])
 
 	// Resets the approval button UI to its hidden/disabled state. Shared by the
 	// manual click handlers and by the backend-driven clearApprovalButtons
@@ -1537,27 +1477,19 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			if (event?.shiftKey) {
 				// Always append to existing text, don't overwrite.
 				// The suggestion is model text, so it stays generated.
-				const currentValue = inputValueRef.current
-				const separator = currentValue !== "" ? " \n" : ""
-				segmentsRef.current = [
-					...(segmentsRef.current ?? userSegments(currentValue)),
-					...generatedSegments(separator + answer),
-				]
-				inputValueRef.current = currentValue + separator + answer
-				setInputValue(inputValueRef.current)
+				draft.append(answer, " \n", generatedSegments(answer))
 			} else {
 				// Don't clear the input value when sending a follow-up choice
 				// The message should be sent but the text area should preserve what the user typed
-				const preservedInput = inputValueRef.current
-				const preservedSegments = segmentsRef.current
+				const preservedInput = draft.getText()
+				const preservedSegments = draft.getSegments()
 				// A suggestion is model text, so it is generated.
 				handleSendMessage(answer, [], generatedSegments(answer))
 				// Restore the input value and its segments after sending
-				setInputValue(preservedInput)
-				segmentsRef.current = preservedSegments
+				draft.replace(preservedInput, preservedSegments)
 			}
 		},
-		[handleSendMessage, setInputValue, switchToMode, alwaysAllowModeSwitch, clineAsk, markFollowUpAsAnswered],
+		[handleSendMessage, draft, switchToMode, alwaysAllowModeSwitch, clineAsk, markFollowUpAsAnswered],
 	)
 
 	const handleBatchFileResponse = useCallback((response: { [key: string]: boolean }) => {
@@ -1692,6 +1624,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useImperativeHandle(ref, () => ({
 		acceptInput: () => {
+			const inputValue = draft.getText()
 			const hasInput = inputValue.trim() || selectedImages.length > 0
 
 			// Special case: during command_output, queue the message instead of
@@ -1878,7 +1811,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 														? "min-w-0 flex-1 mr-[6px]"
 														: "min-w-0 flex-[2] mr-0"
 												}
-												onClick={() => handlePrimaryButtonClick(inputValue, selectedImages)}>
+												onClick={() =>
+													handlePrimaryButtonClick(draft.getText(), selectedImages)
+												}>
 												<span className="min-w-0 truncate">{primaryButtonText}</span>
 											</Button>
 										</StandardTooltip>
@@ -1900,7 +1835,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 												variant="secondary"
 												disabled={!enableButtons}
 												className="min-w-0 flex-1 ml-[6px]"
-												onClick={() => handleSecondaryButtonClick(inputValue, selectedImages)}>
+												onClick={() =>
+													handleSecondaryButtonClick(draft.getText(), selectedImages)
+												}>
 												<span className="min-w-0 truncate">{secondaryButtonText}</span>
 											</Button>
 										</StandardTooltip>
@@ -1943,20 +1880,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					/>
 				</div>
 			)}
-			<ChatTextArea
+			<ChatComposer
 				ref={textAreaRef}
-				inputValue={inputValue}
-				setInputValue={setInputValueFromUser}
-				// Generated text replaces the value and authorizes nothing.
-				setInputValueGenerated={setInputValueGenerated}
-				getInputSegments={getInputSegments}
-				setInputValueWithSegments={setInputValueWithSegments}
+				draft={draft}
 				sendingDisabled={sendingDisabled || isProfileDisabled}
 				selectApiConfigDisabled={sendingDisabled && clineAsk !== "api_req_failed"}
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				onSend={() => handleSendMessage(draft.getText(), selectedImages)}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {

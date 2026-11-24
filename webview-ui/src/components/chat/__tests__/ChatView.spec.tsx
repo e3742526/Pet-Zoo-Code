@@ -58,17 +58,22 @@ vi.mock("../ChatRow", () => ({
 		message,
 		onSuggestionClick,
 		isFollowUpAnswered,
+		isFollowUpAutoApprovalPaused,
 	}: {
 		message: ClineMessage
 		onSuggestionClick?: (suggestion: SuggestionItem, event?: React.MouseEvent) => void
 		isFollowUpAnswered?: boolean
+		isFollowUpAutoApprovalPaused?: boolean
 	}) {
 		const [instance] = React.useState(() => ++nextRowInstance)
 		if (message.type === "ask" && message.ask === "followup" && message.text) {
 			try {
 				const followUp = JSON.parse(message.text) as { suggest?: SuggestionItem[] }
 				return (
-					<div data-testid="chat-row" data-answered={isFollowUpAnswered === true ? "true" : "false"}>
+					<div
+						data-testid="chat-row"
+						data-answered={String(isFollowUpAnswered === true)}
+						data-auto-approval-paused={String(isFollowUpAutoApprovalPaused === true)}>
 						{followUp.suggest?.map((suggestion) => (
 							<button
 								key={suggestion.answer}
@@ -735,6 +740,34 @@ describe("ChatView - Virtualization Configuration", () => {
 		})
 		await waitFor(() => expect(screen.getByTestId("chat-row")).toHaveTextContent("Completed"))
 		expect(screen.getByTestId("chat-row").getAttribute("data-instance")).toBe(instance)
+	})
+
+	it("updates the composer without rendering the task header and sends the latest text", async () => {
+		renderChatView()
+		mockPostMessage({
+			clineMessages: [
+				{ type: "say", say: "task", ts: 1, text: "Initial task" },
+				{ type: "say", say: "text", ts: 2, text: "Completed response" },
+			],
+		})
+		await screen.findByTestId("chat-row")
+		const input = screen.getByRole("textbox")
+		const headerRenders = mockTaskHeaderState.renders.length
+
+		fireEvent.change(input, { target: { value: "Review" } })
+		fireEvent.change(input, { target: { value: " Review the changes " } })
+		expect(input).toHaveValue(" Review the changes ")
+		expect(mockTaskHeaderState.renders).toHaveLength(headerRenders)
+
+		fireEvent.keyDown(input, { key: "Enter" })
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "askResponse",
+			askResponse: "messageResponse",
+			text: "Review the changes",
+			images: [],
+			segments: [{ text: "Review the changes", source: "user" }],
+		})
+		expect(input).toHaveValue("")
 	})
 
 	it("keeps the off-screen render buffer tight for chat rows", async () => {
@@ -1511,6 +1544,42 @@ describe("ChatView - Follow-up Suggestions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		vscodePostMessageMock.cleanup()
+	})
+
+	it("pauses follow-up auto-approval when a draft becomes nonblank and resumes when cleared", async () => {
+		renderChatView()
+		mockPostMessage({
+			clineMessages: [
+				{ type: "say", say: "task", ts: 1, text: "Initial task" },
+				{
+					type: "ask",
+					ask: "followup",
+					ts: 2,
+					text: JSON.stringify({ question: "Next action?", suggest: [{ answer: "Continue" }] }),
+					partial: false,
+				},
+			],
+		})
+		const row = await screen.findByTestId("chat-row")
+		const input = screen.getByRole("textbox")
+		const cancellations = () =>
+			vi.mocked(vscode.postMessage).mock.calls.filter(([message]) => message.type === "cancelAutoApproval")
+
+		fireEvent.change(input, { target: { value: "   " } })
+		expect(row).toHaveAttribute("data-auto-approval-paused", "false")
+		expect(cancellations()).toHaveLength(0)
+
+		fireEvent.change(input, { target: { value: "M" } })
+		expect(row).toHaveAttribute("data-auto-approval-paused", "true")
+		expect(cancellations()).toHaveLength(1)
+
+		const headerRenders = mockTaskHeaderState.renders.length
+		fireEvent.change(input, { target: { value: "My answer" } })
+		expect(mockTaskHeaderState.renders).toHaveLength(headerRenders)
+		expect(cancellations()).toHaveLength(1)
+
+		fireEvent.change(input, { target: { value: "" } })
+		expect(row).toHaveAttribute("data-auto-approval-paused", "false")
 	})
 
 	it("switches to a known mode from a malformed object mode suggestion", async () => {

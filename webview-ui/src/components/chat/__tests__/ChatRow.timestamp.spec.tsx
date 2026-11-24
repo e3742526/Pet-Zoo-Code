@@ -45,18 +45,21 @@ vi.mock("../ChatTextArea", () => ({
 }))
 
 let mockState: Record<string, unknown> = {}
+const readMockState = () => ({
+	mcpServers: [],
+	alwaysAllowMcp: false,
+	currentCheckpoint: null,
+	mode: "code",
+	apiConfiguration: {},
+	clineMessages: [],
+	currentTaskItem: undefined,
+	...mockState,
+})
+
 vi.mock("@src/context/ExtensionStateContext", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@src/context/ExtensionStateContext")>()),
-	useExtensionState: () => ({
-		mcpServers: [],
-		alwaysAllowMcp: false,
-		currentCheckpoint: null,
-		mode: "code",
-		apiConfiguration: {},
-		clineMessages: [],
-		currentTaskItem: undefined,
-		...mockState,
-	}),
+	useExtensionState: () => readMockState(),
+	useExtensionChatRowState: () => readMockState(),
 }))
 
 vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({

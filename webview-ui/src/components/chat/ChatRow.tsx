@@ -13,6 +13,7 @@ import type {
 	ClineSayTool,
 	CompletionCheckpoint,
 	ExtensionMessage,
+	TodoItem,
 } from "@roo-code/types"
 
 import { Mode } from "@roo/modes"
@@ -20,7 +21,7 @@ import { Mode } from "@roo/modes"
 import { COMMAND_OUTPUT_STRING } from "@roo/combineCommandSequences"
 import { safeJsonParse } from "@roo/core"
 
-import { useExtensionState, type ExtensionStateContextType } from "@src/context/ExtensionStateContext"
+import { useExtensionChatRowState, useExtensionState } from "@src/context/ExtensionStateContext"
 import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { vscode } from "@src/utils/vscode"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
@@ -81,37 +82,20 @@ import { PathTooltip } from "../ui/PathTooltip"
 import { OpenMarkdownPreviewButton } from "./OpenMarkdownPreviewButton"
 import { SeeNewChangesButtons } from "./SeeNewChangesButtons"
 
-// Helper function to get previous todos before a specific message
-function getPreviousTodos(messages: ClineMessage[], currentMessageTs: number): any[] {
-	// Find the previous updateTodoList message before the current one
-	const previousUpdateIndex = messages
-		.slice()
-		.reverse()
-		.findIndex((msg) => {
-			if (msg.ts >= currentMessageTs) return false
-			if (msg.type === "ask" && msg.ask === "tool") {
-				try {
-					const tool = JSON.parse(msg.text || "{}")
-					return tool.tool === "updateTodoList"
-				} catch {
-					return false
-				}
-			}
+type ChatRowTool = ClineSayTool & { todos?: TodoItem[] }
+
+function findPreviousTodoUpdate(messages: ClineMessage[], currentMessageTs: number): string | undefined {
+	return messages.findLast((message) => {
+		if (message.ts >= currentMessageTs || message.type !== "ask" || message.ask !== "tool" || !message.text) {
 			return false
-		})
-
-	if (previousUpdateIndex !== -1) {
-		const previousMessage = messages.slice().reverse()[previousUpdateIndex]
-		try {
-			const tool = JSON.parse(previousMessage.text || "{}")
-			return tool.todos || []
-		} catch {
-			return []
 		}
-	}
-
-	// If no previous updateTodoList message, return empty array
-	return []
+		try {
+			const tool: Pick<ClineSayTool, "tool"> | null = JSON.parse(message.text)
+			return tool?.tool === "updateTodoList"
+		} catch {
+			return false
+		}
+	})?.text
 }
 
 function isNewTaskMessage(message: ClineMessage): boolean {
@@ -228,32 +212,22 @@ function EditChatTextArea({ messageTs, setSelectedImages, ...props }: EditChatTe
 
 export const ChatRowContent = (props: ChatRowContentProps) => {
 	const { message } = props
-	const {
-		mcpServers,
-		alwaysAllowMcp,
-		currentCheckpoint,
-		mode,
-		clineMessages,
-		currentTaskItem,
-		enableCheckpoints,
-		timeFormat,
-		dateFormat,
-	} = useExtensionState()
+	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, enableCheckpoints, timeFormat, dateFormat } =
+		useExtensionChatRowState()
 	const tool = useMemo(
-		() => (message.ask === "tool" ? safeJsonParse<ClineSayTool>(message.text) : null),
+		() => (message.ask === "tool" ? safeJsonParse<ChatRowTool>(message.text) : null),
 		[message.ask, message.text],
 	)
-	const linksSubtask = message.say === "subtask_result" || tool?.tool === "newTask"
-	const needsTranscript = linksSubtask || tool?.tool === "updateTodoList"
 	const isMcpRequest = message.type === "ask" && message.ask === "use_mcp_server"
+	const RowBody =
+		message.say === "subtask_result" || tool?.tool === "newTask" || tool?.tool === "updateTodoList"
+			? ChatRowWithTranscript
+			: ChatRowBody
 
 	return (
-		<ChatRowBody
+		<RowBody
 			{...props}
 			tool={tool}
-			clineMessages={needsTranscript ? clineMessages : undefined}
-			childIds={linksSubtask ? currentTaskItem?.childIds : undefined}
-			completedByChildId={message.say === "subtask_result" ? currentTaskItem?.completedByChildId : undefined}
 			mcpServers={isMcpRequest ? mcpServers : undefined}
 			alwaysAllowMcp={isMcpRequest ? alwaysAllowMcp : undefined}
 			currentCheckpoint={message.say === "checkpoint_saved" ? currentCheckpoint : undefined}
@@ -265,16 +239,38 @@ export const ChatRowContent = (props: ChatRowContentProps) => {
 	)
 }
 
+function ChatRowWithTranscript(props: ChatRowBodyProps) {
+	const { clineMessages, currentTaskItem } = useExtensionState()
+	const { message, tool } = props
+	const isResult = message.type === "say" && message.say === "subtask_result"
+	if (!isResult && tool?.tool === "updateTodoList") {
+		return <ChatRowBody {...props} previousTodoUpdate={findPreviousTodoUpdate(clineMessages, message.ts)} />
+	}
+
+	const linkedChildTaskId = getLinkedChildTaskId(
+		message,
+		clineMessages,
+		currentTaskItem?.childIds ?? [],
+		isResult ? currentTaskItem?.completedByChildId : undefined,
+	)
+	const rowIndex = isResult ? -1 : clineMessages.findIndex((candidate) => candidate.ts === message.ts)
+	const nextMessage = rowIndex >= 0 ? clineMessages[rowIndex + 1] : undefined
+	return (
+		<ChatRowBody
+			{...props}
+			linkedChildTaskId={linkedChildTaskId}
+			followedBySubtaskResult={nextMessage?.type === "say" && nextMessage.say === "subtask_result"}
+		/>
+	)
+}
+
 type ChatRowBodyProps = ChatRowContentProps &
-	Pick<
-		ExtensionStateContextType,
-		"alwaysAllowMcp" | "currentCheckpoint" | "mode" | "enableCheckpoints" | "timeFormat" | "dateFormat"
-	> & {
-		tool: ClineSayTool | null | undefined
-		clineMessages?: ClineMessage[]
-		childIds?: string[]
-		completedByChildId?: string
-		mcpServers?: ExtensionStateContextType["mcpServers"]
+	Omit<ReturnType<typeof useExtensionChatRowState>, "mcpServers"> & {
+		tool: ChatRowTool | null | undefined
+		linkedChildTaskId?: string
+		followedBySubtaskResult?: boolean
+		previousTodoUpdate?: string
+		mcpServers?: ReturnType<typeof useExtensionChatRowState>["mcpServers"]
 	}
 
 const ChatRowBody = memo(function ChatRowBody({
@@ -292,9 +288,9 @@ const ChatRowBody = memo(function ChatRowBody({
 	completionCheckpoint,
 	onJumpToPreviousCheckpoint,
 	tool,
-	clineMessages = [],
-	childIds = [],
-	completedByChildId,
+	linkedChildTaskId,
+	followedBySubtaskResult,
+	previousTodoUpdate,
 	mcpServers,
 	alwaysAllowMcp,
 	currentCheckpoint,
@@ -658,12 +654,10 @@ const ChatRowBody = memo(function ChatRowBody({
 					</div>
 				)
 			}
-			case "updateTodoList" as any: {
-				const todos = (tool as any).todos || []
-				// Get previous todos from the latest todos in the task context
-				const previousTodos = getPreviousTodos(clineMessages, message.ts)
+			case "updateTodoList": {
+				const previousTodos = safeJsonParse<Pick<ChatRowTool, "todos">>(previousTodoUpdate)?.todos
 
-				return <TodoChangeDisplay previousTodos={previousTodos} newTodos={todos} />
+				return <TodoChangeDisplay previousTodos={previousTodos || []} newTodos={tool.todos || []} />
 			}
 			case "readFile":
 				// Check if this is a batch file permission request
@@ -944,14 +938,6 @@ const ChatRowBody = memo(function ChatRowBody({
 					</>
 				)
 			case "newTask":
-				const childTaskId = getLinkedChildTaskId(message, clineMessages, childIds)
-
-				// Check if the next message is a subtask_result - if so, don't show the button
-				// since the result is displayed right after this message
-				const currentMessageIndex = clineMessages.findIndex((msg) => msg.ts === message.ts)
-				const nextMessage = currentMessageIndex >= 0 ? clineMessages[currentMessageIndex + 1] : undefined
-				const isFollowedBySubtaskResult = nextMessage?.type === "say" && nextMessage?.say === "subtask_result"
-
 				return (
 					<>
 						<div style={headerStyle}>
@@ -968,11 +954,11 @@ const ChatRowBody = memo(function ChatRowBody({
 						<div className="border-l border-muted-foreground/80 ml-2 pl-4 pb-1">
 							<MarkdownBlock markdown={tool.content} />
 							<div>
-								{childTaskId && !isFollowedBySubtaskResult && (
+								{linkedChildTaskId && !followedBySubtaskResult && (
 									<button
 										className="cursor-pointer flex gap-1 items-center mt-2 text-vscode-descriptionForeground hover:text-vscode-descriptionForeground hover:underline font-normal"
 										onClick={() =>
-											vscode.postMessage({ type: "showTaskWithId", text: childTaskId })
+											vscode.postMessage({ type: "showTaskWithId", text: linkedChildTaskId })
 										}>
 										{t("chat:subtasks.goToSubtask")}
 										<ArrowRight className="size-3" />
@@ -1119,12 +1105,6 @@ const ChatRowBody = memo(function ChatRowBody({
 						/>
 					)
 				case "subtask_result": {
-					const completedChildTaskId = getLinkedChildTaskId(
-						message,
-						clineMessages,
-						childIds,
-						completedByChildId,
-					)
 					return (
 						<div className="border-l border-muted-foreground/80 ml-2 pl-4 pt-2 pb-1 -mt-5">
 							<div style={headerStyle}>
@@ -1132,11 +1112,11 @@ const ChatRowBody = memo(function ChatRowBody({
 								<Check className="size-3" />
 							</div>
 							<MarkdownBlock markdown={message.text} />
-							{completedChildTaskId && (
+							{linkedChildTaskId && (
 								<button
 									className="cursor-pointer flex gap-1 items-center mt-2 text-vscode-descriptionForeground hover:text-vscode-descriptionForeground hover:underline font-normal"
 									onClick={() =>
-										vscode.postMessage({ type: "showTaskWithId", text: completedChildTaskId })
+										vscode.postMessage({ type: "showTaskWithId", text: linkedChildTaskId })
 									}>
 									{t("chat:subtasks.goToSubtask")}
 									<ArrowRight className="size-3" />

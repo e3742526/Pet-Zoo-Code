@@ -30,16 +30,19 @@ vi.mock("react-i18next", () => ({
 let mockCurrentTaskItem: Partial<HistoryItem> | undefined = undefined
 let mockClineMessages: ClineMessage[] = []
 
+const readMockState = () => ({
+	mcpServers: [],
+	alwaysAllowMcp: false,
+	currentCheckpoint: null,
+	mode: "code",
+	apiConfiguration: {},
+	clineMessages: mockClineMessages,
+	currentTaskItem: mockCurrentTaskItem,
+})
+
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: () => ({
-		mcpServers: [],
-		alwaysAllowMcp: false,
-		currentCheckpoint: null,
-		mode: "code",
-		apiConfiguration: {},
-		clineMessages: mockClineMessages,
-		currentTaskItem: mockCurrentTaskItem,
-	}),
+	useExtensionState: () => readMockState(),
+	useExtensionChatRowState: () => readMockState(),
 }))
 
 vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({

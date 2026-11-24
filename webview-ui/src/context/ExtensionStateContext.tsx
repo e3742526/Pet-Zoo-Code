@@ -184,7 +184,13 @@ type ExtensionHistoryState = Pick<
 	"cwd" | "taskHistory" | "timeFormat" | "dateFormat" | "showRelativeTimes"
 >
 
+type ExtensionChatRowState = Pick<
+	ExtensionStateContextType,
+	"alwaysAllowMcp" | "currentCheckpoint" | "mode" | "enableCheckpoints" | "timeFormat" | "dateFormat" | "mcpServers"
+>
+
 const ExtensionShellContext = createContext<ExtensionShellState | undefined>(undefined)
+const ExtensionChatRowContext = createContext<ExtensionChatRowState | undefined>(undefined)
 const ExtensionHistoryContext = createContext<ExtensionHistoryState>({
 	cwd: "",
 	taskHistory: [],
@@ -745,6 +751,19 @@ export const ExtensionStateContextProvider: React.FC<{
 		}),
 		[cwd, taskHistory, timeFormat, dateFormat, showRelativeTimes],
 	)
+	const { mode, alwaysAllowMcp, enableCheckpoints } = state
+	const chatRowState = useMemo<ExtensionChatRowState>(
+		() => ({
+			mcpServers,
+			currentCheckpoint,
+			mode,
+			alwaysAllowMcp,
+			enableCheckpoints,
+			timeFormat: timeFormat ?? "auto",
+			dateFormat: dateFormat ?? "auto",
+		}),
+		[mcpServers, currentCheckpoint, mode, alwaysAllowMcp, enableCheckpoints, timeFormat, dateFormat],
+	)
 
 	const contextValue: ExtensionStateContextType = {
 		...state,
@@ -879,7 +898,9 @@ export const ExtensionStateContextProvider: React.FC<{
 	return (
 		<ExtensionShellContext.Provider value={shellState}>
 			<ExtensionHistoryContext.Provider value={historyState}>
-				<ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+				<ExtensionChatRowContext.Provider value={chatRowState}>
+					<ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+				</ExtensionChatRowContext.Provider>
 			</ExtensionHistoryContext.Provider>
 		</ExtensionShellContext.Provider>
 	)
@@ -892,6 +913,12 @@ export function useExtensionShellState() {
 }
 
 export const useExtensionHistoryState = () => React.useContext(ExtensionHistoryContext)
+
+export function useExtensionChatRowState() {
+	const state = React.useContext(ExtensionChatRowContext)
+	if (!state) throw new Error("useExtensionChatRowState must be used within an ExtensionStateContextProvider")
+	return state
+}
 
 export const useExtensionState = () => {
 	const context = React.useContext(ExtensionStateContext)

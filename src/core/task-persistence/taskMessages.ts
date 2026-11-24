@@ -1,8 +1,9 @@
 import * as path from "path"
+import { isDeepStrictEqual } from "node:util"
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { safeWriteJson, type SafeWriteJsonTraceStage } from "../../utils/safeWriteJson"
+import { safeWriteJson, SKIP_JSON_REPLACEMENT, type SafeWriteJsonTraceStage } from "../../utils/safeWriteJson"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { ensureMessageIdentifiers, mergeClineMessageSnapshots } from "./mergeMessageSnapshots"
@@ -82,6 +83,32 @@ export type SaveTaskMessagesOptions = {
 	merge?: boolean
 }
 
+function matchesCommittedMessages(existing: unknown, messages: ClineMessage[]): boolean {
+	if (!Array.isArray(existing) || existing.length !== messages.length) {
+		return false
+	}
+
+	// Check recent rows first because an in-place edit generally changes the tail.
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const message = messages[i]
+		if (isDeepStrictEqual(existing[i], message)) {
+			continue
+		}
+		if (message === null || typeof message !== "object" || Object.getPrototypeOf(message) !== Object.prototype) {
+			return false
+		}
+		// The writer omits undefined object fields. Compare after the merge so an
+		// undefined field still clears a value that was previously on disk.
+		const entries = Object.entries(message)
+		const defined = entries.filter(([, value]) => value !== undefined)
+		if (entries.length === defined.length || !isDeepStrictEqual(existing[i], Object.fromEntries(defined))) {
+			return false
+		}
+	}
+
+	return true
+}
+
 export async function saveTaskMessages({
 	messages,
 	taskId,
@@ -96,7 +123,7 @@ export async function saveTaskMessages({
 		...(merge && {
 			merge: (existing, incoming) => {
 				savedMessages = mergeClineMessageSnapshots(existing, incoming) as ClineMessage[]
-				return savedMessages
+				return matchesCommittedMessages(existing, savedMessages) ? SKIP_JSON_REPLACEMENT : savedMessages
 			},
 		}),
 		// Trace the replacement-protocol stages with the task ID so restart

@@ -18,6 +18,8 @@ export type SafeWriteJsonTraceStage =
 
 export type SafeWriteJsonTrace = (event: { stage: SafeWriteJsonTraceStage; detail?: string }) => void
 
+export const SKIP_JSON_REPLACEMENT = Symbol("skip JSON replacement")
+
 /**
  * Options for safeWriteJson function
  */
@@ -36,7 +38,8 @@ export interface SafeWriteJsonOptions {
 	 * return value replaces `data` for the write. This turns a blind
 	 * overwrite into an atomic read-modify-write, preventing cross-process
 	 * lost updates. `existing` is null when the file does not exist or
-	 * cannot be parsed.
+	 * cannot be parsed. Return `SKIP_JSON_REPLACEMENT` when the parsed file
+	 * already contains the required result.
 	 */
 	merge?: (existing: unknown, incoming: unknown) => unknown
 
@@ -129,7 +132,11 @@ async function safeWriteJson(filePath: string, data: unknown, options?: SafeWrit
 					throw error
 				}
 			}
-			data = options.merge(existing, data)
+			const merged = options.merge(existing, data)
+			if (merged === SKIP_JSON_REPLACEMENT) {
+				return
+			}
+			data = merged
 		}
 
 		// Step 1: Write data to a new temporary file and flush it to storage,

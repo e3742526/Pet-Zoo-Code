@@ -28,6 +28,12 @@ promises that all three files exist. The model explicitly reaches that partial
 publication state and permits interruption there. It requires restart discovery
 only after the readiness conjunction, not after an unfinished first write.
 
+A merged UI transcript save can acknowledge an already committed result. The
+writer recovers the file, reads it under the advisory lock, and compares it with
+the merged snapshot. If the values match, the committed state stays the same and
+the writer releases the lock without staging a replacement. The focused
+transcript tests cover an equal merge after recovery and a later changed merge.
+
 After acknowledgment, the latest committed version of each required file must
 remain in either the canonical file or its backup until explicit deletion.
 Completed fresh reads must return those committed versions and find the history

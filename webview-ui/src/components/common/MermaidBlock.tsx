@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react"
-import mermaid from "mermaid"
 import styled from "styled-components"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { vscode } from "@src/utils/vscode"
@@ -28,6 +27,9 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 		renderVersionRef.current += 1
 		setIsLoading(true)
 		setError(null)
+		return () => {
+			renderVersionRef.current += 1
+		}
 	}, [code, theme.signature])
 
 	useDebounceEffect(
@@ -37,22 +39,24 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 				containerRef.current.innerHTML = ""
 			}
 
-			mermaid.initialize(getMermaidConfig(theme.kind))
-			mermaid
-				.parse(code)
-				.then(() => {
+			void import("mermaid")
+				.then(async ({ default: mermaid }) => {
+					if (renderVersion !== renderVersionRef.current) return
+					mermaid.initialize(getMermaidConfig(theme.kind))
+					await mermaid.parse(code)
+					if (renderVersion !== renderVersionRef.current) return
 					const id = `mermaid-${Math.random().toString(36).substring(2)}`
 					return mermaid.render(id, code)
 				})
-				.then(({ svg }) => {
-					if (containerRef.current && renderVersion === renderVersionRef.current) {
-						containerRef.current.innerHTML = svg
+				.then((result) => {
+					if (result && containerRef.current && renderVersion === renderVersionRef.current) {
+						containerRef.current.innerHTML = result.svg
 					}
 				})
 				.catch((err) => {
 					if (renderVersion === renderVersionRef.current) {
 						console.warn("Mermaid parse/render failed:", err)
-						setError(err.message || "Failed to render Mermaid diagram")
+						setError(err instanceof Error && err.message ? err.message : "Failed to render Mermaid diagram")
 					}
 				})
 				.finally(() => {

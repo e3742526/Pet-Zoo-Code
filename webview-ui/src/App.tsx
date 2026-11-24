@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useEvent } from "react-use"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
@@ -11,10 +11,8 @@ import { vscode } from "./utils/vscode"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
-import HistoryView from "./components/history/HistoryView"
-import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
+import type { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeViewProvider"
-import { MarketplaceView } from "./components/marketplace/MarketplaceView"
 import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
@@ -23,6 +21,12 @@ import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 import { useThemeFixtureProbe } from "./utils/useThemeFixtureProbe"
 import { recordDiagnosticsActiveTab } from "./utils/diagnostics"
+
+const HistoryView = lazy(() => import("./components/history/HistoryView"))
+const SettingsView = lazy(() => import("./components/settings/SettingsView"))
+const MarketplaceView = lazy(() =>
+	import("./components/marketplace/MarketplaceView").then(({ MarketplaceView }) => ({ default: MarketplaceView })),
+)
 
 type Tab = "settings" | "history" | "chat" | "marketplace"
 
@@ -228,17 +232,19 @@ const App = () => {
 		<WelcomeView />
 	) : (
 		<>
-			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
-			{tab === "settings" && (
-				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
-			)}
-			{tab === "marketplace" && (
-				<MarketplaceView
-					stateManager={marketplaceStateManager}
-					onDone={() => switchTab("chat")}
-					targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
-				/>
-			)}
+			<Suspense fallback={<div aria-busy="true" />}>
+				{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
+				{tab === "settings" && (
+					<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
+				)}
+				{tab === "marketplace" && (
+					<MarketplaceView
+						stateManager={marketplaceStateManager}
+						onDone={() => switchTab("chat")}
+						targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
+					/>
+				)}
+			</Suspense>
 			<ChatView
 				ref={chatViewRef}
 				isHidden={tab !== "chat"}

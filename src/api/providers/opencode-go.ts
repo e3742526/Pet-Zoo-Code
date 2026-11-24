@@ -21,7 +21,7 @@ import { ApiHandlerOptions, GetModelsOptions } from "../../shared/api"
 import { ApiStream, type ApiStreamUsageChunk } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
-import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
+import { prepareAnthropicMessages } from "../transform/anthropic-filter"
 import { getModelParams } from "../transform/model-params"
 import { convertToResponsesApiInput } from "../transform/responses-api-input"
 import { processResponsesApiStream } from "../transform/responses-api-stream"
@@ -515,9 +515,7 @@ export class OpencodeGoHandler extends RouterProvider implements SingleCompletio
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
 		const supportsPromptCache = info.supportsPromptCache ?? false
 
-		// Strip non-Anthropic blocks (reasoning, thoughtSignature, etc.) before
-		// sending — the gateway rejects unknown content block types.
-		const sanitizedMessages = filterNonAnthropicBlocks(messages)
+		const sanitizedMessages = prepareAnthropicMessages(messages)
 
 		const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
 			supportsPromptCache

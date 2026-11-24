@@ -155,6 +155,53 @@ describe("AnthropicHandler", () => {
 	describe("createMessage", () => {
 		const systemPrompt = "You are a helpful assistant."
 
+		it("repairs missing, duplicate, and orphaned results before calling the SDK", async () => {
+			const readResult: Anthropic.Messages.ToolResultBlockParam = {
+				type: "tool_result",
+				tool_use_id: "toolu_read",
+				content: "Actual file contents",
+			}
+			const followUp: Anthropic.Messages.TextBlockParam = { type: "text", text: "Review the file." }
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{ role: "user", content: "Read and list the files." },
+				{
+					role: "assistant",
+					content: [
+						{ type: "thinking", thinking: "Use both tools.", signature: "signed-thinking" },
+						{ type: "tool_use", id: "toolu_list", name: "list_files", input: { path: "." } },
+						{ type: "tool_use", id: "toolu_read", name: "read_file", input: { path: "file.txt" } },
+					],
+				},
+				{
+					role: "user",
+					content: [
+						readResult,
+						{ ...readResult, content: "Duplicate result" },
+						{ ...readResult, tool_use_id: "toolu_stale", content: "Unmatched result" },
+						followUp,
+					],
+				},
+			]
+			const saved = structuredClone(messages)
+
+			await collectStream(handler.createMessage(systemPrompt, messages))
+
+			expect(mockCreate).toHaveBeenCalledOnce()
+			const request: Anthropic.Messages.MessageCreateParams = mockCreate.mock.calls[0]?.[0]
+			expect(request.messages[1]).toEqual(saved[1])
+			expect(request.messages[2].content).toEqual([
+				{
+					type: "tool_result",
+					tool_use_id: "toolu_list",
+					content: "No result was recorded for this tool call.",
+					is_error: true,
+				},
+				readResult,
+				expect.objectContaining(followUp),
+			])
+			expect(messages).toEqual(saved)
+		})
+
 		it("should handle prompt caching for supported models", async () => {
 			const stream = handler.createMessage(systemPrompt, [
 				{

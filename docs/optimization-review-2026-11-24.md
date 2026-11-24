@@ -279,7 +279,13 @@ Regression tests cover a moved block, a hint beyond the end of the file, duplica
 
 The request builder puts all tool results before other user content after it merges adjacent messages and applies model image support. The order within each group stays stable. The same function protects the live tool buffer and reuses arrays that already have the correct order. Saved images stay in their existing message because the older format can include both tool and user images without an ownership field. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1839) · [Claude message format](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)
 
-The regression test sends saved history through `Task.attemptApiRequest()` and checks the messages passed to the provider. It reproduces the wrong order with both the image and its text replacement before the fix. It checks the order of the assistant calls, results, image or replacement text, and follow-up text. It also compares the saved history before and after the request. The separate tool-call pairing proposal remains open. [Pairing proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2113)
+The regression test sends saved history through `Task.attemptApiRequest()` and checks the messages passed to the provider. It reproduces the wrong order with both the image and its text replacement before the fix. It checks the order of the assistant calls, results, image or replacement text, and follow-up text. It also compares the saved history before and after the request.
+
+## Anthropic tool-call pairing on retry
+
+The Anthropic, Anthropic Vertex, and OpenCode Go Messages API paths check tool-call pairs after filtering the request history. They look for exact IDs in consecutive messages that form one turn. For a malformed turn, they keep the first matching result for each call, add an error result for a call with no result, and discard results from outside that turn. They put the results before other user content. The repair runs on the request copy after the task has selected the history to send. [Pairing proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2113) · [Messages API](https://platform.claude.com/docs/en/api/messages/create)
+
+The SDK-call regression reproduces the missing result, duplicate, and stale result in one request. It checks the exact pairs and confirms that the assistant thinking signature and saved history are intact. Additional tests exercise consecutive messages, text before a result, results without matching calls, and a trailing assistant message. The same preparation path omits standalone encrypted reasoning from other providers, which previously caused a crash before the SDK call.
 
 ## Task history scan and sidebar startup
 

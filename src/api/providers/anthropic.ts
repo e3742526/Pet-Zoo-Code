@@ -17,7 +17,7 @@ import type { ApiHandlerOptions } from "../../shared/api"
 
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
-import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
+import { prepareAnthropicMessages } from "../transform/anthropic-filter"
 import { getAnthropicProviderReasoning } from "../transform/reasoning"
 import { cacheControl, resolveCacheTtl } from "../transform/caching/ttl"
 
@@ -85,8 +85,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		const cacheTtl = resolveCacheTtl(this.options, info)
 		const marker: CacheControlEphemeral = cacheControl(cacheTtl)
 
-		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
-		const sanitizedMessages = filterNonAnthropicBlocks(messages)
+		const sanitizedMessages = prepareAnthropicMessages(messages)
 
 		// Add 1M context beta flag if enabled for supported models (Claude Sonnet 4/4.5/4.6, Opus 4.6)
 		if (

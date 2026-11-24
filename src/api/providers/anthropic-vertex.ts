@@ -17,7 +17,7 @@ import { ApiStream } from "../transform/stream"
 import { addCacheBreakpoints } from "../transform/caching/vertex"
 import { cacheControl, resolveCacheTtl } from "../transform/caching/ttl"
 import { getModelParams } from "../transform/model-params"
-import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
+import { prepareAnthropicMessages } from "../transform/anthropic-filter"
 import { getAnthropicProviderReasoning } from "../transform/reasoning"
 import {
 	convertOpenAIToolsToAnthropic,
@@ -83,8 +83,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		// One TTL for the whole request (ADR-0006 I4).
 		const cacheTtl = resolveCacheTtl(this.options, info)
 
-		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
-		const sanitizedMessages = filterNonAnthropicBlocks(messages)
+		const sanitizedMessages = prepareAnthropicMessages(messages)
 
 		const nativeToolParams = {
 			tools: convertOpenAIToolsToAnthropic(metadata?.tools ?? []),

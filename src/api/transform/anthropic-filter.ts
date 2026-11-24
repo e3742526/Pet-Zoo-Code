@@ -23,13 +23,14 @@ export const VALID_ANTHROPIC_BLOCK_TYPES = new Set([
  * - Gemini's "thoughtSignature" blocks (encrypted reasoning continuity tokens)
  * - Any other unknown block types
  */
-export function filterNonAnthropicBlocks(
-	messages: Anthropic.Messages.MessageParam[],
-): Anthropic.Messages.MessageParam[] {
+function filterNonAnthropicBlocks(messages: Anthropic.Messages.MessageParam[]): Anthropic.Messages.MessageParam[] {
 	return messages
 		.map((message) => {
 			if (typeof message.content === "string") {
 				return message
+			}
+			if (!Array.isArray(message.content)) {
+				return undefined
 			}
 
 			const filteredContent = message.content.filter((block) => {
@@ -49,4 +50,93 @@ export function filterNonAnthropicBlocks(
 			}
 		})
 		.filter((message): message is Anthropic.Messages.MessageParam => message !== undefined)
+}
+
+/** Prepare a copy of the history for the Anthropic Messages API. */
+export function prepareAnthropicMessages(
+	messages: Anthropic.Messages.MessageParam[],
+): Anthropic.Messages.MessageParam[] {
+	const filtered = filterNonAnthropicBlocks(messages)
+	const prepared: Anthropic.Messages.MessageParam[] = []
+	const toolUseIds = new Set<string>()
+
+	for (let index = 0; index < filtered.length;) {
+		const message = filtered[index++]
+		if (message.role === "assistant") {
+			prepared.push(message)
+			if (Array.isArray(message.content)) {
+				for (const block of message.content) {
+					if (block.type === "tool_use") {
+						toolUseIds.add(block.id)
+					}
+				}
+			}
+			continue
+		}
+
+		// Anthropic combines consecutive messages of the same role into a single turn.
+		const userTurn = [message]
+		while (filtered[index]?.role === "user") {
+			userTurn.push(filtered[index++])
+		}
+		prepared.push(...repairUserTurn(userTurn, toolUseIds))
+		toolUseIds.clear()
+	}
+
+	return prepared
+}
+
+function repairUserTurn(
+	userTurn: Anthropic.Messages.MessageParam[],
+	toolUseIds: ReadonlySet<string>,
+): Anthropic.Messages.MessageParam[] {
+	const results = new Map<string, Anthropic.Messages.ToolResultBlockParam>()
+	let sawOtherContent = false
+	let needsRepair = false
+
+	for (const message of userTurn) {
+		if (typeof message.content === "string") {
+			sawOtherContent = true
+			continue
+		}
+		for (const block of message.content) {
+			if (block.type !== "tool_result") {
+				sawOtherContent = true
+				continue
+			}
+			if (!toolUseIds.has(block.tool_use_id) || results.has(block.tool_use_id)) {
+				needsRepair = true
+				continue
+			}
+			results.set(block.tool_use_id, block)
+			needsRepair ||= sawOtherContent
+		}
+	}
+
+	if (!needsRepair && results.size === toolUseIds.size) {
+		return userTurn
+	}
+
+	const content: Anthropic.Messages.ContentBlockParam[] = []
+	for (const id of toolUseIds) {
+		content.push(
+			results.get(id) ?? {
+				type: "tool_result",
+				tool_use_id: id,
+				content: "No result was recorded for this tool call.",
+				is_error: true,
+			},
+		)
+	}
+	for (const message of userTurn) {
+		if (typeof message.content === "string") {
+			if (message.content.length > 0) {
+				content.push({ type: "text", text: message.content })
+			}
+		} else {
+			content.push(...message.content.filter((block) => block.type !== "tool_result"))
+		}
+	}
+
+	return content.length > 0 ? [{ role: "user", content }] : []
 }

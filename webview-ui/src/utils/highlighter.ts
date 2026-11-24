@@ -1,11 +1,4 @@
-import {
-	createHighlighter,
-	type Highlighter,
-	type BundledTheme,
-	type BundledLanguage,
-	bundledLanguages,
-	bundledThemes,
-} from "shiki"
+import { createHighlighter, type Highlighter, type BundledTheme, type BundledLanguage, bundledLanguages } from "shiki"
 
 // Extend BundledLanguage to include 'txt' because Shiki supports this but it is
 // not listed in the bundled languages
@@ -126,6 +119,12 @@ const LANGUAGE_LOAD_DELAY = 0
 
 // Common languages for first-stage initialization
 const initialLanguages: BundledLanguage[] = ["shell", "log"]
+const codeThemes: BundledTheme[] = [
+	"github-light",
+	"github-dark",
+	"github-light-high-contrast",
+	"github-dark-high-contrast",
+]
 
 // Singleton state
 const state: {
@@ -151,7 +150,7 @@ export const getHighlighter = async (language?: string): Promise<Highlighter> =>
 				// console.debug("[Shiki] Initialization started...")
 
 				const instance = await createHighlighter({
-					themes: Object.keys(bundledThemes) as BundledTheme[],
+					themes: codeThemes,
 					langs: initialLanguages,
 				})
 

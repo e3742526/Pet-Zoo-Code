@@ -335,6 +335,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const messagesRef = useRef(initialState?.clineMessages ?? [])
 	const currentTaskIdRef = useRef(initialState?.currentTaskId)
 	const clineMessagesSeqRef = useRef(initialState?.clineMessagesSeq)
+	const didRequestInitialState = useRef(false)
 
 	const [state, setState] = useState<ExtensionState>(() => {
 		const mergedState = mergeExtensionState(createInitialExtensionState(), initialState ?? {})
@@ -638,6 +639,10 @@ export const ExtensionStateContextProvider: React.FC<{
 	}, [handleMessage])
 
 	useEffect(() => {
+		if (didRequestInitialState.current) {
+			return
+		}
+		didRequestInitialState.current = true
 		vscode.postMessage({ type: "webviewDidLaunch" })
 	}, [])
 

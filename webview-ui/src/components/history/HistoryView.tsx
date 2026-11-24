@@ -2,7 +2,7 @@ import React, { memo, useState, useMemo } from "react"
 import { ArrowLeft } from "lucide-react"
 import { DeleteTaskDialog } from "./DeleteTaskDialog"
 import { BatchDeleteTaskDialog } from "./BatchDeleteTaskDialog"
-import { Virtuoso } from "react-virtuoso"
+import { Virtuoso, type ListProps } from "react-virtuoso"
 
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
@@ -30,6 +30,12 @@ type HistoryViewProps = {
 }
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
+
+const HistoryList = React.forwardRef<HTMLDivElement, ListProps>(function HistoryList(props, ref) {
+	return <div {...props} ref={ref} data-testid="virtuoso-item-list" />
+})
+
+const historyListComponents = { List: HistoryList }
 
 const HistoryView = ({ onDone }: HistoryViewProps) => {
 	const {
@@ -259,11 +265,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 						data={flatTasks}
 						data-testid="virtuoso-container"
 						initialTopMostItemIndex={0}
-						components={{
-							List: React.forwardRef((props, ref) => (
-								<div {...props} ref={ref} data-testid="virtuoso-item-list" />
-							)),
-						}}
+						components={historyListComponents}
 						itemContent={(_index, item) => (
 							<TaskItem
 								key={item.id}
@@ -285,11 +287,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 						data={groups}
 						data-testid="virtuoso-container"
 						initialTopMostItemIndex={0}
-						components={{
-							List: React.forwardRef((props, ref) => (
-								<div {...props} ref={ref} data-testid="virtuoso-item-list" />
-							)),
-						}}
+						components={historyListComponents}
 						itemContent={(_index, group) => (
 							<TaskGroupItem
 								key={group.parent.id}

@@ -180,9 +180,6 @@ const App = () => {
 		}
 	}, [showWelcome, settingsImportedAt, tab])
 
-	// Tell the extension that we are ready to receive messages.
-	useEffect(() => vscode.postMessage({ type: "webviewDidLaunch" }), [])
-
 	// Heartbeat so the extension watchdog can detect a crashed webview renderer
 	// process (gray screen) and reload the view.
 	useEffect(() => {
@@ -205,16 +202,8 @@ const App = () => {
 
 	// Initialize source map support for better error reporting
 	useEffect(() => {
-		// Initialize source maps for better error reporting in production
-		initializeSourceMaps()
-
-		// Expose source map debugging utilities in production
-		if (process.env.NODE_ENV === "production") {
-			exposeSourceMapsForDebugging()
-		}
-
-		// Log initialization for debugging
-		console.debug("App initialized with source map support")
+		exposeSourceMapsForDebugging()
+		return initializeSourceMaps()
 	}, [])
 
 	// Focus the WebView when non-interactive content is clicked (only in editor/tab mode)

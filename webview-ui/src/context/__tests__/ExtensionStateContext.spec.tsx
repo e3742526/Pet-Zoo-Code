@@ -23,6 +23,7 @@ import {
 	createInitialExtensionState,
 } from "../ExtensionStateContext"
 import { StringCache } from "@/utils/stringCache"
+import { vscode } from "@/utils/vscode"
 
 const TestComponent = () => {
 	const {
@@ -142,6 +143,28 @@ const InitialStateTestComponent = () => {
 
 describe("ExtensionStateContext", () => {
 	afterEach(() => vi.restoreAllMocks())
+
+	it("requests the initial state once after listening for the reply", () => {
+		const postMessage = vi.spyOn(vscode, "postMessage").mockImplementation((message) => {
+			if (message.type === "webviewDidLaunch") {
+				window.dispatchEvent(
+					new MessageEvent("message", { data: { type: "state", state: { soundEnabled: true } } }),
+				)
+			}
+		})
+
+		render(
+			<React.StrictMode>
+				<ExtensionStateContextProvider>
+					<TestComponent />
+				</ExtensionStateContextProvider>
+			</React.StrictMode>,
+		)
+
+		expect(postMessage.mock.calls).toEqual([[{ type: "webviewDidLaunch" }]])
+		expect(screen.getByTestId("sound-enabled")).toHaveTextContent("true")
+	})
+
 	it.each([
 		["the item matches the pinned task id and no item is loaded yet", "task-a", undefined, "task-a", true],
 		["the item belongs to another task", "task-a", undefined, "task-b", false],

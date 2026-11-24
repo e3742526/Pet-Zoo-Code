@@ -1,9 +1,7 @@
 /**
  * Source Map Initializer
  *
- * This utility ensures source maps are properly loaded in production builds.
- * It attempts to preload source maps for all scripts on the page and
- * sets up global error handlers to enhance errors with source maps.
+ * This utility loads source maps when a production error needs them.
  *
  * This implementation is compatible with VSCode's Content Security Policy.
  */
@@ -13,100 +11,56 @@ import { enhanceErrorWithSourceMaps } from "./sourceMapUtils"
 /**
  * Initialize source map support for production builds
  */
-export function initializeSourceMaps(): void {
+export function initializeSourceMaps(): (() => void) | undefined {
 	if (process.env.NODE_ENV !== "production") {
 		// Only needed in production builds
 		return
 	}
 
-	console.debug("Initializing CSP-compatible source map support for production build")
+	const controller = new AbortController()
+	const listenerOptions = { signal: controller.signal }
 
 	// Set up global error handler
-	window.addEventListener("error", async (event) => {
-		if (event.error && event.error instanceof Error) {
-			try {
-				// Apply source maps to the error
-				const enhancedError = await enhanceErrorWithSourceMaps(event.error)
+	window.addEventListener(
+		"error",
+		async (event) => {
+			if (event.error && event.error instanceof Error) {
+				try {
+					// Apply source maps to the error
+					const enhancedError = await enhanceErrorWithSourceMaps(event.error)
 
-				// Log the enhanced error
-				console.error("Source mapped error:", enhancedError)
+					// Log the enhanced error
+					console.error("Source mapped error:", enhancedError)
 
-				// Don't prevent default handling - let the ErrorBoundary catch it
-			} catch (e) {
-				console.error("Error enhancing error with source maps:", e)
+					// Don't prevent default handling - let the ErrorBoundary catch it
+				} catch (e) {
+					console.error("Error enhancing error with source maps:", e)
+				}
 			}
-		}
-	})
+		},
+		listenerOptions,
+	)
 
 	// Set up unhandled promise rejection handler
-	window.addEventListener("unhandledrejection", async (event) => {
-		if (event.reason && event.reason instanceof Error) {
-			try {
-				// Apply source maps to the error
-				const enhancedError = await enhanceErrorWithSourceMaps(event.reason)
+	window.addEventListener(
+		"unhandledrejection",
+		async (event) => {
+			if (event.reason && event.reason instanceof Error) {
+				try {
+					// Apply source maps to the error
+					const enhancedError = await enhanceErrorWithSourceMaps(event.reason)
 
-				// Log the enhanced error
-				console.error("Source mapped rejection:", enhancedError)
-			} catch (e) {
-				console.error("Error enhancing rejection with source maps:", e)
-			}
-		}
-	})
-
-	// Preload source maps for all scripts
-	try {
-		const scripts = document.getElementsByTagName("script")
-		for (let i = 0; i < scripts.length; i++) {
-			const script = scripts[i]
-			if (script.src) {
-				// Try multiple source map locations
-				const possibleMapUrls = [
-					`${script.src}.map`,
-					`${script.src}?source-map=true`,
-					script.src.replace(/\.js$/, ".js.map"),
-					script.src.replace(/\.js$/, ".map.json"),
-					script.src.replace(/\.js$/, ".sourcemap"),
-				]
-
-				// Preload all possible source map locations
-				for (const mapUrl of possibleMapUrls) {
-					const link = document.createElement("link")
-					link.rel = "preload"
-					link.as = "fetch"
-					link.href = mapUrl
-					link.crossOrigin = "anonymous"
-					document.head.appendChild(link)
+					// Log the enhanced error
+					console.error("Source mapped rejection:", enhancedError)
+				} catch (e) {
+					console.error("Error enhancing rejection with source maps:", e)
 				}
-
-				// Also check for inline sourceMappingURL comments
-				fetch(script.src)
-					.then((response) => response.text())
-					.then((content) => {
-						const sourceMappingURLMatch = content.match(/\/\/[#@]\s*sourceMappingURL=([^\s]+)/)
-						if (sourceMappingURLMatch && sourceMappingURLMatch[1]) {
-							const sourceMappingURL = sourceMappingURLMatch[1]
-
-							// If it's not a data: URL, preload it
-							if (!sourceMappingURL.startsWith("data:")) {
-								const scriptUrlObj = new URL(script.src)
-								const baseUrl = scriptUrlObj.href.substring(0, scriptUrlObj.href.lastIndexOf("/") + 1)
-								const fullUrl = new URL(sourceMappingURL, baseUrl).href
-
-								const link = document.createElement("link")
-								link.rel = "preload"
-								link.as = "fetch"
-								link.href = fullUrl
-								link.crossOrigin = "anonymous"
-								document.head.appendChild(link)
-							}
-						}
-					})
-					.catch((e) => console.debug("Error checking for inline sourceMappingURL:", e))
 			}
-		}
-	} catch (e) {
-		console.error("Error preloading source maps:", e)
-	}
+		},
+		listenerOptions,
+	)
+
+	return () => controller.abort()
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Package } from "@roo/package"
 
-import { getCallbackUrl, getOpenRouterAuthUrl, getRequestyAuthUrl, getZooCodeAuthUrl } from "../urls"
+import { getCallbackUrl, getOpenRouterAuthUrl, getRequestyAuthUrl } from "../urls"
 
 describe("OAuth URLs", () => {
 	it.each([undefined, "", "vscode-insiders", "cursor"])("encodes callback URLs for scheme %s", (scheme) => {
@@ -18,34 +18,5 @@ describe("OAuth URLs", () => {
 			expect(getAuthUrl(scheme)).toBe(`${endpoint}?callback_url=${encodeURIComponent(callback)}`)
 			expect(new URL(getAuthUrl(scheme)).searchParams.get("callback_url")).toBe(callback)
 		}
-	})
-
-	it("uses default Zoo connection settings", () => {
-		const url = new URL(getZooCodeAuthUrl())
-		expect(url.origin + url.pathname).toBe("https://www.zoocode.dev/dashboard/connect")
-		expect(Object.fromEntries(url.searchParams)).toEqual({
-			device: "VS Code",
-			editor: "VS Code",
-			version: Package.version,
-			callback_uri: `vscode://${Package.publisher}.${Package.name}/auth-callback`,
-		})
-		expect(getZooCodeAuthUrl()).toContain(
-			`callback_uri=${encodeURIComponent(`vscode://${Package.publisher}.${Package.name}/auth-callback`)}`,
-		)
-		expect(getZooCodeAuthUrl("", "", "")).toBe(getZooCodeAuthUrl())
-	})
-
-	it("encodes custom device names and uses the supplied Zoo host and editor scheme", () => {
-		const url = new URL(getZooCodeAuthUrl("cursor", "https://example.com", "Work & Home / ноутбук"))
-		expect(url.origin + url.pathname).toBe("https://example.com/dashboard/connect")
-		expect(Object.fromEntries(url.searchParams)).toEqual({
-			device: "Work & Home / ноутбук",
-			editor: "VS Code",
-			version: Package.version,
-			callback_uri: `cursor://${Package.publisher}.${Package.name}/auth-callback`,
-		})
-		expect(getZooCodeAuthUrl("cursor")).toContain(
-			`callback_uri=${encodeURIComponent(`cursor://${Package.publisher}.${Package.name}/auth-callback`)}`,
-		)
 	})
 })

@@ -168,21 +168,21 @@ export async function searchWorkspaceFiles(
 		// Get all matching results from fzf
 		const fzfResults = fzf.find(query).map((result) => result.item.original)
 
-		// Verify types of the shortest results
+		// Verify types of the shortest results asynchronously to avoid blocking the extension host
 		const verifiedResults = await Promise.all(
 			fzfResults.map(async (result) => {
 				const fullPath = path.join(workspacePath, result.path)
-				// Verify if the path exists and is actually a directory
-				if (fs.existsSync(fullPath)) {
-					const isDirectory = fs.lstatSync(fullPath).isDirectory()
+				try {
+					const stat = await fs.promises.lstat(fullPath)
 					return {
 						...result,
 						path: result.path.toPosix(),
-						type: isDirectory ? ("folder" as const) : ("file" as const),
+						type: stat.isDirectory() ? ("folder" as const) : ("file" as const),
 					}
+				} catch {
+					// If path doesn't exist or cannot be stat'd, keep original type
+					return result
 				}
-				// If path doesn't exist, keep original type
-				return result
 			}),
 		)
 

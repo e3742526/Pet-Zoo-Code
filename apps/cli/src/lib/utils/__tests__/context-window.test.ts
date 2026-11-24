@@ -15,7 +15,6 @@ describe("getContextWindow", () => {
 		[providerIdentifiers.opencodeGo, "opencodeGoModelId"],
 		[providerIdentifiers.kenari, "kenariModelId"],
 		[providerIdentifiers.nanogpt, "nanoGptModelId"],
-		[providerIdentifiers.zooGateway, "zooGatewayModelId"],
 	] as const)("uses the provider-specific model field for %s", (provider, modelField) => {
 		const config = { apiProvider: provider, [modelField]: "selected-model" } as ProviderSettings
 		const routerModels = { [provider]: { "selected-model": { contextWindow: 123_456 } } }

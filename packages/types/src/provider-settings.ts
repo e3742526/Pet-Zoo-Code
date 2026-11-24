@@ -92,7 +92,6 @@ export function normalizeToolRepetitionSoftLimit(softLimit: number, hardLimit: n
 export const dynamicProviders = [
 	providerIdentifiers.openrouter,
 	providerIdentifiers.vercelAiGateway,
-	providerIdentifiers.zooGateway,
 	providerIdentifiers.litellm,
 	providerIdentifiers.requesty,
 	providerIdentifiers.unbound,
@@ -267,11 +266,15 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion(API_PROV
 	defaultSchema,
 ])
 
-type ProviderSettingsShape = UnionToIntersection<(typeof providerDefinitionList)[number][typeof SETTINGS_SHAPE_FIELD]>
+// Retain the stored model ID for retired Zoo Gateway profiles.
+const retiredZooGatewaySettings = { zooGatewayModelId: z.string().optional() }
+
+type ProviderSettingsShape = UnionToIntersection<(typeof providerDefinitionList)[number][typeof SETTINGS_SHAPE_FIELD]> &
+	typeof retiredZooGatewaySettings
 
 const providerSettingsObjectSchema = providerDefinitionList.reduce<z.ZodObject>(
 	(schema, definition) => schema.merge(z.object(definition[SETTINGS_SHAPE_FIELD])),
-	z.object({}),
+	z.object(retiredZooGatewaySettings),
 )
 
 // `AnyZodObject.shape` loses the merged shape precision, so restore the type derived from the provider definitions.
@@ -353,6 +356,10 @@ export function getModelId(settings: ProviderSettings): string | undefined {
 		return providerDefinitions[settings.apiProvider]?.getModelId(settings)
 	}
 
+	if (settings.apiProvider === retiredProviderIdentifiers.zooGateway) {
+		return settings.zooGatewayModelId
+	}
+
 	if (typeof settings.apiProvider === "string" && isRetiredProvider(settings.apiProvider)) {
 		const modelIdKey = modelIdKeys.find((key) => settings[key])
 		return modelIdKey ? settings[modelIdKey] : undefined
@@ -380,11 +387,6 @@ export const ANTHROPIC_STYLE_PROVIDERS: ProviderName[] = [
 	providerIdentifiers.minimax,
 ]
 
-const ANTHROPIC_MODEL_GATEWAY_PROVIDERS: ProviderName[] = [
-	providerIdentifiers.vercelAiGateway,
-	providerIdentifiers.zooGateway,
-]
-
 const ANTHROPIC_MODEL_ID_PREFIX = "anthropic/"
 const CLAUDE_MODEL_ID_FRAGMENT = "claude"
 
@@ -402,10 +404,9 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 		return ANTHROPIC_API_PROTOCOL
 	}
 
-	// Vercel AI Gateway and Zoo Gateway use the anthropic protocol for anthropic models.
+	// Vercel AI Gateway uses the anthropic protocol for anthropic models.
 	if (
-		provider &&
-		ANTHROPIC_MODEL_GATEWAY_PROVIDERS.includes(provider) &&
+		provider === providerIdentifiers.vercelAiGateway &&
 		modelId &&
 		modelId.toLowerCase().startsWith(ANTHROPIC_MODEL_ID_PREFIX)
 	) {
@@ -569,7 +570,6 @@ export const MODELS_BY_PROVIDER: Record<
 	[providerIdentifiers.opencodeGo]: { id: providerIdentifiers.opencodeGo, label: "Opencode Go", models: [] },
 	[providerIdentifiers.kenari]: { id: providerIdentifiers.kenari, label: "Kenari", models: [] },
 	[providerIdentifiers.nanogpt]: { id: providerIdentifiers.nanogpt, label: "NanoGPT", models: [] },
-	[providerIdentifiers.zooGateway]: { id: providerIdentifiers.zooGateway, label: "Zoo Gateway", models: [] },
 
 	// Local providers; models discovered from localhost endpoints.
 	[providerIdentifiers.lmstudio]: { id: providerIdentifiers.lmstudio, label: "LM Studio", models: [] },

@@ -42,7 +42,6 @@ describe("ProfileValidator", () => {
 			["baseten", { apiModelId: "model" }],
 			["geminiCli", { apiModelId: "model" }],
 			["vercelAiGateway", { vercelAiGatewayModelId: "model" }],
-			["zooGateway", { zooGatewayModelId: "model" }],
 			["nanogpt", { nanoGptModelId: "model" }],
 			["kenari", { kenariModelId: "model" }],
 			["opencodeGo", { opencodeGoModelId: "model" }],

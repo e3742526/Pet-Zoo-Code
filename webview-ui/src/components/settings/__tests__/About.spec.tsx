@@ -60,15 +60,10 @@ vi.mock("@/i18n/TranslationContext", () => {
 vi.mock("@roo/package", () => ({ Package: mockPackage }))
 
 describe("About", () => {
-	const defaultProps = {
-		telemetrySetting: "enabled" as const,
-		setTelemetrySetting: vi.fn(),
-	}
-
 	const renderAbout = () =>
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 
@@ -95,10 +90,15 @@ describe("About", () => {
 		mockPackage.sha = "abc12345"
 	})
 
+	it("does not offer remote telemetry controls", () => {
+		renderAbout()
+		expect(screen.queryByRole("checkbox", { name: /telemetry/i })).not.toBeInTheDocument()
+	})
+
 	it("renders the About section header", () => {
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 		expect(screen.getByText("settings:sections.about")).toBeInTheDocument()
@@ -107,7 +107,7 @@ describe("About", () => {
 	it("displays version information", () => {
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 		expect(
@@ -128,7 +128,7 @@ describe("About", () => {
 	it("renders the bug report section with label and link text", () => {
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 		expect(screen.getByText("settings:about.bugReport.label")).toBeInTheDocument()
@@ -141,7 +141,7 @@ describe("About", () => {
 	it("renders the feature request section with label and link text", () => {
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 		expect(screen.getByText("settings:about.featureRequest.label")).toBeInTheDocument()
@@ -154,7 +154,7 @@ describe("About", () => {
 	it("renders the security issue section with label and link text", () => {
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 		expect(screen.getByText("settings:about.securityIssue.label")).toBeInTheDocument()
@@ -164,40 +164,10 @@ describe("About", () => {
 		)
 	})
 
-	it("shows the telemetry checkbox as checked when the setting is explicitly enabled", () => {
-		render(
-			<TranslationProvider>
-				<About {...defaultProps} telemetrySetting="enabled" />
-			</TranslationProvider>,
-		)
-
-		expect(screen.getByRole("checkbox", { name: /telemetry/i })).toBeChecked()
-	})
-
-	it("shows the telemetry checkbox as checked when the setting is unset (disclosed opt-out default)", () => {
-		render(
-			<TranslationProvider>
-				<About {...defaultProps} telemetrySetting="unset" />
-			</TranslationProvider>,
-		)
-
-		expect(screen.getByRole("checkbox", { name: /telemetry/i })).toBeChecked()
-	})
-
-	it("does not show the telemetry checkbox as checked when the setting is disabled", () => {
-		render(
-			<TranslationProvider>
-				<About {...defaultProps} telemetrySetting="disabled" />
-			</TranslationProvider>,
-		)
-
-		expect(screen.getByRole("checkbox", { name: /telemetry/i })).not.toBeChecked()
-	})
-
 	it("renders export, import, and reset buttons", () => {
 		render(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
 		)
 		expect(screen.getByText("settings:footer.settings.export")).toBeInTheDocument()

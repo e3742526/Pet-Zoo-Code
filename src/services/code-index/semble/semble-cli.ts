@@ -5,8 +5,6 @@ import { SembleSearchResult, SembleCheckResult, SembleContentType, SEMBLE_DEFAUL
 /**
  * Wraps the `semble` CLI for programmatic access.
  *
- * The semble binary is automatically downloaded on enablement via semble-downloader.ts.
- *
  * All methods spawn the semble process via child_process.spawn with array
  * arguments (no shell) to prevent shell injection.
  *

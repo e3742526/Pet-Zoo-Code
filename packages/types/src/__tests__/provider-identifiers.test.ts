@@ -26,7 +26,6 @@ import {
 const expectedProviderIdentifiers = [
 	"openrouter",
 	"vercel-ai-gateway",
-	"zoo-gateway",
 	"litellm",
 	"requesty",
 	"unbound",
@@ -74,6 +73,7 @@ const expectedRetiredProviderIdentifiers = [
 	"huggingface",
 	"io-intelligence",
 	"roo",
+	"zoo-gateway",
 ]
 /* eslint-enable zoo/no-raw-provider-identifiers */
 
@@ -104,7 +104,6 @@ describe("provider identifiers", () => {
 		expect(dynamicProviders).toEqual([
 			providerIdentifiers.openrouter,
 			providerIdentifiers.vercelAiGateway,
-			providerIdentifiers.zooGateway,
 			providerIdentifiers.litellm,
 			providerIdentifiers.requesty,
 			providerIdentifiers.unbound,

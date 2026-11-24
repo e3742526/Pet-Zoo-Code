@@ -4,7 +4,7 @@ import { retiredProviderIdentifiers, providerIdentifiers } from "@roo-code/types
 import { renderWithExtensionState, screen, fireEvent, within } from "@/utils/test-utils"
 
 import { type ModelInfo, type ProviderSettings, openAiModelInfoSaneDefaults } from "@roo-code/types"
-import { openAiCodexDefaultModelId, opencodeGoModels, zooGatewayDefaultModelId } from "@roo-code/types"
+import { openAiCodexDefaultModelId, opencodeGoModels } from "@roo-code/types"
 
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 
@@ -341,28 +341,6 @@ describe("ApiOptions", () => {
 		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("apiProvider", "openai-codex")
 		// Model is reset to the provider default since the previous value is invalid for this provider
 		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("apiModelId", openAiCodexDefaultModelId, false)
-	})
-
-	it("initializes zooGatewayModelId to its default when switching provider to zoo-gateway", () => {
-		// Regression: zoo-gateway was previously missing from PROVIDER_MODEL_CONFIG, so switching
-		// providers never seeded zooGatewayModelId. Configs were left without a model id, which
-		// blocked completion flows that require a dynamic-provider model id.
-		const mockSetApiConfigurationField = vi.fn()
-
-		renderApiOptions({
-			apiConfiguration: {
-				apiProvider: providerIdentifiers.anthropic,
-				// No prior zooGatewayModelId.
-			},
-			setApiConfigurationField: mockSetApiConfigurationField,
-		})
-
-		const providerSelectContainer = screen.getByTestId("provider-select")
-		const providerSelect = providerSelectContainer.querySelector("select") as HTMLSelectElement
-		fireEvent.change(providerSelect, { target: { value: "zoo-gateway" } })
-
-		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("apiProvider", "zoo-gateway")
-		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("zooGatewayModelId", zooGatewayDefaultModelId, false)
 	})
 
 	it("renders the Friendli provider form when friendli is selected", () => {
@@ -769,7 +747,7 @@ describe("ApiOptions", () => {
 	it("renders retired provider message and hides provider-specific forms", () => {
 		renderApiOptions({
 			apiConfiguration: {
-				apiProvider: retiredProviderIdentifiers.groq,
+				apiProvider: retiredProviderIdentifiers.zooGateway,
 			},
 		})
 
@@ -782,7 +760,7 @@ describe("ApiOptions", () => {
 	it("does not reintroduce retired providers into active provider options", () => {
 		renderApiOptions({
 			apiConfiguration: {
-				apiProvider: retiredProviderIdentifiers.groq,
+				apiProvider: retiredProviderIdentifiers.zooGateway,
 			},
 		})
 

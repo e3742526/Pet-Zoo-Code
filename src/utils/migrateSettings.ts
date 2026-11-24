@@ -19,6 +19,12 @@ export async function migrateSettings(
 ): Promise<void> {
 	// First, migrate commands from old defaults (security fix)
 	await migrateDefaultCommands(context, outputChannel)
+
+	const fileMigrationsKey = "fileMigrationsCompleted"
+	if (context.globalState.get(fileMigrationsKey)) {
+		return
+	}
+
 	// Legacy file names that need to be migrated to the new names in GlobalFileNames
 	const fileMigrations = [
 		// custom_modes.json to custom_modes.yaml is handled separately below
@@ -32,6 +38,7 @@ export async function migrateSettings(
 		// Check if settings directory exists first
 		if (!(await fileExistsAtPath(settingsDir))) {
 			outputChannel.appendLine("No settings directory found, no migrations necessary")
+			await context.globalState.update(fileMigrationsKey, true)
 			return
 		}
 
@@ -58,6 +65,7 @@ export async function migrateSettings(
 
 			// Special migration for custom_modes.json to custom_modes.yaml with content transformation
 			await migrateCustomModesToYaml(settingsDir, outputChannel)
+			await context.globalState.update(fileMigrationsKey, true)
 		} catch (error) {
 			outputChannel.appendLine(`Error in file migrations: ${error}`)
 		}

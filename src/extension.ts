@@ -15,9 +15,7 @@ if (fs.existsSync(envPath)) {
 	}
 }
 
-import { isTelemetryOptedIn } from "@roo-code/types"
-import { CloudService } from "@roo-code/cloud"
-import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
+import { TelemetryService } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
 
 import "./utils/path" // Necessary to have access to String.prototype.toPosix.
@@ -43,6 +41,7 @@ import { CodeIndexScope } from "./services/code-index/code-index-scope"
 import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
 import { autoImportSettings } from "./utils/autoImportSettings"
+import { terminateCountTokensPool } from "./utils/countTokens"
 import { API } from "./extension/api"
 
 import {
@@ -53,9 +52,6 @@ import {
 	CodeActionProvider,
 } from "./activate"
 import { initializeI18n } from "./i18n"
-import { buildApiHandler } from "./api"
-import { initializeModelCacheRefresh } from "./api/providers/fetchers/modelCache"
-import { initZooCodeAuth } from "./services/zoo-code-auth"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -67,9 +63,6 @@ import { initZooCodeAuth } from "./services/zoo-code-auth"
 
 let outputChannel: vscode.OutputChannel
 let extensionContext: vscode.ExtensionContext
-let cloudService: CloudService | undefined
-
-let settingsUpdatedHandler: (() => void) | undefined
 
 /**
  * Check if we should auto-open the Zoo Code sidebar after switching to a worktree.
@@ -146,17 +139,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize telemetry service.
 	const telemetryService = TelemetryService.createInstance()
 
-	try {
-		telemetryService.register(new PostHogTelemetryClient())
-	} catch (error) {
-		console.warn("Failed to register PostHogTelemetryClient:", error)
-	}
-
-	// Create logger for cloud services.
-	const cloudLogger = createDualLogger(createOutputChannelLogger(outputChannel))
-
-	// Initialize MDM service
-	const mdmService = await MdmService.createInstance(cloudLogger)
+	// Initialize MDM service.
+	const mdmService = await MdmService.createInstance(createDualLogger(createOutputChannelLogger(outputChannel)))
 
 	// Initialize i18n for internationalization support.
 	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
@@ -169,9 +153,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Kimi Code OAuth tokens live only in VS Code SecretStorage, outside provider profile JSON/cloud sync.
 	kimiCodeOAuthManager.initialize(context)
 
-	// Initialize Zoo Code auth service for extension session token management.
-	await initZooCodeAuth(context)
-
 	// Get default commands from configuration.
 	const defaultCommands = vscode.workspace.getConfiguration(Package.name).get<string[]>("allowedCommands") || []
 
@@ -181,29 +162,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	const contextProxy = await ContextProxy.getInstance(context)
-	const updateTelemetryState = () => {
-		const telemetrySetting = contextProxy.getGlobalState("telemetrySetting") ?? "unset"
-		TelemetryService.instance.updateTelemetryState(
-			isTelemetryOptedIn(telemetrySetting) && vscode.env.isTelemetryEnabled,
-		)
-	}
-
-	updateTelemetryState()
-
-	// React live to VS Code's global telemetry toggle (recommended over only reading
-	// telemetry.telemetryLevel, which PostHogTelemetryClient still checks as a secondary gate).
-	// vscode.env.isTelemetryEnabled is ANDed in directly because the deprecated
-	// telemetry.telemetryLevel setting the client checks doesn't reflect this live event.
-	context.subscriptions.push(
-		vscode.env.onDidChangeTelemetryEnabled(() => {
-			updateTelemetryState()
-
-			// Push the new vscode.env.isTelemetryEnabled value to the webview too, so its
-			// own PostHog client (gated separately in TelemetryClient.ts) can't keep
-			// sending events after the global toggle flips off mid-session.
-			void ClineProvider.getVisibleInstance()?.postStateToWebviewWithoutClineMessages()
-		}),
-	)
 
 	context.subscriptions.push(
 		registerCopilotModelBroadcast({
@@ -240,38 +198,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	// Initialize the provider *before* the Roo Code Cloud service.
+	// Initialize the webview provider.
 	const webviewFocusTracker = new WebviewFocusTracker()
 	context.subscriptions.push(webviewFocusTracker)
 	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, webviewFocusTracker, mdmService)
 
-	// Initialize Roo Code Cloud service.
-	settingsUpdatedHandler = () => {
-		void ClineProvider.getVisibleInstance()
-			?.postStateToWebviewWithoutClineMessages()
-			.catch((error) => {
-				outputChannel.appendLine(
-					`[CloudService] Failed to refresh state after settings update: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			})
-	}
-
-	try {
-		cloudService = await CloudService.createInstance(context, cloudLogger, {
-			"settings-updated": settingsUpdatedHandler,
-		})
-
-		// Add to subscriptions for proper cleanup on deactivate.
-		context.subscriptions.push(cloudService)
-	} catch (error) {
-		cloudService = undefined
-		outputChannel.appendLine(
-			`[CloudService] Initialization failed; continuing without cloud startup dependencies: ${error instanceof Error ? error.message : String(error)}`,
-		)
-	}
-
 	// Finish initializing the provider.
-	TelemetryService.instance.setProvider(provider)
+	telemetryService.setProvider(provider)
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, provider, {
@@ -394,13 +327,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 	}
 
-	// Initialize background model cache refresh
-	void initializeModelCacheRefresh((provider) => buildApiHandler({ apiProvider: provider })).catch((error) => {
-		outputChannel.appendLine(
-			`[ModelCache] Background refresh initialization failed: ${error instanceof Error ? error.message : String(error)}`,
-		)
-	})
-
 	const providerFactory = new ClineProviderFactory(context, outputChannel, webviewFocusTracker)
 	return new API(outputChannel, provider, providerFactory, socketPath, enableLogging)
 }
@@ -409,20 +335,6 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function deactivate() {
 	tracePersistenceEvent("shutdown")
 	outputChannel.appendLine(`${Package.name} extension deactivated`)
-
-	if (cloudService && CloudService.hasInstance()) {
-		try {
-			if (settingsUpdatedHandler) {
-				CloudService.instance.off("settings-updated", settingsUpdatedHandler)
-			}
-
-			outputChannel.appendLine("CloudService event handlers cleaned up")
-		} catch (error) {
-			outputChannel.appendLine(
-				`Failed to clean up CloudService event handlers: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-	}
 
 	await McpServerManager.cleanup(extensionContext)
 
@@ -439,4 +351,5 @@ export async function deactivate() {
 	Terminal.setTerminalProfile(undefined)
 	TerminalRegistry.cleanup()
 	CodeIndexManagerRegistry.disposeAll()
+	await terminateCountTokensPool()
 }

@@ -85,7 +85,6 @@ jobs:
             - name: Package pre-release VSIX
               if: steps.release-check.outputs.skip != 'true'
               env:
-                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
                   PKG_RELEASE_CHANNEL: prerelease
               run: |
                   mkdir -p bin

@@ -24,7 +24,6 @@ const fetchers = vi.hoisted(() => ({
 	getRequestyModels: vi.fn(),
 	getUnboundModels: vi.fn(),
 	getVercelAiGatewayModels: vi.fn(),
-	getZooGatewayModels: vi.fn(),
 }))
 
 // The pre-warm hook reaches the fetcher either directly (fetchModel) or through
@@ -97,11 +96,6 @@ vi.mock("../fetchers/vercel-ai-gateway", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../fetchers/vercel-ai-gateway")>()),
 	getVercelAiGatewayModels: fetchers.getVercelAiGatewayModels,
 }))
-vi.mock("../fetchers/zoo-gateway", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../fetchers/zoo-gateway")>()),
-	getZooGatewayModels: fetchers.getZooGatewayModels,
-}))
-
 import { AnthropicHandler } from "../anthropic"
 import { DeepSeekHandler } from "../deepseek"
 import { KenariHandler } from "../kenari"
@@ -117,7 +111,6 @@ import { PoeHandler } from "../poe"
 import { RequestyHandler } from "../requesty"
 import { UnboundHandler } from "../unbound"
 import { VercelAiGatewayHandler } from "../vercel-ai-gateway"
-import { ZooGatewayHandler } from "../zoo-gateway"
 import { flushMacrotasks } from "../../../test-utils/timers"
 
 const BASE_URL = "https://catalog.example.com/v1"
@@ -264,15 +257,6 @@ const cases: AdapterCase[] = [
 		scope: { urlScoped: false, keyScoped: false, authScoped: false },
 		expectedArgs: [undefined],
 		forwardsSignal: true,
-		prewarms: false,
-	},
-	{
-		name: "Zoo Gateway",
-		create: () => new ZooGatewayHandler({ zooSessionToken: API_KEY }),
-		fetcher: "getZooGatewayModels",
-		scope: { urlScoped: true, keyScoped: true, authScoped: true },
-		expectedArgs: [{ zooSessionToken: API_KEY, zooGatewayBaseUrl: BASE_URL }],
-		forwardsSignal: false,
 		prewarms: false,
 	},
 ]

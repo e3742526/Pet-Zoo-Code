@@ -37,7 +37,6 @@ export * from "./kimi-code.js"
 export * from "./zai.js"
 export * from "./minimax.js"
 export * from "./mimo.js"
-export * from "./zoo-gateway.js"
 
 export type { ProviderDefinition } from "./common.js"
 
@@ -77,7 +76,6 @@ import { vertexProviderDefinition } from "./vertex.js"
 import { githubCopilotProviderDefinition, vsCodeLmProviderDefinition } from "./vscode-lm.js"
 import { xaiProviderDefinition } from "./xai.js"
 import { zaiProviderDefinition } from "./zai.js"
-import { zooGatewayProviderDefinition } from "./zoo-gateway.js"
 
 import type { ProviderDefinition } from "./common.js"
 
@@ -116,7 +114,6 @@ export const providerDefinitionList = [
 	opencodeGoProviderDefinition,
 	kenariProviderDefinition,
 	nanoGptProviderDefinition,
-	zooGatewayProviderDefinition,
 	basetenProviderDefinition,
 	museCodeProviderDefinition,
 	antigravityProviderDefinition,

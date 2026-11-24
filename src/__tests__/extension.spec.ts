@@ -39,8 +39,6 @@ vi.mock("vscode", () => ({
 	},
 	env: {
 		language: "en",
-		isTelemetryEnabled: true,
-		onDidChangeTelemetryEnabled: vi.fn(),
 	},
 	ExtensionMode: {
 		Production: 1,
@@ -56,26 +54,14 @@ vi.mock("fs", () => ({
 	existsSync: vi.fn().mockReturnValue(false),
 }))
 
-const mockCloudServiceInstance = {
-	off: vi.fn(),
-	on: vi.fn(),
-	getUserInfo: vi.fn().mockReturnValue(null),
-	isTaskSyncEnabled: vi.fn().mockReturnValue(false),
-	authService: {
-		getSessionToken: vi.fn().mockReturnValue("test-session-token"),
-	},
-}
-
 vi.mock("@roo-code/cloud", () => ({
-	CloudService: {
-		createInstance: vi.fn(),
-		hasInstance: vi.fn().mockReturnValue(true),
-		get instance() {
-			return mockCloudServiceInstance
-		},
-	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
+	CloudService: { createInstance: vi.fn() },
 }))
+const { initZooCodeAuth, initializeModelCacheRefresh } = vi.hoisted(() => ({
+	initZooCodeAuth: vi.fn(),
+	initializeModelCacheRefresh: vi.fn(),
+}))
+vi.mock("../services/zoo-code-auth", () => ({ initZooCodeAuth }))
 
 const mockTelemetryServiceInstance = {
 	register: vi.fn(),
@@ -92,7 +78,6 @@ vi.mock("@roo-code/telemetry", () => ({
 			return mockTelemetryServiceInstance
 		},
 	},
-	PostHogTelemetryClient: vi.fn(),
 }))
 
 vi.mock("../utils/outputChannelLogger", () => ({
@@ -222,13 +207,12 @@ vi.mock("../core/webview/ClineProvider", async () => {
 vi.mock("../api/providers/fetchers/modelCache", () => ({
 	flushModels: vi.fn(),
 	getModels: vi.fn().mockResolvedValue([]),
-	initializeModelCacheRefresh: vi.fn().mockResolvedValue(undefined),
+	initializeModelCacheRefresh,
 	refreshModels: vi.fn().mockResolvedValue({}),
 }))
 
 describe("extension.ts", () => {
 	let mockContext: vscode.ExtensionContext
-	let settingsUpdatedHandler: ((data: Record<string, never>) => void | Promise<void>) | undefined
 
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -241,8 +225,6 @@ describe("extension.ts", () => {
 			},
 			subscriptions: [],
 		} as unknown as vscode.ExtensionContext
-
-		settingsUpdatedHandler = undefined
 	})
 
 	test("shares the extension-owned focus tracker with the sidebar and code actions and disposes its listeners", async () => {
@@ -536,191 +518,16 @@ describe("extension.ts", () => {
 		expect(dotenv.config).toHaveBeenCalledTimes(1)
 	})
 
-	describe("cloud organization settings handling", () => {
-		beforeEach(() => {
-			vi.resetModules()
-		})
+	test("activates without initializing inherited services or refreshing public catalogs", async () => {
+		const { CloudService } = await import("@roo-code/cloud")
+		const { TelemetryService } = await import("@roo-code/telemetry")
+		const { activate } = await import("../extension")
 
-		test("settings updates refresh webview state and contain failures", async () => {
-			const { CloudService } = await import("@roo-code/cloud")
-			const { ClineProvider } = await import("../core/webview/ClineProvider")
-
-			vi.mocked(CloudService.createInstance).mockImplementation(async (_context, _logger, handlers) => {
-				settingsUpdatedHandler = handlers?.["settings-updated"]
-				return {
-					off: vi.fn(),
-					on: vi.fn(),
-					telemetryClient: null,
-					authService: null,
-					hasActiveSession: vi.fn().mockReturnValue(false),
-				} as unknown as never
-			})
-
-			vi.mocked(CloudService.hasInstance).mockReturnValue(true)
-
-			// Activate the extension
-			const { activate } = await import("../extension")
-			await activate(mockContext)
-
-			const provider = (
-				ClineProvider as unknown as {
-					getVisibleInstance(): { postStateToWebviewWithoutClineMessages: ReturnType<typeof vi.fn> }
-				}
-			).getVisibleInstance()
-			provider.postStateToWebviewWithoutClineMessages.mockClear()
-			const refreshError = new Error("state refresh failed")
-			provider.postStateToWebviewWithoutClineMessages.mockRejectedValueOnce(refreshError)
-
-			settingsUpdatedHandler!({})
-			await Promise.resolve()
-
-			expect(provider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
-			const vscode = await import("vscode")
-			const channel = vi.mocked(vscode.window.createOutputChannel).mock.results.at(-1)?.value
-			expect(channel?.appendLine).toHaveBeenCalledWith(
-				"[CloudService] Failed to refresh state after settings update: state refresh failed",
-			)
-		})
-
-		test("activation continues when model cache refresh initialization fails", async () => {
-			const { initializeModelCacheRefresh } = await import("../api/providers/fetchers/modelCache")
-			vi.mocked(initializeModelCacheRefresh).mockRejectedValueOnce(new Error("cache startup failed"))
-
-			const { activate } = await import("../extension")
-			await expect(activate(mockContext)).resolves.toBeDefined()
-			await Promise.resolve()
-
-			const vscode = await import("vscode")
-			const channel = vi.mocked(vscode.window.createOutputChannel).mock.results.at(-1)?.value
-			expect(channel?.appendLine).toHaveBeenCalledWith(
-				"[ModelCache] Background refresh initialization failed: cache startup failed",
-			)
-		})
-
-		test("activation continues when CloudService initialization fails", async () => {
-			const { CloudService } = await import("@roo-code/cloud")
-
-			vi.mocked(CloudService.createInstance).mockRejectedValue(new Error("cloud init failed"))
-			vi.mocked(CloudService.hasInstance).mockReturnValue(false)
-
-			const { activate } = await import("../extension")
-
-			await expect(activate(mockContext)).resolves.toBeDefined()
-		})
-	})
-
-	describe("telemetry level reactivity", () => {
-		beforeEach(async () => {
-			vi.resetModules()
-			const vscode = await import("vscode")
-			;(vscode.env as { isTelemetryEnabled: boolean }).isTelemetryEnabled = true
-		})
-
-		test("registers a listener for vscode.env.onDidChangeTelemetryEnabled", async () => {
-			const vscode = await import("vscode")
-
-			const { activate } = await import("../extension")
-			await activate(mockContext)
-
-			expect(vscode.env.onDidChangeTelemetryEnabled).toHaveBeenCalledTimes(1)
-			expect(vscode.env.onDidChangeTelemetryEnabled).toHaveBeenCalledWith(expect.any(Function))
-		})
-
-		test("re-evaluates telemetry state from stored settings when VS Code's global toggle changes", async () => {
-			const vscode = await import("vscode")
-			const { TelemetryService } = await import("@roo-code/telemetry")
-			const { ContextProxy } = await import("../core/config/ContextProxy")
-
-			const mockContextProxyInstance = await (
-				ContextProxy.getInstance as unknown as () => Promise<{ getGlobalState: ReturnType<typeof vi.fn> }>
-			)()
-			vi.mocked(mockContextProxyInstance.getGlobalState).mockReturnValue("enabled")
-			;(vscode.env as { isTelemetryEnabled: boolean }).isTelemetryEnabled = true
-
-			const { activate } = await import("../extension")
-			await activate(mockContext)
-
-			const updateTelemetryStateMock = vi.mocked(TelemetryService.instance.updateTelemetryState)
-			updateTelemetryStateMock.mockClear()
-
-			// The real vscode.env.onDidChangeTelemetryEnabled event carries no payload; the handler
-			// must read the current vscode.env.isTelemetryEnabled value, not any argument it's called with.
-			const onDidChangeHandler = vi.mocked(vscode.env.onDidChangeTelemetryEnabled).mock.calls[0][0]
-			onDidChangeHandler(undefined as never)
-
-			expect(updateTelemetryStateMock).toHaveBeenCalledWith(true)
-		})
-
-		test("treats a disabled stored setting as opted out even when VS Code telemetry is enabled", async () => {
-			const vscode = await import("vscode")
-			const { TelemetryService } = await import("@roo-code/telemetry")
-			const { ContextProxy } = await import("../core/config/ContextProxy")
-
-			const mockContextProxyInstance = await (
-				ContextProxy.getInstance as unknown as () => Promise<{ getGlobalState: ReturnType<typeof vi.fn> }>
-			)()
-			vi.mocked(mockContextProxyInstance.getGlobalState).mockReturnValue("disabled")
-			;(vscode.env as { isTelemetryEnabled: boolean }).isTelemetryEnabled = true
-
-			const { activate } = await import("../extension")
-			await activate(mockContext)
-
-			const updateTelemetryStateMock = vi.mocked(TelemetryService.instance.updateTelemetryState)
-			updateTelemetryStateMock.mockClear()
-
-			const onDidChangeHandler = vi.mocked(vscode.env.onDidChangeTelemetryEnabled).mock.calls[0][0]
-			onDidChangeHandler(undefined as never)
-
-			expect(updateTelemetryStateMock).toHaveBeenCalledWith(false)
-		})
-
-		test("treats VS Code's live telemetry-disabled signal as opted out even when the stored setting is enabled", async () => {
-			const vscode = await import("vscode")
-			const { TelemetryService } = await import("@roo-code/telemetry")
-			const { ContextProxy } = await import("../core/config/ContextProxy")
-
-			const mockContextProxyInstance = await (
-				ContextProxy.getInstance as unknown as () => Promise<{ getGlobalState: ReturnType<typeof vi.fn> }>
-			)()
-			vi.mocked(mockContextProxyInstance.getGlobalState).mockReturnValue("enabled")
-			;(vscode.env as { isTelemetryEnabled: boolean }).isTelemetryEnabled = true
-
-			const { activate } = await import("../extension")
-			await activate(mockContext)
-
-			const updateTelemetryStateMock = vi.mocked(TelemetryService.instance.updateTelemetryState)
-			updateTelemetryStateMock.mockClear()
-
-			// Simulate the user turning off VS Code's global telemetry toggle: the live env value
-			// flips before the event fires, and the handler must honor it rather than only the
-			// stored extension setting.
-			;(vscode.env as { isTelemetryEnabled: boolean }).isTelemetryEnabled = false
-
-			const onDidChangeHandler = vi.mocked(vscode.env.onDidChangeTelemetryEnabled).mock.calls[0][0]
-			onDidChangeHandler(undefined as never)
-
-			expect(updateTelemetryStateMock).toHaveBeenCalledWith(false)
-		})
-
-		test("pushes a state update to the webview so its own PostHog client picks up the new vscode.env.isTelemetryEnabled value", async () => {
-			const vscode = await import("vscode")
-			const { ClineProvider } = await import("../core/webview/ClineProvider")
-
-			const { activate } = await import("../extension")
-			await activate(mockContext)
-
-			const visibleInstance = (
-				ClineProvider as unknown as {
-					getVisibleInstance(): { postStateToWebviewWithoutClineMessages: ReturnType<typeof vi.fn> }
-				}
-			).getVisibleInstance()
-			vi.mocked(visibleInstance.postStateToWebviewWithoutClineMessages).mockClear()
-
-			const onDidChangeHandler = vi.mocked(vscode.env.onDidChangeTelemetryEnabled).mock.calls[0][0]
-			onDidChangeHandler(undefined as never)
-
-			expect(visibleInstance.postStateToWebviewWithoutClineMessages).toHaveBeenCalled()
-		})
+		await expect(activate(mockContext)).resolves.toBeDefined()
+		expect(CloudService.createInstance).not.toHaveBeenCalled()
+		expect(TelemetryService.instance.register).not.toHaveBeenCalled()
+		expect(initializeModelCacheRefresh).not.toHaveBeenCalled()
+		expect(initZooCodeAuth).not.toHaveBeenCalled()
 	})
 
 	describe("deactivate", () => {

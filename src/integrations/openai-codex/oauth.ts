@@ -342,6 +342,7 @@ export function isTokenExpired(credentials: OpenAiCodexCredentials): boolean {
 export class OpenAiCodexOAuthManager {
 	private context: ExtensionContext | null = null
 	private credentials: OpenAiCodexCredentials | null = null
+	private credentialsLoaded = false
 	private logFn: ((message: string) => void) | null = null
 	private refreshPromise: Promise<OpenAiCodexCredentials> | null = null
 	private pendingAuth: {
@@ -370,6 +371,8 @@ export class OpenAiCodexOAuthManager {
 	 */
 	initialize(context: ExtensionContext, logFn?: (message: string) => void): void {
 		this.context = context
+		this.credentials = null
+		this.credentialsLoaded = false
 		this.logFn = logFn ?? null
 	}
 
@@ -426,14 +429,21 @@ export class OpenAiCodexOAuthManager {
 			return null
 		}
 
+		if (this.credentialsLoaded) {
+			return this.credentials
+		}
+
 		try {
 			const credentialsJson = await this.context.secrets.get(OPENAI_CODEX_CREDENTIALS_KEY)
 			if (!credentialsJson) {
+				this.credentials = null
+				this.credentialsLoaded = true
 				return null
 			}
 
 			const parsed = JSON.parse(credentialsJson)
 			this.credentials = openAiCodexCredentialsSchema.parse(parsed)
+			this.credentialsLoaded = true
 			return this.credentials
 		} catch (error) {
 			this.logError("[openai-codex-oauth] Failed to load credentials:", error)
@@ -451,6 +461,7 @@ export class OpenAiCodexOAuthManager {
 
 		await this.context.secrets.store(OPENAI_CODEX_CREDENTIALS_KEY, JSON.stringify(credentials))
 		this.credentials = credentials
+		this.credentialsLoaded = true
 	}
 
 	/**
@@ -463,6 +474,7 @@ export class OpenAiCodexOAuthManager {
 
 		await this.context.secrets.delete(OPENAI_CODEX_CREDENTIALS_KEY)
 		this.credentials = null
+		this.credentialsLoaded = true
 	}
 
 	/**

@@ -10,8 +10,6 @@ import { answerSave, lastSaveRequestId, saveAndConfirm } from "./saveAcknowledge
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
-vi.mock("@/utils/TelemetryClient", () => ({ telemetryClient: { capture: vi.fn() } }))
-
 const postMessage = vi.mocked(vscode.postMessage)
 
 const posted = (type: string) =>

@@ -109,29 +109,53 @@ export function copyPaths(copyPaths: [string, string, CopyPathOptions?][], srcDi
 	})
 }
 
+// Language WASMs actually loaded by src/services/tree-sitter/languageParser.ts.
+// Keeping this allowlist explicit prevents packaging ~10 MB of unused grammars
+// (such as tree-sitter-objc.wasm, bash, rescript, ql, yaml, elm, json) into the VSIX.
+const SUPPORTED_TREE_SITTER_LANGUAGE_WASMS = [
+	"tree-sitter-c.wasm",
+	"tree-sitter-c_sharp.wasm",
+	"tree-sitter-cpp.wasm",
+	"tree-sitter-css.wasm",
+	"tree-sitter-dart.wasm",
+	"tree-sitter-elisp.wasm",
+	"tree-sitter-elixir.wasm",
+	"tree-sitter-embedded_template.wasm",
+	"tree-sitter-go.wasm",
+	"tree-sitter-html.wasm",
+	"tree-sitter-java.wasm",
+	"tree-sitter-javascript.wasm",
+	"tree-sitter-kotlin.wasm",
+	"tree-sitter-lua.wasm",
+	"tree-sitter-ocaml.wasm",
+	"tree-sitter-php.wasm",
+	"tree-sitter-python.wasm",
+	"tree-sitter-ruby.wasm",
+	"tree-sitter-rust.wasm",
+	"tree-sitter-scala.wasm",
+	"tree-sitter-solidity.wasm",
+	"tree-sitter-swift.wasm",
+	"tree-sitter-systemrdl.wasm",
+	"tree-sitter-tlaplus.wasm",
+	"tree-sitter-toml.wasm",
+	"tree-sitter-tsx.wasm",
+	"tree-sitter-typescript.wasm",
+	"tree-sitter-vue.wasm",
+	"tree-sitter-zig.wasm",
+] as const
+
 export function copyWasms(srcDir: string, distDir: string): void {
 	const nodeModulesDir = path.join(srcDir, "node_modules")
 
 	fs.mkdirSync(distDir, { recursive: true })
 
-	// Tiktoken WASM file.
+	// Single shared Tiktoken WASM file (used by both dist/extension.js and dist/workers/countTokens.js).
 	fs.copyFileSync(
 		path.join(nodeModulesDir, "tiktoken", "lite", "tiktoken_bg.wasm"),
 		path.join(distDir, "tiktoken_bg.wasm"),
 	)
 
-	console.log(`[copyWasms] Copied tiktoken WASMs to ${distDir}`)
-
-	// Also copy Tiktoken WASMs to the workers directory.
-	const workersDir = path.join(distDir, "workers")
-	fs.mkdirSync(workersDir, { recursive: true })
-
-	fs.copyFileSync(
-		path.join(nodeModulesDir, "tiktoken", "lite", "tiktoken_bg.wasm"),
-		path.join(workersDir, "tiktoken_bg.wasm"),
-	)
-
-	console.log(`[copyWasms] Copied tiktoken WASMs to ${workersDir}`)
+	console.log(`[copyWasms] Copied tiktoken WASM to ${distDir}`)
 
 	// Main tree-sitter WASM file.
 	fs.copyFileSync(
@@ -141,21 +165,24 @@ export function copyWasms(srcDir: string, distDir: string): void {
 
 	console.log(`[copyWasms] Copied tree-sitter.wasm to ${distDir}`)
 
-	// Copy language-specific WASM files.
+	// Copy only supported language-specific WASM files.
 	const languageWasmDir = path.join(nodeModulesDir, "tree-sitter-wasms", "out")
 
 	if (!fs.existsSync(languageWasmDir)) {
 		throw new Error(`Directory does not exist: ${languageWasmDir}`)
 	}
 
-	// Dynamically read all WASM files from the directory instead of using a hardcoded list.
-	const wasmFiles = fs.readdirSync(languageWasmDir).filter((file) => file.endsWith(".wasm"))
+	for (const filename of SUPPORTED_TREE_SITTER_LANGUAGE_WASMS) {
+		const srcWasm = path.join(languageWasmDir, filename)
+		if (!fs.existsSync(srcWasm)) {
+			throw new Error(`Expected tree-sitter WASM file does not exist: ${srcWasm}`)
+		}
+		fs.copyFileSync(srcWasm, path.join(distDir, filename))
+	}
 
-	wasmFiles.forEach((filename) => {
-		fs.copyFileSync(path.join(languageWasmDir, filename), path.join(distDir, filename))
-	})
-
-	console.log(`[copyWasms] Copied ${wasmFiles.length} tree-sitter language wasms to ${distDir}`)
+	console.log(
+		`[copyWasms] Copied ${SUPPORTED_TREE_SITTER_LANGUAGE_WASMS.length} tree-sitter language wasms to ${distDir}`,
+	)
 
 	// Copy esbuild-wasm files for custom tool transpilation (cross-platform).
 	copyEsbuildWasmFiles(nodeModulesDir, distDir)

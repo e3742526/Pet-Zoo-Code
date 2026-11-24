@@ -83,7 +83,6 @@ import {
 	GitHubCopilotHandler,
 	XAIHandler,
 	ZAiHandler,
-	ZooGatewayHandler,
 } from "../providers"
 import { NativeOllamaHandler } from "../providers/native-ollama"
 
@@ -124,7 +123,6 @@ const expectedHandlers = {
 	[providerIdentifiers.opencodeGo]: OpencodeGoHandler,
 	[providerIdentifiers.kenari]: KenariHandler,
 	[providerIdentifiers.nanogpt]: NanoGptHandler,
-	[providerIdentifiers.zooGateway]: ZooGatewayHandler,
 	[providerIdentifiers.minimax]: MiniMaxHandler,
 	[providerIdentifiers.baseten]: BasetenHandler,
 	[providerIdentifiers.poe]: PoeHandler,
@@ -183,6 +181,22 @@ describe("buildApiHandler", () => {
 				apiProvider: retiredProviderIdentifiers.roo,
 			}),
 		).toThrow("Roo Code Router has been removed")
+	})
+
+	it("reads the model on a saved Zoo Gateway profile and rejects inference", async () => {
+		const modelId = "anthropic/claude-sonnet-4"
+		const handler = buildApiHandler({
+			apiProvider: retiredProviderIdentifiers.zooGateway,
+			zooGatewayModelId: modelId,
+		})
+
+		expect(handler.getModel().id).toBe(modelId)
+		expect(handler.fetchModels).toBeUndefined()
+		expect(() => handler.createMessage("", [])).toThrow("Zoo Gateway has been retired")
+		if (!("completePrompt" in handler) || typeof handler.completePrompt !== "function") {
+			throw new Error("The retired provider must reject auxiliary prompts too")
+		}
+		await expect(handler.completePrompt("Summarize this task")).rejects.toThrow("Zoo Gateway has been retired")
 	})
 
 	it("rejects other retired providers", () => {

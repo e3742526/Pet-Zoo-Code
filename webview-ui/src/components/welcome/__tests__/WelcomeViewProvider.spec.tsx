@@ -132,12 +132,8 @@ describe("WelcomeViewProvider", () => {
 		expect(screen.queryByText(/welcome:landing.noAccount/)).not.toBeInTheDocument()
 
 		expect(screen.getByTestId("api-options")).toBeInTheDocument()
-		expect(screen.getByTestId("api-options")).toHaveAttribute("data-provider", "openrouter")
-		expect(screen.getByTestId("api-options")).toHaveAttribute("data-model", openRouterDefaultModelId)
-		expect(setApiConfiguration).toHaveBeenCalledWith({
-			apiProvider: providerIdentifiers.openrouter,
-			openRouterModelId: openRouterDefaultModelId,
-		})
+		expect(screen.getByTestId("api-options")).toHaveAttribute("data-provider", "anthropic")
+		expect(setApiConfiguration).toHaveBeenCalledWith({ apiProvider: providerIdentifiers.anthropic })
 		expect(screen.getByTestId("trans-welcome:providerSignup.chooseProvider")).toBeInTheDocument()
 		expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "upsertApiConfiguration" }))
 	})
@@ -162,12 +158,8 @@ describe("WelcomeViewProvider", () => {
 
 		fireEvent.click(screen.getByTestId("button-primary"))
 
-		expect(screen.getByTestId("api-options")).toHaveAttribute("data-provider", "openrouter")
-		expect(screen.getByTestId("api-options")).toHaveAttribute("data-model", openRouterDefaultModelId)
-		expect(setApiConfiguration).toHaveBeenCalledWith({
-			apiProvider: providerIdentifiers.openrouter,
-			openRouterModelId: openRouterDefaultModelId,
-		})
+		expect(screen.getByTestId("api-options")).toHaveAttribute("data-provider", "anthropic")
+		expect(setApiConfiguration).toHaveBeenCalledWith({ apiProvider: providerIdentifiers.anthropic })
 	})
 
 	it("keeps the landing screen centered", () => {

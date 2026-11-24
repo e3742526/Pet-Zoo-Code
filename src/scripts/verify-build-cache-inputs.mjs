@@ -190,12 +190,9 @@ test("build cache input contract", async (context) => {
 			)
 		})
 
-		await context.test("bundle env declarations independently include both embedded values", () => {
+		await context.test("bundle declares the release channel as an embedded input", () => {
 			const bundle = hashes()["zoo-code#bundle"]
-			assert.deepEqual(bundle.definition.env, ["PKG_RELEASE_CHANNEL", "POSTHOG_API_KEY"])
-			const before = hashesOnly()
-			const after = hashesOnly({ ...process.env, POSTHOG_API_KEY: "cache-probe-key" })
-			expectChanged(changedTasks(before, after), bundleConsumers, "POSTHOG_API_KEY change")
+			assert.deepEqual(bundle.definition.env, ["PKG_RELEASE_CHANNEL"])
 		})
 		await context.test("optional root .env is hashed", () => {
 			const before = hashesOnly()

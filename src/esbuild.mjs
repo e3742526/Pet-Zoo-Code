@@ -33,7 +33,7 @@ async function main() {
 	const production = process.argv.includes("--production")
 	const watch = process.argv.includes("--watch")
 	const minify = production
-	const sourcemap = true // Always generate source maps for error handling.
+	const sourcemap = !production // Omit sourcemaps from production VSIX bundles to reduce package size.
 
 	/**
 	 * @type {import('esbuild').BuildOptions}
@@ -48,7 +48,6 @@ async function main() {
 		platform: "node",
 		define: {
 			"process.env.PKG_RELEASE_CHANNEL": JSON.stringify(process.env.PKG_RELEASE_CHANNEL || "stable"),
-			"process.env.POSTHOG_API_KEY": JSON.stringify(process.env.POSTHOG_API_KEY || ""),
 		},
 	}
 
@@ -77,7 +76,6 @@ async function main() {
 							["../.env", ".env", { optional: true }],
 							["node_modules/vscode-material-icons/generated", "assets/vscode-material-icons"],
 							["../webview-ui/audio", "webview-ui/audio"],
-							["assets/marketplace", "dist/assets/marketplace"],
 						],
 						srcDir,
 						buildDir,

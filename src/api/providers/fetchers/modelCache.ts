@@ -6,7 +6,7 @@ import NodeCache from "node-cache"
 import { z } from "zod"
 
 import type { ModelRecord } from "@roo-code/types"
-import { modelInfoSchema, providerIdentifiers, TelemetryEventName } from "@roo-code/types"
+import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { safeWriteJson } from "../../../utils/safeWriteJson"
@@ -22,6 +22,8 @@ import { GetModelsOptions } from "../../../shared/api"
 import type { ApiHandler } from "../../index"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
+const MISSING_DISK_CACHE_TTL_MS = 5 * 60 * 1000
+const missingDiskCache = new Map<string, number>()
 
 // Zod schema for validating ModelRecord structure from disk cache
 const modelRecordSchema = z.record(z.string(), modelInfoSchema)
@@ -249,6 +251,7 @@ export const getModels = async (options: GetModelsOptions, handler: ApiHandler):
 			reportedEmptyModelResponse.delete(cacheKey)
 
 			if (!shouldSkipCache) {
+				missingDiskCache.delete(cacheKey)
 				memoryCache.set(cacheKey, fetched)
 
 				await writeModels(cacheKey, fetched).catch((err) =>
@@ -459,6 +462,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		reportedEmptyModelResponse.delete(cacheKey)
 
 		if (!shouldSkipCache) {
+			missingDiskCache.delete(cacheKey)
 			memoryCache.set(cacheKey, models)
 
 			await writeModels(cacheKey, models).catch((err) =>
@@ -469,7 +473,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		return models
 	} catch (error) {
 		// Log the error for debugging, then return existing cache if available (graceful degradation).
-		// For auth-scoped providers (zoo-gateway) we MUST NOT return cached models from a prior
+		// For auth-scoped providers we MUST NOT return cached models from a prior
 		// session, since they could belong to a different user -- return empty instead.
 		console.error(`[refreshModels] Failed to refresh ${cacheKey} models:`, error)
 		if (shouldSkipCache) {
@@ -477,42 +481,6 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		}
 		return getModelsFromCache(options, handler) || {}
 	}
-}
-
-/**
- * Initialize background model cache refresh.
- * Refreshes public provider caches without blocking or requiring auth.
- * Should be called once during extension activation.
- */
-export async function initializeModelCacheRefresh(buildHandler: (provider: RouterName) => ApiHandler): Promise<void> {
-	// Wait for extension to fully activate before refreshing
-	setTimeout(async () => {
-		// Providers that work without API keys
-		const publicProviders: Array<{ provider: RouterName; options: GetModelsOptions }> = [
-			{
-				provider: providerIdentifiers.openrouter,
-				options: { provider: providerIdentifiers.openrouter },
-			},
-			{
-				provider: providerIdentifiers.vercelAiGateway,
-				options: { provider: providerIdentifiers.vercelAiGateway },
-			},
-			{
-				provider: providerIdentifiers.nanogpt,
-				options: { provider: providerIdentifiers.nanogpt },
-			},
-		]
-
-		// Refresh each provider in background (fire and forget)
-		for (const { provider, options } of publicProviders) {
-			refreshModels(options, buildHandler(provider)).catch(() => {
-				// Silent fail - old cache remains available
-			})
-
-			// Small delay between refreshes to avoid API rate limits
-			await new Promise((resolve) => setTimeout(resolve, 500))
-		}
-	}, 2000)
 }
 
 /**
@@ -536,7 +504,9 @@ export const flushModels = async (
 		// Only delete memory cache when not refreshing. Use the compound cache key so that
 		// URL-scoped providers (litellm, poe, etc.) actually evict the per-server entry rather
 		// than a bare provider-name entry that was never written.
-		memoryCache.del(getCacheKey(options, handler))
+		const key = getCacheKey(options, handler)
+		memoryCache.del(key)
+		missingDiskCache.delete(key)
 	}
 }
 
@@ -550,7 +520,7 @@ export const flushModels = async (
  * @returns Models from memory cache, disk cache, or undefined if not cached.
  */
 export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandler): ModelRecord | undefined {
-	// Auth-scoped providers (e.g. zoo-gateway) must never be served from cache --
+	// Auth-scoped providers must never be served from cache --
 	// their model lists are user-specific and a stale file left over from a previous
 	// session could leak another user's list. Mirror the guards in getModels/refreshModels.
 	if (handler.getModelCacheScope().authScoped) {
@@ -562,6 +532,14 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 	const memoryModels = memoryCache.get<ModelRecord>(cacheKey)
 	if (memoryModels) {
 		return memoryModels
+	}
+
+	const missingUntil = missingDiskCache.get(cacheKey)
+	if (missingUntil !== undefined) {
+		if (Date.now() < missingUntil) {
+			return undefined
+		}
+		missingDiskCache.delete(cacheKey)
 	}
 
 	// Memory cache miss - try to load from disk synchronously
@@ -592,10 +570,13 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 			}
 
 			// Populate memory cache for future fast access
+			missingDiskCache.delete(cacheKey)
 			memoryCache.set(cacheKey, validation.data)
 
 			return validation.data
 		}
+
+		missingDiskCache.set(cacheKey, Date.now() + MISSING_DISK_CACHE_TTL_MS)
 	} catch (error) {
 		console.error(`[MODEL_CACHE] Error loading ${cacheKey} models from disk:`, error)
 	}

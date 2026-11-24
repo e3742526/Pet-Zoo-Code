@@ -127,7 +127,6 @@ describe("useSelectedModel", () => {
 		[providerIdentifiers.unbound, "unboundModelId"],
 		[providerIdentifiers.vercelAiGateway, "vercelAiGatewayModelId"],
 		[providerIdentifiers.opencodeGo, "opencodeGoModelId"],
-		[providerIdentifiers.zooGateway, "zooGatewayModelId"],
 	] as const
 	const configuredModelInfo: ModelInfo = { contextWindow: 1, supportsPromptCache: false }
 

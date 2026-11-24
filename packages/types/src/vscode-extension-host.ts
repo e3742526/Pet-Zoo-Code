@@ -72,7 +72,6 @@ export interface ExtensionMessage {
 		| "commitSearchResults"
 		| "listApiConfig"
 		| typeof RouterModelsMessageType.routerModels
-		| "zooGatewayCredentialsReady"
 		| typeof OpenAiModelsMessageType.openAiModels
 		| typeof OllamaModelsMessageType.ollamaModels
 		| typeof LmStudioModelsMessageType.lmStudioModels
@@ -422,13 +421,6 @@ export type ExtensionState = Pick<
 
 	cwd?: string // Current working directory
 	telemetrySetting: TelemetrySetting
-	telemetryKey?: string
-	machineId?: string
-	// Live vscode.env.isTelemetryEnabled, so the webview's own PostHog client can respect
-	// the VS Code global telemetry toggle the same way the extension-side gate does --
-	// without this, an explicit user Accept can still send events while VS Code's global
-	// telemetry is disabled.
-	vscodeTelemetryEnabled?: boolean
 
 	renderContext: "sidebar" | "editor"
 	settingsImportedAt?: number
@@ -467,12 +459,6 @@ export type ExtensionState = Pick<
 		expiresAt?: number
 		error?: string
 	}
-	zooCodeIsAuthenticated?: boolean
-	zooCodeUserName?: string
-	zooCodeUserEmail?: string
-	zooCodeUserImage?: string
-	zooCodeBaseUrl?: string
-	deviceName?: string
 	debug?: boolean
 
 	/**
@@ -669,7 +655,6 @@ export interface WebviewMessage {
 		| "openAiCodexSignOut"
 		| "kimiCodeSignIn"
 		| "kimiCodeSignOut"
-		| "zooCodeSignOut"
 		| "switchOrganization"
 		| "condenseTaskContextRequest"
 		| "requestIndexingStatus"

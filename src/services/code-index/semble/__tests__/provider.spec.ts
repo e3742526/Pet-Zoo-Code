@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { SembleProvider } from "../provider"
+import { SembleCLI } from "../semble-cli"
 import { SEMBLE_DEFAULTS } from "../types"
 
 import { clearAllMocks } from "../../../../test-utils/reset"
@@ -17,11 +18,9 @@ vi.mock("../semble-cli", () => ({
 	}),
 }))
 
-// Mock semble-downloader
-vi.mock("../semble-downloader", () => ({
-	isSembleSupportedPlatform: vi.fn().mockReturnValue(true),
-	downloadSemble: vi.fn().mockResolvedValue("/mock/storage/semble/semble"),
-	SEMBLE_VERSION: "v0.4.1",
+// Mock the lookup for an existing Semble installation
+vi.mock("../semble-binary", () => ({
+	getSembleBinaryPath: vi.fn().mockResolvedValue("/mock/storage/semble/semble"),
 }))
 
 // Mock TelemetryService
@@ -43,14 +42,8 @@ vi.mock("vscode", () => ({
 vi.mock("../../../../i18n", () => ({
 	t: (key: string, params?: any) => {
 		switch (key) {
-			case "embeddings:semble.downloadingBinary":
-				return "Downloading semble binary..."
-			case "embeddings:semble.ready":
-				return `Semble ${params?.version ?? ""} is ready. Searches index on-the-fly.`
-			case "embeddings:semble.unsupportedPlatform":
-				return `Semble is not supported on this platform (${params?.platform ?? ""}-${params?.arch ?? ""}).`
-			case "embeddings:semble.downloadFailed":
-				return `Failed to download semble: ${params?.errorMessage ?? ""}`
+			case "embeddings:semble.localReady":
+				return params?.defaultValue ?? key
 			case "embeddings:semble.checkFailed":
 				return `Semble check failed: ${params?.errorMessage ?? ""}`
 			case "embeddings:semble.providerReset":
@@ -63,7 +56,7 @@ vi.mock("../../../../i18n", () => ({
 
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
-import { isSembleSupportedPlatform, downloadSemble } from "../semble-downloader"
+import { getSembleBinaryPath } from "../semble-binary"
 
 describe("SembleProvider", () => {
 	let provider: SembleProvider
@@ -71,10 +64,12 @@ describe("SembleProvider", () => {
 	let mockStateManager: any
 	let mockContext: any
 
+	afterEach(() => vi.unstubAllEnvs())
+
 	beforeEach(() => {
 		clearAllMocks()
-		;(isSembleSupportedPlatform as any).mockReturnValue(true)
-		;(downloadSemble as any).mockResolvedValue("/mock/storage/semble/semble")
+		vi.stubEnv("SEMBLE_BINARY_PATH", undefined)
+		vi.mocked(getSembleBinaryPath).mockResolvedValue("/mock/storage/semble/semble")
 
 		mockStateManager = {
 			setSystemState: vi.fn(),
@@ -105,44 +100,50 @@ describe("SembleProvider", () => {
 	})
 
 	describe("initialize", () => {
-		it("should auto-download and set state to Indexed when semble works", async () => {
+		it("opens the existing Semble installation", async () => {
 			mockCli.checkInstalled.mockResolvedValue({ installed: true })
 
 			await provider.initialize()
 
-			expect(downloadSemble).toHaveBeenCalledWith("/mock/storage")
+			expect(getSembleBinaryPath).toHaveBeenCalledWith("/mock/storage")
 			expect(provider.state).toBe("Indexed")
 			expect(mockStateManager.setSystemState).toHaveBeenCalledWith(
 				"Indexed",
-				"Semble v0.4.1 is ready. Searches index on-the-fly.",
+				"Semble is ready. Searches index on demand.",
 			)
 		})
 
-		it("should set state to Error when platform is unsupported", async () => {
-			;(isSembleSupportedPlatform as any).mockReturnValue(false)
+		it("shows setup instructions when the existing installation is missing", async () => {
+			vi.mocked(getSembleBinaryPath).mockResolvedValue(undefined)
 
 			await provider.initialize()
 
 			expect(provider.state).toBe("Error")
 			expect(mockStateManager.setSystemState).toHaveBeenCalledWith(
 				"Error",
-				expect.stringContaining("not supported on this platform"),
+				expect.stringContaining("SEMBLE_BINARY_PATH"),
 			)
 		})
 
-		it("should set state to Error when download fails", async () => {
-			;(downloadSemble as any).mockRejectedValue(new Error("network error"))
+		it.each([
+			["absolute path", "/local/bin/semble", "Indexed"],
+			["relative path", "./local/bin/semble", "Error"],
+		])("validates a configured %s", async (_label, configuredPath, expectedState) => {
+			vi.stubEnv("SEMBLE_BINARY_PATH", configuredPath)
+			mockCli.checkInstalled.mockResolvedValue({ installed: true })
 
 			await provider.initialize()
 
-			expect(provider.state).toBe("Error")
-			expect(mockStateManager.setSystemState).toHaveBeenCalledWith(
-				"Error",
-				expect.stringContaining("Failed to download semble"),
-			)
+			expect(provider.state).toBe(expectedState)
+			expect(getSembleBinaryPath).not.toHaveBeenCalled()
+			if (expectedState === "Indexed") {
+				expect(SembleCLI).toHaveBeenCalledWith(configuredPath)
+			} else {
+				expect(SembleCLI).not.toHaveBeenCalled()
+			}
 		})
 
-		it("should set state to Error when semble check fails after download", async () => {
+		it("reports a local executable that cannot run", async () => {
 			mockCli.checkInstalled.mockResolvedValue({
 				installed: false,
 				error: "binary not functional",
@@ -165,16 +166,6 @@ describe("SembleProvider", () => {
 
 			expect(mockCli.checkInstalled).toHaveBeenCalledTimes(1)
 		})
-
-		it("should include the semble version in the ready status message", async () => {
-			mockCli.checkInstalled.mockResolvedValue({ installed: true })
-
-			await provider.initialize()
-
-			// The ready message interpolates the active SEMBLE_VERSION so the UI
-			// (CodeIndexPopover) surfaces which release is installed.
-			expect(mockStateManager.setSystemState).toHaveBeenCalledWith("Indexed", expect.stringContaining("v0.4.1"))
-		})
 	})
 
 	describe("startIndexing", () => {
@@ -187,7 +178,7 @@ describe("SembleProvider", () => {
 		})
 
 		it("should not change state if in Error state", async () => {
-			;(isSembleSupportedPlatform as any).mockReturnValue(false)
+			vi.mocked(getSembleBinaryPath).mockResolvedValue(undefined)
 
 			await provider.initialize()
 			await provider.startIndexing()
@@ -425,10 +416,10 @@ describe("SembleProvider", () => {
 		})
 
 		it("should return empty array when in Error state", async () => {
-			;(isSembleSupportedPlatform as any).mockReturnValue(false)
+			vi.mocked(getSembleBinaryPath).mockResolvedValue(undefined)
 			const errorProvider = new SembleProvider("/workspace", mockContext, mockStateManager)
 			await errorProvider.initialize()
-			;(isSembleSupportedPlatform as any).mockReturnValue(true) // reset for other tests
+			vi.mocked(getSembleBinaryPath).mockResolvedValue("/mock/storage/semble/semble")
 			const results = await errorProvider.searchIndex("test")
 			expect(results).toEqual([])
 		})
@@ -620,18 +611,6 @@ describe("SembleProvider", () => {
 	})
 
 	describe("initialize error edge cases", () => {
-		it("should set Error state when download returns no path (undefined)", async () => {
-			;(downloadSemble as any).mockResolvedValue(undefined)
-
-			await provider.initialize()
-
-			expect(provider.state).toBe("Error")
-			expect(mockStateManager.setSystemState).toHaveBeenCalledWith(
-				"Error",
-				expect.stringContaining("Failed to download semble"),
-			)
-		})
-
 		it("should set Error state with default message when checkInstalled returns no error string", async () => {
 			mockCli.checkInstalled.mockResolvedValue({
 				installed: false,

@@ -598,15 +598,6 @@ function getSelectedModel({
 			const info = routerModels[providerIdentifiers.nanogpt]?.[id] ?? nanoGptDefaultModelInfo
 			return { id, info }
 		}
-		case providerIdentifiers.zooGateway: {
-			const id = getValidatedModelId(
-				apiConfiguration.zooGatewayModelId,
-				routerModels[providerIdentifiers.zooGateway],
-				defaultModelId,
-			)
-			const info = routerModels[providerIdentifiers.zooGateway]?.[id]
-			return { id, info }
-		}
 		case providerIdentifiers.anthropic:
 		case providerIdentifiers.geminiCli:
 		case providerIdentifiers.fakeAi: {

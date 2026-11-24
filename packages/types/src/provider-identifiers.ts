@@ -6,7 +6,6 @@
 export const providerIdentifiers = {
 	openrouter: "openrouter",
 	vercelAiGateway: "vercel-ai-gateway",
-	zooGateway: "zoo-gateway",
 	litellm: "litellm",
 	requesty: "requesty",
 	unbound: "unbound",
@@ -57,6 +56,7 @@ export const retiredProviderIdentifiers = {
 	huggingface: "huggingface",
 	ioIntelligence: "io-intelligence",
 	roo: "roo",
+	zooGateway: "zoo-gateway",
 } as const
 
 export type RetiredProviderIdentifier = (typeof retiredProviderIdentifiers)[keyof typeof retiredProviderIdentifiers]

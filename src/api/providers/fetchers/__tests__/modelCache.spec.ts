@@ -77,11 +77,11 @@ const OPENROUTER_SCOPE: ModelCacheScope = { urlScoped: false, keyScoped: false, 
 const LITELLM_SCOPE: ModelCacheScope = { urlScoped: true, keyScoped: true, authScoped: false }
 const REQUESTY_SCOPE: ModelCacheScope = { urlScoped: true, keyScoped: true, authScoped: false }
 const NANOGPT_SCOPE: ModelCacheScope = { urlScoped: false, keyScoped: true, authScoped: false }
-const ZOO_SCOPE: ModelCacheScope = { urlScoped: true, keyScoped: true, authScoped: true }
+const AUTH_SCOPE: ModelCacheScope = { urlScoped: true, keyScoped: true, authScoped: true }
 const MOONSHOT_SCOPE: ModelCacheScope = { urlScoped: true, keyScoped: true, authScoped: false }
 
 const openRouterHandler = makeHandler(OPENROUTER_SCOPE, vi.fn())
-const zooGatewayHandler = makeHandler(ZOO_SCOPE, vi.fn())
+const authScopedHandler = makeHandler(AUTH_SCOPE, vi.fn())
 
 const DUMMY_REQUESTY_KEY = "requesty-key-for-testing"
 
@@ -327,7 +327,7 @@ describe("getModelsFromCache disk fallback", () => {
 		expect(fsSync.existsSync).not.toHaveBeenCalled()
 	})
 
-	it("isolates authenticated users through the canonical Zoo Gateway identifier", () => {
+	it("isolates authenticated users through an auth-scoped handler", () => {
 		const previousUserModels = {
 			"previous-user/model": {
 				maxTokens: 4096,
@@ -338,7 +338,7 @@ describe("getModelsFromCache disk fallback", () => {
 
 		mockCache.get.mockReturnValue(previousUserModels)
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.zooGateway }, zooGatewayHandler)
+		const result = getModelsFromCache({ provider: providerIdentifiers.requesty }, authScopedHandler)
 
 		expect(result).toBeUndefined()
 		expect(mockCache.get).not.toHaveBeenCalled()
@@ -611,33 +611,33 @@ describe("empty cache protection", () => {
 		})
 
 		it("re-arms the empty-response throttle after a non-empty response from an auth-scoped provider", async () => {
-			// zoo-gateway is auth-scoped and skips caching entirely, but a non-empty response
+			// the auth-scoped provider is auth-scoped and skips caching entirely, but a non-empty response
 			// must still clear the throttle so a later empty response is reported again.
 			const fetchModels = vi.fn().mockResolvedValueOnce({})
-			const handler = makeHandler(ZOO_SCOPE, fetchModels)
+			const handler = makeHandler(AUTH_SCOPE, fetchModels)
 
-			await getModels({ provider: providerIdentifiers.zooGateway, apiKey: "test-key" }, handler)
+			await getModels({ provider: providerIdentifiers.requesty, apiKey: "test-key" }, handler)
 
 			expect(TelemetryService.instance.captureEvent).toHaveBeenCalledTimes(1)
 
 			const mockModels = {
-				"zoo-gateway/model": {
+				"auth-scoped/model": {
 					maxTokens: 8192,
 					contextWindow: 128000,
 					supportsPromptCache: false,
-					description: "Zoo Gateway model",
+					description: "Auth-scoped model",
 				},
 			}
 			fetchModels.mockResolvedValueOnce(mockModels)
 
-			await getModels({ provider: providerIdentifiers.zooGateway, apiKey: "test-key" }, handler)
+			await getModels({ provider: providerIdentifiers.requesty, apiKey: "test-key" }, handler)
 
 			// Auth-scoped providers never populate the cache.
 			expect(mockSet).not.toHaveBeenCalled()
 
 			fetchModels.mockResolvedValueOnce({})
 
-			await getModels({ provider: providerIdentifiers.zooGateway, apiKey: "test-key" }, handler)
+			await getModels({ provider: providerIdentifiers.requesty, apiKey: "test-key" }, handler)
 
 			// The throttle should have been re-armed by the non-empty response above, so this
 			// second empty response is reported again instead of being suppressed.
@@ -843,10 +843,10 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 	let freshRefreshModels: ModelCacheModule["refreshModels"]
 	let freshOpenRouterFetch: Mock
 	let freshLiteLLMFetch: Mock
-	let freshZooGatewayFetch: Mock
+	let freshAuthScopedFetch: Mock
 	let freshOpenRouterHandler: ApiHandler
 	let freshLiteLLMHandler: ApiHandler
-	let freshZooGatewayHandler: ApiHandler
+	let freshAuthScopedHandler: ApiHandler
 
 	beforeEach(async () => {
 		// The empty-response throttle is deliberately module-level, persistent state (once per
@@ -861,10 +861,10 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 
 		freshOpenRouterFetch = vi.fn()
 		freshLiteLLMFetch = vi.fn()
-		freshZooGatewayFetch = vi.fn()
+		freshAuthScopedFetch = vi.fn()
 		freshOpenRouterHandler = makeHandler(OPENROUTER_SCOPE, freshOpenRouterFetch)
 		freshLiteLLMHandler = makeHandler(LITELLM_SCOPE, freshLiteLLMFetch)
-		freshZooGatewayHandler = makeHandler(ZOO_SCOPE, freshZooGatewayFetch)
+		freshAuthScopedHandler = makeHandler(AUTH_SCOPE, freshAuthScopedFetch)
 
 		const NodeCacheModule = await import("node-cache")
 		const MockedNodeCache = vi.mocked(NodeCacheModule.default)
@@ -982,68 +982,68 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 		expect(FreshTelemetryService.instance.captureEvent).toHaveBeenCalledTimes(2)
 	})
 
-	it("throttles zoo-gateway independently per session token, even though caching itself is skipped", async () => {
-		// zoo-gateway is auth-scoped and never persists to the memory/disk cache, but the
+	it("throttles the auth-scoped provider independently per session token, even though caching itself is skipped", async () => {
+		// the auth-scoped provider is auth-scoped and never persists to the memory/disk cache, but the
 		// empty-response throttle must still discriminate by identity: a sign-out/sign-in cycle
 		// to a different account carries a different session token (apiKey) on the same gateway
 		// URL, and must not have its empty-response signal suppressed by the previous account's
 		// throttle entry.
 		const { TelemetryService: FreshTelemetryService } = await import("@roo-code/telemetry")
 
-		freshZooGatewayFetch.mockResolvedValue({})
+		freshAuthScopedFetch.mockResolvedValue({})
 
 		await freshGetModels(
-			{ provider: providerIdentifiers.zooGateway, apiKey: "account-a-token" },
-			freshZooGatewayHandler,
+			{ provider: providerIdentifiers.requesty, apiKey: "account-a-token" },
+			freshAuthScopedHandler,
 		)
 		await freshGetModels(
-			{ provider: providerIdentifiers.zooGateway, apiKey: "account-a-token" },
-			freshZooGatewayHandler,
+			{ provider: providerIdentifiers.requesty, apiKey: "account-a-token" },
+			freshAuthScopedHandler,
 		)
 		expect(FreshTelemetryService.instance.captureEvent).toHaveBeenCalledTimes(1)
 
 		await freshGetModels(
-			{ provider: providerIdentifiers.zooGateway, apiKey: "account-b-token" },
-			freshZooGatewayHandler,
+			{ provider: providerIdentifiers.requesty, apiKey: "account-b-token" },
+			freshAuthScopedHandler,
 		)
 		expect(FreshTelemetryService.instance.captureEvent).toHaveBeenCalledTimes(2)
 	})
 
-	it("throttles zoo-gateway independently per gateway baseUrl", async () => {
+	it("throttles the auth-scoped provider independently per gateway baseUrl", async () => {
 		// Same session token, different gateway endpoint (e.g. staging vs. production) --
 		// must also be treated as a distinct identity for throttle purposes.
 		const { TelemetryService: FreshTelemetryService } = await import("@roo-code/telemetry")
 
-		freshZooGatewayFetch.mockResolvedValue({})
+		freshAuthScopedFetch.mockResolvedValue({})
 
 		await freshGetModels(
 			{
-				provider: providerIdentifiers.zooGateway,
+				provider: providerIdentifiers.requesty,
 				apiKey: "token",
 				baseUrl: "https://gateway-a.example.com",
 			},
-			freshZooGatewayHandler,
+			freshAuthScopedHandler,
 		)
 		await freshGetModels(
 			{
-				provider: providerIdentifiers.zooGateway,
+				provider: providerIdentifiers.requesty,
 				apiKey: "token",
 				baseUrl: "https://gateway-b.example.com",
 			},
-			freshZooGatewayHandler,
+			freshAuthScopedHandler,
 		)
 
 		expect(FreshTelemetryService.instance.captureEvent).toHaveBeenCalledTimes(2)
 	})
 
-	it("never shares results across different zoo-gateway credentials (auth isolation)", async () => {
+	it("never shares results across different the auth-scoped provider credentials (auth isolation)", async () => {
 		// Auth-scoped providers bypass dedupedFetch entirely -- shouldSkipCache is true for
-		// zoo-gateway, so every call fires its own provider fetch and none are deduplicated.
+		// the auth-scoped provider, so every call fires its own provider fetch and none are deduplicated.
 		// That means two concurrent calls can never resolve into each other's result regardless
 		// of token, which this test confirms for two different account tokens; the companion
 		// case below confirms the same holds for one token too.
 		const accountAModels = {
-			"zoo-gateway/account-a-model": {
+			"auth-scoped/account-a-model": {
 				maxTokens: 4096,
 				contextWindow: 64000,
 				supportsPromptCache: false,
@@ -1051,7 +1051,7 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 			},
 		}
 		const accountBModels = {
-			"zoo-gateway/account-b-model": {
+			"auth-scoped/account-b-model": {
 				maxTokens: 4096,
 				contextWindow: 64000,
 				supportsPromptCache: false,
@@ -1061,7 +1061,7 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 
 		let resolveA: (value: typeof accountAModels) => void
 		let resolveB: (value: typeof accountBModels) => void
-		freshZooGatewayFetch
+		freshAuthScopedFetch
 			.mockImplementationOnce(
 				() =>
 					new Promise((resolve) => {
@@ -1076,15 +1076,15 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 			)
 
 		const promiseA = freshGetModels(
-			{ provider: providerIdentifiers.zooGateway, apiKey: "account-a-token" },
-			freshZooGatewayHandler,
+			{ provider: providerIdentifiers.requesty, apiKey: "account-a-token" },
+			freshAuthScopedHandler,
 		)
 		const promiseB = freshGetModels(
-			{ provider: providerIdentifiers.zooGateway, apiKey: "account-b-token" },
-			freshZooGatewayHandler,
+			{ provider: providerIdentifiers.requesty, apiKey: "account-b-token" },
+			freshAuthScopedHandler,
 		)
 
-		expect(freshZooGatewayFetch).toHaveBeenCalledTimes(2)
+		expect(freshAuthScopedFetch).toHaveBeenCalledTimes(2)
 
 		resolveB!(accountBModels)
 		resolveA!(accountAModels)
@@ -1094,18 +1094,18 @@ describe("MODEL_CACHE_EMPTY_RESPONSE throttling", () => {
 		expect(resultB).toEqual(accountBModels)
 	})
 
-	it("never deduplicates concurrent zoo-gateway fetches, even for the same token", async () => {
+	it("never deduplicates concurrent the auth-scoped provider fetches, even for the same token", async () => {
 		// Auth-scoped providers skip dedupedFetch unconditionally, so even two calls carrying
 		// an identical token each fire their own provider fetch -- there is no in-flight sharing
 		// to key correctly or incorrectly for these providers.
-		freshZooGatewayFetch.mockResolvedValue({})
+		freshAuthScopedFetch.mockResolvedValue({})
 
 		await Promise.all([
-			freshGetModels({ provider: providerIdentifiers.zooGateway, apiKey: "same-token" }, freshZooGatewayHandler),
-			freshGetModels({ provider: providerIdentifiers.zooGateway, apiKey: "same-token" }, freshZooGatewayHandler),
+			freshGetModels({ provider: providerIdentifiers.requesty, apiKey: "same-token" }, freshAuthScopedHandler),
+			freshGetModels({ provider: providerIdentifiers.requesty, apiKey: "same-token" }, freshAuthScopedHandler),
 		])
 
-		expect(freshZooGatewayFetch).toHaveBeenCalledTimes(2)
+		expect(freshAuthScopedFetch).toHaveBeenCalledTimes(2)
 	})
 })
 
@@ -1797,12 +1797,12 @@ it("ignores the caller signal on the auth-scoped bypass without entering the fli
 	const boundSpy = vi.spyOn(AbortSignal, "timeout")
 	try {
 		const fetchModels = vi.fn().mockResolvedValue(cancelledModelsB)
-		const handler = makeHandler(ZOO_SCOPE, fetchModels)
+		const handler = makeHandler(AUTH_SCOPE, fetchModels)
 
 		const controller = new AbortController()
 		const first = getModels(
 			{
-				provider: providerIdentifiers.zooGateway,
+				provider: providerIdentifiers.requesty,
 				apiKey: "token-a",
 				signal: controller.signal,
 			},
@@ -1810,7 +1810,7 @@ it("ignores the caller signal on the auth-scoped bypass without entering the fli
 		)
 		// Auth isolation requires no dedup even for an identical provider+token: each call fires
 		// its own fetch, so the bypass never shares (or poisons) a flight with anything.
-		const second = getModels({ provider: providerIdentifiers.zooGateway, apiKey: "token-a" }, handler)
+		const second = getModels({ provider: providerIdentifiers.requesty, apiKey: "token-a" }, handler)
 		expect(fetchModels).toHaveBeenCalledTimes(2)
 		// The bypass carries no cancellation: the dispatcher forwards no signal on this path,
 		// so the caller's bound is never threaded to the handler's fetchModels.

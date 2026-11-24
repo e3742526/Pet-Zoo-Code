@@ -4,13 +4,6 @@ import ErrorBoundary from "../components/ErrorBoundary"
 import { recordDiagnosticsError } from "@src/utils/diagnostics"
 import { EXTERNAL_LINKS } from "../constants/externalLinks"
 
-// Mock telemetry client
-vi.mock("@src/utils/TelemetryClient", () => ({
-	telemetryClient: {
-		capture: vi.fn(),
-	},
-}))
-
 vi.mock("react-i18next", () => ({
 	withTranslation:
 		() => (Component: React.ComponentType<{ children: React.ReactNode; t: (key: string) => string }>) => {

@@ -39,7 +39,7 @@ class WorkspaceTracker {
 	}
 
 	private registerListeners() {
-		const watcher = vscode.workspace.createFileSystemWatcher("**")
+		const watcher = vscode.workspace.createFileSystemWatcher("**", false, true, false)
 		this.prevWorkSpacePath = this.cwd
 		this.disposables.push(
 			watcher.onDidCreate(async (uri) => {

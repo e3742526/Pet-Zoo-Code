@@ -1,4 +1,4 @@
-import i18next from "./setup"
+import i18next, { ensureLanguageLoaded } from "./setup"
 
 /**
  * Initialize i18next with the specified language
@@ -6,6 +6,7 @@ import i18next from "./setup"
  * @param language The language code to use
  */
 export function initializeI18n(language: string): void {
+	ensureLanguageLoaded(language)
 	i18next.changeLanguage(language)
 }
 
@@ -15,6 +16,7 @@ export function initializeI18n(language: string): void {
  * @param language The language code to change to
  */
 export function changeLanguage(language: string): void {
+	ensureLanguageLoaded(language)
 	i18next.changeLanguage(language)
 }
 

@@ -38,17 +38,27 @@ export interface LanguageParser {
 	}
 }
 
-async function loadLanguage(langName: string, sourceDirectory?: string) {
+const languageCache = new Map<string, Promise<LanguageT>>()
+const parserQueryCache = new Map<string, { parserKey: string; entry: { parser: ParserT; query: QueryT } }>()
+
+async function loadLanguage(langName: string, sourceDirectory?: string): Promise<LanguageT> {
 	const baseDir = sourceDirectory || __dirname
 	const wasmPath = path.join(baseDir, `tree-sitter-${langName}.wasm`)
 
-	try {
-		const { Language } = require("web-tree-sitter")
-		return await Language.load(wasmPath)
-	} catch (error) {
+	const cached = languageCache.get(wasmPath)
+	if (cached) {
+		return cached
+	}
+
+	const { Language } = require("web-tree-sitter")
+	const promise = (Language.load(wasmPath) as Promise<LanguageT>).catch((error: unknown) => {
+		languageCache.delete(wasmPath)
 		console.error(`Error loading language: ${wasmPath}: ${error instanceof Error ? error.message : error}`)
 		throw error
-	}
+	})
+
+	languageCache.set(wasmPath, promise)
+	return promise
 }
 
 let isParserInitialized = false
@@ -90,9 +100,17 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 	}
 
 	const extensionsToLoad = new Set(filesToParse.map((file) => path.extname(file).toLowerCase().slice(1)))
+	const baseDir = sourceDirectory || __dirname
 	const parsers: LanguageParser = {}
 
 	for (const ext of extensionsToLoad) {
+		const cacheKey = `${baseDir}::${ext}`
+		const cachedParser = parserQueryCache.get(cacheKey)
+		if (cachedParser) {
+			parsers[cachedParser.parserKey] = cachedParser.entry
+			continue
+		}
+
 		let language: LanguageT
 		let query: QueryT
 		let parserKey = ext // Default to using extension as key
@@ -229,7 +247,9 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 
 		const parser = new Parser()
 		parser.setLanguage(language)
-		parsers[parserKey] = { parser, query }
+		const entry = { parser, query }
+		parserQueryCache.set(cacheKey, { parserKey, entry })
+		parsers[parserKey] = entry
 	}
 
 	return parsers

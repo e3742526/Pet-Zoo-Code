@@ -6,10 +6,12 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { StandardTooltip } from "@src/components/ui"
 
 import MarkdownBlock from "../common/MarkdownBlock"
+import { useStreamingMarkdown } from "./useStreamingMarkdown"
 
 export const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boolean }) => {
 	const { t } = useAppTranslation()
 	const [isHovering, setIsHovering] = useState(false)
+	const preview = useStreamingMarkdown(markdown, partial)
 
 	// Shorter feedback duration for copy button flash.
 	const { copyWithFeedback } = useCopyToClipboard(200)
@@ -24,7 +26,7 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 			onMouseLeave={() => setIsHovering(false)}
 			style={{ position: "relative" }}>
 			<div style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
-				<MarkdownBlock markdown={markdown} />
+				<MarkdownBlock markdown={preview} />
 			</div>
 			{markdown && !partial && isHovering && (
 				<div

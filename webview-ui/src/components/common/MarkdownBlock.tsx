@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from "react"
-import ReactMarkdown from "react-markdown"
+import ReactMarkdown, { type Options } from "react-markdown"
 import styled from "styled-components"
 import { visit } from "unist-util-visit"
 import rehypeKatex from "rehype-katex"
@@ -33,6 +33,27 @@ const ALERT_LABELS: Record<AlertType, string> = {
 interface MarkdownBlockProps {
 	markdown?: string
 }
+
+function remarkCodeLanguage() {
+	return (tree: Parameters<typeof visit>[0]) => {
+		visit(tree, "code", (code: { lang?: string | null }) => {
+			if (!code.lang) {
+				code.lang = "text"
+			} else if (code.lang.includes(".")) {
+				code.lang = code.lang.split(".").at(-1)
+			}
+		})
+	}
+}
+
+const REMARK_PLUGINS: Options["remarkPlugins"] = [
+	// Match VS Code's strikethrough syntax. (#154)
+	[remarkGfm, { singleTilde: false }],
+	remarkMath,
+	remarkGithubAlerts,
+	remarkCodeLanguage,
+]
+const REHYPE_PLUGINS: Options["rehypePlugins"] = [rehypeKatex]
 
 const StyledMarkdown = styled.div`
 	* {
@@ -396,27 +417,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 
 	return (
 		<StyledMarkdown>
-			<ReactMarkdown
-				remarkPlugins={[
-					// singleTilde: false so a single "~" around text (e.g. "1~3", "~10") is not
-					// rendered as strikethrough; only "~~text~~" is. Matches VS Code's markdown. (#154)
-					[remarkGfm, { singleTilde: false }],
-					remarkMath,
-					remarkGithubAlerts,
-					() => {
-						return (tree: any) => {
-							visit(tree, "code", (node: any) => {
-								if (!node.lang) {
-									node.lang = "text"
-								} else if (node.lang.includes(".")) {
-									node.lang = node.lang.split(".").slice(-1)[0]
-								}
-							})
-						}
-					},
-				]}
-				rehypePlugins={[rehypeKatex as any]}
-				components={components}>
+			<ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={components}>
 				{markdown || ""}
 			</ReactMarkdown>
 		</StyledMarkdown>

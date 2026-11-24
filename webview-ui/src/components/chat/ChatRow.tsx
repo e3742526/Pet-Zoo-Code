@@ -1152,6 +1152,7 @@ const ChatRowBody = memo(function ChatRowBody({
 							ts={message.ts}
 							isStreaming={isStreaming}
 							isLast={isLast}
+							partial={message.partial}
 						/>
 					)
 				case "api_req_started":
@@ -1453,7 +1454,7 @@ const ChatRowBody = memo(function ChatRowBody({
 								<OpenMarkdownPreviewButton markdown={message.text} />
 							</div>
 							<div className="border-l border-green-600/30 ml-2 pl-4 pb-1">
-								<Markdown markdown={message.text} />
+								<Markdown markdown={message.text} partial={message.partial} />
 								{!message.partial && enableCheckpoints !== false && completionCheckpoint ? (
 									<SeeNewChangesButtons key={completionCheckpoint.ts} />
 								) : null}

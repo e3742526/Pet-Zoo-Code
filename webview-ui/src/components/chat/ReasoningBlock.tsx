@@ -5,20 +5,23 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Lightbulb, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useStreamingMarkdown } from "./useStreamingMarkdown"
 
 interface ReasoningBlockProps {
 	content: string
 	ts: number
 	isStreaming: boolean
 	isLast: boolean
+	partial?: boolean
 	metadata?: any
 }
 
-export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockProps) => {
+export const ReasoningBlock = ({ content, isStreaming, isLast, partial }: ReasoningBlockProps) => {
 	const { t } = useAppTranslation()
 	const { reasoningBlockCollapsed } = useExtensionState()
 
 	const [isCollapsed, setIsCollapsed] = useState(reasoningBlockCollapsed)
+	const preview = useStreamingMarkdown(content, !isCollapsed && partial)
 
 	const startTimeRef = useRef<number>(Date.now())
 	const [elapsed, setElapsed] = useState<number>(0)
@@ -69,7 +72,7 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 				<div
 					ref={contentRef}
 					className="border-l border-vscode-descriptionForeground/20 ml-2 pl-4 pb-1 text-vscode-descriptionForeground break-words">
-					<MarkdownBlock markdown={content} />
+					<MarkdownBlock markdown={preview} />
 				</div>
 			)}
 		</div>

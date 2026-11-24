@@ -13,6 +13,16 @@ describe("loadRequiredLanguageParsers", () => {
 		expect(parsers.py).toBeDefined()
 	})
 
+	it("shares one parser and query when two files request the same language concurrently", async () => {
+		const [first, second] = await Promise.all([
+			loadRequiredLanguageParsers(["first.ts"], WASM_DIR),
+			loadRequiredLanguageParsers(["second.ts"], WASM_DIR),
+		])
+
+		expect(first.ts).toBeDefined()
+		expect(second.ts).toBe(first.ts)
+	})
+
 	it("should load JavaScript parser for .js and .jsx files", async () => {
 		const files = ["test.js", "test.jsx"]
 		const parsers = await loadRequiredLanguageParsers(files, WASM_DIR)

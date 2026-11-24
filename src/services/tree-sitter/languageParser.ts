@@ -61,7 +61,7 @@ async function loadLanguage(langName: string, sourceDirectory?: string): Promise
 	return promise
 }
 
-let isParserInitialized = false
+let parserInitialization: Promise<void> | undefined
 
 /*
 Using node bindings for tree-sitter is problematic in vscode extensions 
@@ -87,17 +87,14 @@ Sources:
 - https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web/test/query-test.js
 */
 export async function loadRequiredLanguageParsers(filesToParse: string[], sourceDirectory?: string) {
-	const { Parser, Query } = require("web-tree-sitter")
+	const { Parser, Query } = require("web-tree-sitter") as typeof import("web-tree-sitter")
 
-	if (!isParserInitialized) {
-		try {
-			await Parser.init()
-			isParserInitialized = true
-		} catch (error) {
-			console.error(`Error initializing parser: ${error instanceof Error ? error.message : error}`)
-			throw error
-		}
-	}
+	parserInitialization ??= Parser.init().catch((error: unknown) => {
+		parserInitialization = undefined
+		console.error(`Error initializing parser: ${error instanceof Error ? error.message : error}`)
+		throw error
+	})
+	await parserInitialization
 
 	const extensionsToLoad = new Set(filesToParse.map((file) => path.extname(file).toLowerCase().slice(1)))
 	const baseDir = sourceDirectory || __dirname
@@ -112,7 +109,7 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 		}
 
 		let language: LanguageT
-		let query: QueryT
+		let querySource: string
 		let parserKey = ext // Default to using extension as key
 
 		switch (ext) {
@@ -120,131 +117,139 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 			case "jsx":
 			case "json":
 				language = await loadLanguage("javascript", sourceDirectory)
-				query = new Query(language, javascriptQuery)
+				querySource = javascriptQuery
 				break
 			case "ts":
 				language = await loadLanguage("typescript", sourceDirectory)
-				query = new Query(language, typescriptQuery)
+				querySource = typescriptQuery
 				break
 			case "tsx":
 				language = await loadLanguage("tsx", sourceDirectory)
-				query = new Query(language, tsxQuery)
+				querySource = tsxQuery
 				break
 			case "py":
 				language = await loadLanguage("python", sourceDirectory)
-				query = new Query(language, pythonQuery)
+				querySource = pythonQuery
 				break
 			case "rs":
 				language = await loadLanguage("rust", sourceDirectory)
-				query = new Query(language, rustQuery)
+				querySource = rustQuery
 				break
 			case "go":
 				language = await loadLanguage("go", sourceDirectory)
-				query = new Query(language, goQuery)
+				querySource = goQuery
 				break
 			case "cpp":
 			case "hpp":
 				language = await loadLanguage("cpp", sourceDirectory)
-				query = new Query(language, cppQuery)
+				querySource = cppQuery
 				break
 			case "c":
 			case "h":
 				language = await loadLanguage("c", sourceDirectory)
-				query = new Query(language, cQuery)
+				querySource = cQuery
 				break
 			case "cs":
 				language = await loadLanguage("c_sharp", sourceDirectory)
-				query = new Query(language, csharpQuery)
+				querySource = csharpQuery
 				break
 			case "rb":
 				language = await loadLanguage("ruby", sourceDirectory)
-				query = new Query(language, rubyQuery)
+				querySource = rubyQuery
 				break
 			case "java":
 				language = await loadLanguage("java", sourceDirectory)
-				query = new Query(language, javaQuery)
+				querySource = javaQuery
 				break
 			case "php":
 				language = await loadLanguage("php", sourceDirectory)
-				query = new Query(language, phpQuery)
+				querySource = phpQuery
 				break
 			case "swift":
 				language = await loadLanguage("swift", sourceDirectory)
-				query = new Query(language, swiftQuery)
+				querySource = swiftQuery
 				break
 			case "kt":
 			case "kts":
 				language = await loadLanguage("kotlin", sourceDirectory)
-				query = new Query(language, kotlinQuery)
+				querySource = kotlinQuery
 				break
 			case "css":
 				language = await loadLanguage("css", sourceDirectory)
-				query = new Query(language, cssQuery)
+				querySource = cssQuery
 				break
 			case "html":
 				language = await loadLanguage("html", sourceDirectory)
-				query = new Query(language, htmlQuery)
+				querySource = htmlQuery
 				break
 			case "ml":
 			case "mli":
 				language = await loadLanguage("ocaml", sourceDirectory)
-				query = new Query(language, ocamlQuery)
+				querySource = ocamlQuery
 				break
 			case "scala":
 				language = await loadLanguage("scala", sourceDirectory)
-				query = new Query(language, luaQuery) // Temporarily use Lua query until Scala is implemented
+				querySource = luaQuery // Temporarily use Lua query until Scala is implemented
 				break
 			case "sol":
 				language = await loadLanguage("solidity", sourceDirectory)
-				query = new Query(language, solidityQuery)
+				querySource = solidityQuery
 				break
 			case "toml":
 				language = await loadLanguage("toml", sourceDirectory)
-				query = new Query(language, tomlQuery)
+				querySource = tomlQuery
 				break
 			case "vue":
 				language = await loadLanguage("vue", sourceDirectory)
-				query = new Query(language, vueQuery)
+				querySource = vueQuery
 				break
 			case "lua":
 				language = await loadLanguage("lua", sourceDirectory)
-				query = new Query(language, luaQuery)
+				querySource = luaQuery
 				break
 			case "rdl":
 				language = await loadLanguage("systemrdl", sourceDirectory)
-				query = new Query(language, systemrdlQuery)
+				querySource = systemrdlQuery
 				break
 			case "tla":
 				language = await loadLanguage("tlaplus", sourceDirectory)
-				query = new Query(language, tlaPlusQuery)
+				querySource = tlaPlusQuery
 				break
 			case "zig":
 				language = await loadLanguage("zig", sourceDirectory)
-				query = new Query(language, zigQuery)
+				querySource = zigQuery
 				break
 			case "ejs":
 			case "erb":
 				parserKey = "embedded_template" // Use same key for both extensions.
 				language = await loadLanguage("embedded_template", sourceDirectory)
-				query = new Query(language, embeddedTemplateQuery)
+				querySource = embeddedTemplateQuery
 				break
 			case "el":
 				language = await loadLanguage("elisp", sourceDirectory)
-				query = new Query(language, elispQuery)
+				querySource = elispQuery
 				break
 			case "ex":
 			case "exs":
 				language = await loadLanguage("elixir", sourceDirectory)
-				query = new Query(language, elixirQuery)
+				querySource = elixirQuery
 				break
 			case "dart":
 				language = await loadLanguage("dart", sourceDirectory)
-				query = new Query(language, dartQuery)
+				querySource = dartQuery
 				break
 			default:
 				throw new Error(`Unsupported language: ${ext}`)
 		}
 
+		// A concurrent caller can finish loading the same grammar while we await it.
+		const loadedParser = parserQueryCache.get(cacheKey)
+		if (loadedParser) {
+			parsers[loadedParser.parserKey] = loadedParser.entry
+			continue
+		}
+
+		const query = new Query(language, querySource)
 		const parser = new Parser()
 		parser.setLanguage(language)
 		const entry = { parser, query }

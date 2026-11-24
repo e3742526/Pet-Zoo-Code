@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react"
+import { act, fireEvent, screen } from "@testing-library/react"
 import type { ClineMessage, HistoryItem, TodoStatus } from "@roo-code/types"
 
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -56,6 +56,59 @@ it("renders the streaming tail without rebuilding completed row bodies", () => {
 	expect(screen.getByText("First response")).toBe(original)
 	expect(screen.getByText("New content at the tail")).toBeInTheDocument()
 	expect(translate.mock.calls.filter(([key]) => key === "chat:text.rooSaid")).toHaveLength(1)
+})
+
+it("renders only the active reasoning block during streaming", () => {
+	const messages: ClineMessage[] = [
+		{ type: "say", say: "reasoning", ts: 1, text: "Completed thought" },
+		{ type: "say", say: "reasoning", ts: 2, text: "Starting a thought", partial: true },
+	]
+	renderWithExtensionState(<Rows />, {
+		state: { clineMessages: messages, currentTaskId: "fixture", reasoningBlockCollapsed: false },
+	})
+	const completed = screen.getByText("Completed thought")
+	translate.mockClear()
+
+	act(() => {
+		window.dispatchEvent(
+			new MessageEvent("message", {
+				data: { type: "messageUpdated", clineMessage: { ...messages[1], text: "More reasoning at the tail" } },
+			}),
+		)
+	})
+
+	expect(screen.getByText("Completed thought")).toBe(completed)
+	expect(screen.getByText("More reasoning at the tail")).toBeInTheDocument()
+	expect(translate.mock.calls.filter(([key]) => key === "chat:reasoning.thinking")).toHaveLength(1)
+})
+
+it("allows local reasoning toggles and applies changes to the saved collapse preference", () => {
+	const clineMessages: ClineMessage[] = [
+		{ type: "say", say: "reasoning", ts: 1, text: "First thought" },
+		{ type: "say", say: "reasoning", ts: 2, text: "Second thought" },
+	]
+	renderWithExtensionState(<Rows />, {
+		state: { clineMessages, currentTaskId: "fixture", reasoningBlockCollapsed: false },
+	})
+
+	fireEvent.click(screen.getAllByText("chat:reasoning.thinking")[0])
+	expect(screen.queryByText("First thought")).not.toBeInTheDocument()
+	expect(screen.getByText("Second thought")).toBeInTheDocument()
+
+	const setSavedPreference = (reasoningBlockCollapsed: boolean) =>
+		act(() =>
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: { type: "state", state: { reasoningBlockCollapsed } },
+				}),
+			),
+		)
+
+	setSavedPreference(true)
+	expect(screen.queryByText("Second thought")).not.toBeInTheDocument()
+	setSavedPreference(false)
+	expect(screen.getByText("First thought")).toBeInTheDocument()
+	expect(screen.getByText("Second thought")).toBeInTheDocument()
 })
 
 it("updates a subtask result link when the host posts completion metadata", () => {

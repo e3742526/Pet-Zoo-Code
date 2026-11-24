@@ -191,6 +191,7 @@ type ExtensionChatRowState = Pick<
 
 const ExtensionShellContext = createContext<ExtensionShellState | undefined>(undefined)
 const ExtensionChatRowContext = createContext<ExtensionChatRowState | undefined>(undefined)
+const ReasoningBlockCollapsedContext = createContext<boolean | undefined>(undefined)
 const ExtensionHistoryContext = createContext<ExtensionHistoryState>({
 	cwd: "",
 	taskHistory: [],
@@ -764,6 +765,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		}),
 		[mcpServers, currentCheckpoint, mode, alwaysAllowMcp, enableCheckpoints, timeFormat, dateFormat],
 	)
+	const reasoningBlockCollapsed = state.reasoningBlockCollapsed ?? true
 
 	const contextValue: ExtensionStateContextType = {
 		...state,
@@ -772,7 +774,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		// `chatFontSize` is persisted as nullish (null on reset); normalize null to
 		// undefined so it matches the context type and means "use VS Code default".
 		chatFontSize: state.chatFontSize ?? undefined,
-		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? true,
+		reasoningBlockCollapsed,
 		mcpServers,
 		currentCheckpoint,
 		filePaths,
@@ -899,7 +901,9 @@ export const ExtensionStateContextProvider: React.FC<{
 		<ExtensionShellContext.Provider value={shellState}>
 			<ExtensionHistoryContext.Provider value={historyState}>
 				<ExtensionChatRowContext.Provider value={chatRowState}>
-					<ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+					<ReasoningBlockCollapsedContext.Provider value={reasoningBlockCollapsed}>
+						<ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+					</ReasoningBlockCollapsedContext.Provider>
 				</ExtensionChatRowContext.Provider>
 			</ExtensionHistoryContext.Provider>
 		</ExtensionShellContext.Provider>
@@ -918,6 +922,14 @@ export function useExtensionChatRowState() {
 	const state = React.useContext(ExtensionChatRowContext)
 	if (!state) throw new Error("useExtensionChatRowState must be used within an ExtensionStateContextProvider")
 	return state
+}
+
+export function useReasoningBlockCollapsed() {
+	const collapsed = React.useContext(ReasoningBlockCollapsedContext)
+	if (collapsed === undefined) {
+		throw new Error("useReasoningBlockCollapsed must be used within an ExtensionStateContextProvider")
+	}
+	return collapsed
 }
 
 export const useExtensionState = () => {

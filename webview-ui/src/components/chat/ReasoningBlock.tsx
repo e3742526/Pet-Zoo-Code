@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useReasoningBlockCollapsed } from "@src/context/ExtensionStateContext"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Lightbulb, ChevronUp } from "lucide-react"
@@ -18,7 +18,7 @@ interface ReasoningBlockProps {
 
 export const ReasoningBlock = ({ content, isStreaming, isLast, partial }: ReasoningBlockProps) => {
 	const { t } = useAppTranslation()
-	const { reasoningBlockCollapsed } = useExtensionState()
+	const reasoningBlockCollapsed = useReasoningBlockCollapsed()
 
 	const [isCollapsed, setIsCollapsed] = useState(reasoningBlockCollapsed)
 	const preview = useStreamingMarkdown(content, !isCollapsed && partial)

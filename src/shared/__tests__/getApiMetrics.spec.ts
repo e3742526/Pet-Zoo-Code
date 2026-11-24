@@ -2,7 +2,9 @@
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { getApiMetrics } from "../getApiMetrics"
+import { combineApiRequests } from "../combineApiRequests"
+import { combineCommandSequences } from "../combineCommandSequences"
+import { getApiMetrics, getTaskMessageMetrics } from "../getApiMetrics"
 
 describe("getApiMetrics", () => {
 	// Helper function to create a basic api_req_started message
@@ -44,6 +46,82 @@ describe("getApiMetrics", () => {
 		say,
 		text,
 		ts,
+	})
+
+	describe("accounting from raw task messages", () => {
+		it("counts request and condensation metrics without reading tool output", () => {
+			const readOutput = vi.fn(() => "large tool output")
+			const messages: ClineMessage[] = [
+				createApiReqStartedMessage('{"tokensIn":999,"cost":99}', 1),
+				createApiReqStartedMessage('{"tokensIn":30,"tokensOut":8,"cacheReads":10,"cost":0.005}', 2),
+				{ type: "ask", ask: "command", text: "git status", ts: 3 },
+				{
+					type: "say",
+					say: "command_output",
+					get text() {
+						return readOutput()
+					},
+					ts: 4,
+				},
+				{ type: "ask", ask: "use_mcp_server", text: "{}", ts: 5 },
+				{
+					type: "say",
+					say: "mcp_server_response",
+					get text() {
+						return readOutput()
+					},
+					ts: 6,
+				},
+				createCondenseContextMessage(0.002, 12, 38, 7),
+				createApiReqStartedMessage('{"tokensIn":0,"tokensOut":0}', 8),
+			]
+
+			const metrics = getTaskMessageMetrics(messages, 1)
+
+			expect(metrics).toEqual({
+				totalTokensIn: 30,
+				totalTokensOut: 8,
+				totalCacheWrites: undefined,
+				totalCacheReads: 10,
+				totalCost: 0.007,
+				contextTokens: 12,
+			})
+			expect(readOutput).not.toHaveBeenCalled()
+		})
+
+		it("pairs legacy requests by start order and ignores an unmatched finish", () => {
+			const messages: ClineMessage[] = [
+				{ type: "say", say: "api_req_finished", text: '{"tokensOut":999,"cost":99}', ts: 1 },
+				createApiReqStartedMessage('{"tokensIn":10,"tokensOut":20}', 2),
+				createOtherMessage("reasoning", "Older request still pending", 3),
+				createApiReqStartedMessage('{"tokensIn":40,"cacheWrites":5}', 4),
+				{ type: "say", say: "api_req_finished", text: '{"tokensOut":6,"cost":0.006}', ts: 5 },
+				{ type: "say", say: "api_req_finished", text: '{"tokensOut":3,"cost":0.003}', ts: 6 },
+			]
+
+			const metrics = getTaskMessageMetrics(messages)
+
+			expect(metrics).toEqual(getApiMetrics(combineApiRequests(combineCommandSequences(messages))))
+			expect(metrics.totalTokensOut).toBe(9)
+			expect(metrics.contextTokens).toBe(46)
+		})
+
+		it.each(["command", "use_mcp_server"] as const)(
+			"preserves the legacy result when a %s row shares a metric timestamp",
+			(ask) => {
+				const messages: ClineMessage[] = [
+					createApiReqStartedMessage('{"tokensIn":30}', 1),
+					{ type: "ask", ask, text: "{}", ts: 1 },
+					createCondenseContextMessage(0.001, 8, 20, 2),
+				]
+
+				const metrics = getTaskMessageMetrics(messages)
+
+				expect(metrics).toEqual(getApiMetrics(combineApiRequests(combineCommandSequences(messages))))
+				expect(metrics.totalTokensIn).toBe(0)
+				expect(metrics.contextTokens).toBe(8)
+			},
+		)
 	})
 
 	describe("Basic functionality", () => {

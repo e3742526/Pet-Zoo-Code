@@ -3,9 +3,7 @@ import getFolderSize from "get-folder-size"
 
 import type { ClineMessage, HistoryItem } from "@roo-code/types"
 
-import { combineApiRequests } from "../../shared/combineApiRequests"
-import { combineCommandSequences } from "../../shared/combineCommandSequences"
-import { getApiMetrics } from "../../shared/getApiMetrics"
+import { getTaskMessageMetrics } from "../../shared/getApiMetrics"
 import { findLastIndex } from "../../shared/array"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { t } from "../../i18n"
@@ -46,7 +44,7 @@ export async function taskMetadata({
 
 	// Pre-calculate all values based on availability
 	let timestamp: number
-	let tokenUsage: ReturnType<typeof getApiMetrics>
+	let tokenUsage: ReturnType<typeof getTaskMessageMetrics>
 	let taskDirSize: number
 	let taskMessage: ClineMessage | undefined
 
@@ -72,7 +70,7 @@ export async function taskMetadata({
 
 		timestamp = lastRelevantMessage.ts
 
-		tokenUsage = getApiMetrics(combineApiRequests(combineCommandSequences(messages.slice(1))))
+		tokenUsage = getTaskMessageMetrics(messages, 1)
 
 		// Get task directory size
 		const cachedSize = taskSizeCache.get<number>(taskDir)

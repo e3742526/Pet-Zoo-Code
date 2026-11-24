@@ -72,7 +72,7 @@ import { findLast, findLastIndex } from "../../shared/array"
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 import { t } from "../../i18n"
-import { getApiMetrics, hasTokenUsageChanged, hasToolUsageChanged } from "../../shared/getApiMetrics"
+import { getTaskMessageMetrics, hasTokenUsageChanged, hasToolUsageChanged } from "../../shared/getApiMetrics"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { DiffStrategy, type AutoApprovalContext, type ToolUse } from "../../shared/tools"
@@ -6385,7 +6385,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	public getTokenUsage(): TokenUsage {
-		return getApiMetrics(this.combineMessages(this.clineMessages.slice(1)))
+		return getTaskMessageMetrics(this.clineMessages, 1)
 	}
 
 	public recordToolUsage(toolName: ToolName) {

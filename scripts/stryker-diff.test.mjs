@@ -189,11 +189,11 @@ describe("parseNameStatus", () => {
 	it("parses added, modified, and renamed paths", () => {
 		assert.deepEqual(
 			parseNameStatus(
-				"A\0packages/core/src/new.ts\0M\0packages/cloud/src/a.ts\0R095\0old.ts\0packages/telemetry/src/new.ts\0",
+				"A\0packages/core/src/new.ts\0M\0packages/core/src/a.ts\0R095\0old.ts\0packages/telemetry/src/new.ts\0",
 			),
 			[
 				{ status: "A", path: "packages/core/src/new.ts" },
-				{ status: "M", path: "packages/cloud/src/a.ts" },
+				{ status: "M", path: "packages/core/src/a.ts" },
 				{ status: "R", oldPath: "old.ts", path: "packages/telemetry/src/new.ts" },
 			],
 		)
@@ -226,7 +226,7 @@ describe("buildManifest", () => {
 	it("builds explicit executable ranges for modified and new files", () => {
 		const sources = {
 			"packages/core/src/changed.ts": "export function changed(value: boolean) {\n\treturn value ? 1 : 2\n}\n",
-			"packages/cloud/src/new.ts": "export const enabled = true\n",
+			"packages/telemetry/src/new.ts": "export const enabled = true\n",
 			"webview-ui/src/utils/changed.ts": "export const changed = (value: boolean) => (value ? 1 : 2)\n",
 			"src/utils/changed.ts": "export const changed = (value: boolean) => (value ? 1 : 2)\n",
 			"packages/types/src/changed.ts": "export const changed = (value: boolean) => (value ? 1 : 2)\n",
@@ -240,7 +240,7 @@ describe("buildManifest", () => {
 		const manifest = buildManifest(
 			[
 				{ status: "M", path: "packages/core/src/changed.ts" },
-				{ status: "A", path: "packages/cloud/src/new.ts" },
+				{ status: "A", path: "packages/telemetry/src/new.ts" },
 				{ status: "M", path: "webview-ui/src/utils/changed.ts" },
 				{ status: "M", path: "src/utils/changed.ts" },
 				{ status: "M", path: "packages/types/src/changed.ts" },
@@ -253,7 +253,7 @@ describe("buildManifest", () => {
 			manifest.packages.map(({ id, selectors }) => ({ id, selectors })),
 			[
 				{ id: "core", selectors: ["src/changed.ts:1-2"] },
-				{ id: "cloud", selectors: ["src/new.ts:1-1"] },
+				{ id: "telemetry", selectors: ["src/new.ts:1-1"] },
 				{ id: "webview", selectors: ["webview-ui/src/utils/changed.ts:1-1"] },
 				{ id: "extension", selectors: ["utils/changed.ts:1-1"] },
 				{ id: "types", selectors: ["src/changed.ts:1-1"] },
@@ -284,7 +284,7 @@ describe("buildManifest", () => {
 				{ status: "M", path: "src/utils/vitest-verbosity.ts" },
 				{ status: "M", path: "src/scripts/merge-lcov.mjs" },
 				{ status: "M", path: "apps/cli/src/value.ts" },
-				{ status: "M", path: "packages/cloud/src/types.ts" },
+				{ status: "M", path: "packages/telemetry/src/types.ts" },
 			],
 			(filePath) => {
 				if (filePath.endsWith("index.ts")) return 'export * from "./value.js"\n'
@@ -765,7 +765,7 @@ describe("failure output", () => {
 				mutatorName: "StringLiteral",
 				location: { start: { line: 1 } },
 			})),
-			"packages/cloud",
+			"packages/telemetry",
 			state,
 		)
 

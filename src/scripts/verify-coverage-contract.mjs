@@ -51,13 +51,7 @@ for (const task of [...ownershipTasks, treeSitterTask]) {
 	if (!task.hashOfExternalDependencies) throw new Error("Coverage lanes must hash external dependencies")
 }
 for (const task of ownershipTasks) {
-	for (const dependency of [
-		"@roo-code/cloud",
-		"@roo-code/core",
-		"@roo-code/ipc",
-		"@roo-code/telemetry",
-		"@roo-code/types",
-	])
+	for (const dependency of ["@roo-code/core", "@roo-code/ipc", "@roo-code/telemetry", "@roo-code/types"])
 		if (!task.dependencies.includes(`${dependency}#build`))
 			throw new Error(`Ownership coverage lanes must depend on ${dependency}#build`)
 }

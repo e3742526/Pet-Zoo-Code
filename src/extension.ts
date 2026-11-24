@@ -38,7 +38,6 @@ import { kimiCodeOAuthManager } from "./integrations/kimi-code/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManagerRegistry } from "./services/code-index/code-index-manager-registry"
 import { CodeIndexScope } from "./services/code-index/code-index-scope"
-import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { terminateCountTokensPool } from "./utils/countTokens"
@@ -139,9 +138,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize telemetry service.
 	const telemetryService = TelemetryService.createInstance()
 
-	// Initialize MDM service.
-	const mdmService = await MdmService.createInstance(createDualLogger(createOutputChannelLogger(outputChannel)))
-
 	// Initialize i18n for internationalization support.
 	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
 
@@ -201,7 +197,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize the webview provider.
 	const webviewFocusTracker = new WebviewFocusTracker()
 	context.subscriptions.push(webviewFocusTracker)
-	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, webviewFocusTracker, mdmService)
+	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, webviewFocusTracker)
 
 	// Finish initializing the provider.
 	telemetryService.setProvider(provider)
@@ -281,7 +277,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			{ path: context.extensionPath, pattern: "**/*.ts" },
 			{ path: path.join(context.extensionPath, "../packages/types"), pattern: "**/*.ts" },
 			{ path: path.join(context.extensionPath, "../packages/telemetry"), pattern: "**/*.ts" },
-			{ path: path.join(context.extensionPath, "node_modules/@roo-code/cloud"), pattern: "**/*" },
 		]
 
 		console.log(

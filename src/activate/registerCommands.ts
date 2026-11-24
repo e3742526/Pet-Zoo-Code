@@ -11,7 +11,6 @@ import { ContextProxy } from "../core/config/ContextProxy"
 import { focusPanel } from "../utils/focusPanel"
 import { handleNewTask } from "./handleTask"
 import { importSettingsWithFeedback } from "../core/config/importExport"
-import { MdmService } from "../services/mdm/MdmService"
 import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic"
 import { createDiagnosticsReport } from "../services/diagnostics"
 
@@ -240,23 +239,7 @@ export const openClineInNewTab = async ({ context, outputChannel, webviewFocusTr
 	// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	const contextProxy = await ContextProxy.getInstance(context)
 
-	// Get the existing MDM service instance to ensure consistent policy enforcement
-	let mdmService: MdmService | undefined
-	try {
-		mdmService = MdmService.getInstance()
-	} catch {
-		// MDM service not initialized, which is fine - extension can work without it
-		mdmService = undefined
-	}
-
-	const tabProvider = new ClineProvider(
-		context,
-		outputChannel,
-		"editor",
-		contextProxy,
-		webviewFocusTracker,
-		mdmService,
-	)
+	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, webviewFocusTracker)
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
 
 	// Check if there are any visible text editors, otherwise open a new group

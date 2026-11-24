@@ -22,12 +22,6 @@ export const PACKAGE_CONFIGS = [
 		vitestConfig: "vitest.unit.config.ts",
 	},
 	{
-		id: "cloud",
-		root: "packages/cloud",
-		sourceRoot: "packages/cloud/src/",
-		vitestConfig: "vitest.config.ts",
-	},
-	{
 		id: "telemetry",
 		root: "packages/telemetry",
 		sourceRoot: "packages/telemetry/src/",

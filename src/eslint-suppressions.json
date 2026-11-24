@@ -901,7 +901,7 @@
 	},
 	"core/webview/__tests__/ClineProvider.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 178
+			"count": 176
 		}
 	},
 	"core/webview/__tests__/ClineProvider.sticky-mode.spec.ts": {
@@ -937,11 +937,6 @@
 	"core/webview/__tests__/telemetrySettingsTracking.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 4
-		}
-	},
-	"core/webview/__tests__/webviewMessageHandler.cloudAuth.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 3
 		}
 	},
 	"core/webview/__tests__/webviewMessageHandler.delete.spec.ts": {
@@ -1247,11 +1242,6 @@
 	"services/mcp/utils/oauth.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 2
-		}
-	},
-	"services/mdm/__tests__/MdmService.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 5
 		}
 	},
 	"services/ripgrep/__tests__/diagnostic.spec.ts": {

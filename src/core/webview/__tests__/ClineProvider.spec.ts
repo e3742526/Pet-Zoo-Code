@@ -38,6 +38,7 @@ import { importSettingsFromPath } from "../../config/importExport"
 import { WorkspaceIndexingEnablementManager } from "../../../services/code-index/workspace-indexing-enablement-manager"
 import { Task, TaskOptions } from "../../task/Task"
 import { safeWriteJson } from "../../../utils/safeWriteJson"
+import { OrganizationAllowListViolationError } from "../../../utils/errors"
 
 import { ClineProvider } from "../ClineProvider"
 import { webviewMessageHandler } from "../webviewMessageHandler"
@@ -409,21 +410,6 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 			applyDiff: vi.fn(),
 		}
 	}),
-}))
-
-vi.mock("@roo-code/cloud", () => ({
-	CloudService: {
-		hasInstance: vi.fn().mockReturnValue(true),
-		get instance() {
-			return {
-				isAuthenticated: vi.fn().mockReturnValue(false),
-				login: vi.fn().mockResolvedValue(undefined),
-				logout: vi.fn().mockResolvedValue(undefined),
-				off: vi.fn(),
-			}
-		},
-	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
 }))
 
 afterAll(() => {
@@ -3466,28 +3452,29 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("postStateToWebview does not force action navigation for non-compliant MDM state", async () => {
-		const mdmService = {
-			requiresCloudAuth: vi.fn().mockReturnValue(true),
-			isCompliant: vi.fn().mockReturnValue({ compliant: false, reason: "auth required" }),
-		} as any
+	test("applies the saved provider allowlist without Roo Cloud", async () => {
+		const allowList = {
+			allowAll: false,
+			providers: { [providerIdentifiers.anthropic]: { allowAll: true } },
+		}
+		await mockContext.globalState.update("organization-settings", { allowList, version: 2 })
+		expect(await provider.getStateToPostToWebview()).toMatchObject({
+			organizationAllowList: allowList,
+			organizationSettingsVersion: 2,
+			cloudIsAuthenticated: false,
+		})
 
-		provider = new ClineProvider(
-			mockContext,
-			mockOutputChannel,
-			"sidebar",
-			new ContextProxy(mockContext),
-			new WebviewFocusTracker(),
-			mdmService,
-		)
-
-		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockImplementation(async () => undefined)
-		vi.spyOn(provider as any, "getStateToPostToWebview").mockResolvedValue({ version: "1.0.0" })
-
-		await provider.postStateToWebview()
-
-		expect(postMessageSpy).toHaveBeenCalledTimes(1)
-		expect(postMessageSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: "action" }))
+		const options = { startTask: false }
+		await expect(
+			provider.createTask("Blocked prompt", undefined, undefined, options, {
+				apiProvider: providerIdentifiers.openai,
+			}),
+		).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
+		await expect(
+			provider.createTask("Allowed prompt", undefined, undefined, options, {
+				apiProvider: providerIdentifiers.anthropic,
+			}),
+		).resolves.toBeDefined()
 	})
 
 	test("postStateToWebviewWithoutTaskHistory waits for the webview post boundary", async () => {
@@ -6346,14 +6333,9 @@ describe("webviewMessageHandler no-floating-promises coverage", () => {
 		)
 	})
 
-	it("covers changed cloud sign-out and rate-limit error responses", async () => {
-		const { CloudService } = await import("@roo-code/cloud")
+	it("reports an error when loading Codex rate limits fails", async () => {
 		const { openAiCodexOAuthManager } = await import("../../../integrations/openai-codex/oauth")
 		const provider = createProvider()
-
-		vi.mocked(CloudService.hasInstance).mockReturnValueOnce(false)
-		await webviewMessageHandler(provider, { type: "rooCloudSignOut" })
-		await webviewMessageHandler(provider, { type: "rooCloudSignOut" })
 
 		vi.mocked(openAiCodexOAuthManager.getAccessToken).mockRejectedValueOnce(new Error("token failed"))
 		await webviewMessageHandler(provider, { type: "requestOpenAiCodexRateLimits" })
@@ -6875,96 +6857,6 @@ describe("getTelemetryProperties", () => {
 		const properties = await provider.getTelemetryProperties()
 
 		expect(properties).toHaveProperty("modelId", "claude-sonnet-4-20250514")
-	})
-
-	describe("cloud authentication telemetry", () => {
-		beforeEach(() => {
-			// Reset all mocks before each test
-			vi.clearAllMocks()
-		})
-
-		test("includes cloud authentication property when user is authenticated", async () => {
-			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
-			const mockCloudService = {
-				isAuthenticated: vi.fn().mockReturnValue(true),
-			}
-
-			// Update the existing mock
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockReturnValue(mockCloudService),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toHaveProperty("cloudIsAuthenticated", true)
-		})
-
-		test("includes cloud authentication property when user is not authenticated", async () => {
-			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
-			const mockCloudService = {
-				isAuthenticated: vi.fn().mockReturnValue(false),
-			}
-
-			// Update the existing mock
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockReturnValue(mockCloudService),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toHaveProperty("cloudIsAuthenticated", false)
-		})
-
-		test("handles CloudService errors gracefully", async () => {
-			// Import the CloudService mock and update it to throw an error
-			const { CloudService } = await import("@roo-code/cloud")
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockImplementation(() => {
-					throw new Error("CloudService not available")
-				}),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			// Should still include basic telemetry properties
-			expect(properties).toHaveProperty("vscodeVersion")
-			expect(properties).toHaveProperty("platform")
-			expect(properties).toHaveProperty("appVersion", "1.0.0")
-
-			// Cloud property should be undefined when CloudService is not available
-			expect(properties).toHaveProperty("cloudIsAuthenticated", undefined)
-		})
-
-		test("handles CloudService method errors gracefully", async () => {
-			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
-			const mockCloudService = {
-				isAuthenticated: vi.fn().mockImplementation(() => {
-					throw new Error("Authentication check error")
-				}),
-			}
-
-			// Update the existing mock
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockReturnValue(mockCloudService),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			// Should still include basic telemetry properties
-			expect(properties).toHaveProperty("vscodeVersion")
-			expect(properties).toHaveProperty("platform")
-			expect(properties).toHaveProperty("appVersion", "1.0.0")
-
-			// Property that errored should be undefined
-			expect(properties).toHaveProperty("cloudIsAuthenticated", undefined)
-		})
 	})
 })
 

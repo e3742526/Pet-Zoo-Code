@@ -89,5 +89,4 @@ src/node_modules
 !packages/telemetry/
 !packages/types/
 !packages/vscode-shim/
-!packages/cloud/
 !locales/

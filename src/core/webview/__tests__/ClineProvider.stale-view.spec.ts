@@ -113,19 +113,6 @@ vi.mock("../../task/Task", () => ({
 	})),
 }))
 
-vi.mock("@roo-code/cloud", () => ({
-	CloudService: {
-		hasInstance: vi.fn().mockReturnValue(true),
-		get instance() {
-			return {
-				isAuthenticated: vi.fn().mockReturnValue(false),
-				off: vi.fn(),
-			}
-		},
-	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
-}))
-
 vi.mock("../webviewMessageHandler", () => ({
 	webviewMessageHandler: vi.fn().mockResolvedValue(undefined),
 }))

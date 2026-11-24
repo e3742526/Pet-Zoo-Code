@@ -76,12 +76,6 @@ vi.mock("../../services/code-index/code-index-manager-registry", () => ({
 	},
 }))
 
-vi.mock("../../services/mdm/MdmService", () => ({
-	MdmService: {
-		getInstance: vi.fn(),
-	},
-}))
-
 vi.mock("../../core/config/ContextProxy", () => ({
 	ContextProxy: {
 		getInstance: vi.fn(),
@@ -259,7 +253,6 @@ describe("registerCommands handlers", () => {
 				"editor",
 				await ContextProxy.getInstance(mockContext),
 				mockProvider.webviewFocusTracker,
-				undefined,
 			)
 			const tabProvider = vi.mocked(ClineProvider).mock.results[0].value
 			expect(result).toBe(tabProvider)
@@ -529,7 +522,6 @@ describe("openClineInNewTab", () => {
 			"editor",
 			await ContextProxy.getInstance(mockContext),
 			webviewFocusTracker,
-			undefined,
 		)
 
 		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(

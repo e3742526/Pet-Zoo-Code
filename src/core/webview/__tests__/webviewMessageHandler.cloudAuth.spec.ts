@@ -1,22 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import * as vscode from "vscode"
 
-vi.mock("@roo-code/cloud", () => ({
-	CloudService: {
-		hasInstance: vi.fn(),
-		instance: {
-			login: vi.fn(),
-			handleAuthCallback: vi.fn(),
-		},
-	},
-}))
+import type { WebviewMessage } from "@roo-code/types"
 
-vi.mock("@roo-code/telemetry", () => ({
-	TelemetryService: {
-		instance: {
-			captureEvent: vi.fn(),
-		},
-	},
-}))
+import type { ClineProvider } from "../ClineProvider"
+import { webviewMessageHandler } from "../webviewMessageHandler"
 
 vi.mock("vscode", () => ({
 	window: {
@@ -25,54 +13,43 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-import * as vscode from "vscode"
-
-import { CloudService } from "@roo-code/cloud"
-
-import { webviewMessageHandler } from "../webviewMessageHandler"
-
-describe("webviewMessageHandler cloud auth fallbacks", () => {
-	const mockProvider = {
-		postMessageToWebview: vi.fn(),
-		postStateToWebview: vi.fn(),
-		contextProxy: {
-			getValue: vi.fn(),
-			setValue: vi.fn(),
-		},
-		getCurrentTask: vi.fn(),
-		cwd: "/test/path",
-		log: vi.fn(),
-	} as any
+describe("legacy Roo Cloud webview messages", () => {
+	const unavailable = "Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue."
+	const postMessageToWebview = vi.fn<ClineProvider["postMessageToWebview"]>()
+	const postStateToWebview = vi.fn<ClineProvider["postStateToWebview"]>()
+	// The compatibility handlers use only these methods to reply to the webview.
+	const provider = { postMessageToWebview, postStateToWebview } as unknown as ClineProvider
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
 
-	it("does not attempt cloud sign-in when CloudService is unavailable", async () => {
-		vi.mocked(CloudService.hasInstance).mockReturnValue(false)
+	it.each<WebviewMessage>([
+		{ type: "rooCloudSignIn", useProviderSignup: true },
+		{ type: "cloudLandingPageSignIn", text: "legacy-page" },
+		{ type: "rooCloudManualUrl", text: "vscode://ZooCodeOrganization.zoo-code/auth/clerk/callback?code=old" },
+	])("tells an older webview that $type is unavailable", async (message) => {
+		await webviewMessageHandler(provider, message)
 
-		await webviewMessageHandler(mockProvider, {
-			type: "rooCloudSignIn",
-			useProviderSignup: true,
-		} as any)
-
-		expect(CloudService.instance.login).not.toHaveBeenCalled()
-		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
-		)
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(unavailable)
+		expect(postMessageToWebview).not.toHaveBeenCalled()
 	})
 
-	it("ignores manual auth callback when CloudService is unavailable", async () => {
-		vi.mocked(CloudService.hasInstance).mockReturnValue(false)
+	it("clears the older webview's signed-in state", async () => {
+		await webviewMessageHandler(provider, { type: "rooCloudSignOut" })
 
-		await webviewMessageHandler(mockProvider, {
-			type: "rooCloudManualUrl",
-			text: "vscode://ZooCodeOrganization.zoo-code/auth/clerk/callback?code=test-code&state=test-state",
-		} as any)
+		expect(postStateToWebview).toHaveBeenCalledOnce()
+		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "authenticatedUser", userInfo: undefined })
+	})
 
-		expect(CloudService.instance.handleAuthCallback).not.toHaveBeenCalled()
-		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
-		)
+	it("replies with a failure when an older webview tries to switch organizations", async () => {
+		await webviewMessageHandler(provider, { type: "switchOrganization", organizationId: "old-org" })
+
+		expect(postMessageToWebview).toHaveBeenCalledWith({
+			type: "organizationSwitchResult",
+			success: false,
+			error: unavailable,
+			organizationId: "old-org",
+		})
 	})
 })

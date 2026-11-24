@@ -35,7 +35,6 @@ import {
 	type ProviderSettingsEntry,
 	type StaticAppProperties,
 	type DynamicAppProperties,
-	type CloudAppProperties,
 	type TaskProperties,
 	type GitProperties,
 	type TelemetryProperties,
@@ -46,7 +45,6 @@ import {
 	type TerminalActionPromptType,
 	type HistoryItem,
 	type PendingTaskAction,
-	type CloudOrganizationMembership,
 	type CreateTaskOptions,
 	type TokenUsage,
 	type ToolUsage,
@@ -85,7 +83,6 @@ import {
 } from "../task/providerHandoff"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
 import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { findLast } from "../../shared/array"
@@ -110,7 +107,6 @@ import { MarketplaceManager } from "../../services/marketplace"
 import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckpointService"
 import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-manager-registry"
 import type { CodeIndexWorkspaceScope } from "../../services/code-index/code-index-workspace-scope"
-import { MdmService } from "../../services/mdm/MdmService"
 import { readRetainedOrganizationPolicy } from "../../services/mdm/retainedOrganizationPolicy"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 import {
@@ -269,7 +265,6 @@ export class ClineProvider
 	protected mcpHub?: McpHub // Change from private to protected
 	protected skillsManager?: SkillsManager
 	private marketplaceManager: MarketplaceManager
-	private mdmService?: MdmService
 	private taskCreationCallback: (task: Task) => void
 	private taskEventListeners: WeakMap<Task, Array<() => void>> = new WeakMap()
 	private currentWorkspacePath: string | undefined
@@ -408,10 +403,6 @@ export class ClineProvider
 
 	private readonly pendingEditOperations: PendingEditOperationStore
 
-	private cloudOrganizationsCache: CloudOrganizationMembership[] | null = null
-	private cloudOrganizationsCacheTimestamp: number | null = null
-	private static readonly CLOUD_ORGANIZATIONS_CACHE_DURATION_MS = 5 * 1000 // 5 seconds
-
 	/**
 	 * Monotonically increasing sequence number for clineMessages state pushes.
 	 * Used by the frontend to reject stale state that arrives out-of-order.
@@ -444,7 +435,6 @@ export class ClineProvider
 		private readonly renderContext: "sidebar" | "editor" = "sidebar",
 		public readonly contextProxy: ContextProxy,
 		public readonly webviewFocusTracker: WebviewFocusTracker,
-		mdmService?: MdmService,
 	) {
 		super()
 		this.currentWorkspacePath = getWorkspacePath()
@@ -456,7 +446,6 @@ export class ClineProvider
 		ClineProvider.activeInstances.add(this)
 		this.diagnosticsRecorder.record({ boundary: "provider", phase: "success", type: "created" })
 
-		this.mdmService = mdmService
 		void this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
 		// Initialize the authoritative per-task file-based history store.
@@ -696,21 +685,6 @@ export class ClineProvider
 		listener: (...args: TaskProviderEvents[K]) => void | Promise<void>,
 	): this {
 		return super.off(event, listener as any)
-	}
-
-	/**
-	 * Handle cloud settings updates
-	 */
-	private handleCloudSettingsUpdate = async () => {
-		this.log("Ignoring cloud settings update because cloud profile synchronization is disabled")
-	}
-
-	/**
-	 * Initialize cloud profile synchronization when CloudService is ready
-	 * This method is called externally after CloudService has been initialized
-	 */
-	public async initializeCloudProfileSyncWhenReady(): Promise<void> {
-		this.log("Cloud profile synchronization is disabled in compatibility mode")
 	}
 
 	// Adds a new Task instance to the registry, marking the start of a new task.
@@ -1068,11 +1042,6 @@ export class ClineProvider
 		}
 
 		this.clearWebviewResources()
-
-		// Clean up cloud service event listener
-		if (CloudService.hasInstance()) {
-			CloudService.instance.off("settings-updated", this.handleCloudSettingsUpdate)
-		}
 
 		this._workspaceTracker?.dispose()
 		this._workspaceTracker = undefined
@@ -3185,28 +3154,6 @@ export class ClineProvider
 			autoCloseZooOpenedNewFiles,
 		} = await this.getState({ includeTaskHistory: false })
 
-		let cloudOrganizations: CloudOrganizationMembership[] = []
-
-		try {
-			if (CloudService.hasInstance() && !CloudService.instance.isCloudAgent) {
-				const now = Date.now()
-
-				if (
-					this.cloudOrganizationsCache !== null &&
-					this.cloudOrganizationsCacheTimestamp !== null &&
-					now - this.cloudOrganizationsCacheTimestamp < ClineProvider.CLOUD_ORGANIZATIONS_CACHE_DURATION_MS
-				) {
-					cloudOrganizations = this.cloudOrganizationsCache!
-				} else {
-					cloudOrganizations = await CloudService.instance.getOrganizationMemberships()
-					this.cloudOrganizationsCache = cloudOrganizations
-					this.cloudOrganizationsCacheTimestamp = now
-				}
-			}
-		} catch {
-			// Ignore this error.
-		}
-
 		const mergedAllowedCommands = this.mergeAllowedCommands(allowedCommands)
 		const mergedDeniedCommands = this.mergeDeniedCommands(deniedCommands)
 		const cwd = this.cwd
@@ -3305,7 +3252,7 @@ export class ClineProvider
 			cloudUserInfo,
 			cloudIsAuthenticated: cloudIsAuthenticated ?? false,
 			cloudAuthSkipModel: this.context.globalState.get<boolean>("roo-auth-skip-model") ?? false,
-			cloudOrganizations,
+			cloudOrganizations: [],
 			sharingEnabled: sharingEnabled ?? false,
 			publicSharingEnabled: publicSharingEnabled ?? false,
 			organizationAllowList,
@@ -3640,18 +3587,6 @@ export class ClineProvider
 			return
 		}
 
-		// Log out from cloud if authenticated
-		if (CloudService.hasInstance()) {
-			try {
-				await CloudService.instance.logout()
-			} catch (error) {
-				this.log(
-					`Failed to logout from cloud during reset: ${error instanceof Error ? error.message : String(error)}`,
-				)
-				// Continue with reset even if logout fails
-			}
-		}
-
 		await this.contextProxy.resetAllState()
 		await this.providerSettingsManager.resetAllConfigs()
 		// Cached choices point at profiles that no longer exist; re-read the reset mapping.
@@ -3690,24 +3625,6 @@ export class ClineProvider
 
 	public getSkillsManager(): SkillsManager | undefined {
 		return this.skillsManager
-	}
-
-	/**
-	 * Check if the current state is compliant with MDM policy
-	 * @returns true if compliant or no MDM policy exists, false if MDM policy exists and user is non-compliant
-	 */
-	public checkMdmCompliance(): boolean {
-		if (!this.mdmService) {
-			return true // No MDM service, allow operation
-		}
-
-		const compliance = this.mdmService.isCompliant()
-
-		if (!compliance.compliant) {
-			return false
-		}
-
-		return true
 	}
 
 	public getCurrentWorkspaceCodeIndexScope(): CodeIndexWorkspaceScope | undefined {
@@ -4526,23 +4443,6 @@ export class ClineProvider
 		return this._appProperties ?? this.getAppProperties()
 	}
 
-	private getCloudProperties(): CloudAppProperties {
-		let cloudIsAuthenticated: boolean | undefined
-
-		try {
-			if (CloudService.hasInstance()) {
-				cloudIsAuthenticated = CloudService.instance.isAuthenticated()
-			}
-		} catch (error) {
-			// Silently handle errors to avoid breaking telemetry collection.
-			this.log(`[getTelemetryProperties] Failed to get cloud auth state: ${error}`)
-		}
-
-		return {
-			cloudIsAuthenticated,
-		}
-	}
-
 	private async getTaskProperties(): Promise<DynamicAppProperties & TaskProperties> {
 		const { language = "en", mode, apiConfiguration } = await this.getState()
 
@@ -4589,7 +4489,6 @@ export class ClineProvider
 	public async getTelemetryProperties(): Promise<TelemetryProperties> {
 		return {
 			...this.getAppProperties(),
-			...this.getCloudProperties(),
 			...(await this.getTaskProperties()),
 			...(await this.getGitProperties()),
 		}

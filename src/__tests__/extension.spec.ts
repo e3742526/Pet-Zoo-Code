@@ -54,9 +54,6 @@ vi.mock("fs", () => ({
 	existsSync: vi.fn().mockReturnValue(false),
 }))
 
-vi.mock("@roo-code/cloud", () => ({
-	CloudService: { createInstance: vi.fn() },
-}))
 const { initZooCodeAuth, initializeModelCacheRefresh } = vi.hoisted(() => ({
 	initZooCodeAuth: vi.fn(),
 	initializeModelCacheRefresh: vi.fn(),
@@ -135,12 +132,6 @@ vi.mock("../services/code-index/code-index-manager-registry", () => ({
 	},
 }))
 
-vi.mock("../services/mdm/MdmService", () => ({
-	MdmService: {
-		createInstance: vi.fn().mockResolvedValue(null),
-	},
-}))
-
 vi.mock("../utils/migrateSettings", () => ({
 	migrateSettings: vi.fn().mockResolvedValue(undefined),
 }))
@@ -182,7 +173,6 @@ vi.mock("../core/webview/ClineProvider", async () => {
 		postStateToWebview: vi.fn(),
 		postStateToWebviewWithoutClineMessages: vi.fn().mockResolvedValue(undefined),
 		getState: vi.fn().mockResolvedValue({}),
-		initializeCloudProfileSyncWhenReady: vi.fn().mockResolvedValue(undefined),
 		providerSettingsManager: {},
 		contextProxy: { getGlobalState: vi.fn() },
 		customModesManager: {},
@@ -248,7 +238,6 @@ describe("extension.ts", () => {
 			"sidebar",
 			await ContextProxy.getInstance(mockContext),
 			tracker,
-			null,
 		)
 		expect(registerCodeActions).toHaveBeenCalledExactlyOnceWith(mockContext, tracker)
 
@@ -519,12 +508,10 @@ describe("extension.ts", () => {
 	})
 
 	test("activates without initializing inherited services or refreshing public catalogs", async () => {
-		const { CloudService } = await import("@roo-code/cloud")
 		const { TelemetryService } = await import("@roo-code/telemetry")
 		const { activate } = await import("../extension")
 
 		await expect(activate(mockContext)).resolves.toBeDefined()
-		expect(CloudService.createInstance).not.toHaveBeenCalled()
 		expect(TelemetryService.instance.register).not.toHaveBeenCalled()
 		expect(initializeModelCacheRefresh).not.toHaveBeenCalled()
 		expect(initZooCodeAuth).not.toHaveBeenCalled()

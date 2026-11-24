@@ -84,10 +84,6 @@
 		"packages/vscode-shim": {
 			"project": ["src/**/*.ts!"]
 		},
-		"packages/cloud": {
-			"project": ["src/**/*.ts!"],
-			"ignoreDependencies": ["@types/vscode"]
-		},
 		"packages/telemetry": {
 			"project": ["src/**/*.ts!"],
 			"ignoreDependencies": ["@types/vscode"]

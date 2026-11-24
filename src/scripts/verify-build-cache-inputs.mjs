@@ -30,7 +30,6 @@ const bundleConsumers = ["zoo-code#bundle", "zoo-code#vsix"]
 
 // Keep this explicit: deriving consumers from the graph would hide a removed edge.
 const typesConsumers = [
-	"@roo-code/cloud#build",
 	"@roo-code/core#build",
 	"@roo-code/ipc#build",
 	"@roo-code/telemetry#build",
@@ -224,7 +223,6 @@ test("build cache input contract", async (context) => {
 			}
 			for (const dependency of [
 				"@roo-code/build#build",
-				"@roo-code/cloud#build",
 				"@roo-code/core#build",
 				"@roo-code/ipc#build",
 				"@roo-code/telemetry#build",

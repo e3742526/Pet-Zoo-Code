@@ -83,9 +83,6 @@
 		"packages/build/src/**/*.ts": [
 			"pnpm --dir packages/build exec eslint --max-warnings=0 --no-warn-ignored"
 		],
-		"packages/cloud/src/**/*.ts": [
-			"pnpm --dir packages/cloud exec eslint --max-warnings=0 --no-warn-ignored"
-		],
 		"packages/core/src/**/*.ts": [
 			"pnpm --dir packages/core exec eslint --max-warnings=0 --no-warn-ignored"
 		],

@@ -279,7 +279,6 @@ jobs:
               with:
                   files: >-
                       src/coverage/merged/lcov.info,
-                      packages/cloud/coverage/lcov.info,
                       packages/telemetry/coverage/lcov.info,
                       apps/cli/coverage/lcov.info
                   disable_search: true
@@ -322,7 +321,6 @@ jobs:
                       src/coverage/tree-sitter/lcov.info
                       src/coverage/merged/lcov.info
                       webview-ui/coverage/lcov.info
-                      packages/cloud/coverage/lcov.info
                       packages/telemetry/coverage/lcov.info
                       apps/cli/coverage/lcov.info
                       packages/core/coverage/unit/lcov.info

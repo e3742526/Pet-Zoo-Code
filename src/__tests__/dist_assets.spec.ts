@@ -8,6 +8,11 @@ describe("dist assets", () => {
 	const distPath = path.join(__dirname, "../dist")
 	const marketplaceAssetsPath = path.join(__dirname, "../assets/marketplace")
 
+	it("excludes the retired Roo Cloud service from the extension bundle", () => {
+		const extension = fs.readFileSync(path.join(distPath, "extension.js"), "utf8")
+		expect(extension.match(/https:\/\/(?:app|clerk)\.roocode\.com\b/g) ?? []).toEqual([])
+	})
+
 	describe("tiktoken", () => {
 		it("should have a single shared tiktoken wasm file", () => {
 			expect(fs.existsSync(path.join(distPath, "tiktoken_bg.wasm"))).toBe(true)

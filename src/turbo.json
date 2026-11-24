@@ -7,7 +7,12 @@
 		},
 		"test:unit": {
 			"dependsOn": ["@roo-code/types#build"],
-			"inputs": ["$TURBO_DEFAULT$", "!__tests__/dist_assets.spec.ts"]
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"!__tests__/dist_assets.spec.ts",
+				"!services/__tests__/*-workflow.test.ts",
+				"!services/__tests__/workflow-self-listen.test.ts"
+			]
 		},
 		"test:dist": {
 			"dependsOn": ["bundle"]
@@ -17,7 +22,12 @@
 		},
 		"test:coverage:unit": {
 			"dependsOn": ["@roo-code/types#build"],
-			"inputs": ["$TURBO_DEFAULT$", "!__tests__/dist_assets.spec.ts"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"!__tests__/dist_assets.spec.ts",
+				"!services/__tests__/*-workflow.test.ts",
+				"!services/__tests__/workflow-self-listen.test.ts"
+			],
 			"outputs": ["coverage/unit/**"]
 		},
 		"test:coverage:api": {
@@ -78,7 +88,8 @@
 				"!api/**/__tests__/**",
 				"!core/**/__tests__/**",
 				"!services/tree-sitter/**/__tests__/**",
-				"!services/__tests__/pr-review-state-workflow.test.ts",
+				"!services/__tests__/*-workflow.test.ts",
+				"!services/__tests__/workflow-self-listen.test.ts",
 				"!__tests__/**",
 				"!activate/**/__tests__/**",
 				"!extension/**/__tests__/**",
@@ -183,7 +194,8 @@
 				"!api/**/__tests__/**",
 				"!core/**/__tests__/**",
 				"!services/tree-sitter/**/__tests__/**",
-				"!services/__tests__/pr-review-state-workflow.test.ts",
+				"!services/__tests__/*-workflow.test.ts",
+				"!services/__tests__/workflow-self-listen.test.ts",
 				"!__tests__/**",
 				"!activate/**/__tests__/**",
 				"!extension/**/__tests__/**",

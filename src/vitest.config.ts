@@ -21,14 +21,12 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "lcov"],
-			include: ["src/**/*.ts", "src/**/*.tsx", "eslint-rules/**/*.mjs"],
+			// Report the source each lane loads. An include glob also collects untested files across lanes.
 			exclude: [
-				"**/*.test.ts",
-				"**/*.test.tsx",
-				"**/*.spec.ts",
-				"**/*.spec.tsx",
+				"**/*.{test,spec}.{ts,tsx,mjs}",
+				"**/*.json",
 				"**/vitest.setup.ts",
-				"**/vitest.config.ts",
+				"**/vitest*.config.ts",
 				"**/__mocks__/**",
 			],
 		},

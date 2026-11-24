@@ -6,6 +6,7 @@ import process from "node:process"
 import { promisify } from "node:util"
 
 import { mergeCoverageSources, parseCoverageSourceLines } from "./coverage-contract.mjs"
+import workflowTestFiles from "../vitest.workflow-files.json" with { type: "json" }
 
 const pnpm = process.platform === "win32" ? process.env.npm_execpath : "pnpm"
 if (!pnpm) throw new Error("pnpm executable path is unavailable")
@@ -15,6 +16,7 @@ const result = spawnSync(
 	command,
 	[
 		...args,
+		"--reporter=silent",
 		"turbo",
 		"run",
 		"test:coverage:api",
@@ -104,7 +106,7 @@ collectTests(root)
 const laneForTest = (file) => {
 	if (file === "__tests__/dist_assets.spec.ts") return "dist"
 	// Reads root-level config; runs outside Turbo in a dedicated CI step.
-	if (file === "services/__tests__/pr-review-state-workflow.test.ts") return "workflow"
+	if (workflowTestFiles.includes(file)) return "workflow"
 	if (file.startsWith("services/tree-sitter/")) return "tree-sitter"
 	for (const lane of ["api", "core", "services"]) if (file.startsWith(`${lane}/`)) return lane
 	if (
@@ -122,8 +124,8 @@ if (Object.values(laneCounts).flat().length !== testFiles.length)
 const collectionDirectory = mkdtempSync(resolve(tmpdir(), "zoo-code-coverage-contract-"))
 try {
 	const execFileAsync = promisify(execFile)
-	const collect = async (config) => {
-		const output = resolve(collectionDirectory, `${config}.json`)
+	const collect = async (config, filesOnly = false) => {
+		const output = resolve(collectionDirectory, `${config}${filesOnly ? "-files" : ""}.json`)
 		await execFileAsync(
 			command,
 			[
@@ -132,19 +134,34 @@ try {
 				"vitest",
 				"list",
 				"--staticParse",
+				...(filesOnly ? ["--filesOnly"] : []),
 				"--config",
 				`vitest.${config}.config.ts`,
 				`--json=${output}`,
 			],
 			{ maxBuffer: 10 * 1024 * 1024 },
 		)
-		return new Set(JSON.parse(readFileSync(output, "utf8")).map(({ file, name }) => `${file}\0${name}`))
+		const tests = JSON.parse(readFileSync(output, "utf8"))
+		return new Set(
+			tests.map(({ file, name }) => {
+				const path = relative(root, file).replaceAll("\\", "/")
+				return filesOnly ? path : `${path}\0${name}`
+			}),
+		)
 	}
 	const collections = ["unit", ...ownershipLanes, "tree-sitter"]
-	const [unitTests, ...resolvedLanes] = await Promise.all(collections.map(collect))
+	const [workflowFiles, unitTests, ...resolvedLanes] = await Promise.all([
+		collect("workflow", true),
+		...collections.map((lane) => collect(lane)),
+	])
+	if (workflowFiles.size !== workflowTestFiles.length || workflowTestFiles.some((file) => !workflowFiles.has(file))) {
+		throw new Error("Workflow lane test collection differs from its file list")
+	}
 	const laneTests = new Set()
 	for (const tests of resolvedLanes) {
 		for (const test of tests) {
+			if (workflowFiles.has(test.split("\0")[0]))
+				throw new Error(`Workflow test belongs to a coverage lane: ${test}`)
 			if (laneTests.has(test)) throw new Error(`Test belongs to multiple coverage lanes: ${test}`)
 			laneTests.add(test)
 		}

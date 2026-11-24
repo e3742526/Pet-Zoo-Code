@@ -5,6 +5,7 @@ import { readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import process from "node:process"
 import { test } from "node:test"
+import workflowTestFiles from "../vitest.workflow-files.json" with { type: "json" }
 
 const lanes = ["api", "core", "services", "misc", "tree-sitter"]
 const taskNames = lanes.flatMap((lane) => [`test:${lane}`, `test:coverage:${lane}`])
@@ -134,11 +135,8 @@ test("coverage cache input contract", async (context) => {
 							throw new Error(`${taskName} hashes foreign spec ${packagePath}`)
 						}
 					}
-					// pr-review-state-workflow.test.ts reads root-level config outside
-					// the src/ package. It must be excluded from every Turbo lane and
-					// run in a dedicated non-Turbo CI step instead.
-					const turboExcludedSpecs = ["services/__tests__/pr-review-state-workflow.test.ts"]
-					for (const file of turboExcludedSpecs) {
+					// Workflow specs read root-level configuration and run outside Turbo.
+					for (const file of workflowTestFiles) {
 						if (Object.hasOwn(inputs, file))
 							throw new Error(`${taskName} hashes ${file}, which must run in a dedicated non-Turbo step`)
 					}

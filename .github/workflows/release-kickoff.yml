@@ -38,6 +38,7 @@ concurrency:
 
 jobs:
     kickoff:
+        if: github.repository == 'Zoo-Code-Org/Zoo-Code'
         runs-on: ubuntu-latest
         steps:
             - name: Post release kickoff to Discord

@@ -13,6 +13,7 @@ permissions:
 
 jobs:
     check-pr-approval:
+        if: github.repository == 'Zoo-Code-Org/Zoo-Code'
         runs-on: ubuntu-latest
         permissions:
             pull-requests: read
@@ -56,6 +57,7 @@ jobs:
                   echo "PR #${pr_number} is approved. Proceeding."
 
     publish-stable:
+        if: github.repository == 'Zoo-Code-Org/Zoo-Code'
         needs: [check-pr-approval]
         runs-on: ubuntu-latest
         environment: marketplace-production

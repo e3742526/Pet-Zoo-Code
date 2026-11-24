@@ -1303,9 +1303,47 @@ describe("OpenRouterHandler", () => {
 	})
 
 	describe("model catalog", () => {
+		it("passes the configured URL to both discovery caches", async () => {
+			const { getModels } = await import("../fetchers/modelCache")
+			const baseUrl = "https://router.example.test/api/v1"
+			const handler = new OpenRouterHandler({
+				...mockOptions,
+				openRouterBaseUrl: baseUrl,
+				openRouterSpecificProvider: "pinned-provider",
+			})
+
+			await handler.fetchModel()
+
+			expect(getModels).toHaveBeenCalledWith({ provider: providerIdentifiers.openrouter, baseUrl }, handler)
+			expect(mockGetModelEndpoints).toHaveBeenCalledWith(
+				{
+					router: providerIdentifiers.openrouter,
+					modelId: mockOptions.openRouterModelId,
+					endpoint: "pinned-provider",
+					baseUrl,
+				},
+				handler,
+			)
+		})
+
+		it("fetches the catalog from the given URL", async () => {
+			const axios = (await import("axios")).default
+			const get = vitest.spyOn(axios, "get").mockResolvedValue({ data: { data: [] } })
+			const catalogUrl = "https://router.example.test/api/v1"
+			try {
+				await new OpenRouterHandler(mockOptions).fetchModels({
+					provider: providerIdentifiers.openrouter,
+					baseUrl: `${catalogUrl}/`,
+				})
+				expect(get).toHaveBeenCalledExactlyOnceWith(`${catalogUrl}/models`, expect.any(Object))
+			} finally {
+				get.mockRestore()
+			}
+		})
+
 		it("reports its cache scope", () => {
 			const handler = new OpenRouterHandler(mockOptions)
-			expect(handler.getModelCacheScope()).toEqual({ urlScoped: false, keyScoped: false, authScoped: false })
+			expect(handler.getModelCacheScope()).toEqual({ urlScoped: true, keyScoped: false, authScoped: false })
 		})
 
 		it("does not fetch the catalog in the constructor", async () => {

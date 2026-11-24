@@ -1,5 +1,6 @@
 import * as path from "path"
 import fs from "fs/promises"
+import { createHash } from "node:crypto"
 
 import NodeCache from "node-cache"
 import sanitize from "sanitize-filename"
@@ -18,7 +19,13 @@ import type { ApiHandler } from "../../index"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
-const getCacheKey = (router: RouterName, modelId: string) => sanitize(`${router}_${modelId}`)
+function getCacheKey(router: RouterName, modelId: string, baseUrl?: string): string {
+	if (!baseUrl) return sanitize(`${router}_${modelId}`)
+	const scope = createHash("sha256")
+		.update(JSON.stringify([baseUrl.replace(/\/+$/, ""), modelId]))
+		.digest("hex")
+	return `${router}_${scope}`
+}
 
 async function writeModelEndpoints(key: string, data: ModelRecord) {
 	const filename = `${key}_endpoints.json`
@@ -39,10 +46,12 @@ export const getModelEndpoints = async (
 		router,
 		modelId,
 		endpoint,
+		baseUrl,
 	}: {
 		router: RouterName
 		modelId?: string
 		endpoint?: string
+		baseUrl?: string
 	},
 	handler: ApiHandler,
 ): Promise<ModelRecord> => {
@@ -52,7 +61,7 @@ export const getModelEndpoints = async (
 		return {}
 	}
 
-	const key = getCacheKey(router, modelId)
+	const key = getCacheKey(router, modelId, baseUrl)
 	let modelProviders = memoryCache.get<ModelRecord>(key)
 
 	if (modelProviders) {
@@ -60,12 +69,14 @@ export const getModelEndpoints = async (
 		return modelProviders
 	}
 
-	modelProviders = await getOpenRouterModelEndpoints(modelId)
+	modelProviders = baseUrl
+		? await getOpenRouterModelEndpoints(modelId, { openRouterBaseUrl: baseUrl }, { untrustedBaseUrl: true })
+		: await getOpenRouterModelEndpoints(modelId)
 
 	// Copy model-level capabilities from the parent model to each endpoint
 	// These are capabilities that don't vary by provider (tools, reasoning, etc.)
 	if (Object.keys(modelProviders).length > 0) {
-		const parentModels = await getModels({ provider: providerIdentifiers.openrouter }, handler)
+		const parentModels = await getModels({ provider: providerIdentifiers.openrouter, baseUrl }, handler)
 		const parentModel = parentModels[modelId]
 
 		if (parentModel) {

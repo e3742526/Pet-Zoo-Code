@@ -17,6 +17,8 @@ import { hasUsableTimeout, mergeAbortSignalAndTimeout, throwIfAborted, toSdkTime
 import { MODEL_CATALOG_FETCH_TIMEOUT_MS } from "./modelCache"
 
 const MAX_ENDPOINTS_BODY_BYTES = 1024 * 1024
+const MAX_CUSTOM_CATALOG_BODY_BYTES = 10 * 1024 * 1024
+const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
 /**
  * OpenRouterBaseModel
@@ -101,14 +103,20 @@ export async function getOpenRouterModels(
 	opts?: { signal?: AbortSignal },
 ): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
-	const baseURL = options?.openRouterBaseUrl || "https://openrouter.ai/api/v1"
+	const customBaseUrl = options?.openRouterBaseUrl
+	const baseURL = (customBaseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "")
 
 	try {
-		const response = await axios.get<OpenRouterModelsResponse>(`${baseURL}/models`, { signal: opts?.signal })
+		const response = await axios.get<OpenRouterModelsResponse>(`${baseURL}/models`, {
+			signal: opts?.signal,
+			...(customBaseUrl && { maxContentLength: MAX_CUSTOM_CATALOG_BODY_BYTES }),
+		})
 		const result = openRouterModelsResponseSchema.safeParse(response.data)
 		const data = result.success ? result.data.data : response.data.data
 
 		if (!result.success) {
+			// A proxy may only implement chat or return a generic OpenAI model list.
+			if (customBaseUrl) return models
 			console.error("OpenRouter models response is invalid", result.error.format())
 		}
 
@@ -129,7 +137,12 @@ export async function getOpenRouterModels(
 				supportedParameters: supported_parameters,
 			})
 
-			models[id] = parsedModel
+			Object.defineProperty(models, id, {
+				value: parsedModel,
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			})
 		}
 	} catch (error) {
 		// Surface cancellation as a rejection: logging and returning here would
@@ -137,7 +150,9 @@ export async function getOpenRouterModels(
 		throwIfAborted(opts?.signal)
 
 		console.error(
-			`Error fetching OpenRouter models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+			customBaseUrl
+				? `Error fetching OpenRouter models: ${error instanceof Error ? error.name : "unknown"}`
+				: `Error fetching OpenRouter models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 		)
 	}
 
@@ -156,7 +171,7 @@ export async function getOpenRouterModelEndpoints(
 	opts?: { untrustedBaseUrl?: boolean; timeoutMs?: number },
 ): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
-	const baseURL = options?.openRouterBaseUrl || "https://openrouter.ai/api/v1"
+	const baseURL = (options?.openRouterBaseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "")
 	const untrusted = opts?.untrustedBaseUrl === true
 	const timeoutMs = hasUsableTimeout(opts?.timeoutMs) ? opts.timeoutMs : MODEL_CATALOG_FETCH_TIMEOUT_MS
 
@@ -187,12 +202,18 @@ export async function getOpenRouterModelEndpoints(
 		}
 
 		for (const endpoint of endpoints) {
-			models[endpoint.tag ?? endpoint.provider_name] = parseOpenRouterModel({
+			const info = parseOpenRouterModel({
 				id,
 				model: endpoint,
 				inputModality: architecture?.input_modalities,
 				outputModality: architecture?.output_modalities,
 				maxTokens: endpoint.max_completion_tokens,
+			})
+			Object.defineProperty(models, endpoint.tag ?? endpoint.provider_name, {
+				value: info,
+				enumerable: true,
+				configurable: true,
+				writable: true,
 			})
 		}
 	} catch (error) {

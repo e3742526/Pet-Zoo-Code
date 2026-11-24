@@ -39,4 +39,10 @@ On November 24, 2026, the webview model picker adopted the same bundled Anthropi
 
 Both regression tests failed before the change and passed after it. The 309 focused webview tests, 71 host tests, and 44 distribution checks passed. The rebuilt VSIX matched the host and webview build outputs. It activated in a temporary VS Code profile under a loopback-only process sandbox, completed a task through the LM Studio mock, and reopened the saved task. The non-loopback control returned `EPERM`.
 
-The fork still has the `ZooCodeOrganization.zoo-code` installation identity. Schedule the identity and migration work before side-by-side distribution. Optional documentation links still point to Zoo Code. Model discovery for an explicitly selected OpenRouter profile can also use the public OpenRouter catalog when the profile configures a custom inference URL. That configuration needs a separate endpoint-routing check.
+The fork still has the `ZooCodeOrganization.zoo-code` installation identity. Schedule the identity and migration work before side-by-side distribution. Optional documentation links still point to Zoo Code.
+
+## OpenRouter endpoint routing
+
+On November 24, 2026, OpenRouter catalog and per-model endpoint discovery began using the profile's configured base URL. The host, webview, and disk caches keep results for each URL separate. A proxy that serves chat without OpenRouter discovery can use a manually configured model ID. Discovery requests remain unauthenticated and expect OpenRouter response formats.
+
+The 338 focused host tests, 316 webview tests, and 44 distribution checks passed. Both host and webview bundles were rebuilt before packaging. The installed VSIX fetched both metadata responses from a loopback OpenRouter mock, used the pinned provider's output limit in a streamed task, and reopened the saved result. The process sandbox denied a non-loopback TCP connection.

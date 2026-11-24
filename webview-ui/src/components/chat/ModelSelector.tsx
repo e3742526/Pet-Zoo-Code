@@ -55,7 +55,13 @@ function useModelListForProvider(provider: ProviderName | undefined, apiConfigur
 	// Friendli keeps a static list in MODELS_BY_PROVIDER, but it is only the fallback for the fetched catalog.
 	const fetchesStaticFallbackCatalog = provider === providerIdentifiers.friendli && !isUnsupported
 
-	const routerModels = useRouterModels({ provider, enabled: isRouterProvider || fetchesStaticFallbackCatalog })
+	const routerModels = useRouterModels({
+		provider,
+		enabled: isRouterProvider || fetchesStaticFallbackCatalog,
+		...(provider === providerIdentifiers.openrouter && {
+			openRouterBaseUrl: apiConfiguration.openRouterBaseUrl ?? "",
+		}),
+	})
 	const allRouterModels = routerModels.data
 	const routerModelsData = allRouterModels as Record<string, Record<string, ModelInfo>> | undefined
 	const isLoading = isRouterProvider && routerModels.isLoading

@@ -348,6 +348,27 @@ describe("useSelectedModel", () => {
 	})
 
 	describe("OpenRouter provider merging", () => {
+		it("keeps a configured proxy model when discovery returns an empty catalog", () => {
+			const baseUrl = "https://router.example.test/api/v1"
+			const id = "proxy/configured-model"
+			const provider = providerIdentifiers.openrouter
+			mockUseRouterModels.mockReturnValue(createRouterModelsResult({ openrouter: {} }))
+			mockUseOpenRouterModelProviders.mockReturnValue(createOpenRouterModelProvidersResult({}))
+
+			const { result } = renderHook(
+				() => useSelectedModel({ apiProvider: provider, openRouterBaseUrl: baseUrl, openRouterModelId: id }),
+				{ wrapper: createWrapper() },
+			)
+
+			expect(result.current.id).toBe(id)
+			expect(mockUseRouterModels).toHaveBeenLastCalledWith({
+				provider,
+				enabled: true,
+				openRouterBaseUrl: baseUrl,
+			})
+			expect(mockUseOpenRouterModelProviders).toHaveBeenLastCalledWith(id, baseUrl)
+		})
+
 		it("should merge base model info with specific provider info when both exist", () => {
 			const baseModelInfo: ModelInfo = {
 				maxTokens: 4096,
@@ -642,6 +663,7 @@ describe("useSelectedModel", () => {
 			expect(mockUseRouterModels).toHaveBeenLastCalledWith({
 				provider: providerIdentifiers.openrouter,
 				enabled: true,
+				openRouterBaseUrl: "",
 			})
 		})
 

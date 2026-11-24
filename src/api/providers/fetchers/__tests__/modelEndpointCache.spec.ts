@@ -23,6 +23,39 @@ describe("modelEndpointCache", () => {
 	})
 
 	describe("getModelEndpoints", () => {
+		it("keeps model endpoint metadata and parent models separate for custom URLs", async () => {
+			const getModels = vi.mocked(modelCache.getModels).mockResolvedValue({})
+			const getEndpoints = vi.mocked(openrouter.getOpenRouterModelEndpoints)
+			getEndpoints.mockResolvedValueOnce({ pinned: { contextWindow: 4096, supportsPromptCache: false } })
+			getEndpoints.mockResolvedValueOnce({ pinned: { contextWindow: 8192, supportsPromptCache: false } })
+			const firstUrl = "https://first.example.test/api/v1"
+			const secondUrl = "https://second.example.test/api/v1"
+			const selection = {
+				router: providerIdentifiers.openrouter,
+				modelId: "test/scoped-model",
+				endpoint: "pinned",
+			} as const
+			const first = { ...selection, baseUrl: firstUrl }
+			const second = { ...selection, baseUrl: secondUrl }
+
+			expect((await getModelEndpoints(first, handler)).pinned.contextWindow).toBe(4096)
+			expect((await getModelEndpoints(second, handler)).pinned.contextWindow).toBe(8192)
+			expect((await getModelEndpoints(first, handler)).pinned.contextWindow).toBe(4096)
+			expect(getEndpoints.mock.calls).toEqual(
+				[firstUrl, secondUrl].map((baseUrl) => [
+					selection.modelId,
+					{ openRouterBaseUrl: baseUrl },
+					{ untrustedBaseUrl: true },
+				]),
+			)
+			expect(getModels.mock.calls).toEqual(
+				[firstUrl, secondUrl].map((baseUrl) => [
+					{ provider: providerIdentifiers.openrouter, baseUrl },
+					handler,
+				]),
+			)
+		})
+
 		it("should copy model-level capabilities from parent model to endpoints", async () => {
 			// Mock the parent model data with capabilities
 			const mockParentModels = {

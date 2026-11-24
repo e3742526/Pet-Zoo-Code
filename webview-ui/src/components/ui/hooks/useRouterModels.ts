@@ -2,6 +2,7 @@ import { replaceEqualDeep, useQuery } from "@tanstack/react-query"
 
 import {
 	allRouterModelsProvider,
+	providerIdentifiers,
 	RouterModelsMessageType,
 	type RouterModels,
 	type ExtensionMessage,
@@ -12,9 +13,10 @@ import { vscode } from "@src/utils/vscode"
 type UseRouterModelsOptions = {
 	provider?: string // single provider filter (e.g. "openrouter")
 	enabled?: boolean // gate fetching entirely
+	openRouterBaseUrl?: string // an empty string explicitly selects the public catalog
 }
 
-export const fetchRouterModels = async (provider?: string, signal?: AbortSignal) =>
+export const fetchRouterModels = async (provider?: string, signal?: AbortSignal, openRouterBaseUrl?: string) =>
 	new Promise<RouterModels>((resolve, reject) => {
 		const cleanup = () => {
 			signal?.removeEventListener("abort", onAbort)
@@ -38,11 +40,8 @@ export const fetchRouterModels = async (provider?: string, signal?: AbortSignal)
 			const message: ExtensionMessage = event.data
 
 			if (message.type === RouterModelsMessageType.routerModels) {
-				const msgProvider = message?.values?.provider as string | undefined
-
-				// Verify response matches request
-				if (provider !== msgProvider) {
-					// Not our response; ignore and wait for the matching one
+				// Profiles and the settings draft can request the same provider from different URLs.
+				if (provider !== message.values?.provider || openRouterBaseUrl !== message.values?.openRouterBaseUrl) {
 					return
 				}
 
@@ -65,7 +64,10 @@ export const fetchRouterModels = async (provider?: string, signal?: AbortSignal)
 		signal?.addEventListener("abort", onAbort, { once: true })
 		window.addEventListener("message", handler)
 		if (provider) {
-			vscode.postMessage({ type: RouterModelsMessageType.requestRouterModels, values: { provider } })
+			vscode.postMessage({
+				type: RouterModelsMessageType.requestRouterModels,
+				values: { provider, ...(openRouterBaseUrl !== undefined && { openRouterBaseUrl }) },
+			})
 		} else {
 			vscode.postMessage({ type: RouterModelsMessageType.requestRouterModels })
 		}
@@ -73,9 +75,14 @@ export const fetchRouterModels = async (provider?: string, signal?: AbortSignal)
 
 export const useRouterModels = (opts: UseRouterModelsOptions = {}) => {
 	const provider = opts.provider || undefined
+	const openRouterBaseUrl = provider === providerIdentifiers.openrouter ? opts.openRouterBaseUrl : undefined
 	return useQuery({
-		queryKey: [RouterModelsMessageType.routerModels, provider || allRouterModelsProvider],
-		queryFn: ({ signal }) => fetchRouterModels(provider, signal),
+		queryKey: [
+			RouterModelsMessageType.routerModels,
+			provider || allRouterModelsProvider,
+			...(openRouterBaseUrl === undefined ? [] : [openRouterBaseUrl]),
+		],
+		queryFn: ({ signal }) => fetchRouterModels(provider, signal, openRouterBaseUrl),
 		enabled: opts.enabled !== false,
 		// Structural sharing copies into `{}`, where an own "__proto__" model ID would swap the
 		// copy's prototype instead of becoming a key, so skip sharing for such catalogs.

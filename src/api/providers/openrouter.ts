@@ -152,12 +152,12 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	override getModelCacheScope(): ModelCacheScope {
-		return { urlScoped: false, keyScoped: false, authScoped: false }
+		return { urlScoped: true, keyScoped: false, authScoped: false }
 	}
 
-	async fetchModels(_options: GetModelsOptions, signal?: AbortSignal): Promise<ModelRecord> {
+	async fetchModels(options: GetModelsOptions, signal?: AbortSignal): Promise<ModelRecord> {
 		const fetchOpts: [] | [{ signal: AbortSignal }] = signal ? [{ signal }] : []
-		return getOpenRouterModels(undefined, ...fetchOpts)
+		return getOpenRouterModels({ openRouterBaseUrl: options.baseUrl }, ...fetchOpts)
 	}
 
 	/**
@@ -550,13 +550,15 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	public async fetchModel() {
+		const baseUrl = this.options.openRouterBaseUrl
 		const [models, endpoints] = await Promise.all([
-			getModels({ provider: providerIdentifiers.openrouter }, this),
+			getModels({ provider: providerIdentifiers.openrouter, baseUrl }, this),
 			getModelEndpoints(
 				{
 					router: providerIdentifiers.openrouter,
 					modelId: this.options.openRouterModelId,
 					endpoint: this.options.openRouterSpecificProvider,
+					baseUrl,
 				},
 				this,
 			),

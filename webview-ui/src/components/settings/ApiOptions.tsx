@@ -191,11 +191,14 @@ const ApiOptions = ({
 	const { data: routerModels, refetch: refetchRouterModels } = useRouterModels({
 		enabled: !!routerProvider,
 		provider: routerProvider,
+		...(routerProvider === providerIdentifiers.openrouter && {
+			openRouterBaseUrl: apiConfiguration.openRouterBaseUrl ?? "",
+		}),
 	})
 
 	const { data: openRouterModelProviders } = useOpenRouterModelProviders(
 		apiConfiguration.openRouterModelId,
-		apiConfiguration.openRouterBaseUrl,
+		apiConfiguration.openRouterBaseUrl || undefined,
 		{
 			enabled:
 				!!apiConfiguration.openRouterModelId &&

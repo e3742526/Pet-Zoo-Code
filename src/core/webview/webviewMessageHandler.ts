@@ -1176,10 +1176,12 @@ export const webviewMessageHandler = async (
 			if (message.text && isRetiredProvider(message.text)) break
 			const { apiConfiguration } = await provider.getState()
 			const routerNameFlush: RouterName = toRouterName(message.text)
+			const baseUrl =
+				routerNameFlush === providerIdentifiers.openrouter ? apiConfiguration.openRouterBaseUrl : undefined
 			// Note: flushRouterModels is a generic flush without credentials
 			// For providers that need credentials, use their specific handlers
 			await flushModels(
-				{ provider: routerNameFlush } as GetModelsOptions,
+				{ provider: routerNameFlush, ...(baseUrl && { baseUrl }) } as GetModelsOptions,
 				handlerFor(apiConfiguration, routerNameFlush),
 				true,
 			)
@@ -1198,6 +1200,12 @@ export const webviewMessageHandler = async (
 
 			const { apiConfiguration } = await provider.getState()
 			const providerFilter = requestedProvider ? toRouterName(requestedProvider) : undefined
+			const requestedOpenRouterBaseUrl =
+				providerFilter === providerIdentifiers.openrouter &&
+				typeof message.values?.openRouterBaseUrl === "string"
+					? message.values.openRouterBaseUrl
+					: undefined
+			const openRouterBaseUrl = requestedOpenRouterBaseUrl ?? apiConfiguration.openRouterBaseUrl
 
 			// Optional refresh flag to flush cache before fetching (useful for providers requiring credentials)
 			const shouldRefresh = message?.values?.refresh === true
@@ -1239,7 +1247,10 @@ export const webviewMessageHandler = async (
 			const candidates: { key: RouterName; options: GetModelsOptions }[] = [
 				{
 					key: providerIdentifiers.openrouter,
-					options: { provider: providerIdentifiers.openrouter },
+					options: {
+						provider: providerIdentifiers.openrouter,
+						...(openRouterBaseUrl !== undefined && { baseUrl: openRouterBaseUrl }),
+					},
 				},
 				{
 					key: providerIdentifiers.requesty,
@@ -1472,7 +1483,14 @@ export const webviewMessageHandler = async (
 			await provider.postMessageToWebview({
 				type: RouterModelsMessageType.routerModels,
 				routerModels,
-				values: providerFilter ? { provider: requestedProvider } : undefined,
+				values: providerFilter
+					? {
+							provider: requestedProvider,
+							...(requestedOpenRouterBaseUrl !== undefined && {
+								openRouterBaseUrl: requestedOpenRouterBaseUrl,
+							}),
+						}
+					: undefined,
 			})
 			break
 		}

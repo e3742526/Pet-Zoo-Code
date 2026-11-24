@@ -45,6 +45,36 @@ describe("fetchRouterModels", () => {
 		expect(removeSpy).toHaveBeenCalledWith("message", handler)
 	})
 
+	test("matches concurrent OpenRouter catalog responses to their requested URLs", async () => {
+		const provider = providerIdentifiers.openrouter
+		const baseUrl = "https://router.example.test/api/v1"
+		const forProxy = fetchRouterModels(provider, undefined, baseUrl)
+		const forPublic = fetchRouterModels(provider, undefined, "")
+		const proxyModels = { openrouter: { "proxy/model": { contextWindow: 4096, supportsPromptCache: false } } }
+		const publicModels = { openrouter: { "public/model": { contextWindow: 8192, supportsPromptCache: false } } }
+
+		for (const [openRouterBaseUrl, routerModels] of [
+			["", publicModels],
+			[baseUrl, proxyModels],
+		] as const) {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: RouterModelsMessageType.routerModels,
+						values: { provider, openRouterBaseUrl },
+						routerModels,
+					},
+				}),
+			)
+		}
+
+		await expect(Promise.all([forProxy, forPublic])).resolves.toEqual([proxyModels, publicModels])
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: RouterModelsMessageType.requestRouterModels,
+			values: { provider, openRouterBaseUrl: baseUrl },
+		})
+	})
+
 	test("on abort, rejects, removes the same message listener, and clears the timeout", async () => {
 		vi.useFakeTimers()
 		const addSpy = vi.spyOn(window, "addEventListener")

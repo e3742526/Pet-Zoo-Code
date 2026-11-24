@@ -150,3 +150,33 @@ it("reopens the saved endpoint list for the requested model when its live list i
 		vi.useRealTimers()
 	}
 })
+
+it("reopens each custom OpenRouter endpoint list from its own disk cache", async () => {
+	const { getModelEndpoints } = await import("../modelEndpointCache")
+	const selection = {
+		router: providerIdentifiers.openrouter,
+		modelId: "vendor/regional-model",
+		endpoint: "test-endpoint",
+	}
+	const first = { ...selection, baseUrl: "https://first.example.test/api/v1" }
+	const second = { ...selection, baseUrl: "https://second.example.test/api/v1" }
+	const firstEndpoints: ModelRecord = { "test-endpoint": { contextWindow: 16384, supportsPromptCache: false } }
+	const secondEndpoints: ModelRecord = { "test-endpoint": { contextWindow: 32768, supportsPromptCache: false } }
+	vi.mocked(getOpenRouterModelEndpoints).mockResolvedValueOnce(firstEndpoints).mockResolvedValueOnce(secondEndpoints)
+	await expect(getModelEndpoints(first, handler)).resolves.toEqual(firstEndpoints)
+	await expect(getModelEndpoints(second, handler)).resolves.toEqual(secondEndpoints)
+	const files = await readdir(join(customStoragePath, "cache"))
+	expect(files.filter((file) => file.endsWith("_endpoints.json"))).toHaveLength(2)
+
+	vi.useFakeTimers({ toFake: ["Date"] })
+	try {
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
+		vi.mocked(getOpenRouterModelEndpoints).mockResolvedValueOnce({}).mockResolvedValueOnce({})
+		await expect(getModelEndpoints(second, handler)).resolves.toEqual(secondEndpoints)
+		await expect(getModelEndpoints({ ...first, baseUrl: `${first.baseUrl}/` }, handler)).resolves.toEqual(
+			firstEndpoints,
+		)
+	} finally {
+		vi.useRealTimers()
+	}
+})

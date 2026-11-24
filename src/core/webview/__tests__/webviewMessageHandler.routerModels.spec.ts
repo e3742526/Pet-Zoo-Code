@@ -307,6 +307,29 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		expect(getModelsMock.mock.calls[0][1]).toBe(handlerForProvider(providerIdentifiers.openrouter))
 	})
 
+	it.each([undefined, "https://draft.example.test/api/v1", ""])(
+		"routes OpenRouter discovery using the saved or explicitly requested URL (%s)",
+		async (requestedBaseUrl) => {
+			const provider = providerIdentifiers.openrouter
+			const savedBaseUrl = "https://saved.example.test/api/v1"
+			mockProvider.getState.mockResolvedValue({
+				apiConfiguration: { apiProvider: provider, openRouterBaseUrl: savedBaseUrl },
+			})
+			const values =
+				requestedBaseUrl === undefined ? { provider } : { provider, openRouterBaseUrl: requestedBaseUrl }
+
+			await webviewMessageHandler(mockProvider, { type: RouterModelsMessageType.requestRouterModels, values })
+
+			expect(getModelsMock).toHaveBeenCalledExactlyOnceWith(
+				{ provider, baseUrl: requestedBaseUrl ?? savedBaseUrl },
+				handlerForProvider(provider),
+			)
+			expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
+				expect.objectContaining({ type: RouterModelsMessageType.routerModels, values }),
+			)
+		},
+	)
+
 	it("filters to Kimi Code and dispatches an explicit API key without reading the OAuth token", async () => {
 		const kimiModels = { "kimi-for-coding": { contextWindow: 262_144, supportsPromptCache: true } }
 		getModelsMock.mockResolvedValue(kimiModels)

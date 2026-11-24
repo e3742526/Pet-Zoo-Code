@@ -106,6 +106,8 @@ export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
 	const dynamicProvider = activeProvider && isDynamicProvider(activeProvider) ? activeProvider : undefined
 	const openRouterModelId =
 		activeProvider === providerIdentifiers.openrouter ? apiConfiguration.openRouterModelId : undefined
+	const openRouterBaseUrl =
+		activeProvider === providerIdentifiers.openrouter ? (apiConfiguration.openRouterBaseUrl ?? "") : undefined
 	const lmStudioModelId =
 		activeProvider === providerIdentifiers.lmstudio ? apiConfiguration.lmStudioModelId : undefined
 	const ollamaModelId = activeProvider === providerIdentifiers.ollama ? apiConfiguration.ollamaModelId : undefined
@@ -115,9 +117,10 @@ export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
 	const routerModels = useRouterModels({
 		provider: dynamicProvider,
 		enabled: shouldFetchRouterModels,
+		...(openRouterBaseUrl !== undefined && { openRouterBaseUrl }),
 	})
 
-	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
+	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId, openRouterBaseUrl || undefined)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
 	const ollamaModels = useOllamaModels(ollamaModelId)
 	// Not part of readiness: until the host reports, the curated catalog describes the model.
@@ -222,11 +225,12 @@ function getSelectedModel({
 	const defaultModelId = getProviderDefaultModelId(provider, apiConfiguration)
 	switch (provider) {
 		case providerIdentifiers.openrouter: {
-			const id = getValidatedModelId(
-				apiConfiguration.openRouterModelId,
-				routerModels[providerIdentifiers.openrouter],
-				defaultModelId,
-			)
+			const configuredId = apiConfiguration.openRouterModelId
+			// Some proxies serve chat without publishing an OpenRouter model catalog.
+			const id =
+				apiConfiguration.openRouterBaseUrl && configuredId
+					? configuredId
+					: getValidatedModelId(configuredId, routerModels[providerIdentifiers.openrouter], defaultModelId)
 			let info = routerModels[providerIdentifiers.openrouter]?.[id]
 			const specificProvider = apiConfiguration.openRouterSpecificProvider
 

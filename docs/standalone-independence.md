@@ -46,3 +46,9 @@ The fork still has the `ZooCodeOrganization.zoo-code` installation identity. Sch
 On November 24, 2026, OpenRouter catalog and per-model endpoint discovery began using the profile's configured base URL. The host, webview, and disk caches keep results for each URL separate. A proxy that serves chat without OpenRouter discovery can use a manually configured model ID. Discovery requests remain unauthenticated and expect OpenRouter response formats.
 
 The 338 focused host tests, 316 webview tests, and 44 distribution checks passed. Both host and webview bundles were rebuilt before packaging. The installed VSIX fetched both metadata responses from a loopback OpenRouter mock, used the pinned provider's output limit in a streamed task, and reopened the saved result. The process sandbox denied a non-loopback TCP connection.
+
+## VSIX build inputs
+
+On November 24, 2026, the VSCE prepublish hook began building the webview and the extension's workspace dependencies before bundling the production host. The same hook runs for the root `pnpm vsix` command, direct packaging, and both release workflows. The root task uses the workspace builds as cache inputs and skips the development host bundle.
+
+A direct package from missing webview output rebuilt the assets. A second package used the build cache and replaced a stale marker in the generated webview. The root package cache restored a byte-identical archive after the output file was moved. Local stable and prerelease packages contained their respective manifests and bundles. All 21 build cache contract checks and 44 distribution tests passed.

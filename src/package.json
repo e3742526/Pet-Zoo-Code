@@ -474,7 +474,7 @@
 		"test:coverage:workflow": "vitest run --config vitest.workflow.config.ts --coverage",
 		"format": "prettier --write .",
 		"bundle": "node esbuild.mjs",
-		"vscode:prepublish": "pnpm bundle --production",
+		"vscode:prepublish": "pnpm --workspace-root exec turbo run build --filter=\"{./src}^...\" --filter=@roo-code/vscode-webview --log-order=grouped --output-logs=new-only && pnpm bundle --production",
 		"vsix": "mkdirp ../bin && vsce package --no-dependencies --out ../bin",
 		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/zoo-code-$npm_package_version.vsix",
 		"publish:ovsx": "pnpm exec ovsx publish ../bin/zoo-code-$npm_package_version.vsix --skip-duplicate",

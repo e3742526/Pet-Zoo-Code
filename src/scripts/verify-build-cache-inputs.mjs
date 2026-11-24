@@ -193,6 +193,17 @@ test("build cache input contract", async (context) => {
 			const bundle = hashes()["zoo-code#bundle"]
 			assert.deepEqual(bundle.definition.env, ["PKG_RELEASE_CHANNEL"])
 		})
+		await context.test("VSIX hashes both bundle inputs without running the development bundle", () => {
+			const tasks = hashes()
+			const vsix = tasks["zoo-code#vsix"]
+			assert.deepEqual(vsix.dependencies, tasks["zoo-code#bundle"].dependencies)
+			assert.deepEqual(vsix.definition.env, ["PKG_RELEASE_CHANNEL", "VSCODE_TEXTMATE_DEBUG"])
+		})
+		await context.test("files regenerated during packaging do not invalidate the VSIX", () => {
+			const before = hashesOnly()
+			const after = withChangedFile("src/dist/cache-probe.js", appendComment, hashesOnly)
+			assert.deepEqual(changedTasks(before, after), [])
+		})
 		await context.test("optional root .env is hashed", () => {
 			const before = hashesOnly()
 			const after = withChangedFile(".env", appendComment, hashesOnly)
@@ -252,10 +263,11 @@ test("build cache input contract", async (context) => {
 					"esbuild.mjs",
 				],
 				"zoo-code#vsix": [
-					"README.md",
-					"CHANGELOG.md",
-					"LICENSE",
-					"dist/cache-probe.js",
+					"../README.md",
+					"../CHANGELOG.md",
+					"../LICENSE",
+					"../.env",
+					"../webview-ui/audio/celebration.wav",
 					"package.nls.json",
 					"esbuild.mjs",
 				],

@@ -99,11 +99,6 @@ jobs:
                     exit 1
                   fi
 
-            - name: Build workspace packages
-              run: |
-                  pnpm --filter @roo-code/build build
-                  pnpm --filter @roo-code/vscode-webview build
-
             - name: Package extension
               run: |
                   package_version=$(node -p "require('./src/package.json').version")

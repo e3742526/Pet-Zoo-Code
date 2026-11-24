@@ -1598,6 +1598,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const itemContent = useCallback(
 		(index: number, messageOrGroup: ClineMessage) => {
 			const isLast = index === groupedMessages.length - 1
+			const isFollowUp = messageOrGroup.type === "ask" && messageOrGroup.ask === "followup"
 
 			// regular message
 			return (
@@ -1610,13 +1611,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					isLast={isLast}
 					onHeightChange={handleRowHeightChange}
 					isStreaming={isStreaming}
-					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
+					onSuggestionClick={isFollowUp ? handleSuggestionClickInRow : undefined}
 					onBatchFileResponse={handleBatchFileResponse}
-					onFollowUpUnmount={handleFollowUpUnmount}
-					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts === currentFollowUpTs}
-					isFollowUpAutoApprovalPaused={isFollowUpAutoApprovalPaused}
+					onFollowUpUnmount={isFollowUp ? handleFollowUpUnmount : undefined}
+					isFollowUpAnswered={
+						isFollowUp && (messageOrGroup.isAnswered === true || messageOrGroup.ts === currentFollowUpTs)
+					}
+					isFollowUpAutoApprovalPaused={isFollowUp && isFollowUpAutoApprovalPaused}
 					completionCheckpoint={messageOrGroup.ts === completionResultTs ? completionCheckpoint : undefined}
-					onJumpToPreviousCheckpoint={handleScrollToLatestCheckpoint}
+					onJumpToPreviousCheckpoint={
+						messageOrGroup.say === "checkpoint_saved" ? handleScrollToLatestCheckpoint : undefined
+					}
 				/>
 			)
 		},

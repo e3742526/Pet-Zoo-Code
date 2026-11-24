@@ -20,7 +20,7 @@ import { Mode } from "@roo/modes"
 import { COMMAND_OUTPUT_STRING } from "@roo/combineCommandSequences"
 import { safeJsonParse } from "@roo/core"
 
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionState, type ExtensionStateContextType } from "@src/context/ExtensionStateContext"
 import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { vscode } from "@src/utils/vscode"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
@@ -226,7 +226,58 @@ function EditChatTextArea({ messageTs, setSelectedImages, ...props }: EditChatTe
 	)
 }
 
-export const ChatRowContent = ({
+export const ChatRowContent = (props: ChatRowContentProps) => {
+	const { message } = props
+	const {
+		mcpServers,
+		alwaysAllowMcp,
+		currentCheckpoint,
+		mode,
+		clineMessages,
+		currentTaskItem,
+		enableCheckpoints,
+		timeFormat,
+		dateFormat,
+	} = useExtensionState()
+	const tool = useMemo(
+		() => (message.ask === "tool" ? safeJsonParse<ClineSayTool>(message.text) : null),
+		[message.ask, message.text],
+	)
+	const linksSubtask = message.say === "subtask_result" || tool?.tool === "newTask"
+	const needsTranscript = linksSubtask || tool?.tool === "updateTodoList"
+	const isMcpRequest = message.type === "ask" && message.ask === "use_mcp_server"
+
+	return (
+		<ChatRowBody
+			{...props}
+			tool={tool}
+			clineMessages={needsTranscript ? clineMessages : undefined}
+			childIds={linksSubtask ? currentTaskItem?.childIds : undefined}
+			completedByChildId={message.say === "subtask_result" ? currentTaskItem?.completedByChildId : undefined}
+			mcpServers={isMcpRequest ? mcpServers : undefined}
+			alwaysAllowMcp={isMcpRequest ? alwaysAllowMcp : undefined}
+			currentCheckpoint={message.say === "checkpoint_saved" ? currentCheckpoint : undefined}
+			mode={mode}
+			enableCheckpoints={enableCheckpoints}
+			timeFormat={timeFormat}
+			dateFormat={dateFormat}
+		/>
+	)
+}
+
+type ChatRowBodyProps = ChatRowContentProps &
+	Pick<
+		ExtensionStateContextType,
+		"alwaysAllowMcp" | "currentCheckpoint" | "mode" | "enableCheckpoints" | "timeFormat" | "dateFormat"
+	> & {
+		tool: ClineSayTool | null | undefined
+		clineMessages?: ClineMessage[]
+		childIds?: string[]
+		completedByChildId?: string
+		mcpServers?: ExtensionStateContextType["mcpServers"]
+	}
+
+const ChatRowBody = memo(function ChatRowBody({
 	message,
 	lastModifiedMessage,
 	isExpanded,
@@ -240,20 +291,19 @@ export const ChatRowContent = ({
 	isFollowUpAutoApprovalPaused,
 	completionCheckpoint,
 	onJumpToPreviousCheckpoint,
-}: ChatRowContentProps) => {
+	tool,
+	clineMessages = [],
+	childIds = [],
+	completedByChildId,
+	mcpServers,
+	alwaysAllowMcp,
+	currentCheckpoint,
+	mode,
+	enableCheckpoints,
+	timeFormat,
+	dateFormat,
+}: ChatRowBodyProps) {
 	const { t } = useAppTranslation()
-
-	const {
-		mcpServers,
-		alwaysAllowMcp,
-		currentCheckpoint,
-		mode,
-		clineMessages,
-		currentTaskItem,
-		enableCheckpoints,
-		timeFormat,
-		dateFormat,
-	} = useExtensionState()
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
@@ -456,11 +506,6 @@ export const ChatRowContent = ({
 		marginBottom: "10px",
 		wordBreak: "break-word",
 	}
-
-	const tool = useMemo(
-		() => (message.ask === "tool" ? safeJsonParse<ClineSayTool>(message.text) : null),
-		[message.ask, message.text],
-	)
 
 	// Unified diff content (provided by backend when relevant)
 	const unifiedDiff = useMemo(() => {
@@ -899,7 +944,7 @@ export const ChatRowContent = ({
 					</>
 				)
 			case "newTask":
-				const childTaskId = getLinkedChildTaskId(message, clineMessages, currentTaskItem?.childIds ?? [])
+				const childTaskId = getLinkedChildTaskId(message, clineMessages, childIds)
 
 				// Check if the next message is a subtask_result - if so, don't show the button
 				// since the result is displayed right after this message
@@ -1077,8 +1122,8 @@ export const ChatRowContent = ({
 					const completedChildTaskId = getLinkedChildTaskId(
 						message,
 						clineMessages,
-						currentTaskItem?.childIds ?? [],
-						currentTaskItem?.completedByChildId,
+						childIds,
+						completedByChildId,
 					)
 					return (
 						<div className="border-l border-muted-foreground/80 ml-2 pl-4 pt-2 pb-1 -mt-5">
@@ -1714,7 +1759,7 @@ export const ChatRowContent = ({
 						return null
 					}
 
-					const server = mcpServers.find((server) => server.name === useMcpServer.serverName)
+					const server = mcpServers?.find((server) => server.name === useMcpServer.serverName)
 
 					return (
 						<>
@@ -1808,4 +1853,4 @@ export const ChatRowContent = ({
 					return null
 			}
 	}
-}
+})

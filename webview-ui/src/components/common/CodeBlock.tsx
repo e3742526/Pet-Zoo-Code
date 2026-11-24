@@ -8,6 +8,7 @@ import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { StandardTooltip } from "@/components/ui"
+import { subscribeToToolbarLayout } from "./codeBlockToolbarLayout"
 
 export const CODE_BLOCK_BG_COLOR =
 	"var(--vscode-textCodeBlock-background, var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30 30 30))))"
@@ -362,7 +363,7 @@ const CodeBlock = memo(
 			previousSourceRef.current = source
 		}, [source])
 
-		const updateCodeBlockButtonPosition = useCallback((forceHide = false) => {
+		const measureToolbarLayout = useCallback((scrollRect: DOMRect, forceHide = false) => {
 			const codeBlock = codeBlockRef.current
 			const copyWrapper = copyButtonWrapperRef.current
 
@@ -371,11 +372,6 @@ const CodeBlock = memo(
 			}
 
 			const rectCodeBlock = codeBlock.getBoundingClientRect()
-			const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
-
-			if (!scrollContainer) {
-				return
-			}
 
 			// Get wrapper height dynamically
 			let wrapperHeight
@@ -403,7 +399,6 @@ const CodeBlock = memo(
 				wrapperHeight = fontSize * 2.5 // Approximate button height based on font size
 			}
 
-			const scrollRect = scrollContainer.getBoundingClientRect()
 			const copyButtonEdge = 48
 			const isPartiallyVisible =
 				rectCodeBlock.top < scrollRect.bottom - copyButtonEdge &&
@@ -417,42 +412,40 @@ const CodeBlock = memo(
 
 			// Update visibility state and button interactivity
 			const isVisible = !forceHide && isPartiallyVisible
-			codeBlock.setAttribute("data-partially-visible", isPartiallyVisible ? "true" : "false")
-			codeBlock.style.setProperty("--copy-button-cursor", isVisible ? "pointer" : "default")
-			codeBlock.style.setProperty("--copy-button-events", isVisible ? "all" : "none")
-			codeBlock.style.setProperty("--copy-button-opacity", isVisible ? "1" : "0")
+			return () => {
+				codeBlock.setAttribute("data-partially-visible", isPartiallyVisible ? "true" : "false")
+				codeBlock.style.setProperty("--copy-button-cursor", isVisible ? "pointer" : "default")
+				codeBlock.style.setProperty("--copy-button-events", isVisible ? "all" : "none")
+				codeBlock.style.setProperty("--copy-button-opacity", isVisible ? "1" : "0")
 
-			if (isPartiallyVisible) {
-				// Keep button within code block bounds using dynamic measurements
-				const topPosition = Math.max(
-					scrollRect.top + margin,
-					Math.min(rectCodeBlock.bottom - wrapperHeight - margin, rectCodeBlock.top + margin),
-				)
-				const rightPosition = Math.max(margin, scrollRect.right - rectCodeBlock.right + margin)
-
-				codeBlock.style.setProperty("--copy-button-top", `${topPosition}px`)
-				codeBlock.style.setProperty("--copy-button-right", `${rightPosition}px`)
+				if (isPartiallyVisible) {
+					// Keep the button inside the measured code block and viewport.
+					const topPosition = Math.max(
+						scrollRect.top + margin,
+						Math.min(rectCodeBlock.bottom - wrapperHeight - margin, rectCodeBlock.top + margin),
+					)
+					const rightPosition = Math.max(margin, scrollRect.right - rectCodeBlock.right + margin)
+					codeBlock.style.setProperty("--copy-button-top", `${topPosition}px`)
+					codeBlock.style.setProperty("--copy-button-right", `${rightPosition}px`)
+				}
 			}
 		}, [])
 
+		const updateCodeBlockButtonPosition = useCallback(
+			(forceHide = false) => {
+				const scroller = document.querySelector('[data-virtuoso-scroller="true"]')
+				if (scroller) measureToolbarLayout(scroller.getBoundingClientRect(), forceHide)?.()
+			},
+			[measureToolbarLayout],
+		)
+
 		useEffect(() => {
-			const handleScroll = () => updateCodeBlockButtonPosition()
-			const handleResize = () => updateCodeBlockButtonPosition()
-
-			const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
-			if (scrollContainer) {
-				scrollContainer.addEventListener("scroll", handleScroll)
-				window.addEventListener("resize", handleResize)
-				updateCodeBlockButtonPosition()
-			}
-
-			return () => {
-				if (scrollContainer) {
-					scrollContainer.removeEventListener("scroll", handleScroll)
-					window.removeEventListener("resize", handleResize)
-				}
-			}
-		}, [updateCodeBlockButtonPosition])
+			const scroller = document.querySelector('[data-virtuoso-scroller="true"]')
+			if (!scroller) return
+			const unsubscribe = subscribeToToolbarLayout(scroller, measureToolbarLayout)
+			measureToolbarLayout(scroller.getBoundingClientRect())?.()
+			return unsubscribe
+		}, [measureToolbarLayout])
 
 		// Update button position and scroll when highlightedCode changes
 		useEffect(() => {
@@ -588,20 +581,19 @@ const CodeBlock = memo(
 		useEffect(() => {
 			if (!preRef.current) return
 
+			const handleMouseUp = () => {
+				setIsSelecting(false)
+			}
 			const handleMouseDown = (e: MouseEvent) => {
 				// Only trigger if clicking the pre element directly
 				if (e.currentTarget === preRef.current) {
 					setIsSelecting(true)
+					document.addEventListener("mouseup", handleMouseUp, { once: true })
 				}
-			}
-
-			const handleMouseUp = () => {
-				setIsSelecting(false)
 			}
 
 			const preElement = preRef.current
 			preElement.addEventListener("mousedown", handleMouseDown)
-			document.addEventListener("mouseup", handleMouseUp)
 
 			return () => {
 				preElement.removeEventListener("mousedown", handleMouseDown)

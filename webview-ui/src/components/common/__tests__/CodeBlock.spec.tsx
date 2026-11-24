@@ -229,6 +229,27 @@ describe("CodeBlock", () => {
 		}
 	})
 
+	it("listens for mouse release only while selecting code", async () => {
+		const subscribe = vi.spyOn(document, "addEventListener")
+		try {
+			const { container } = render(<CodeBlock source="code to select" language="typescript" />)
+			await screen.findByText(/code to select/)
+			const code = container.querySelector('[windowshade="true"]')!
+			const mouseUpSubscriptions = () => subscribe.mock.calls.filter(([event]) => event === "mouseup")
+			expect(mouseUpSubscriptions()).toHaveLength(0)
+
+			fireEvent.mouseDown(code)
+			expect(mouseUpSubscriptions()).toHaveLength(1)
+			expect(mouseUpSubscriptions()[0][2]).toEqual({ once: true })
+			expect(screen.queryByRole("button", { name: "Copy code" })).not.toBeInTheDocument()
+
+			fireEvent.mouseUp(document)
+			expect(screen.getByRole("button", { name: "Copy code" })).toBeInTheDocument()
+		} finally {
+			subscribe.mockRestore()
+		}
+	})
+
 	it("handles invalid language gracefully", async () => {
 		const code = "some code"
 

@@ -245,6 +245,12 @@ Startup lists the selected settings directory and checks only the legacy filenam
 
 In the real-file fixture, a clean migration went from four path checks to one directory scan. The migrated fixture with rollback JSON went from five path checks to one scan and one YAML path check. Both versions ensured that the settings directory existed. Across ten runs after three warm-up runs, the median time for 80 clean migrations fell from 4.99 ms to 3.17 ms. For the migrated fixture, the median fell from 5.55 ms to 3.86 ms. These timings cover the settings migration function.
 
+## Configured Git executable
+
+Commit search, commit details, working tree changes, and status use the first working absolute executable from the VS Code machine setting `git.path` in trusted workspaces. Each operation uses the same executable for its checks and commands. The helpers use PATH when a configured executable is unavailable or the workspace is untrusted. The checkpoint service keeps its separate PATH-based Git check. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1742)
+
+A local subprocess fixture supplied a simulated machine setting with a path that contains a space and removed Git from PATH. The original status helper returned no result. The updated helper ran the configured executable and returned its branch. The retained tests check executable selection, command arguments, and existing output and error handling.
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

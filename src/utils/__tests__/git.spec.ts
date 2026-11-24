@@ -1,4 +1,3 @@
-import { ExecException } from "child_process"
 import * as fs from "fs"
 import * as path from "path"
 
@@ -16,20 +15,16 @@ import {
 } from "../git"
 import { truncateOutput } from "../../integrations/misc/extract-text"
 
-type ExecFunction = (
-	command: string,
+type GitExecFile = (
+	executable: string,
+	args: string[],
 	options: { cwd?: string },
-	callback: (error: ExecException | null, result?: { stdout: string; stderr: string }) => void,
-) => void
+) => Promise<{ stdout: string; stderr: string }>
 
-type PromisifiedExec = (command: string, options?: { cwd?: string }) => Promise<{ stdout: string; stderr: string }>
+const execFileMock = vitest.hoisted(() => vitest.fn<GitExecFile>())
 
-const execMock = vitest.hoisted(() => vitest.fn<ExecFunction>())
-
-// Mock child_process.exec
-vitest.mock("child_process", () => ({
-	exec: execMock,
-}))
+vitest.mock("child_process", () => ({ execFile: execFileMock }))
+vitest.mock("util", () => ({ promisify: (execFile: GitExecFile) => execFile }))
 
 // Mock fs.promises
 vitest.mock("fs", () => ({
@@ -41,34 +36,18 @@ vitest.mock("fs", () => ({
 
 // Create a mock for vscode
 const mockWorkspaceFolders = vitest.fn()
+const mockInspectGitPath = vitest.fn()
+let workspaceTrusted = true
 vitest.mock("vscode", () => ({
 	workspace: {
+		get isTrusted() {
+			return workspaceTrusted
+		},
+		getConfiguration: () => ({ inspect: mockInspectGitPath }),
 		get workspaceFolders() {
 			return mockWorkspaceFolders()
 		},
 	},
-}))
-
-// Mock util.promisify to return our own mock function
-vitest.mock("util", () => ({
-	promisify: vitest.fn((fn: ExecFunction): PromisifiedExec => {
-		return async (command: string, options?: { cwd?: string }) => {
-			// Call the original mock to maintain the mock implementation
-			return new Promise((resolve, reject) => {
-				fn(
-					command,
-					options || {},
-					(error: ExecException | null, result?: { stdout: string; stderr: string }) => {
-						if (error) {
-							reject(error)
-						} else {
-							resolve(result!)
-						}
-					},
-				)
-			})
-		}
-	}),
 }))
 
 // Mock extract-text
@@ -78,370 +57,231 @@ vitest.mock("../../integrations/misc/extract-text", () => ({
 	}),
 }))
 
-import { exec } from "child_process"
-
-describe("git utils", () => {
+describe("Git commands", () => {
 	const cwd = "/test/path"
+	const executable = path.resolve("Git Tools", "git")
+	const versionArgs = ["--version"]
+	const repoArgs = ["rev-parse", "--git-dir"]
+	const statusArgs = ["status", "--porcelain=v1", "--branch"]
+	const logArgs = ["log", "-n", "10", "--format=%H%n%h%n%s%n%an%n%ad", "--date=short"]
+	const commit = {
+		hash: "abc123def456",
+		shortHash: "abc123",
+		subject: "fix: test commit",
+		author: "John Doe",
+		date: "2024-01-06",
+	}
+	const history = [
+		...Object.values(commit),
+		"def456abc789",
+		"def456",
+		"feat: new feature",
+		"Jane Smith",
+		"2024-01-05",
+	].join("\n")
+
+	// Mock the subprocess result only. Each test can assert the executable,
+	// argument boundaries, and working directory independently.
+	function returnGitOutput(...outputs: string[]) {
+		for (const stdout of outputs) {
+			execFileMock.mockResolvedValueOnce({ stdout, stderr: "" })
+		}
+	}
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
+		execFileMock.mockReset().mockRejectedValue(new Error("Unexpected Git command"))
+		mockInspectGitPath.mockReset()
+		workspaceTrusted = true
 	})
 
-	describe("checkGitInstalled", () => {
-		it("should return true when git --version succeeds", async () => {
-			execMock.mockImplementation((command, _options, callback) => {
-				if (command === "git --version") {
-					callback(null, { stdout: "git version 2.39.2", stderr: "" })
-					return
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
+	it("checks PATH Git for callers with independent runners", async () => {
+		mockInspectGitPath.mockReturnValue({ globalValue: executable })
+		returnGitOutput("git version 2.39.2")
 
-			const result = await checkGitInstalled()
-			expect(result).toBe(true)
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git --version", {}, expect.any(Function))
-		})
-
-		it("should return false when git --version fails", async () => {
-			execMock.mockImplementation((command, _options, callback) => {
-				if (command === "git --version") {
-					callback(new Error("git not found"))
-					return
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
-
-			const result = await checkGitInstalled()
-			expect(result).toBe(false)
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git --version", {}, expect.any(Function))
-		})
-
-		it("should handle unexpected errors gracefully", async () => {
-			execMock.mockImplementation((command, _options, callback) => {
-				if (command === "git --version") {
-					// Simulate an unexpected error
-					callback(new Error("Unexpected system error"))
-					return
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
-
-			const result = await checkGitInstalled()
-			expect(result).toBe(false)
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git --version", {}, expect.any(Function))
-		})
+		await expect(checkGitInstalled()).resolves.toBe(true)
+		expect(execFileMock.mock.calls).toEqual([["git", versionArgs, {}]])
+		expect(mockInspectGitPath).not.toHaveBeenCalled()
 	})
 
-	describe("searchCommits", () => {
-		const mockCommitData = [
-			"abc123def456",
-			"abc123",
-			"fix: test commit",
-			"John Doe",
-			"2024-01-06",
-			"def456abc789",
-			"def456",
-			"feat: new feature",
-			"Jane Smith",
-			"2024-01-05",
-		].join("\n")
-
-		it("should return commits when git is installed and repo exists", async () => {
-			// Set up mock responses
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-				[
-					'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="test" --regexp-ignore-case',
-					{ stdout: mockCommitData, stderr: "" },
-				],
-			])
-
-			execMock.mockImplementation((command, _options, callback) => {
-				// Find matching response
-				for (const [cmd, response] of responses) {
-					if (command === cmd) {
-						callback(null, response)
-						return
-					}
-				}
-				callback(new Error(`Unexpected command: ${command}`))
-			})
-
-			const result = await searchCommits("test", cwd)
-
-			// First verify the result is correct
-			expect(result).toHaveLength(2)
-			expect(result[0]).toEqual({
-				hash: "abc123def456",
-				shortHash: "abc123",
-				subject: "fix: test commit",
-				author: "John Doe",
-				date: "2024-01-06",
-			})
-
-			// Then verify all commands were called correctly
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git --version", {}, expect.any(Function))
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git rev-parse --git-dir", { cwd }, expect.any(Function))
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith(
-				'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="test" --regexp-ignore-case',
-				{ cwd },
-				expect.any(Function),
-			)
-		})
-
-		it("should return empty array when git is not installed", async () => {
-			execMock.mockImplementation((command, _options, callback) => {
-				if (command === "git --version") {
-					callback(new Error("git not found"))
-					return
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
-
-			const result = await searchCommits("test", cwd)
-			expect(result).toEqual([])
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git --version", {}, expect.any(Function))
-		})
-
-		it("should return empty array when not in a git repository", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", null], // null indicates error should be called
-			])
-
-			execMock.mockImplementation((command, _options, callback) => {
-				const response = responses.get(command)
-				if (response === null) {
-					callback(new Error("not a git repository"))
-					return
-				} else if (response) {
-					callback(null, response)
-					return
-				} else {
-					callback(new Error("Unexpected command"))
-					return
-				}
-			})
-
-			const result = await searchCommits("test", cwd)
-			expect(result).toEqual([])
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git --version", {}, expect.any(Function))
-			expect(vitest.mocked(exec)).toHaveBeenCalledWith("git rev-parse --git-dir", { cwd }, expect.any(Function))
-		})
-
-		it("should handle hash search when grep search returns no results", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-				[
-					'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="abc123" --regexp-ignore-case',
-					{ stdout: "", stderr: "" },
-				],
-				[
-					'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --author-date-order abc123',
-					{ stdout: mockCommitData, stderr: "" },
-				],
-			])
-
-			execMock.mockImplementation((command, _options, callback) => {
-				for (const [cmd, response] of responses) {
-					if (command === cmd) {
-						callback(null, response)
-						return
-					}
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
-
-			const result = await searchCommits("abc123", cwd)
-			expect(result).toHaveLength(2)
-			expect(result[0]).toEqual({
-				hash: "abc123def456",
-				shortHash: "abc123",
-				subject: "fix: test commit",
-				author: "John Doe",
-				date: "2024-01-06",
-			})
-		})
+	it.each(["Git is missing", "Git cannot run"])("returns false when %s", async (message) => {
+		execFileMock.mockRejectedValueOnce(new Error(message))
+		await expect(checkGitInstalled()).resolves.toBe(false)
+		expect(execFileMock.mock.calls).toEqual([["git", versionArgs, {}]])
 	})
 
-	describe("getCommitInfo", () => {
-		const mockCommitInfo = [
-			"abc123def456",
-			"abc123",
-			"fix: test commit",
-			"John Doe",
-			"2024-01-06",
-			"Detailed description",
-		].join("\n")
-		const mockStats = "1 file changed, 2 insertions(+), 1 deletion(-)"
-		const mockDiff = "@@ -1,1 +1,2 @@\n-old line\n+new line"
+	it.each([
+		{ name: "commit search", run: () => searchCommits("test", cwd), missing: [], outside: [] },
+		{
+			name: "commit info",
+			run: () => getCommitInfo("abc123", cwd),
+			missing: "Git is not installed",
+			outside: "Not a git repository",
+		},
+		{
+			name: "working state",
+			run: () => getWorkingState(cwd),
+			missing: "Git is not installed",
+			outside: "Not a git repository",
+		},
+		{ name: "status", run: () => getGitStatus(cwd), missing: null, outside: null },
+	])("handles a missing executable or repository for $name", async ({ run, missing, outside }) => {
+		await expect(run()).resolves.toEqual(missing)
+		expect(execFileMock.mock.calls).toEqual([["git", versionArgs, {}]])
 
-		it("should return formatted commit info", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-				[
-					'git show --format="%H%n%h%n%s%n%an%n%ad%n%b" --no-patch abc123',
-					{ stdout: mockCommitInfo, stderr: "" },
-				],
-				['git show --stat --format="" abc123', { stdout: mockStats, stderr: "" }],
-				['git show --format="" abc123', { stdout: mockDiff, stderr: "" }],
-			])
-
-			execMock.mockImplementation((command, _options, callback) => {
-				for (const [cmd, response] of responses) {
-					if (command.startsWith(cmd)) {
-						callback(null, response)
-						return
-					}
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
-
-			const result = await getCommitInfo("abc123", cwd)
-			expect(result).toContain("Commit: abc123")
-			expect(result).toContain("Author: John Doe")
-			expect(result).toContain("Files Changed:")
-			expect(result).toContain("Full Changes:")
-			expect(vitest.mocked(truncateOutput)).toHaveBeenCalled()
-		})
-
-		it("should return error message when git is not installed", async () => {
-			execMock.mockImplementation((command, _options, callback) => {
-				if (command === "git --version") {
-					callback(new Error("git not found"))
-					return
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
-
-			const result = await getCommitInfo("abc123", cwd)
-			expect(result).toBe("Git is not installed")
-		})
-
-		it("should return error message when not in a git repository", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", null], // null indicates error should be called
-			])
-
-			execMock.mockImplementation((command, _options, callback) => {
-				const response = responses.get(command)
-				if (response === null) {
-					callback(new Error("not a git repository"))
-					return
-				} else if (response) {
-					callback(null, response)
-					return
-				} else {
-					callback(new Error("Unexpected command"))
-					return
-				}
-			})
-
-			const result = await getCommitInfo("abc123", cwd)
-			expect(result).toBe("Not a git repository")
-		})
+		execFileMock.mockClear()
+		returnGitOutput("git version 2.39.2")
+		await expect(run()).resolves.toEqual(outside)
+		expect(execFileMock.mock.calls).toEqual([
+			["git", versionArgs, {}],
+			["git", repoArgs, { cwd }],
+		])
 	})
 
-	describe("getWorkingState", () => {
-		const mockStatus = " M src/file1.ts\n?? src/file2.ts"
-		const mockDiff = "@@ -1,1 +1,2 @@\n-old line\n+new line"
+	it("searches commit messages with the configured executable and a single search argument", async () => {
+		mockInspectGitPath.mockReturnValue({ globalValue: executable })
+		returnGitOutput("git version 2.39.2", ".git", history)
+		const query = 'test "quoted text"'
 
-		it("should return working directory changes", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-				["git status --short", { stdout: mockStatus, stderr: "" }],
-				["git diff HEAD", { stdout: mockDiff, stderr: "" }],
-			])
+		const result = await searchCommits(query, cwd)
 
-			execMock.mockImplementation((command, _options, callback) => {
-				for (const [cmd, response] of responses) {
-					if (command === cmd) {
-						callback(null, response)
-						return
-					}
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
+		expect(result).toHaveLength(2)
+		expect(result[0]).toEqual(commit)
+		expect(mockInspectGitPath).toHaveBeenCalledWith("path")
+		expect(execFileMock.mock.calls).toEqual([
+			[executable, versionArgs, {}],
+			[executable, repoArgs, { cwd }],
+			[executable, [...logArgs, `--grep=${query}`, "--regexp-ignore-case"], { cwd }],
+		])
+	})
 
-			const result = await getWorkingState(cwd)
-			expect(result).toContain("Working directory changes:")
-			expect(result).toContain("src/file1.ts")
-			expect(result).toContain("src/file2.ts")
-			expect(vitest.mocked(truncateOutput)).toHaveBeenCalled()
-		})
+	it("tries the same executable for a hash search after an empty message search", async () => {
+		mockInspectGitPath.mockReturnValue({ globalValue: executable })
+		returnGitOutput("git version 2.39.2", ".git", "", history)
 
-		it("should return message when working directory is clean", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-				["git status --short", { stdout: "", stderr: "" }],
-			])
+		const result = await searchCommits("abc123", cwd)
 
-			execMock.mockImplementation((command, _options, callback) => {
-				for (const [cmd, response] of responses) {
-					if (command === cmd) {
-						callback(null, response)
-						return
-					}
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
+		expect(result).toHaveLength(2)
+		expect(result[0]).toEqual(commit)
+		expect(execFileMock.mock.calls).toEqual([
+			[executable, versionArgs, {}],
+			[executable, repoArgs, { cwd }],
+			[executable, [...logArgs, "--grep=abc123", "--regexp-ignore-case"], { cwd }],
+			[executable, [...logArgs, "--author-date-order", "abc123"], { cwd }],
+		])
+	})
 
-			const result = await getWorkingState(cwd)
-			expect(result).toBe("No changes in working directory")
-		})
+	it("reads and formats commit metadata, file stats, and changes with the configured executable", async () => {
+		mockInspectGitPath.mockReturnValue({ globalValue: executable })
+		const stats = "1 file changed, 2 insertions(+), 1 deletion(-)"
+		const diff = "@@ -1,1 +1,2 @@\n-old line\n+new line"
+		returnGitOutput(
+			"git version 2.39.2",
+			".git",
+			[...Object.values(commit), "Detailed description"].join("\n"),
+			stats,
+			diff,
+		)
 
-		it("should return error message when git is not installed", async () => {
-			execMock.mockImplementation((command, _options, callback) => {
-				if (command === "git --version") {
-					callback(new Error("git not found"))
-					return
-				}
-				callback(new Error("Unexpected command"))
-				return
-			})
+		const result = await getCommitInfo("abc123", cwd)
 
-			const result = await getWorkingState(cwd)
-			expect(result).toBe("Git is not installed")
-		})
+		expect(result).toContain("Commit: abc123")
+		expect(result).toContain("Author: John Doe")
+		expect(result).toContain(`Files Changed:\n${stats}`)
+		expect(result).toContain(`Full Changes:\n\n${diff}`)
+		expect(vitest.mocked(truncateOutput)).toHaveBeenCalled()
+		expect(execFileMock.mock.calls).toEqual([
+			[executable, versionArgs, {}],
+			[executable, repoArgs, { cwd }],
+			[executable, ["show", "--format=%H%n%h%n%s%n%an%n%ad%n%b", "--no-patch", "abc123"], { cwd }],
+			[executable, ["show", "--stat", "--format=", "abc123"], { cwd }],
+			[executable, ["show", "--format=", "abc123"], { cwd }],
+		])
+	})
 
-		it("should return error message when not in a git repository", async () => {
-			const responses = new Map([
-				["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-				["git rev-parse --git-dir", null], // null indicates error should be called
-			])
+	it("reads working tree changes with the configured executable", async () => {
+		mockInspectGitPath.mockReturnValue({ globalValue: executable })
+		returnGitOutput("git version 2.39.2", ".git", " M src/file1.ts\n?? src/file2.ts", "@@ -1,1 +1,2 @@")
 
-			execMock.mockImplementation((command, _options, callback) => {
-				const response = responses.get(command)
-				if (response === null) {
-					callback(new Error("not a git repository"))
-					return
-				} else if (response) {
-					callback(null, response)
-					return
-				} else {
-					callback(new Error("Unexpected command"))
-					return
-				}
-			})
+		const result = await getWorkingState(cwd)
 
-			const result = await getWorkingState(cwd)
-			expect(result).toBe("Not a git repository")
-		})
+		expect(result).toContain("Working directory changes:")
+		expect(result).toContain("src/file1.ts")
+		expect(result).toContain("src/file2.ts")
+		expect(vitest.mocked(truncateOutput)).toHaveBeenCalled()
+		expect(execFileMock.mock.calls).toEqual([
+			[executable, versionArgs, {}],
+			[executable, repoArgs, { cwd }],
+			[executable, ["status", "--short"], { cwd }],
+			[executable, ["diff", "HEAD"], { cwd }],
+		])
+	})
+
+	it("returns early when the working tree is clean", async () => {
+		returnGitOutput("git version 2.39.2", ".git", "")
+
+		await expect(getWorkingState(cwd)).resolves.toBe("No changes in working directory")
+		expect(execFileMock).toHaveBeenCalledTimes(3)
+	})
+
+	it("tries configured absolute paths in order before using PATH", async () => {
+		const unavailable = path.resolve("Missing Git", "git")
+		mockInspectGitPath.mockReturnValue({ globalValue: ["./git", unavailable, executable] })
+		execFileMock.mockRejectedValueOnce(new Error("Git executable not found"))
+		returnGitOutput("git version 2.39.2", ".git", "## main")
+
+		await expect(getGitStatus(cwd)).resolves.toBe("## main")
+		expect(execFileMock.mock.calls).toEqual([
+			[unavailable, versionArgs, {}],
+			[executable, versionArgs, {}],
+			[executable, repoArgs, { cwd }],
+			[executable, statusArgs, { cwd }],
+		])
+	})
+
+	it("falls back to PATH when the configured executable fails", async () => {
+		mockInspectGitPath.mockReturnValue({ globalValue: executable })
+		execFileMock.mockRejectedValueOnce(new Error("Git executable not found"))
+		returnGitOutput("git version 2.39.2", ".git", "## main")
+
+		await expect(getGitStatus(cwd)).resolves.toBe("## main")
+		expect(execFileMock.mock.calls).toEqual([
+			[executable, versionArgs, {}],
+			["git", versionArgs, {}],
+			["git", repoArgs, { cwd }],
+			["git", statusArgs, { cwd }],
+		])
+	})
+
+	it.each(["workspace setting", "untrusted workspace"])("uses PATH with a %s", async (scope) => {
+		workspaceTrusted = scope === "workspace setting"
+		mockInspectGitPath.mockReturnValue(
+			workspaceTrusted ? { workspaceValue: executable } : { globalValue: executable },
+		)
+		returnGitOutput("git version 2.39.2", ".git", "## main")
+
+		await expect(getGitStatus(cwd)).resolves.toBe("## main")
+		expect(execFileMock.mock.calls).toEqual([
+			["git", versionArgs, {}],
+			["git", repoArgs, { cwd }],
+			["git", statusArgs, { cwd }],
+		])
+	})
+
+	const changedFiles = Array.from({ length: 29 }, (_, index) => `M  file${index + 1}.ts`)
+	it.each([
+		{ maxFiles: undefined, lines: changedFiles.slice(0, 20).concat("... 9 more files") },
+		{ maxFiles: 0, lines: [] },
+		{ maxFiles: 10, lines: changedFiles.slice(0, 10).concat("... 19 more files") },
+	])("limits status output to $maxFiles changed files", async ({ maxFiles, lines }) => {
+		returnGitOutput("git version 2.39.2", ".git", ["## main...origin/main", ...changedFiles].join("\n"))
+
+		await expect(getGitStatus(cwd, maxFiles)).resolves.toBe(["## main...origin/main", ...lines].join("\n"))
+	})
+
+	it("returns null when status output is empty", async () => {
+		returnGitOutput("git version 2.39.2", ".git", "")
+		await expect(getGitStatus(cwd)).resolves.toBeNull()
 	})
 })
 
@@ -837,162 +677,5 @@ describe("getWorkspaceGitInfo", () => {
 		// Verify the fs operations were called with the correct workspace path
 		expect(gitSpy).toHaveBeenCalled()
 		expect(readFileSpy).toHaveBeenCalled()
-	})
-})
-
-describe("getGitStatus", () => {
-	const cwd = "/test/path"
-
-	beforeEach(() => {
-		vitest.clearAllMocks()
-	})
-
-	it("should return git status output with default maxFiles", async () => {
-		const mockOutput = `## main...origin/main [ahead 2, behind 1]
-M  src/staged-file.ts
-	M src/unstaged-file.ts
-MM src/both-modified.ts
-?? src/untracked-file.ts`
-
-		const responses = new Map([
-			["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-			["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-			["git status --porcelain=v1 --branch", { stdout: mockOutput, stderr: "" }],
-		])
-
-		execMock.mockImplementation((command, _options, callback) => {
-			for (const [cmd, response] of responses) {
-				if (command === cmd) {
-					callback(null, response)
-					return
-				}
-			}
-			callback(new Error("Unexpected command"))
-			return
-		})
-
-		const result = await getGitStatus(cwd, 20)
-
-		expect(result).toBe(mockOutput)
-	})
-
-	it("should show only branch info when maxFiles is 0", async () => {
-		const mockOutput = `## main...origin/main
-M  src/file1.ts
-?? src/file2.ts`
-
-		const responses = new Map([
-			["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-			["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-			["git status --porcelain=v1 --branch", { stdout: mockOutput, stderr: "" }],
-		])
-
-		execMock.mockImplementation((command, _options, callback) => {
-			for (const [cmd, response] of responses) {
-				if (command === cmd) {
-					callback(null, response)
-					return
-				}
-			}
-			callback(new Error("Unexpected command"))
-			return
-		})
-
-		const result = await getGitStatus(cwd, 0)
-
-		expect(result).toBe("## main...origin/main")
-		expect(result).not.toContain("M  src/file1.ts")
-		expect(result).not.toContain("?? src/file2.ts")
-	})
-
-	it("should return null when git is not installed", async () => {
-		execMock.mockImplementation((command, _options, callback) => {
-			if (command === "git --version") {
-				callback(new Error("git not found"))
-				return
-			}
-			callback(new Error("Unexpected command"))
-			return
-		})
-
-		const result = await getGitStatus(cwd)
-		expect(result).toBeNull()
-	})
-
-	it("should return null when not in a git repository", async () => {
-		const responses = new Map([
-			["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-			["git rev-parse --git-dir", null],
-		])
-
-		execMock.mockImplementation((command, _options, callback) => {
-			const response = responses.get(command)
-			if (response === null) {
-				callback(new Error("not a git repository"))
-				return
-			} else if (response) {
-				callback(null, response)
-				return
-			}
-			callback(new Error("Unexpected command"))
-			return
-		})
-
-		const result = await getGitStatus(cwd)
-		expect(result).toBeNull()
-	})
-
-	it("should respect maxFiles parameter", async () => {
-		const lines = Array.from({ length: 30 }, (_, i) => {
-			if (i === 0) return "## main"
-			return `M  file${i}.ts`
-		})
-		const mockOutput = lines.join("\n")
-
-		const responses = new Map([
-			["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-			["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-			["git status --porcelain=v1 --branch", { stdout: mockOutput, stderr: "" }],
-		])
-
-		execMock.mockImplementation((command, _options, callback) => {
-			for (const [cmd, response] of responses) {
-				if (command === cmd) {
-					callback(null, response)
-					return
-				}
-			}
-			callback(new Error("Unexpected command"))
-			return
-		})
-
-		const result = await getGitStatus(cwd, 10)
-
-		expect(result).toContain("## main")
-		expect(result).toContain("M  file1.ts")
-		expect(result).toContain("... 19 more files")
-		expect(result).not.toContain("file15.ts")
-	})
-
-	it("should return null when status is empty", async () => {
-		const responses = new Map([
-			["git --version", { stdout: "git version 2.39.2", stderr: "" }],
-			["git rev-parse --git-dir", { stdout: ".git", stderr: "" }],
-			["git status --porcelain=v1 --branch", { stdout: "", stderr: "" }],
-		])
-
-		execMock.mockImplementation((command, _options, callback) => {
-			for (const [cmd, response] of responses) {
-				if (command === cmd) {
-					callback(null, response)
-					return
-				}
-			}
-			callback(new Error("Unexpected command"))
-			return
-		})
-
-		const result = await getGitStatus(cwd)
-		expect(result).toBeNull()
 	})
 })

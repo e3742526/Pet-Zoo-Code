@@ -1,16 +1,17 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import { promises as fs } from "fs"
-import { exec } from "child_process"
+import { execFile } from "child_process"
 import { promisify } from "util"
 
 import type { GitRepositoryInfo, GitCommit } from "@roo-code/types"
 
 import { truncateOutput } from "../integrations/misc/extract-text"
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 const GIT_OUTPUT_LINE_LIMIT = 500
+const GIT_LOG_FORMAT = "--format=%H%n%h%n%s%n%an%n%ad"
 
 /**
  * Extracts git repository information from the workspace's .git directory
@@ -191,9 +192,9 @@ export async function getWorkspaceGitInfo(): Promise<GitRepositoryInfo> {
 	return getGitRepositoryInfo(workspaceRoot)
 }
 
-async function checkGitRepo(cwd: string): Promise<boolean> {
+async function checkGitRepo(executable: string, cwd: string): Promise<boolean> {
 	try {
-		await execAsync("git rev-parse --git-dir", { cwd })
+		await execFileAsync(executable, ["rev-parse", "--git-dir"], { cwd })
 		return true
 	} catch {
 		return false
@@ -201,7 +202,7 @@ async function checkGitRepo(cwd: string): Promise<boolean> {
 }
 
 /**
- * Checks if Git is installed on the system by attempting to run git --version
+ * Checks whether the supplied Git executable runs. Independent Git runners use PATH by default.
  * @returns {Promise<boolean>} True if Git is installed and accessible, false otherwise
  * @example
  * const isGitInstalled = await checkGitInstalled();
@@ -209,42 +210,57 @@ async function checkGitRepo(cwd: string): Promise<boolean> {
  *   console.log("Git is not installed");
  * }
  */
-export async function checkGitInstalled(): Promise<boolean> {
+export async function checkGitInstalled(executable = "git"): Promise<boolean> {
 	try {
-		await execAsync("git --version")
+		await execFileAsync(executable, ["--version"], {})
 		return true
 	} catch {
 		return false
 	}
 }
 
+async function findGitExecutable(): Promise<string | undefined> {
+	// Read the machine setting in trusted workspaces. Relative paths could
+	// point to different executables when commands run from a repository.
+	const configured = vscode.workspace.isTrusted
+		? vscode.workspace.getConfiguration("git").inspect<string | string[]>("path")?.globalValue
+		: undefined
+	const candidates = Array.isArray(configured) ? configured : [configured]
+	for (const executable of candidates) {
+		if (typeof executable === "string" && path.isAbsolute(executable) && (await checkGitInstalled(executable))) {
+			return executable
+		}
+	}
+
+	return (await checkGitInstalled()) ? "git" : undefined
+}
+
 export async function searchCommits(query: string, cwd: string): Promise<GitCommit[]> {
 	try {
-		const isInstalled = await checkGitInstalled()
-		if (!isInstalled) {
+		const executable = await findGitExecutable()
+		if (!executable) {
 			console.error("Git is not installed")
 			return []
 		}
 
-		const isRepo = await checkGitRepo(cwd)
+		const isRepo = await checkGitRepo(executable, cwd)
 		if (!isRepo) {
 			console.error("Not a git repository")
 			return []
 		}
 
 		// Search commits by hash or message, limiting to 10 results
-		const { stdout } = await execAsync(
-			`git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short ` + `--grep="${query}" --regexp-ignore-case`,
-			{ cwd },
-		)
+		const logArgs = ["log", "-n", "10", GIT_LOG_FORMAT, "--date=short"]
+		const { stdout } = await execFileAsync(executable, [...logArgs, `--grep=${query}`, "--regexp-ignore-case"], {
+			cwd,
+		})
 
 		let output = stdout
 		if (!output.trim() && /^[a-f0-9]+$/i.test(query)) {
 			// If no results from grep search and query looks like a hash, try searching by hash
-			const { stdout: hashStdout } = await execAsync(
-				`git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short ` + `--author-date-order ${query}`,
-				{ cwd },
-			).catch(() => ({ stdout: "" }))
+			const { stdout: hashStdout } = await execFileAsync(executable, [...logArgs, "--author-date-order", query], {
+				cwd,
+			}).catch(() => ({ stdout: "" }))
 
 			if (!hashStdout.trim()) {
 				return []
@@ -278,25 +294,27 @@ export async function searchCommits(query: string, cwd: string): Promise<GitComm
 
 export async function getCommitInfo(hash: string, cwd: string): Promise<string> {
 	try {
-		const isInstalled = await checkGitInstalled()
-		if (!isInstalled) {
+		const executable = await findGitExecutable()
+		if (!executable) {
 			return "Git is not installed"
 		}
 
-		const isRepo = await checkGitRepo(cwd)
+		const isRepo = await checkGitRepo(executable, cwd)
 		if (!isRepo) {
 			return "Not a git repository"
 		}
 
 		// Get commit info, stats, and diff separately
-		const { stdout: info } = await execAsync(`git show --format="%H%n%h%n%s%n%an%n%ad%n%b" --no-patch ${hash}`, {
-			cwd,
-		})
+		const { stdout: info } = await execFileAsync(
+			executable,
+			["show", `${GIT_LOG_FORMAT}%n%b`, "--no-patch", hash],
+			{ cwd },
+		)
 		const [fullHash, shortHash, subject, author, date, body] = info.trim().split("\n")
 
-		const { stdout: stats } = await execAsync(`git show --stat --format="" ${hash}`, { cwd })
+		const { stdout: stats } = await execFileAsync(executable, ["show", "--stat", "--format=", hash], { cwd })
 
-		const { stdout: diff } = await execAsync(`git show --format="" ${hash}`, { cwd })
+		const { stdout: diff } = await execFileAsync(executable, ["show", "--format=", hash], { cwd })
 
 		const summary = [
 			`Commit: ${shortHash} (${fullHash})`,
@@ -319,24 +337,24 @@ export async function getCommitInfo(hash: string, cwd: string): Promise<string> 
 
 export async function getWorkingState(cwd: string): Promise<string> {
 	try {
-		const isInstalled = await checkGitInstalled()
-		if (!isInstalled) {
+		const executable = await findGitExecutable()
+		if (!executable) {
 			return "Git is not installed"
 		}
 
-		const isRepo = await checkGitRepo(cwd)
+		const isRepo = await checkGitRepo(executable, cwd)
 		if (!isRepo) {
 			return "Not a git repository"
 		}
 
 		// Get status of working directory
-		const { stdout: status } = await execAsync("git status --short", { cwd })
+		const { stdout: status } = await execFileAsync(executable, ["status", "--short"], { cwd })
 		if (!status.trim()) {
 			return "No changes in working directory"
 		}
 
 		// Get all changes (both staged and unstaged) compared to HEAD
-		const { stdout: diff } = await execAsync("git diff HEAD", { cwd })
+		const { stdout: diff } = await execFileAsync(executable, ["diff", "HEAD"], { cwd })
 		const lineLimit = GIT_OUTPUT_LINE_LIMIT
 		const output = `Working directory changes:\n\n${status}\n\n${diff}`.trim()
 		return truncateOutput(output, lineLimit)
@@ -354,18 +372,18 @@ export async function getWorkingState(cwd: string): Promise<string> {
  */
 export async function getGitStatus(cwd: string, maxFiles: number = 20): Promise<string | null> {
 	try {
-		const isInstalled = await checkGitInstalled()
-		if (!isInstalled) {
+		const executable = await findGitExecutable()
+		if (!executable) {
 			return null
 		}
 
-		const isRepo = await checkGitRepo(cwd)
+		const isRepo = await checkGitRepo(executable, cwd)
 		if (!isRepo) {
 			return null
 		}
 
 		// Use porcelain v1 format with branch info
-		const { stdout } = await execAsync("git status --porcelain=v1 --branch", { cwd })
+		const { stdout } = await execFileAsync(executable, ["status", "--porcelain=v1", "--branch"], { cwd })
 
 		if (!stdout.trim()) {
 			return null

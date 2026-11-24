@@ -7,7 +7,6 @@ import { spawn } from "child_process"
 import {
 	extractSingleFileTarXzArchive,
 	extractSingleFileZipArchive,
-	extractTarGzArchive,
 	extractTarXzArchive,
 	extractZipArchive,
 	runProcess,
@@ -62,20 +61,6 @@ describe("managed binary archive utilities", () => {
 		} finally {
 			vi.useRealTimers()
 		}
-	})
-
-	it("extracts tar.gz archives with hardened flags", async () => {
-		const child = createChild()
-		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
-		const extraction = extractTarGzArchive("/tmp/archive.tar.gz", "/tmp/output")
-		child.emit("close", 0)
-		await extraction
-
-		expect(mockSpawn).toHaveBeenCalledWith(
-			"tar",
-			expect.arrayContaining(["-xzf", "/tmp/archive.tar.gz", "-C", "/tmp/output", "--no-same-owner"]),
-			expect.objectContaining({ shell: false }),
-		)
 	})
 
 	it("extracts tar.xz archives with hardened flags", async () => {

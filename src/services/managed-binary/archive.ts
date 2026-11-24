@@ -49,14 +49,6 @@ export function runProcess(executable: string, args: string[], timeoutMs = 30_00
 	})
 }
 
-export async function extractTarGzArchive(archivePath: string, destination: string): Promise<void> {
-	const args = ["-xzf", archivePath, "-C", destination, "--no-same-owner"]
-	if (process.platform === "linux") {
-		args.push("--no-overwrite-dir")
-	}
-	await runProcess("tar", args)
-}
-
 export async function extractTarXzArchive(archivePath: string, destination: string): Promise<void> {
 	const args = ["-xJf", archivePath, "-C", destination, "--no-same-owner"]
 	if (process.platform === "linux") {

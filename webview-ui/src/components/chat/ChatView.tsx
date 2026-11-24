@@ -218,11 +218,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	>(undefined)
 	const [isCondensing, setIsCondensing] = useState<boolean>(false)
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
-	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
-		new LRUCache({
-			max: 100,
-			ttl: 1000 * 60 * 5,
-		}),
+	const [everVisibleMessages] = useState(
+		() =>
+			new LRUCache<number, boolean>({
+				max: 100,
+				ttl: 1000 * 60 * 5,
+			}),
 	)
 	const autoApproveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const userRespondedRef = useRef<boolean>(false)
@@ -557,7 +558,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// useScrollLifecycle which has its own effect keyed on taskTs.
 	useEffect(() => {
 		setExpandedRows({})
-		everVisibleMessagesTsRef.current.clear()
+		everVisibleMessages.clear()
 		setCurrentFollowUpTs(null)
 		setIsCondensing(false)
 		setAggregatedCostsMap(new Map())
@@ -567,7 +568,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			autoApproveTimeoutRef.current = null
 		}
 		userRespondedRef.current = false
-	}, [currentTaskId])
+	}, [currentTaskId, everVisibleMessages])
 
 	const taskTs = task?.ts
 
@@ -583,16 +584,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useEffect(() => {
 		if (isHidden) {
-			everVisibleMessagesTsRef.current.clear()
+			everVisibleMessages.clear()
 		}
-	}, [isHidden])
+	}, [isHidden, everVisibleMessages])
 
 	useEffect(() => {
-		const cache = everVisibleMessagesTsRef.current
 		return () => {
-			cache.clear()
+			everVisibleMessages.clear()
 		}
-	}, [])
+	}, [everVisibleMessages])
 
 	const isStreaming = useMemo(() => {
 		// Checking clineAsk isn't enough since messages effect may be called
@@ -1115,7 +1115,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				}
 			}
 
-			if (everVisibleMessagesTsRef.current.has(message.ts)) {
+			if (everVisibleMessages.has(message.ts)) {
 				const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
 					"api_req_failed",
 					"resume_task",
@@ -1169,29 +1169,26 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		})
 
 		const viewportStart = Math.max(0, newVisibleMessages.length - 100)
-		newVisibleMessages
-			.slice(viewportStart)
-			.forEach((msg: ClineMessage) => everVisibleMessagesTsRef.current.set(msg.ts, true))
+		newVisibleMessages.slice(viewportStart).forEach((msg: ClineMessage) => everVisibleMessages.set(msg.ts, true))
 
 		return newVisibleMessages
-	}, [modifiedMessages])
+	}, [modifiedMessages, everVisibleMessages])
 
 	useEffect(() => {
 		const cleanupInterval = setInterval(() => {
-			const cache = everVisibleMessagesTsRef.current
 			const currentMessageIds = new Set(modifiedMessages.map((m: ClineMessage) => m.ts))
 			const viewportMessages = visibleMessages.slice(Math.max(0, visibleMessages.length - 100))
 			const viewportMessageIds = new Set(viewportMessages.map((m: ClineMessage) => m.ts))
 
-			cache.forEach((_value: boolean, key: number) => {
+			everVisibleMessages.forEach((_value: boolean, key: number) => {
 				if (!currentMessageIds.has(key) && !viewportMessageIds.has(key)) {
-					cache.delete(key)
+					everVisibleMessages.delete(key)
 				}
 			})
 		}, 60000)
 
 		return () => clearInterval(cleanupInterval)
-	}, [modifiedMessages, visibleMessages])
+	}, [modifiedMessages, visibleMessages, everVisibleMessages])
 
 	useDebounceEffect(
 		() => {

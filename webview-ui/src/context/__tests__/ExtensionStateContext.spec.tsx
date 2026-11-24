@@ -192,6 +192,46 @@ describe("ExtensionStateContext", () => {
 		expect(screen.getByTestId("opened-tabs")).toHaveTextContent("[]")
 	})
 
+	it.each(["initial", "state", "taskHistoryUpdated"] as const)(
+		"keeps history newest first and preserves ties after a %s snapshot",
+		(source) => {
+			const base = { number: 1, task: "task", tokensIn: 0, tokensOut: 0, totalCost: 0 }
+			const older = { ...base, id: "older", ts: 1 }
+			const first = { ...base, id: "first", ts: 4 }
+			const second = { ...base, id: "second", ts: 4 }
+			const history = [older, first, second]
+			const post = (data: ExtensionMessage) => {
+				act(() => window.dispatchEvent(new MessageEvent("message", { data })))
+			}
+			const expectHistory = (items: typeof history) => {
+				expect(JSON.parse(screen.getByTestId("task-history").textContent!)).toEqual(items)
+			}
+
+			render(
+				<ExtensionStateContextProvider
+					initialState={source === "initial" ? { taskHistory: history } : undefined}>
+					<TestComponent />
+				</ExtensionStateContextProvider>,
+			)
+			if (source === "state") post({ type: "state", state: { taskHistory: history } })
+			if (source === "taskHistoryUpdated") post({ type: "taskHistoryUpdated", taskHistory: history })
+			expectHistory([first, second, older])
+			expect(history.map(({ id }) => id)).toEqual(["older", "first", "second"])
+
+			const renamed = { ...second, autoTitle: "Renamed" }
+			post({ type: "taskHistoryItemUpdated", taskHistoryItem: renamed })
+			expectHistory([first, renamed, older])
+
+			const added = { ...base, id: "new", ts: 4 }
+			post({ type: "taskHistoryItemUpdated", taskHistoryItem: added })
+			expectHistory([added, first, renamed, older])
+
+			const moved = { ...older, ts: 5 }
+			post({ type: "taskHistoryItemUpdated", taskHistoryItem: moved })
+			expectHistory([moved, added, first, renamed])
+		},
+	)
+
 	it.each([
 		["the item matches the pinned task id and no item is loaded yet", "task-a", undefined, "task-a", true],
 		["the item belongs to another task", "task-a", undefined, "task-b", false],

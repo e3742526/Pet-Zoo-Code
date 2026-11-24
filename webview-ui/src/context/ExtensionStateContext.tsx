@@ -14,6 +14,7 @@ import {
 	type ExtensionMessage,
 	type ClineMessage,
 	type ExtensionState,
+	type HistoryItem,
 	type MarketplaceInstalledMetadata,
 	type SkillMetadata,
 	type RuleMetadata,
@@ -190,6 +191,13 @@ function internMessages(messages: ClineMessage[], previousMessages: ClineMessage
 	}
 }
 
+const newestTaskFirst = (a: HistoryItem, b: HistoryItem) => b.ts - a.ts
+
+const orderTaskHistory = (history: HistoryItem[]) =>
+	history.some((item, index) => index > 0 && history[index - 1].ts < item.ts)
+		? [...history].sort(newestTaskFirst)
+		: history
+
 export const mergeExtensionState = (prevState: ExtensionState, newState: Partial<ExtensionState>) => {
 	const { customModePrompts: prevCustomModePrompts, experiments: prevExperiments, ...prevRest } = prevState
 
@@ -198,6 +206,7 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 		customModePrompts: newCustomModePrompts,
 		customSupportPrompts,
 		experiments: newExperiments,
+		taskHistory,
 		...newRest
 	} = newState
 
@@ -231,6 +240,7 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 	// with new ones since the state that is broadcast is the entire objects so merging is not necessary.
 	return {
 		...rest,
+		taskHistory: taskHistory === undefined ? prevState.taskHistory : orderTaskHistory(taskHistory),
 		apiConfiguration: apiConfiguration ?? prevState.apiConfiguration,
 		customModePrompts,
 		customSupportPrompts: customSupportPrompts ?? prevState.customSupportPrompts,
@@ -579,12 +589,14 @@ export const ExtensionStateContextProvider: React.FC<{
 				}
 				case "taskHistoryUpdated": {
 					// Efficiently update just the task history without replacing entire state
-					if (message.taskHistory !== undefined) {
+					const history = message.taskHistory
+					if (history !== undefined) {
 						historyCache.clear()
-						historyCache.intern(message.taskHistory)
+						historyCache.intern(history)
+						const taskHistory = orderTaskHistory(history)
 						setState((prevState) => ({
 							...prevState,
-							taskHistory: message.taskHistory!,
+							taskHistory,
 						}))
 					}
 					break
@@ -596,16 +608,19 @@ export const ExtensionStateContextProvider: React.FC<{
 					}
 					historyCache.intern(item)
 					setState((prevState) => {
-						const existingIndex = prevState.taskHistory.findIndex((h) => h.id === item.id)
-						let nextHistory: typeof prevState.taskHistory
-						if (existingIndex === -1) {
-							nextHistory = [item, ...prevState.taskHistory]
-						} else {
-							nextHistory = [...prevState.taskHistory]
-							nextHistory[existingIndex] = item
+						const previousHistory = prevState.taskHistory
+						const existingIndex = previousHistory.findIndex((entry) => entry.id === item.id)
+						const nextHistory = existingIndex === -1 ? [item, ...previousHistory] : [...previousHistory]
+						const index = Math.max(existingIndex, 0)
+						if (existingIndex !== -1) {
+							nextHistory[index] = item
 						}
-						// Keep UI semantics consistent with extension: newest-first ordering.
-						nextHistory.sort((a, b) => b.ts - a.ts)
+						// A single update can only break the order next to the new item.
+						const before = nextHistory[index - 1]
+						const after = nextHistory[index + 1]
+						if ((before && before.ts < item.ts) || (after && after.ts > item.ts)) {
+							nextHistory.sort(newestTaskFirst)
+						}
 						return {
 							...prevState,
 							taskHistory: nextHistory,

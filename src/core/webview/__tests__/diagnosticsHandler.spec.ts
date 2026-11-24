@@ -57,8 +57,8 @@ describe("generateErrorDiagnostics", () => {
 	})
 
 	it("generates a diagnostics file with error metadata and history", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true as any)
-		vi.mocked(fs.readFile).mockResolvedValue('[{"role": "user", "content": "test"}]' as any)
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
+		vi.mocked(fs.readFile).mockResolvedValue('[{"role": "user", "content": "test"}]')
 
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
@@ -85,7 +85,7 @@ describe("generateErrorDiagnostics", () => {
 		// taskId.slice(0, 8) = "test-tas" from "test-task-id"
 		expect(String(writtenPath)).toContain("zoo-diagnostics-test-tas")
 		expect(String(writtenContent)).toContain(
-			"// Please share this file with Zoo Code Support (support@zoocode.dev) to diagnose the issue faster",
+			"// Review the file and remove sensitive information before you share it.",
 		)
 		expect(String(writtenContent)).toContain('"error":')
 		expect(String(writtenContent)).toContain('"history":')
@@ -100,7 +100,7 @@ describe("generateErrorDiagnostics", () => {
 	})
 
 	it("uses empty history when API history file does not exist", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false)
 
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
@@ -126,7 +126,7 @@ describe("generateErrorDiagnostics", () => {
 	})
 
 	it("uses default values when values are not provided", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false)
 
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
@@ -145,8 +145,8 @@ describe("generateErrorDiagnostics", () => {
 	})
 
 	it("handles JSON parse error gracefully", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true as any)
-		vi.mocked(fs.readFile).mockResolvedValue("invalid json" as any)
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
+		vi.mocked(fs.readFile).mockResolvedValue("invalid json")
 
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
@@ -171,7 +171,7 @@ describe("generateErrorDiagnostics", () => {
 	})
 
 	it("returns error result when file write fails", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false)
 		vi.mocked(fs.writeFile).mockRejectedValue(new Error("Write failed"))
 
 		const result = await generateErrorDiagnostics({

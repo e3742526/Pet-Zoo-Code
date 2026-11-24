@@ -914,11 +914,6 @@
 			"count": 11
 		}
 	},
-	"core/webview/__tests__/diagnosticsHandler.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 7
-		}
-	},
 	"core/webview/__tests__/messageEnhancer.test.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 8

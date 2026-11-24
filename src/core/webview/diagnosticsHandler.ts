@@ -30,7 +30,7 @@ export interface GenerateDiagnosticsResult {
 /**
  * Generates an error diagnostics file containing error metadata and API conversation history.
  * The file is created in the system temp directory and opened in VS Code for the user to review
- * before sharing with support.
+ * before sharing.
  */
 export async function generateErrorDiagnostics(params: GenerateDiagnosticsParams): Promise<GenerateDiagnosticsResult> {
 	const { taskId, globalStoragePath, values, log } = params
@@ -65,8 +65,8 @@ export async function generateErrorDiagnostics(params: GenerateDiagnosticsParams
 
 		// Prepend human-readable guidance comments before the JSON payload
 		const headerComment =
-			"// Please share this file with Zoo Code Support (support@zoocode.dev) to diagnose the issue faster\n" +
-			"// Just make sure you're OK sharing the contents of the conversation below.\n\n"
+			"// This file contains the task conversation and error details.\n" +
+			"// Review the file and remove sensitive information before you share it.\n\n"
 		const jsonContent = JSON.stringify(diagnostics, null, 2)
 		const fullContent = headerComment + jsonContent
 

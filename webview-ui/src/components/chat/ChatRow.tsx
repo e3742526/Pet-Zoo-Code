@@ -1182,7 +1182,7 @@ const ChatRowBody = memo(function ChatRowBody({
 					)
 				case "api_req_retry_delayed":
 					let body = t(`chat:apiRequest.failed`)
-					let retryInfo, rawError, code, docsURL
+					let retryInfo, rawError, code
 					if (message.text !== undefined) {
 						// Try to show richer error message for that code, if available
 						const potentialCode = parseInt(message.text.substring(0, 3))
@@ -1192,18 +1192,6 @@ const ChatRowBody = memo(function ChatRowBody({
 							const errorMessage = t(stringForError, { defaultValue: "" })
 							if (errorMessage) {
 								body = errorMessage
-								// Fill this out in upcoming PRs
-								// Do not remove this
-								// switch(code) {
-								// 	case ERROR_CODE:
-								// 		docsURL = ???
-								// 		break;
-								// }
-							} else {
-								// Non-HTTP-status-code error message - store full text as errorDetails
-								body = t("chat:apiRequest.errorMessage.unknown")
-								docsURL =
-									"mailto:support@zoocode.dev?subject=Unknown API Error&body=[Please include full error details]"
 							}
 						}
 
@@ -1229,7 +1217,6 @@ const ChatRowBody = memo(function ChatRowBody({
 							type="api_req_retry_delayed"
 							code={code}
 							message={body}
-							docsURL={docsURL}
 							additionalContent={retryInfo}
 							errorDetails={rawError}
 						/>

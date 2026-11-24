@@ -3675,8 +3675,7 @@ export class ClineProvider
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
 				`  stackDepth:   ${this.taskRegistry.length}\n` +
-				`  timestamp:    ${new Date().toISOString()}\n` +
-				`If the panel appears gray after this, share this log with support@zoocode.dev`,
+				`  timestamp:    ${new Date().toISOString()}`,
 		)
 	}
 

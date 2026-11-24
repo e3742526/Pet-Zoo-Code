@@ -32,3 +32,11 @@ Review checks found two distinctions that affect the plan. Legacy provider compa
 - The five focused host suites passed 143 tests. The error row suite passed four tests. The built distribution passed 44 tests, including the retired endpoint scan in both bundles. Host and webview type checks and lint checks passed. The build used Node 24.22.3. The repository pins Node 22.23.4.
 
 The isolated run covers local activation, inference, and task history. The bundle scan covers the known retired endpoint patterns. Live Muse and Antigravity authentication, a full network traffic inventory, and side-by-side installation remain untested. Separate identity work must resolve the VSIX manifest, configuration and command namespaces, OAuth callbacks, and migration before testing coexistence.
+
+## Provider selection follow-up
+
+On November 24, 2026, the webview model picker adopted the same bundled Anthropic catalog that the extension host uses when the provider is unset. Previously, the picker could request the public OpenRouter catalog for a profile with no provider. Explicit OpenRouter profiles still request their catalog. The change needs no profile or settings migration and can be reversed with the model picker commit.
+
+Both regression tests failed before the change and passed after it. The 309 focused webview tests, 71 host tests, and 44 distribution checks passed. The rebuilt VSIX matched the host and webview build outputs. It activated in a temporary VS Code profile under a loopback-only process sandbox, completed a task through the LM Studio mock, and reopened the saved task. The non-loopback control returned `EPERM`.
+
+The fork still has the `ZooCodeOrganization.zoo-code` installation identity. Schedule the identity and migration work before side-by-side distribution. Optional documentation links still point to Zoo Code. Model discovery for an explicitly selected OpenRouter profile can also use the public OpenRouter catalog when the profile configures a custom inference URL. That configuration needs a separate endpoint-routing check.

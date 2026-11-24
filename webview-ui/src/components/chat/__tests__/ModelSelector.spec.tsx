@@ -60,8 +60,10 @@ vi.mock("@/components/ui/hooks/useSelectedModel", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@/components/ui/hooks/useSelectedModel")>()
 	return {
 		...actual,
-		useSelectedModel: (...args: Parameters<typeof actual.useSelectedModel>) =>
-			selectedModelOverride.value ?? actual.useSelectedModel(...args),
+		useSelectedModel: (...args: Parameters<typeof actual.useSelectedModel>) => ({
+			...actual.useSelectedModel(...args),
+			...selectedModelOverride.value,
+		}),
 	}
 })
 
@@ -88,6 +90,14 @@ describe("ModelSelector", () => {
 		render(<ModelSelector apiConfiguration={anthropicConfig} title="Select model" />)
 
 		expect(screen.getByTestId("model-selector-trigger")).toHaveTextContent("claude-sonnet-4-5")
+	})
+
+	test("uses the bundled list when the profile has no provider", () => {
+		render(<ModelSelector apiConfiguration={{}} title="Select model" />)
+		fireEvent.click(screen.getByTestId("model-selector-trigger"))
+
+		expect(screen.getAllByTestId("model-selector-item").length).toBeGreaterThan(0)
+		expect(routerModelsResult.calls).not.toContainEqual(expect.objectContaining({ enabled: true }))
 	})
 
 	test("disables the trigger when disabled", () => {

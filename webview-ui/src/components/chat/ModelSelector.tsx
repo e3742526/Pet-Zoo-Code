@@ -93,10 +93,12 @@ export const ModelSelector = ({
 	const { t } = useAppTranslation()
 	const { organizationAllowList, currentApiConfigName } = useExtensionState()
 
-	const providerRaw = apiConfiguration.apiProvider || providerIdentifiers.openrouter
-	const provider: ProviderName | undefined = isRetiredProvider(providerRaw) ? undefined : providerRaw
-
-	const { id: selectedModelId, info: selectedModelInfo } = useSelectedModel(apiConfiguration)
+	const {
+		provider: selectedProvider,
+		id: selectedModelId,
+		info: selectedModelInfo,
+	} = useSelectedModel(apiConfiguration)
+	const provider = isRetiredProvider(selectedProvider) ? undefined : selectedProvider
 	const { isUnsupported, field, models, isLoading } = useModelListForProvider(provider, apiConfiguration)
 
 	const filteredModelRecord = React.useMemo(

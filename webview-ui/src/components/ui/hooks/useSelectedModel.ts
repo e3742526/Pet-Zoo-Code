@@ -100,7 +100,8 @@ function getStaticCatalogModel(
  * renamed deployment).
  */
 export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
-	const provider = apiConfiguration.apiProvider || providerIdentifiers.openrouter
+	// Match the extension host default, which has a bundled model catalog.
+	const provider = apiConfiguration.apiProvider || providerIdentifiers.anthropic
 	const activeProvider: ProviderName | undefined = isRetiredProvider(provider) ? undefined : provider
 	const dynamicProvider = activeProvider && isDynamicProvider(activeProvider) ? activeProvider : undefined
 	const openRouterModelId =

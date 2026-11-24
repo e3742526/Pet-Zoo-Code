@@ -1,15 +1,15 @@
 import React from "react"
 import { act } from "@testing-library/react"
 import { fireEvent, render, screen } from "@/utils/test-utils"
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage, WebviewMessage } from "@roo-code/types"
 import { TranslationProvider } from "@/i18n/__mocks__/TranslationContext"
 import FileChangesPanel from "../components/chat/FileChangesPanel"
 
-const mockPostMessage = vi.fn()
+const mockPostMessage = vi.fn<(message: WebviewMessage) => void>()
 
 vi.mock("@src/utils/vscode", () => ({
 	vscode: {
-		postMessage: (...args: unknown[]) => mockPostMessage(...args),
+		postMessage: (message: WebviewMessage) => mockPostMessage(message),
 	},
 }))
 
@@ -224,14 +224,22 @@ describe("FileChangesPanel", () => {
 			fireEvent.click(screen.getByTestId("accordian-toggle"))
 		}
 
-		function respond(message: Record<string, unknown>) {
+		function respond(message: ExtensionMessage) {
+			const id =
+				message.type === "fileContent"
+					? requestsOfType("readFileContent")
+							.filter((request) => request.text === message.fileContent?.path)
+							.at(-1)?.requestId
+					: undefined
 			act(() => {
-				window.dispatchEvent(new MessageEvent("message", { data: message }))
+				window.dispatchEvent(
+					new MessageEvent("message", { data: { ...message, requestId: message.requestId ?? id } }),
+				)
 			})
 		}
 
-		const requestsOfType = (type: string) =>
-			mockPostMessage.mock.calls.map(([m]) => m).filter((m: { type: string }) => m.type === type)
+		const requestsOfType = (type: WebviewMessage["type"]) =>
+			mockPostMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type)
 
 		it("requests nothing until a row is expanded, then asks for the final and the original content", () => {
 			renderPanel([createEditWithOriginal({ originalContentLength: 5000 })])
@@ -241,7 +249,9 @@ describe("FileChangesPanel", () => {
 
 			fireEvent.click(screen.getByTestId("accordian-toggle"))
 
-			expect(requestsOfType("readFileContent")).toEqual([{ type: "readFileContent", text: "src/foo.ts" }])
+			expect(requestsOfType("readFileContent")).toEqual([
+				{ type: "readFileContent", text: "src/foo.ts", requestId: expect.any(String) },
+			])
 			expect(requestsOfType("readOriginalContent")).toEqual([
 				{ type: "readOriginalContent", messageTs: TS, messageId: undefined, taskId: undefined },
 			])
@@ -406,7 +416,7 @@ describe("FileChangesPanel", () => {
 			expect(mockPostMessage).not.toHaveBeenCalled()
 		})
 
-		it("keeps a loaded original when the messages are replaced by an update of the same task", () => {
+		it("keeps an open merged diff and its cached content during unrelated streaming updates", () => {
 			const first = [createEditWithOriginal({ originalContentLength: 5000 })]
 			const { rerender } = renderPanel(first, "task-A")
 			expandRow()
@@ -417,16 +427,41 @@ describe("FileChangesPanel", () => {
 			})
 			expect(requestsOfType("readOriginalContent")).toHaveLength(1)
 
+			const stream: ClineMessage = { ts: TS + 1, type: "say", say: "text", text: "streaming", partial: true }
 			rerender(
 				<TranslationProvider>
-					<FileChangesPanel clineMessages={[...first]} taskId="task-A" />
+					<FileChangesPanel clineMessages={[{ ...first[0] }, stream]} taskId="task-A" />
 				</TranslationProvider>,
 			)
-			fireEvent.click(screen.getByTestId("accordian-toggle"))
-			respond({ type: "fileContent", fileContent: { path: "src/foo.ts", content: "new line\n" } })
 
+			expect(screen.getByTestId("accordian-toggle")).toHaveTextContent("expanded")
+			expect(requestsOfType("readFileContent")).toHaveLength(1)
 			expect(requestsOfType("readOriginalContent")).toHaveLength(1)
 			expect(screen.getByTestId("accordian-code")).toHaveTextContent("-old line")
+		})
+
+		it("ignores a pending file read when the same edit is updated", () => {
+			const edit = createEditWithOriginal({ originalContent: "old line\n" })
+			const { rerender } = renderPanel([edit], "task-A")
+			expandRow()
+			const firstRead = requestsOfType("readFileContent")[0]
+			const updated = { ...edit, text: edit.text!.replace("the recorded diff", "the updated diff") }
+			rerender(
+				<TranslationProvider>
+					<FileChangesPanel clineMessages={[updated]} taskId="task-A" />
+				</TranslationProvider>,
+			)
+			expect(screen.getByTestId("accordian-toggle")).toHaveTextContent("collapsed")
+			fireEvent.click(screen.getByTestId("accordian-toggle"))
+			const secondRead = requestsOfType("readFileContent")[1]
+			expect(secondRead.requestId).not.toBe(firstRead.requestId)
+			const reply = (requestId: string | undefined, content: string) =>
+				respond({ type: "fileContent", requestId, fileContent: { path: "src/foo.ts", content } })
+
+			reply(secondRead.requestId, "current line\n")
+			reply(firstRead.requestId, "stale line\n")
+			expect(screen.getByTestId("accordian-code")).toHaveTextContent("+current line")
+			expect(screen.getByTestId("accordian-code")).not.toHaveTextContent("stale line")
 		})
 
 		it("ignores an original answered for a different task", () => {

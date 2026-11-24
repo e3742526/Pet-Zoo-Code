@@ -3,6 +3,16 @@ import { safeJsonParse } from "@roo/core"
 
 /** File-edit tool names from ClineSayTool["tool"] (packages/types). */
 const FILE_EDIT_TOOLS = new Set<string>(["editedExistingFile", "appliedDiff", "newFileCreated"])
+const parsedToolMessages = new WeakMap<ClineMessage, { text: string; tool: ClineSayTool | undefined }>()
+
+function readToolMessage(message: ClineMessage, text: string) {
+	const cached = parsedToolMessages.get(message)
+	if (cached?.text === text) return cached.tool
+	const parsed = safeJsonParse<ClineSayTool>(text)
+	const tool = parsed?.tool && FILE_EDIT_TOOLS.has(parsed.tool) ? parsed : undefined
+	parsedToolMessages.set(message, { text, tool })
+	return tool
+}
 
 export interface FileChangeEntry {
 	path: string
@@ -15,6 +25,26 @@ export interface FileChangeEntry {
 	messageId?: string
 	/** True when the edit has an original (inline, or omitted by the extension and requestable by `ts`) */
 	hasOriginalContent: boolean
+}
+
+export function sameFileChanges(first: FileChangeEntry[], second: FileChangeEntry[]): boolean {
+	return (
+		first === second ||
+		(first.length === second.length &&
+			first.every((entry, index) => {
+				const other = second[index]
+				return (
+					entry.path === other.path &&
+					entry.diff === other.diff &&
+					entry.diffStats?.added === other.diffStats?.added &&
+					entry.diffStats?.removed === other.diffStats?.removed &&
+					entry.originalContent === other.originalContent &&
+					entry.hasOriginalContent === other.hasOriginalContent &&
+					entry.messageId === other.messageId &&
+					entry.ts === other.ts
+				)
+			}))
+	)
 }
 
 /**
@@ -36,8 +66,8 @@ export function fileChangesFromMessages(messages: ClineMessage[] | undefined): F
 		// Only include ask "tool" file edits that the user (or auto-approval) has approved
 		if (isAskTool && !msg.isAnswered) continue
 
-		const tool = safeJsonParse<ClineSayTool>(msg.text)
-		if (!tool || !FILE_EDIT_TOOLS.has(tool.tool as string)) continue
+		const tool = readToolMessage(msg, msg.text)
+		if (!tool) continue
 
 		// Batch diffs
 		if (tool.batchDiffs && Array.isArray(tool.batchDiffs)) {

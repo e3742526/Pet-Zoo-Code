@@ -1758,9 +1758,10 @@ export const webviewMessageHandler = async (
 		}
 		case "readFileContent": {
 			const relPath = message.text || ""
+			const response = { type: "fileContent" as const, requestId: message.requestId }
 			if (!relPath) {
 				await provider.postMessageToWebview({
-					type: "fileContent",
+					...response,
 					fileContent: { path: relPath, content: null, error: "No path provided" },
 				})
 				break
@@ -1769,7 +1770,7 @@ export const webviewMessageHandler = async (
 				const cwd = getCurrentCwd()
 				if (!cwd) {
 					await provider.postMessageToWebview({
-						type: "fileContent",
+						...response,
 						fileContent: { path: relPath, content: null, error: "No workspace path available" },
 					})
 					break
@@ -1778,17 +1779,17 @@ export const webviewMessageHandler = async (
 				// Workspace-boundary validation: prevent path traversal attacks
 				if (isPathOutsideWorkspace(absPath)) {
 					await provider.postMessageToWebview({
-						type: "fileContent",
+						...response,
 						fileContent: { path: relPath, content: null, error: "Path is outside workspace" },
 					})
 					break
 				}
 				const content = await fs.readFile(absPath, "utf-8")
-				await provider.postMessageToWebview({ type: "fileContent", fileContent: { path: relPath, content } })
+				await provider.postMessageToWebview({ ...response, fileContent: { path: relPath, content } })
 			} catch (err) {
 				const errorMsg = err instanceof Error ? err.message : String(err)
 				await provider.postMessageToWebview({
-					type: "fileContent",
+					...response,
 					fileContent: { path: relPath, content: null, error: errorMsg },
 				})
 			}

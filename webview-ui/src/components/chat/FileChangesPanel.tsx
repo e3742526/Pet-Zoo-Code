@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
 
-import { fileChangesFromMessages, type FileChangeEntry } from "./utils/fileChangesFromMessages"
+import { fileChangesFromMessages, sameFileChanges, type FileChangeEntry } from "./utils/fileChangesFromMessages"
 import CodeAccordion from "../common/CodeAccordion"
 
 interface FileChangesPanelProps {
@@ -25,31 +25,32 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 	const { t } = useAppTranslation()
 	const [panelExpanded, setPanelExpanded] = useState(false)
 	const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
-	const [finalContentByPath, setFinalContentByPath] = useState<Record<string, string | null>>({})
-	const pendingPathsRef = useRef<Set<string>>(new Set())
+	const [finalContentByPath, setFinalContentByPath] = useState(() => new Map<string, string | null>())
+	const [pendingPaths] = useState(() => new Map<string, string>())
 	// The extension omits `originalContent` from the messages it posts; it is requested when a row is expanded.
 	const [originalContentByKey, setOriginalContentByKey] = useState<Record<string, string | null>>({})
 	// In-flight requests, keyed by task and message. Deliberately not reset with the caches below: a request cannot
 	// be cancelled, so a reset would let a task switch (A -> B -> A) send a duplicate while the first is still open.
 	const pendingOriginalRequestsRef = useRef<Set<string>>(new Set())
 
-	// Task the expanded rows belong to; the reset below only lands after the render in which `taskId` changed, so
-	// the request effect must not act on rows expanded under the previous task.
-	const expandedTaskIdRef = useRef(taskId)
+	const incomingChanges = useMemo(() => fileChangesFromMessages(clineMessages), [clineMessages])
+	const [fileChanges, setFileChanges] = useState(incomingChanges)
+	if (!sameFileChanges(fileChanges, incomingChanges)) setFileChanges(incomingChanges)
 
-	// Reset expanded file rows and final content cache when the messages change
+	// The request effect only serves rows expanded for the current set of edits.
+	const expandedScope = useRef({ taskId, fileChanges })
+
+	// A text update can replace clineMessages without changing any file edits.
 	useEffect(() => {
 		setExpandedPaths(new Set())
-		setFinalContentByPath({})
-		pendingPathsRef.current = new Set()
-	}, [clineMessages, taskId])
+		setFinalContentByPath(new Map())
+		pendingPaths.clear()
+	}, [fileChanges, taskId, pendingPaths])
 
 	// Originals are keyed by message id, which is stable across message updates, so they only reset per task
 	useEffect(() => {
 		setOriginalContentByKey({})
 	}, [taskId])
-
-	const fileChanges = useMemo(() => fileChangesFromMessages(clineMessages), [clineMessages])
 
 	// Group by path so we show one row per file (multiple edits to same file combined for display)
 	const byPath = useMemo(() => {
@@ -76,7 +77,7 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 
 	const togglePath = useCallback(
 		(path: string) => {
-			expandedTaskIdRef.current = taskId
+			expandedScope.current = { taskId, fileChanges }
 			setExpandedPaths((prev) => {
 				const next = new Set(prev)
 				if (next.has(path)) next.delete(path)
@@ -84,24 +85,21 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 				return next
 			})
 		},
-		[taskId],
+		[taskId, fileChanges],
 	)
 
 	// Request the final file content (and the omitted original content) when a row is expanded and the edit has an original
 	useEffect(() => {
-		if (expandedTaskIdRef.current !== taskId) return
+		if (expandedScope.current.taskId !== taskId || expandedScope.current.fileChanges !== fileChanges) return
 		for (const path of expandedPaths) {
 			const entries = byPath.get(path)
 			if (!entries?.length) continue
 			const first = entries[0]
 			const lookupPath = path.startsWith("./") ? path.slice(2) : path
-			if (
-				first.hasOriginalContent &&
-				!(lookupPath in finalContentByPath) &&
-				!pendingPathsRef.current.has(lookupPath)
-			) {
-				pendingPathsRef.current.add(lookupPath)
-				vscode.postMessage({ type: "readFileContent", text: lookupPath })
+			if (first.hasOriginalContent && !finalContentByPath.has(lookupPath) && !pendingPaths.has(lookupPath)) {
+				const requestId = crypto.randomUUID()
+				pendingPaths.set(lookupPath, requestId)
+				vscode.postMessage({ type: "readFileContent", text: lookupPath, requestId })
 			}
 			const requestKey = `${taskId ?? ""}|${originalKey(first)}`
 			if (
@@ -119,7 +117,7 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 				})
 			}
 		}
-	}, [expandedPaths, byPath, finalContentByPath, originalContentByKey, taskId])
+	}, [expandedPaths, byPath, finalContentByPath, originalContentByKey, taskId, fileChanges, pendingPaths])
 
 	// Listen for fileContent and originalContent responses
 	useEffect(() => {
@@ -127,8 +125,9 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 			const message: ExtensionMessage = event.data
 			if (message.type === "fileContent" && message.fileContent?.path != null) {
 				const fc = message.fileContent
-				pendingPathsRef.current.delete(fc.path)
-				setFinalContentByPath((prev) => ({ ...prev, [fc.path]: fc.content ?? null }))
+				if (!message.requestId || pendingPaths.get(fc.path) !== message.requestId) return
+				pendingPaths.delete(fc.path)
+				setFinalContentByPath((prev) => new Map(prev).set(fc.path, fc.content ?? null))
 			} else if (message.type === "originalContent" && message.originalContentInfo) {
 				const { taskId: responseTaskId, content, ...id } = message.originalContentInfo
 				const key = originalKey(id)
@@ -140,7 +139,7 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 		}
 		window.addEventListener("message", handler)
 		return () => window.removeEventListener("message", handler)
-	}, [taskId])
+	}, [taskId, pendingPaths])
 
 	if (fileChanges.length === 0) return null
 
@@ -184,7 +183,7 @@ const FileChangesPanel = memo(({ clineMessages, taskId, className }: FileChanges
 						const originalContent =
 							entries[0].originalContent ?? originalContentByKey[originalKey(entries[0])] ?? undefined
 						const lookupPath = path.startsWith("./") ? path.slice(2) : path
-						const finalContent = finalContentByPath[lookupPath]
+						const finalContent = finalContentByPath.get(lookupPath)
 						const hasMergedDiff =
 							originalContent !== undefined && finalContent != null && finalContent !== ""
 						const displayDiff = hasMergedDiff

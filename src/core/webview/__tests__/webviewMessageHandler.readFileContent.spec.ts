@@ -103,12 +103,14 @@ describe("webviewMessageHandler - readFileContent path traversal prevention", ()
 		await webviewMessageHandler(mockProvider, {
 			type: "readFileContent",
 			text: "src/index.ts",
+			requestId: "read-1",
 		})
 
 		expect(fs.readFile).toHaveBeenCalled()
 		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: "fileContent",
+				requestId: "read-1",
 				fileContent: expect.objectContaining({
 					path: "src/index.ts",
 					content: "file content here",
@@ -177,12 +179,14 @@ describe("webviewMessageHandler - readFileContent path traversal prevention", ()
 		await webviewMessageHandler(mockProvider, {
 			type: "readFileContent",
 			text: "",
+			requestId: "read-2",
 		})
 
 		expect(fs.readFile).not.toHaveBeenCalled()
 		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: "fileContent",
+				requestId: "read-2",
 				fileContent: expect.objectContaining({
 					content: null,
 					error: "No path provided",

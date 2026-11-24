@@ -406,8 +406,9 @@ describe("Task persistence", () => {
 			vi.useRealTimers()
 		})
 
-		it("snapshots the array before passing to saveApiMessages", async () => {
-			mockSaveApiMessages.mockResolvedValueOnce([])
+		it("isolates the API history snapshot while its write is pending", async () => {
+			const write = createDeferred<void>()
+			mockSaveApiMessages.mockReturnValueOnce(write.promise)
 
 			const task = new Task({
 				provider: mockProvider,
@@ -416,21 +417,21 @@ describe("Task persistence", () => {
 				startTask: false,
 			})
 
-			const originalMsg = {
-				role: "user" as const,
-				content: [{ type: "text" as const, text: "snapshot test" }],
-			}
-			task.apiConversationHistory.push(originalMsg)
+			const input = { files: ["current.ts"] }
+			task.apiConversationHistory.push({
+				role: "assistant",
+				content: [{ type: "tool_use", id: "tool-1", name: "read_file", input }],
+			})
+			const expected = structuredClone(task.apiConversationHistory)
 
-			await task.retrySaveApiConversationHistory()
+			const saving = task["saveApiConversationHistory"]()
+			input.files[0] = "later.ts"
+			task.apiConversationHistory.push({ role: "user", content: "A later message" })
+			write.resolve()
 
+			await expect(saving).resolves.toBe(true)
 			expect(mockSaveApiMessages).toHaveBeenCalledTimes(1)
-
-			const callArgs = mockSaveApiMessages.mock.calls[0][0]
-			// The messages passed should be a COPY, not the live reference
-			expect(callArgs.messages).not.toBe(task.apiConversationHistory)
-			// But the content should be the same
-			expect(callArgs.messages).toEqual(task.apiConversationHistory)
+			expect(mockSaveApiMessages.mock.calls[0][0].messages).toEqual(expected)
 		})
 
 		it("settles the current assistant persistence boundary only for assistant messages", async () => {
@@ -1034,8 +1035,9 @@ describe("Task persistence", () => {
 			expect(result).toBe(false)
 		})
 
-		it("snapshots the array before passing to saveTaskMessages", async () => {
-			mockSaveTaskMessages.mockResolvedValueOnce([])
+		it("isolates the UI history snapshot while its write is pending", async () => {
+			const write = createDeferred<void>()
+			mockSaveTaskMessages.mockReturnValueOnce(write.promise)
 
 			const task = new Task({
 				provider: mockProvider,
@@ -1044,22 +1046,28 @@ describe("Task persistence", () => {
 				startTask: false,
 			})
 
-			task.clineMessages.push({
+			const images = ["data:image/png;base64,AA=="]
+			const progressStatus = { text: "In progress" }
+			const message: ClineMessage = {
 				type: "say",
 				say: "text",
 				text: "snapshot test",
 				ts: Date.now(),
-			})
+				images,
+				progressStatus,
+			}
+			task.clineMessages.push(message)
+			const expected = structuredClone(task.clineMessages)
 
-			await (task as Record<string, any>).saveClineMessages()
+			const saving = getTaskPersistenceAccess(task).saveClineMessages()
+			message.text = "Later edit"
+			images.push("data:image/png;base64,AQ==")
+			progressStatus.text = "Finished"
+			write.resolve()
 
+			await expect(saving).resolves.toBe(true)
 			expect(mockSaveTaskMessages).toHaveBeenCalledTimes(1)
-
-			const callArgs = mockSaveTaskMessages.mock.calls[0][0]
-			// The messages passed should be a COPY, not the live reference
-			expect(callArgs.messages).not.toBe(task.clineMessages)
-			// But the content should be the same
-			expect(callArgs.messages).toEqual(task.clineMessages)
+			expect(mockSaveTaskMessages.mock.calls[0][0].messages).toEqual(expected)
 		})
 
 		it("preserves an existing lifecycle status during metadata saves", async () => {

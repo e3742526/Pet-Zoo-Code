@@ -124,6 +124,7 @@ import {
 	saveTaskMessages,
 	taskMetadata,
 } from "../task-persistence"
+import { snapshotMessages } from "../task-persistence/snapshotMessages"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import {
@@ -1627,7 +1628,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async saveApiConversationHistory(merge = true): Promise<boolean> {
 		try {
 			await saveApiMessages({
-				messages: structuredClone(this.apiConversationHistory),
+				messages: snapshotMessages(this.apiConversationHistory),
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 				merge,
@@ -1829,7 +1830,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async saveClineMessages(merge = true): Promise<boolean> {
 		try {
 			await saveTaskMessages({
-				messages: structuredClone(this.clineMessages),
+				messages: snapshotMessages(this.clineMessages),
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 				merge,

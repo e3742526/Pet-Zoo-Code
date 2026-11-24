@@ -676,7 +676,7 @@
 	},
 	"core/task/__tests__/Task.persistence.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 8
+			"count": 7
 		}
 	},
 	"core/task/__tests__/Task.sticky-profile-race.spec.ts": {

@@ -212,3 +212,18 @@ Real-file tests wrote a catalog to custom storage and reopened it through both c
 Startup lists the selected settings directory and checks only the legacy filenames it could contain. When the listing includes converted YAML and legacy JSON, startup checks the YAML path and keeps both files. If listing fails, migration still tries the known paths. Each launch can recover files restored later or found after the user changes the storage directory. The separate default-command migration retains its completion flag.
 
 In the real-file fixture, a clean migration went from four path checks to one directory scan. The migrated fixture with rollback JSON went from five path checks to one scan and one YAML path check. Both versions ensured that the settings directory existed. Across ten runs after three warm-up runs, the median time for 80 clean migrations fell from 4.99 ms to 3.17 ms. For the migrated fixture, the median fell from 5.55 ms to 3.86 ms. These timings cover the settings migration function.
+
+## Task history scan and sidebar startup
+
+The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is partially addressed. `TaskHistoryStore.reconcile()` uses the directory it listed for all file checks, reads, and recovery in that scan. It resolves the storage setting again at the start of the next scan. The sidebar still waits for the initial history load.
+
+The fixture alternated the original and updated store against 1,000 real history files. It checked the complete newest-first result after the initial scan and again after a scan with no changed files. Across nine timed runs after four warm-up runs, the results were:
+
+| Storage and scan                  |     Before median (range) |   After median (range) |
+| --------------------------------- | ------------------------: | ---------------------: |
+| Custom storage, initial scan      | 130.49 ms (129.57–131.33) | 55.55 ms (49.90–56.28) |
+| Custom storage, no changed files  |    47.64 ms (46.96–50.26) |  10.76 ms (9.86–10.93) |
+| Default storage, initial scan     |    56.04 ms (55.58–57.64) | 55.28 ms (54.91–56.76) |
+| Default storage, no changed files |      9.79 ms (9.36–10.72) | 10.58 ms (10.04–10.79) |
+
+Storage setting reads fell from 2,001 per initial scan and 1,001 per unchanged scan to one in both cases. The median for an unchanged scan in default storage rose by 0.79 ms, within the 1 ms comparison limit. The timings measure the store scan, with a simulated VS Code configuration and real filesystem checks. The regression test also changes the configured root between scans. The file replacement and restart model still checks the same lock and recovery rules.

@@ -26,6 +26,16 @@ function mergeWithDisk(delta: Partial<HistoryItem>): (existing: unknown, incomin
 	return (existing, incoming) => mergeHistoryDelta(existing, incoming as HistoryItem, delta)
 }
 
+async function readHistoryItemFile(filePath: string): Promise<HistoryItem | null> {
+	try {
+		const raw = await readFileWithMissingRetry(filePath)
+		const item: HistoryItem = JSON.parse(raw)
+		return item.id ? item : null
+	} catch {
+		return null
+	}
+}
+
 /**
  * Durable intent for the one repair that spans an active delegated child and
  * its parent. Task files remain authoritative; this file only records the
@@ -371,8 +381,9 @@ export class TaskHistoryStore {
 			const liveIds = new Set<string>()
 
 			for (const taskId of onDiskIds) {
+				// Check and read the same files that this scan discovered, even if the storage setting changes.
+				const taskFilePath = path.join(tasksDir, taskId, GlobalFileNames.historyItem)
 				try {
-					const taskFilePath = await this.getTaskFilePath(taskId)
 					const { mtimeMs } = await fs.stat(taskFilePath).catch(async (error: unknown) => {
 						if (getErrorCode(error) !== "ENOENT") throw error
 						await recoverMissingJsonFile(taskFilePath, { waitForStaleLock: false })
@@ -387,7 +398,7 @@ export class TaskHistoryStore {
 						continue
 					}
 
-					const item = await this.readTaskFile(taskId)
+					const item = await readHistoryItemFile(taskFilePath)
 					if (item?.id === taskId) {
 						const previous = this.cache.get(taskId)
 						this.taskFileMtimes.set(taskId, mtimeMs)
@@ -406,8 +417,7 @@ export class TaskHistoryStore {
 					// held for the entire write, so its presence means a
 					// write is in progress — keep the task live.
 					try {
-						const lockPath = (await this.getTaskFilePath(taskId)) + ".lock"
-						const lockStat = await fs.stat(lockPath)
+						const lockStat = await fs.stat(taskFilePath + ".lock")
 						if (Date.now() - lockStat.mtimeMs < LOCK_STALE_MS) {
 							liveIds.add(taskId)
 						}
@@ -928,14 +938,7 @@ export class TaskHistoryStore {
 	 */
 	private async readTaskFile(taskId: string): Promise<HistoryItem | null> {
 		const filePath = await this.getTaskFilePath(taskId)
-
-		try {
-			const raw = await readFileWithMissingRetry(filePath)
-			const item: HistoryItem = JSON.parse(raw)
-			return item.id ? item : null
-		} catch {
-			return null
-		}
+		return readHistoryItemFile(filePath)
 	}
 
 	// ────────────────────────────── Private: fs.watch ──────────────────────────────

@@ -8,6 +8,7 @@ import * as recovery from "../../../utils/jsonFileRecovery"
 import type { HistoryItem } from "@roo-code/types"
 
 import { GlobalFileNames } from "../../../shared/globalFileNames"
+import { getStorageBasePath } from "../../../utils/storage"
 import { TaskHistoryStore, assertValidTransition } from "../TaskHistoryStore"
 
 vi.mock("../../../utils/storage", () => ({
@@ -173,6 +174,26 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 		for (const disposable of disposables) disposable.dispose()
 		disposables.clear()
 		await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+	})
+
+	it("resolves one storage root per scan and discovers a changed root on the next scan", async () => {
+		const first = [makeItem({ id: "older", ts: 1 }), makeItem({ id: "newer", ts: 2 })]
+		await seedItems(first)
+		const nextRoot = path.join(tmpDir, "custom-storage")
+		const next = makeItem({ id: "custom-task" })
+		await writeJson(path.join(nextRoot, "tasks", next.id, GlobalFileNames.historyItem), next)
+		const resolveStorage = vi.mocked(getStorageBasePath)
+
+		resolveStorage.mockClear()
+		await store.reconcile({ forceRefresh: true })
+		expect(store.getAll()).toEqual([first[1], first[0]])
+		expect(resolveStorage).toHaveBeenCalledTimes(1)
+
+		resolveStorage.mockClear()
+		resolveStorage.mockResolvedValueOnce(nextRoot)
+		await store.reconcile()
+		expect(store.getAll()).toEqual([next])
+		expect(resolveStorage).toHaveBeenCalledTimes(1)
 	})
 
 	it.each(["EACCES", "EIO", "ELOCKED", "missing"])("handles failed startup recovery: %s", async (code) => {

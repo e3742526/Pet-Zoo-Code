@@ -244,10 +244,10 @@ pnpm check-types
 pnpm lint
 ```
 
-By default the dev script still points `ROO_CODE_PROVIDER_URL` at `http://localhost:8080/proxy` for local extension-host development. The CLI provider selection itself should use a non-Router provider such as OpenRouter. To point the backend URL at production instead, override the environment variable:
+The CLI uses the provider you specify. For example:
 
 ```bash
-ROO_CODE_PROVIDER_URL=https://api.roocode.com/proxy pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
+pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
 ```
 
 ## Releasing

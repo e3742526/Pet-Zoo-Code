@@ -1,4 +1,4 @@
-import { providerIdentifiers } from "@roo-code/types"
+import { isRetiredProvider, providerIdentifiers } from "@roo-code/types"
 import React, { createContext, useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -446,7 +446,10 @@ export const ExtensionStateContextProvider: React.FC<{
 						historyCache.intern(newState.currentTaskItem)
 					}
 					setState((prevState) => mergeExtensionState(prevState, newState))
-					setShowWelcome(!checkExistKey(newState.apiConfiguration, newState.zooCodeIsAuthenticated))
+					const provider = newState.apiConfiguration?.apiProvider
+					setShowWelcome(
+						!(provider && isRetiredProvider(provider)) && !checkExistKey(newState.apiConfiguration),
+					)
 					setDidHydrateState(true)
 					recordDiagnosticsHydration(true)
 					// Update alwaysAllowFollowupQuestions if present in state message

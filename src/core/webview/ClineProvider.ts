@@ -46,7 +46,6 @@ import {
 	type TerminalActionPromptType,
 	type HistoryItem,
 	type PendingTaskAction,
-	type CloudUserInfo,
 	type CloudOrganizationMembership,
 	type CreateTaskOptions,
 	type TokenUsage,
@@ -86,7 +85,7 @@ import {
 } from "../task/providerHandoff"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
 import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService, getRooCodeApiUrl } from "@roo-code/cloud"
+import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { findLast } from "../../shared/array"
@@ -113,6 +112,7 @@ import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckp
 import { CodeIndexManagerRegistry } from "../../services/code-index/code-index-manager-registry"
 import type { CodeIndexWorkspaceScope } from "../../services/code-index/code-index-workspace-scope"
 import { MdmService } from "../../services/mdm/MdmService"
+import { readRetainedOrganizationPolicy } from "../../services/mdm/retainedOrganizationPolicy"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 import {
 	DiagnosticsRecorder,
@@ -421,7 +421,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "nov-2026-v3.98.2-pass-gemini-responses-fixes" // v3.98.2 Zoo Pass, Gemini models, Responses API, and provider fixes
+	public readonly latestAnnouncementId = "nov-2026-v3.98.2-pass-gemini-responses-fixes"
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
@@ -1410,65 +1410,6 @@ export class ClineProvider
 		if (!recoveringHost && (!currentTask || currentTask.abandoned || currentTask.abort)) {
 			await this.removeClineFromStack()
 		}
-
-		// Ensure zoo-gateway profile is seeded for users who signed in before this feature existed.
-		// Without this, users with a valid cached token but no zoo-gateway profile would need to
-		// re-authenticate to use Zoo Gateway. Fire-and-forget to avoid blocking webview init.
-		void this.ensureZooGatewayProfileSeeded().catch((err) => {
-			this.log(`[ensureZooGatewayProfileSeeded] Error: ${err instanceof Error ? err.message : String(err)}`)
-		})
-	}
-
-	/**
-	 * Seeds the zoo-gateway provider profile for users who have a cached auth token
-	 * but no profile (e.g., users who signed in before Zoo Gateway was added), or
-	 * who have an empty/imported profile without a token.
-	 * Called once per webview init; handleZooCodeCallback is idempotent so repeated calls are safe.
-	 */
-	private async ensureZooGatewayProfileSeeded(): Promise<void> {
-		const { getCachedZooCodeToken, getZooCodeBaseUrl } = await import("../../services/zoo-code-auth")
-		const token = getCachedZooCodeToken()
-		if (!token) return
-		const expectedGatewayBaseUrl = `${getZooCodeBaseUrl()}/api/gateway/v1`
-
-		// Check ALL zoo-gateway profiles — only skip seeding if every profile has the current token.
-		// Using .find() would miss stale tokens in duplicate/renamed profiles since handleZooCodeCallback
-		// uses .filter() and updates all of them — the early-return guard must match.
-		const allProfiles = await this.providerSettingsManager.listConfig()
-		const zooGatewayProfiles = allProfiles.filter((p) => p.apiProvider === providerIdentifiers.zooGateway)
-
-		if (zooGatewayProfiles.length === 0) {
-			this.log("[ensureZooGatewayProfileSeeded] No zoo-gateway profile found, creating one")
-		} else {
-			let allUpToDate = true
-
-			for (const entry of zooGatewayProfiles) {
-				try {
-					const fullProfile = await this.providerSettingsManager.getProfile({ name: entry.name })
-					if (
-						fullProfile.zooSessionToken !== token ||
-						fullProfile.zooGatewayBaseUrl !== expectedGatewayBaseUrl
-					) {
-						allUpToDate = false
-						this.log("[ensureZooGatewayProfileSeeded] Existing zoo-gateway profile is stale, updating")
-						break
-					}
-				} catch {
-					allUpToDate = false
-					this.log("[ensureZooGatewayProfileSeeded] Failed to read existing profile, will re-seed")
-					break
-				}
-			}
-
-			if (allUpToDate) {
-				const { postZooGatewayCredentialsReady } = await import("../../services/zoo-gateway-credentials-sync")
-				postZooGatewayCredentialsReady((message) => this.postMessageToWebview(message))
-				return
-			}
-		}
-
-		// User has token but either no profile, some profiles without token, or stale tokens — seed all
-		await this.handleZooCodeCallback(token)
 	}
 
 	public createTaskWithHistoryItem(
@@ -1945,10 +1886,10 @@ export class ClineProvider
 			"default-src 'none'",
 			`font-src ${webview.cspSource} data:`,
 			`style-src ${webview.cspSource} 'unsafe-inline' https://* http://${localServerUrl} http://0.0.0.0:${localPort}`,
-			`img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com data:`,
+			`img-src ${webview.cspSource} https://storage.googleapis.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com data:`,
 			`media-src ${webview.cspSource}`,
-			`script-src 'unsafe-eval' ${webview.cspSource} https://*.posthog.com http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
-			`connect-src ${webview.cspSource} https://* https://*.posthog.com ws://${localServerUrl} ws://0.0.0.0:${localPort} http://${localServerUrl} http://0.0.0.0:${localPort}`,
+			`script-src 'unsafe-eval' ${webview.cspSource} http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
+			`connect-src ${webview.cspSource} https://* ws://${localServerUrl} ws://0.0.0.0:${localPort} http://${localServerUrl} http://0.0.0.0:${localPort}`,
 		]
 
 		return /*html*/ `
@@ -2030,7 +1971,7 @@ export class ClineProvider
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
             <meta name="theme-color" content="#000000">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'; connect-src ${webview.cspSource} https://us.i.posthog.com;">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'; connect-src ${webview.cspSource};">
             <link rel="stylesheet" type="text/css" href="${stylesUri}">
 			<link href="${codiconsUri}" rel="stylesheet" />
 			<script nonce="${nonce}">
@@ -2660,85 +2601,6 @@ export class ClineProvider
 		await this.upsertProviderProfile(currentApiConfigName, newConfiguration)
 	}
 
-	// Zoo Code Auth
-
-	async handleZooCodeCallback(token: string) {
-		// Auth mutation (token storage, subscription check, success toast) was already
-		// performed by handleAuthCallback() in handleUri.ts before this method was called.
-		// Save the zoo-gateway provider profile with the session token so that
-		// ZooGatewayHandler can authenticate without any manual user input.
-		//
-		// activate: true ONLY if Zoo Gateway is already the active profile — this pushes
-		// the new token to the in-memory handler so the current task picks it up immediately.
-		// Otherwise activate: false — do NOT switch providers mid-conversation. The user
-		// must explicitly select Zoo Gateway in settings if they want to use it.
-		try {
-			const { apiConfiguration } = await this.getState()
-			const currentSettings = this.contextProxy.getProviderSettings()
-			const currentApiConfigName = this.contextProxy.getValues().currentApiConfigName
-
-			// Derive the gateway base URL from ZOO_CODE_BASE_URL so that non-prod environments
-			// (staging, local dev) route completions to the correct backend instead of always
-			// hard-coding production. An already-set value in the profile is NOT preserved here —
-			// it must always align with the auth server the user just authenticated against.
-			const { getZooCodeBaseUrl } = await import("../../services/zoo-code-auth")
-			const derivedGatewayBaseUrl = `${getZooCodeBaseUrl()}/api/gateway/v1`
-
-			// Check if Zoo Gateway is the currently active profile by apiProvider identity,
-			// not by profile name (profile names are user-renameable).
-			const isZooGatewayActive = currentSettings.apiProvider === providerIdentifiers.zooGateway
-
-			// Always scan ALL profiles and update every zoo-gateway profile with the new token.
-			// This ensures renamed profiles, duplicate profiles, and inactive profiles all stay
-			// in sync. The model lookup in requestRouterModels uses .find() which returns the
-			// first zoo-gateway profile it finds — if that profile has a stale token, requests fail.
-			const allProfiles = await this.providerSettingsManager.listConfig()
-			const zooProfiles = allProfiles.filter((p) => p.apiProvider === providerIdentifiers.zooGateway)
-
-			if (zooProfiles.length === 0) {
-				// No existing zoo-gateway profile — create the canonical default.
-				const newConfiguration: ProviderSettings = {
-					apiProvider: providerIdentifiers.zooGateway,
-					zooSessionToken: token,
-					zooGatewayModelId: apiConfiguration.zooGatewayModelId,
-					zooGatewayBaseUrl: derivedGatewayBaseUrl,
-				}
-				// Activate only if zoo-gateway was the active provider (shouldn't happen if
-				// no profiles exist, but defensive).
-				await this.upsertProviderProfile("Zoo Gateway", newConfiguration, isZooGatewayActive)
-			} else {
-				// Update every existing zoo-gateway profile with the new token and the
-				// derived base URL so that environment-specific routing stays consistent.
-				for (const entry of zooProfiles) {
-					const isActiveProfile = isZooGatewayActive && entry.name === currentApiConfigName
-					const existing = await this.providerSettingsManager.getProfile({ name: entry.name })
-					const updated: ProviderSettings = {
-						...existing,
-						zooSessionToken: token,
-						zooGatewayBaseUrl: derivedGatewayBaseUrl,
-					}
-					if (isActiveProfile) {
-						// Use upsertProviderProfile with activate: true so the in-memory handler
-						// picks up the new token immediately for the current task.
-						await this.upsertProviderProfile(entry.name, updated, true)
-					} else {
-						// Non-active profiles just need the token saved to disk.
-						await this.providerSettingsManager.saveConfig(entry.name, updated)
-					}
-				}
-			}
-		} catch (error) {
-			this.log(
-				`[handleZooCodeCallback] Failed to save zoo-gateway profile: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-		}
-		await this.postStateToWebview()
-		const { postZooGatewayCredentialsReady } = await import("../../services/zoo-gateway-credentials-sync")
-		postZooGatewayCredentialsReady((message) => this.postMessageToWebview(message))
-	}
-
 	// Requesty
 
 	async handleRequestyCallback(code: string, baseUrl: string | null) {
@@ -3295,7 +3157,7 @@ export class ClineProvider
 		let cloudOrganizations: CloudOrganizationMembership[] = []
 
 		try {
-			if (!CloudService.instance.isCloudAgent) {
+			if (CloudService.hasInstance() && !CloudService.instance.isCloudAgent) {
 				const now = Date.now()
 
 				if (
@@ -3314,9 +3176,6 @@ export class ClineProvider
 			// Ignore this error.
 		}
 
-		const telemetryKey = process.env.POSTHOG_API_KEY
-		const machineId = vscode.env.machineId
-		const vscodeTelemetryEnabled = vscode.env.isTelemetryEnabled
 		const mergedAllowedCommands = this.mergeAllowedCommands(allowedCommands)
 		const mergedDeniedCommands = this.mergeDeniedCommands(deniedCommands)
 		const cwd = this.cwd
@@ -3329,38 +3188,6 @@ export class ClineProvider
 		}
 		const currentTaskApiConfigName = currentTask?.taskApiConfigName
 		const currentTaskApiConfiguration = currentTask?.apiConfiguration
-		let zooCodeState: {
-			zooCodeIsAuthenticated: boolean
-			zooCodeUserName: string | undefined
-			zooCodeUserEmail: string | undefined
-			zooCodeUserImage: string | undefined
-			zooCodeBaseUrl: string
-			deviceName: string
-		} = {
-			zooCodeIsAuthenticated: false,
-			zooCodeUserName: undefined,
-			zooCodeUserEmail: undefined,
-			zooCodeUserImage: undefined,
-			zooCodeBaseUrl: "https://www.zoocode.dev",
-			deviceName: os.hostname(),
-		}
-
-		try {
-			const { isZooCodeAuthenticated, getCachedZooCodeUserInfo, getZooCodeBaseUrl } =
-				await import("../../services/zoo-code-auth")
-			const userInfo = getCachedZooCodeUserInfo()
-			zooCodeState = {
-				zooCodeIsAuthenticated: await isZooCodeAuthenticated(),
-				zooCodeUserName: userInfo.name,
-				zooCodeUserEmail: userInfo.email,
-				zooCodeUserImage: userInfo.image,
-				zooCodeBaseUrl: getZooCodeBaseUrl(),
-				deviceName: os.hostname(),
-			}
-		} catch {
-			// Keep the default unauthenticated state if the optional Zoo Code auth service is unavailable.
-		}
-
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration: currentTaskApiConfiguration ?? apiConfiguration,
@@ -3396,8 +3223,7 @@ export class ClineProvider
 			ttsSpeed: ttsSpeed ?? 1.0,
 			enableCheckpoints: enableCheckpoints ?? true,
 			checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-			shouldShowAnnouncement:
-				telemetrySetting !== "unset" && lastShownAnnouncementId !== this.latestAnnouncementId,
+			shouldShowAnnouncement: lastShownAnnouncementId !== this.latestAnnouncementId,
 			allowedCommands: mergedAllowedCommands,
 			deniedCommands: mergedDeniedCommands,
 			soundVolume: soundVolume ?? 0.5,
@@ -3431,9 +3257,6 @@ export class ClineProvider
 			cwd,
 			disabledTools,
 			telemetrySetting,
-			telemetryKey,
-			machineId,
-			vscodeTelemetryEnabled,
 			showRooIgnoredFiles: showRooIgnoredFiles ?? false,
 			enableSubfolderRules: enableSubfolderRules ?? false,
 			language: language ?? formatLanguage(vscode.env.language),
@@ -3476,7 +3299,6 @@ export class ClineProvider
 			// Phase 1 cloud removal: do not let Cloud-auth MDM enforcement force login-only UI flows.
 			mdmCompliant: undefined,
 			profileThresholds: profileThresholds ?? {},
-			cloudApiUrl: getRooCodeApiUrl(),
 			hasOpenedModeSelector: this.getGlobalState("hasOpenedModeSelector") ?? false,
 			lockApiConfigAcrossModes: lockApiConfigAcrossModes ?? false,
 			alwaysAllowFollowupQuestions: alwaysAllowFollowupQuestions ?? false,
@@ -3521,7 +3343,6 @@ export class ClineProvider
 					return undefined
 				}
 			})(),
-			...zooCodeState,
 			platform: process.platform,
 			arch: process.arch,
 			debug: vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false),
@@ -3557,54 +3378,7 @@ export class ClineProvider
 			providerSettings.apiProvider = apiProvider
 		}
 
-		let organizationAllowList = ORGANIZATION_ALLOW_ALL
-
-		try {
-			organizationAllowList = await CloudService.instance.getAllowList()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get organization allow list: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let cloudUserInfo: CloudUserInfo | null = null
-
-		try {
-			cloudUserInfo = CloudService.instance.getUserInfo()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get cloud user info: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let cloudIsAuthenticated: boolean = false
-
-		try {
-			cloudIsAuthenticated = CloudService.instance.isAuthenticated()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get cloud authentication state: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		const sharingEnabled: boolean = false
-
-		const publicSharingEnabled: boolean = false
-
-		let organizationSettingsVersion: number = -1
-
-		try {
-			if (CloudService.hasInstance()) {
-				const settings = CloudService.instance.getOrganizationSettings()
-				organizationSettingsVersion = settings?.version ?? -1
-			}
-		} catch (error) {
-			console.error(
-				`[getState] failed to get organization settings version: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		const taskSyncEnabled: boolean = false
+		const retainedPolicy = readRetainedOrganizationPolicy(this.context.globalState, (message) => this.log(message))
 
 		// Return the same structure as before.
 		return {
@@ -3686,12 +3460,12 @@ export class ClineProvider
 			dateFormat: stateValues.dateFormat ?? "auto",
 			showRelativeTimes: stateValues.showRelativeTimes ?? true,
 			enterBehavior: stateValues.enterBehavior ?? "send",
-			cloudUserInfo,
-			cloudIsAuthenticated,
-			sharingEnabled,
-			publicSharingEnabled,
-			organizationAllowList,
-			organizationSettingsVersion,
+			cloudUserInfo: null,
+			cloudIsAuthenticated: false,
+			sharingEnabled: false,
+			publicSharingEnabled: false,
+			organizationAllowList: retainedPolicy?.allowList ?? ORGANIZATION_ALLOW_ALL,
+			organizationSettingsVersion: retainedPolicy?.version ?? -1,
 			customCondensingPrompt: stateValues.customCondensingPrompt,
 			codebaseIndexModels: stateValues.codebaseIndexModels ?? EMBEDDING_MODEL_PROFILES,
 			codebaseIndexConfig: {
@@ -3723,7 +3497,7 @@ export class ClineProvider
 			includeCurrentTime: stateValues.includeCurrentTime ?? true,
 			includeCurrentCost: stateValues.includeCurrentCost ?? true,
 			maxGitStatusFiles: stateValues.maxGitStatusFiles ?? 0,
-			taskSyncEnabled,
+			taskSyncEnabled: false,
 			imageGenerationProvider: stateValues.imageGenerationProvider,
 			openRouterImageApiKey: stateValues.openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel: stateValues.openRouterImageGenerationSelectedModel,

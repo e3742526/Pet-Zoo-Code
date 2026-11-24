@@ -48,12 +48,12 @@ import {
 	OpencodeGoHandler,
 	KenariHandler,
 	NanoGptHandler,
-	ZooGatewayHandler,
 	MiniMaxHandler,
 	MimoHandler,
 	BasetenHandler,
 } from "./providers"
 import { NativeOllamaHandler } from "./providers/native-ollama"
+import { RetiredZooGatewayHandler } from "./providers/retired-zoo-gateway"
 
 /**
  * Options for completePrompt — unified with ApiHandlerCreateMessageMetadata.
@@ -204,6 +204,10 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 		throw new Error(getRouterRemovalMessage())
 	}
 
+	if (apiProvider === retiredProviderIdentifiers.zooGateway) {
+		return new RetiredZooGatewayHandler(options.zooGatewayModelId)
+	}
+
 	if (apiProvider && isRetiredProvider(apiProvider)) {
 		throw new Error(
 			`Sorry, this provider is no longer supported. We saw very few Roo users actually using it and we need to reduce the surface area of our codebase so we can keep shipping fast and serving our community well in this space. It was a really hard decision but it lets us focus on what matters most to you. It sucks, we know.\n\nPlease select a different provider in your API profile settings.`,
@@ -279,8 +283,6 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new KenariHandler(options)
 		case providerIdentifiers.nanogpt:
 			return new NanoGptHandler(options)
-		case providerIdentifiers.zooGateway:
-			return new ZooGatewayHandler(options)
 		case providerIdentifiers.minimax:
 			return new MiniMaxHandler(options)
 		case providerIdentifiers.baseten:

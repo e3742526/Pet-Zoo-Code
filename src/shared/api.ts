@@ -173,7 +173,6 @@ type CommonFetchParams = {
 const _dynamicProviderExtras = {
 	[providerIdentifiers.openrouter]: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
 	[providerIdentifiers.vercelAiGateway]: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
-	[providerIdentifiers.zooGateway]: {} as { apiKey?: string; baseUrl?: string },
 	[providerIdentifiers.litellm]: {} as { apiKey?: string; baseUrl: string },
 	[providerIdentifiers.requesty]: {} as { apiKey?: string; baseUrl?: string },
 	[providerIdentifiers.unbound]: {} as { apiKey?: string },

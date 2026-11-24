@@ -33,7 +33,6 @@ import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./constants"
 import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
-import { ZooCodeAuthBadge } from "./ZooCodeAuthBadge"
 import { usePromptHistory } from "./hooks/usePromptHistory"
 import { disabledChatControlClassName, enabledChatControlClassName } from "./chatControlStyles"
 
@@ -1418,7 +1417,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							</StandardTooltip>
 						)}
 						{!isEditMode ? <IndexingStatusBadge /> : null}
-						{!isEditMode ? <ZooCodeAuthBadge /> : null}
 					</div>
 				</div>
 			</div>

@@ -33,7 +33,6 @@ const socialLinks = [
 const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 	const { t } = useAppTranslation()
 	const [open, setOpen] = useState(true)
-	const zooPassUrl = t("chat:announcement.release.highlight0Url")
 
 	return (
 		<Dialog
@@ -53,16 +52,6 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 					<div className="mb-4">
 						<p className="mb-3">{t("chat:announcement.release.heading")}</p>
 						<ul className="list-none p-0 text-sm space-y-1.5">
-							<li>
-								{t("chat:announcement.release.highlight0")}
-								<br />
-								<a
-									href={zooPassUrl}
-									className="text-vscode-textLink-foreground"
-									onClick={openExternal(zooPassUrl)}>
-									{zooPassUrl}
-								</a>
-							</li>
 							<li>{t("chat:announcement.release.highlight1")}</li>
 							<li>{t("chat:announcement.release.highlight2")}</li>
 							<li>{t("chat:announcement.release.highlight3")}</li>

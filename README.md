@@ -38,18 +38,18 @@ for this exact support, so if you are having problems or if you have question, j
 
 Zoo Code builds on the foundation created by Roo Code and continues to expand it with:
 
-- **Semble codebase intelligence** — fast, on-demand semantic code search with automatic setup and no separate indexing workflow.
+- **Semble codebase intelligence** — semantic code search on demand. Use an existing installation or set `SEMBLE_BINARY_PATH` to the absolute path of a locally installed executable.
 - **Stronger Orchestrator workflows** — safer delegation, parallel task coordination, reliable parent/child task recovery, and better isolation between subtasks and provider profiles.
 - **Longer autonomous runs with Destructive Command Guard (DCG)** — automatically block dangerous commands while trusted work continues without repeated approval prompts.
 - **The latest models** — ongoing support for new Claude, GPT, Gemini, Kimi, GLM, Grok, MiniMax, and other model families.
-- **More ways to connect** — new and expanded providers including Zoo Gateway, Moonshot, Kimi Code, Kenari, Friendli, OpenCode Go, and many more.
+- **More ways to connect** — new and expanded providers including Moonshot, Kimi Code, Kenari, Friendli, OpenCode Go, and many more.
 - **More dependable terminal and editing workflows** — fixes for premature terminal completion, task-state races, context management, diff editing, and provider-specific tool use.
 - **More control over your workspace** — rules management, per-mode MCP restrictions, multi-root path controls, model reasoning options, and completion change review actions.
 
 ## What is new in Zoo Code v3.98.2
 
-- 💫Preview the Zoo Pass with unlimited GLM-5.3-Flash free until Dec 1 with any amount of money on your Zoo Gateway account.
-  [https://zoocode.dev/pass](https://zoocode.dev/pass)
+[https://zoocode.dev/pass](https://zoocode.dev/pass)
+
 - 🔌 Models: Use Gemini 3.8 Flash and the new Gemini 4 Carbon, Hydrogen, and Neon models, with `xhigh` thinking levels on Gemini.
 - 🔧 Fixes and provider support: Stop Vertex Gemini requests that end with a model turn, keep Gemini thought signatures intact through LiteLLM, condense Ollama tasks at the configured context limit, and turn on Responses API support for OpenAI Compatible providers.
 

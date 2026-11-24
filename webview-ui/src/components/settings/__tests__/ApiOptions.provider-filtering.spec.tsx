@@ -200,24 +200,6 @@ describe("ApiOptions Provider Filtering", () => {
 		expect(providerValues).toContain("ollama") // dynamic provider
 	})
 
-	it("pins Zoo Gateway first while preserving alphabetical order for the remaining providers", () => {
-		renderWithProviders()
-
-		const options = getProviderOptions()
-		const remainingLabels = options.slice(1).map(({ label }) => label)
-
-		expect(options[0]?.value).toBe(providerIdentifiers.zooGateway)
-		expect(remainingLabels).toEqual([...remainingLabels].sort((a, b) => a.localeCompare(b)))
-	})
-
-	it("pins Zoo Gateway first and OpenRouter second in the welcome view", () => {
-		renderWithProviders({ ...defaultProps, fromWelcomeView: true })
-
-		const providerValues = getProviderOptions().map(({ value }) => value)
-
-		expect(providerValues.slice(0, 2)).toEqual([providerIdentifiers.zooGateway, providerIdentifiers.openrouter])
-	})
-
 	it("does not reintroduce Zoo Gateway when an organization allow list excludes it", () => {
 		vi.mocked(useExtensionState).mockReturnValueOnce({
 			...useExtensionState(),
@@ -235,26 +217,6 @@ describe("ApiOptions Provider Filtering", () => {
 		expect(getProviderOptions().map(({ value }) => value)).toEqual([
 			providerIdentifiers.anthropic,
 			providerIdentifiers.openrouter,
-		])
-	})
-
-	it("keeps Zoo Gateway first when an organization allow list includes it", () => {
-		vi.mocked(useExtensionState).mockReturnValueOnce({
-			...useExtensionState(),
-			organizationAllowList: {
-				allowAll: false,
-				providers: {
-					[providerIdentifiers.anthropic]: { allowAll: true },
-					[providerIdentifiers.zooGateway]: { allowAll: true },
-				},
-			},
-		})
-
-		renderWithProviders()
-
-		expect(getProviderOptions().map(({ value }) => value)).toEqual([
-			providerIdentifiers.zooGateway,
-			providerIdentifiers.anthropic,
 		])
 	})
 

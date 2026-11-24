@@ -51,10 +51,6 @@ vi.mock("@src/components/welcome/RooHero", () => ({
 	default: () => null,
 }))
 
-vi.mock("../../common/TelemetryBanner", () => ({
-	default: () => null,
-}))
-
 // Expose tooltip content on a wrapper so the key-to-tooltip mapping is observable without hover.
 vi.mock("@src/components/ui", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@src/components/ui")>()),

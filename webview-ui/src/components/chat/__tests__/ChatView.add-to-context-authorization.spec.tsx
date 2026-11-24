@@ -54,10 +54,6 @@ vi.mock("@src/components/welcome/RooHero", () => ({
 	default: () => null,
 }))
 
-vi.mock("../common/TelemetryBanner", () => ({
-	default: () => null,
-}))
-
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 	initReactI18next: { type: "3rdParty", init: () => {} },

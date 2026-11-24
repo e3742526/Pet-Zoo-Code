@@ -3,6 +3,7 @@ import {
 	bedrockDefaultModelId,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	providerIdentifiers,
+	retiredProviderIdentifiers,
 	type ProviderSettings,
 } from "@roo-code/types"
 import type { ChangeEventHandler, ComponentProps, InputHTMLAttributes, ReactNode } from "react"
@@ -78,10 +79,6 @@ vi.mock("@src/components/ui/hooks/useRouterModels", () => ({
 	useRouterModels: useRouterModelsMock,
 }))
 
-vi.mock("@src/components/ui/hooks/useZooGatewayRouterModelsSync", () => ({
-	useZooGatewayRouterModelsSync: vi.fn(),
-}))
-
 vi.mock("@src/components/ui/hooks/useOpenRouterModelProviders", () => ({
 	useOpenRouterModelProviders: useOpenRouterModelProvidersMock,
 	OPENROUTER_DEFAULT_PROVIDER_NAME: "Auto",
@@ -128,7 +125,6 @@ vi.mock("../providers", () => {
 		OpenCodeGo: provider("provider-opencode-go"),
 		Kenari: provider("provider-kenari"),
 		NanoGPT: provider("provider-nanogpt"),
-		ZooGateway: provider("provider-zoo-gateway"),
 		MiniMax: provider("provider-minimax"),
 		Mimo: provider("provider-mimo"),
 	}
@@ -404,7 +400,6 @@ describe("ApiOptions interactions", () => {
 		providerIdentifiers.opencodeGo,
 		providerIdentifiers.kenari,
 		providerIdentifiers.nanogpt,
-		providerIdentifiers.zooGateway,
 		providerIdentifiers.fireworks,
 		providerIdentifiers.friendli,
 		providerIdentifiers.poe,
@@ -414,9 +409,9 @@ describe("ApiOptions interactions", () => {
 		expect(screen.getByTestId(`provider-${apiProvider}`)).toBeInTheDocument()
 	})
 
-	it("clears parent validation errors for Zoo Gateway", () => {
+	it("clears parent validation errors for a retired provider", () => {
 		const setErrorMessage = vi.fn()
-		renderApiOptions({ apiConfiguration: { apiProvider: providerIdentifiers.zooGateway }, setErrorMessage })
+		renderApiOptions({ apiConfiguration: { apiProvider: retiredProviderIdentifiers.zooGateway }, setErrorMessage })
 
 		expect(setErrorMessage).toHaveBeenCalledWith(undefined)
 	})

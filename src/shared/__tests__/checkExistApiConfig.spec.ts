@@ -127,39 +127,7 @@ describe("checkExistKey", () => {
 		expect(checkExistKey(config)).toBe(false)
 	})
 
-	it("should return false for zoo-gateway without session token or auth", () => {
-		const config: ProviderSettings = {
-			apiProvider: providerIdentifiers.zooGateway,
-			zooGatewayModelId: "alibaba/qwen-3.6-max-preview",
-		}
-		expect(checkExistKey(config)).toBe(false)
-		expect(checkExistKey(config, false)).toBe(false)
-	})
-
-	it("recognizes session authentication through the canonical Zoo Gateway identifier", () => {
-		expect(checkExistKey({ apiProvider: providerIdentifiers.zooGateway }, true)).toBe(true)
-	})
-
-	it("should return true for zoo-gateway when profile has zooSessionToken", () => {
-		const config: ProviderSettings = {
-			apiProvider: providerIdentifiers.zooGateway,
-			zooSessionToken: "zoo_ext_test_token",
-		}
-		expect(checkExistKey(config)).toBe(true)
-	})
-
-	it("should return true for zoo-gateway when Zoo Code session auth is active", () => {
-		const config: ProviderSettings = {
-			apiProvider: providerIdentifiers.zooGateway,
-			zooGatewayModelId: "alibaba/qwen-3.6-max-preview",
-		}
-		expect(checkExistKey(config, true)).toBe(true)
-	})
-
-	it("should ignore zooCodeIsAuthenticated for non-zoo-gateway providers", () => {
-		const config: ProviderSettings = {
-			apiProvider: providerIdentifiers.openrouter,
-		}
-		expect(checkExistKey(config, true)).toBe(false)
+	it("treats a retired Zoo Gateway profile as unavailable even with other provider credentials", () => {
+		expect(checkExistKey({ apiProvider: retiredProviderIdentifiers.zooGateway, apiKey: "unused" })).toBe(false)
 	})
 })

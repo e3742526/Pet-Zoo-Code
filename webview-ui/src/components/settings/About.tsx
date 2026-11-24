@@ -4,8 +4,7 @@ import { Trans } from "react-i18next"
 import { ArrowRightLeft, Download, Upload, TriangleAlert, Bug, Lightbulb, Shield, MessagesSquare } from "lucide-react"
 import { VSCodeButton, VSCodeCheckbox, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 
-import { type ExtensionMessage, type TelemetrySetting, isTelemetryOptedIn } from "@roo-code/types"
-
+import type { ExtensionMessage } from "@roo-code/types"
 import { Package } from "@roo/package"
 
 import { vscode } from "@/utils/vscode"
@@ -20,13 +19,11 @@ import { SearchableSetting } from "./SearchableSetting"
 type RooHistoryImportProgress = NonNullable<ExtensionMessage["rooHistoryImportProgress"]>
 
 type AboutProps = HTMLAttributes<HTMLDivElement> & {
-	telemetrySetting: TelemetrySetting
-	setTelemetrySetting: (setting: TelemetrySetting) => void
 	debug?: boolean
 	setDebug?: (debug: boolean) => void
 }
 
-export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, className, ...props }: AboutProps) => {
+export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
 	const { t } = useAppTranslation()
 	const [rooHistoryImportProgress, setRooHistoryImportProgress] = useState<RooHistoryImportProgress | null>(null)
 
@@ -106,28 +103,6 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 							})
 						: t("settings:about.version", { version: Package.version })}
 				</p>
-				<SearchableSetting
-					settingId="about-telemetry"
-					section="about"
-					label={t("settings:footer.telemetry.label")}>
-					<VSCodeCheckbox
-						checked={isTelemetryOptedIn(telemetrySetting)}
-						onChange={(e: any) => {
-							const checked = e.target.checked === true
-							setTelemetrySetting(checked ? "enabled" : "disabled")
-						}}>
-						{t("settings:footer.telemetry.label")}
-					</VSCodeCheckbox>
-					<p className="text-vscode-descriptionForeground text-sm mt-0">
-						<Trans
-							t={t}
-							i18nKey="settings:footer.telemetry.description"
-							components={{
-								privacyLink: <VSCodeLink href="https://www.zoocode.dev/privacy" />,
-							}}
-						/>
-					</p>
-				</SearchableSetting>
 			</Section>
 
 			<Section className="space-y-0">

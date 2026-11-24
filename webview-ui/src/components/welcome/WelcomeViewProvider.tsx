@@ -2,7 +2,7 @@ import { useCallback, useState } from "react"
 import { Trans } from "react-i18next"
 import { ArrowLeft, Brain } from "lucide-react"
 
-import { openRouterDefaultModelId, providerIdentifiers, type ProviderSettings } from "@roo-code/types"
+import { providerIdentifiers, type ProviderSettings } from "@roo-code/types"
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { validateApiConfiguration } from "@src/utils/validate"
@@ -17,22 +17,18 @@ import { Tab, TabContent } from "../common/Tab"
 import { WelcomeLanding } from "./WelcomeLanding"
 
 const DEFAULT_WELCOME_API_CONFIGURATION: ProviderSettings = {
-	apiProvider: providerIdentifiers.openrouter,
-	openRouterModelId: openRouterDefaultModelId,
+	// A bundled model list keeps setup offline until the user selects a provider.
+	apiProvider: providerIdentifiers.anthropic,
 }
 
-const getWelcomeApiConfiguration = (
-	t: TFunction,
-	apiConfiguration: ProviderSettings,
-	zooCodeIsAuthenticated?: boolean,
-): ProviderSettings => {
+const getWelcomeApiConfiguration = (t: TFunction, apiConfiguration: ProviderSettings): ProviderSettings => {
 	// validateApiConfiguration treats a missing apiProvider as valid (no switch case matches),
 	// so we explicitly fall back here before delegating to it for incomplete-but-set configs.
 	if (!apiConfiguration.apiProvider) {
 		return DEFAULT_WELCOME_API_CONFIGURATION
 	}
 
-	const validationError = validateApiConfiguration(apiConfiguration, t, undefined, undefined, zooCodeIsAuthenticated)
+	const validationError = validateApiConfiguration(apiConfiguration, t)
 	if (validationError) {
 		return DEFAULT_WELCOME_API_CONFIGURATION
 	}
@@ -41,14 +37,12 @@ const getWelcomeApiConfiguration = (
 }
 
 const WelcomeViewProvider = () => {
-	const { apiConfiguration, currentApiConfigName, setApiConfiguration, uriScheme, zooCodeIsAuthenticated } =
-		useExtensionState()
+	const { apiConfiguration, currentApiConfigName, setApiConfiguration, uriScheme } = useExtensionState()
 	const { t } = useAppTranslation()
 	const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined)
 	const [showProviderSetup, setShowProviderSetup] = useState(false)
 	const [welcomeApiConfiguration, setWelcomeApiConfiguration] = useState<ProviderSettings>()
-	const effectiveApiConfiguration =
-		welcomeApiConfiguration ?? getWelcomeApiConfiguration(t, apiConfiguration, zooCodeIsAuthenticated)
+	const effectiveApiConfiguration = welcomeApiConfiguration ?? getWelcomeApiConfiguration(t, apiConfiguration)
 
 	const setApiConfigurationFieldForApiOptions = useCallback(
 		<K extends keyof ProviderSettings>(field: K, value: ProviderSettings[K]) => {
@@ -63,7 +57,7 @@ const WelcomeViewProvider = () => {
 
 	const handleGetStarted = useCallback(() => {
 		if (!showProviderSetup) {
-			const initialApiConfiguration = getWelcomeApiConfiguration(t, apiConfiguration, zooCodeIsAuthenticated)
+			const initialApiConfiguration = getWelcomeApiConfiguration(t, apiConfiguration)
 			setWelcomeApiConfiguration(initialApiConfiguration)
 
 			setApiConfiguration(initialApiConfiguration)
@@ -72,13 +66,7 @@ const WelcomeViewProvider = () => {
 			return
 		}
 
-		const error = validateApiConfiguration(
-			effectiveApiConfiguration,
-			t,
-			undefined,
-			undefined,
-			zooCodeIsAuthenticated,
-		)
+		const error = validateApiConfiguration(effectiveApiConfiguration, t)
 
 		if (error) {
 			setErrorMessage(error)
@@ -91,15 +79,7 @@ const WelcomeViewProvider = () => {
 			text: currentApiConfigName,
 			apiConfiguration: effectiveApiConfiguration,
 		})
-	}, [
-		showProviderSetup,
-		apiConfiguration,
-		setApiConfiguration,
-		effectiveApiConfiguration,
-		currentApiConfigName,
-		zooCodeIsAuthenticated,
-		t,
-	])
+	}, [showProviderSetup, apiConfiguration, setApiConfiguration, effectiveApiConfiguration, currentApiConfigName, t])
 
 	if (!showProviderSetup) {
 		return (

@@ -31,7 +31,7 @@ const CIRCUIT_BREAKER_COOLDOWN_MS = 10 * 60 * 1000
  * Upper bound applied separately to each phase of shutdown(): draining in-flight capture
  * calls, then awaiting client.shutdown(). deactivate() awaits shutdown() before terminal
  * cleanup, so an unbounded wait in either phase (e.g. a capture stuck on network I/O, or
- * a client's own shutdown() -- posthog-node defaults to a 30s internal timeout -- never
+ * a client's own shutdown() never
  * settling) would block the extension host from ever finishing deactivation. Losing an
  * in-flight capture, or a client's graceful flush, on timeout is an acceptable tradeoff
  * against blocking shutdown indefinitely. Worst case, shutdown() takes up to roughly
@@ -51,7 +51,7 @@ export class TelemetryService {
 
 	// In-flight client.capture()/captureException() promises. captureEvent/captureException are
 	// synchronous (void-returning) for callers, but the underlying client calls are async (e.g.
-	// PostHogTelemetryClient awaits property enrichment before enqueueing). Tracked here so
+	// a client can await property enrichment before enqueueing). Tracked here so
 	// shutdown() can drain them before flushing/closing the clients -- otherwise a capture that's
 	// still mid-flight when shutdown() runs could be lost entirely.
 	private pendingClientCalls = new Set<Promise<unknown>>()
@@ -162,7 +162,7 @@ export class TelemetryService {
 	}
 
 	/**
-	 * Captures an exception using PostHog's error tracking
+	 * Captures an exception through registered clients
 	 * @param error The error to capture
 	 * @param additionalProperties Additional properties to include with the exception
 	 */
@@ -413,11 +413,8 @@ export class TelemetryService {
 			])
 		}
 
-		// Bound client shutdown the same way as the drain above: posthog-node's own shutdown()
-		// defaults to a 30s internal timeout when called with no argument (as PostHogTelemetryClient
-		// does), and TelemetryClient#shutdown() takes no timeout parameter to pass one through. Racing
-		// against our own timer here, instead of just awaiting client.shutdown() directly, keeps
-		// deactivate() from blocking for up to 30s on a client that never settles.
+		// Bound client shutdown the same way as the drain above. Each client may have its own
+		// timeout, so bound the wait for deactivation separately.
 		// allSettled, not all: one client rejecting must not stop us from awaiting the others.
 		await Promise.race([
 			Promise.allSettled(this.clients.map((client) => client.shutdown())),

@@ -34,7 +34,6 @@ import {
 import {
 	type ProviderSettings,
 	type ExperimentId,
-	type TelemetrySetting,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
@@ -199,7 +198,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		ttsEnabled,
 		ttsSpeed,
 		soundVolume,
-		telemetrySetting,
 		terminalOutputPreviewSize,
 		terminalShellIntegrationTimeout,
 		terminalShellIntegrationDisabled, // Added from upstream
@@ -329,17 +327,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			setChangeDetected(true)
 			return { ...prevState, experiments: { ...prevState.experiments, [id]: enabled } }
-		})
-	}, [])
-
-	const setTelemetrySetting = useCallback((setting: TelemetrySetting) => {
-		setCachedState((prevState) => {
-			if (prevState.telemetrySetting === setting) {
-				return prevState
-			}
-
-			setChangeDetected(true)
-			return { ...prevState, telemetrySetting: setting }
 		})
 	}, [])
 
@@ -501,7 +488,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			// These have more complex logic so they aren't (yet) handled
 			// by the `updateSettings` message.
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
-			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "debugSetting", bool: cachedState.debug })
 
 			// With a time or date edit the flag is cleared when the host reports the save (see below). A failed save
@@ -1053,14 +1039,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						)}
 
 						{/* About Section */}
-						{renderTab === "about" && (
-							<About
-								telemetrySetting={telemetrySetting}
-								setTelemetrySetting={setTelemetrySetting}
-								debug={cachedState.debug}
-								setDebug={setDebug}
-							/>
-						)}
+						{renderTab === "about" && <About debug={cachedState.debug} setDebug={setDebug} />}
 					</SearchIndexProvider>
 				</TabContent>
 			</div>

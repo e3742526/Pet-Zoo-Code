@@ -2,12 +2,11 @@ import React from "react"
 import { Fzf } from "fzf"
 import { Check, X } from "lucide-react"
 
-import { type ModeConfig, type CustomModePrompts, TelemetryEventName } from "@roo-code/types"
+import { type ModeConfig, type CustomModePrompts } from "@roo-code/types"
 
 import { type Mode, getAllModes, defaultModeSlug } from "@roo/modes"
 
 import { vscode } from "@/utils/vscode"
-import { telemetryClient } from "@/utils/TelemetryClient"
 import { cn } from "@/lib/utils"
 import { enabledSelectorTriggerClassName, selectorTriggerClassName } from "@/components/ui/selectorTriggerStyles"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -52,10 +51,7 @@ export const ModeSelector = ({
 	const { hasOpenedModeSelector, setHasOpenedModeSelector } = useExtensionState()
 	const { t } = useAppTranslation()
 
-	const trackModeSelectorOpened = React.useCallback(() => {
-		// Track telemetry every time the mode selector is opened.
-		telemetryClient.capture(TelemetryEventName.MODE_SELECTOR_OPENED)
-
+	const recordModeSelectorOpened = React.useCallback(() => {
 		// Track first-time usage for UI purposes.
 		if (!hasOpenedModeSelector) {
 			setHasOpenedModeSelector(true)
@@ -165,7 +161,7 @@ export const ModeSelector = ({
 
 	const onOpenChange = React.useCallback(
 		(isOpen: boolean) => {
-			if (isOpen) trackModeSelectorOpened()
+			if (isOpen) recordModeSelectorOpened()
 			setOpen(isOpen)
 
 			// Clear search when closing.
@@ -173,7 +169,7 @@ export const ModeSelector = ({
 				setSearchValue("")
 			}
 		},
-		[trackModeSelectorOpened],
+		[recordModeSelectorOpened],
 	)
 
 	// Auto-focus search input and scroll to selected item when popover opens.

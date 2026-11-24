@@ -1177,6 +1177,25 @@ describe("ProviderSettingsManager", () => {
 			expect(storedConfig.apiConfigs.retiredProvider.groqApiKey).toBe("legacy-groq-key")
 		})
 
+		it("keeps the saved Zoo Gateway profile and leaves its token out of new exports", async () => {
+			const savedProfile = {
+				id: "saved-zoo",
+				apiProvider: retiredProviderIdentifiers.zooGateway,
+				zooGatewayModelId: "anthropic/claude-sonnet-4",
+				zooSessionToken: "retired-token",
+			}
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({ currentApiConfigName: "Zoo", apiConfigs: { Zoo: savedProfile } }),
+			)
+
+			expect(await providerSettingsManager.getProfile({ name: "Zoo" })).toEqual({ name: "Zoo", ...savedProfile })
+			expect((await providerSettingsManager.export()).apiConfigs.Zoo).toEqual({
+				id: savedProfile.id,
+				apiProvider: savedProfile.apiProvider,
+				zooGatewayModelId: savedProfile.zooGatewayModelId,
+			})
+		})
+
 		it("should sanitize invalid providers and remove non-object profiles during load", async () => {
 			const invalidConfig = {
 				currentApiConfigName: "valid",

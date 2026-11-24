@@ -35,7 +35,6 @@ import { vscode } from "@src/utils/vscode"
 import { validateApiConfigurationExcludingModelErrors, getModelValidationError } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
-import { useZooGatewayRouterModelsSync } from "@src/components/ui/hooks/useZooGatewayRouterModelsSync"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import { requestLmStudioModels } from "@src/components/ui/hooks/useLmStudioModels"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -87,7 +86,6 @@ import {
 	OpenCodeGo,
 	Kenari,
 	NanoGPT,
-	ZooGateway,
 	MiniMax,
 	Mimo,
 	CliSubscription,
@@ -194,7 +192,6 @@ const ApiOptions = ({
 		enabled: !!routerProvider,
 		provider: routerProvider,
 	})
-	useZooGatewayRouterModelsSync()
 
 	const { data: openRouterModelProviders } = useOpenRouterModelProviders(
 		apiConfiguration.openRouterModelId,
@@ -294,14 +291,6 @@ const ApiOptions = ({
 
 	useEffect(() => {
 		if (isRetiredSelectedProvider) {
-			setErrorMessage(undefined)
-			return
-		}
-
-		// Zoo Gateway renders its own auth-state error inline (sign-in card in
-		// ZooGateway.tsx) so it can react to zooCodeIsAuthenticated changes
-		// without re-running this effect or threading auth state through validation.
-		if (apiConfiguration.apiProvider === providerIdentifiers.zooGateway) {
 			setErrorMessage(undefined)
 			return
 		}
@@ -434,12 +423,6 @@ const ApiOptions = ({
 				const [openRouterOption] = options.splice(openRouterIndex, 1)
 				options.unshift(openRouterOption)
 			}
-		}
-
-		const zooGatewayIndex = options.findIndex((opt) => opt.value === providerIdentifiers.zooGateway)
-		if (zooGatewayIndex > 0) {
-			const [zooGatewayOption] = options.splice(zooGatewayIndex, 1)
-			options.unshift(zooGatewayOption)
 		}
 
 		return options
@@ -734,17 +717,6 @@ const ApiOptions = ({
 
 					{selectedProvider === providerIdentifiers.nanogpt && (
 						<NanoGPT
-							apiConfiguration={apiConfiguration}
-							setApiConfigurationField={setApiConfigurationField}
-							routerModels={routerModels}
-							organizationAllowList={organizationAllowList}
-							modelValidationError={modelValidationError}
-							simplifySettings={fromWelcomeView}
-						/>
-					)}
-
-					{selectedProvider === providerIdentifiers.zooGateway && (
-						<ZooGateway
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
 							routerModels={routerModels}

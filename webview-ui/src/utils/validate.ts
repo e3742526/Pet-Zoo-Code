@@ -45,9 +45,8 @@ export function validateApiConfiguration(
 	t: TFunction,
 	routerModels?: RouterModels,
 	organizationAllowList?: OrganizationAllowList,
-	zooCodeIsAuthenticated?: boolean,
 ): string | undefined {
-	const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration, t, zooCodeIsAuthenticated)
+	const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration, t)
 
 	if (keysAndIdsPresentErrorMessage) {
 		return keysAndIdsPresentErrorMessage
@@ -72,11 +71,7 @@ export function validateApiConfiguration(
 	return validateDynamicProviderModelId(apiConfiguration, t, routerModels)
 }
 
-function validateModelsAndKeysProvided(
-	apiConfiguration: ProviderSettings,
-	t: TFunction,
-	zooCodeIsAuthenticated?: boolean,
-): string | undefined {
+function validateModelsAndKeysProvided(apiConfiguration: ProviderSettings, t: TFunction): string | undefined {
 	switch (apiConfiguration.apiProvider) {
 		case providerIdentifiers.openrouter:
 			if (!apiConfiguration.openRouterApiKey) {
@@ -194,11 +189,6 @@ function validateModelsAndKeysProvided(
 		case providerIdentifiers.nanogpt:
 			if (!apiConfiguration.nanoGptApiKey) {
 				return t("settings:validation.apiKey")
-			}
-			break
-		case providerIdentifiers.zooGateway:
-			if (!apiConfiguration.zooSessionToken && !zooCodeIsAuthenticated) {
-				return t("settings:validation.zooGatewaySignIn")
 			}
 			break
 		case providerIdentifiers.baseten:
@@ -344,11 +334,6 @@ export function getModelValidationError(
  * Validates API configuration but excludes model-specific errors.
  * This is used for the general API error display to prevent duplication
  * when model errors are shown in the model selector.
- *
- * Zoo Gateway's sign-in error is rendered inline by the `ZooGateway` provider
- * component, so we skip the keys/sign-in check here. Organization provider
- * restrictions still need to be enforced for zoo-gateway, so the org allowlist
- * check below runs for every provider.
  */
 export function validateApiConfigurationExcludingModelErrors(
 	apiConfiguration: ProviderSettings,
@@ -356,12 +341,10 @@ export function validateApiConfigurationExcludingModelErrors(
 	_routerModels?: RouterModels, // Keeping this for compatibility with the old function.
 	organizationAllowList?: OrganizationAllowList,
 ): string | undefined {
-	if (apiConfiguration.apiProvider !== providerIdentifiers.zooGateway) {
-		const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration, t)
+	const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration, t)
 
-		if (keysAndIdsPresentErrorMessage) {
-			return keysAndIdsPresentErrorMessage
-		}
+	if (keysAndIdsPresentErrorMessage) {
+		return keysAndIdsPresentErrorMessage
 	}
 
 	const extraBodyError = validateOpenAiExtraBody(apiConfiguration, t)

@@ -11,8 +11,6 @@ import SettingsView from "../SettingsView"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
-vi.mock("@/utils/TelemetryClient", () => ({ telemetryClient: { capture: vi.fn() } }))
-
 // The tab's own controls are covered by PromptsSettings.taskTitle.spec; this stub drives the setters
 // SettingsView passes down so the test can follow the cachedState-to-Save path.
 vi.mock("../PromptsSettings", () => ({

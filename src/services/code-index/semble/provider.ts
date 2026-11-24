@@ -5,7 +5,7 @@ import { IndexingState } from "../interfaces/manager"
 import { VectorStoreSearchResult } from "../interfaces/vector-store"
 import { CodeIndexStateManager } from "../state-manager"
 import { SembleCLI } from "./semble-cli"
-import { downloadSemble, isSembleSupportedPlatform, SEMBLE_VERSION } from "./semble-downloader"
+import { getSembleBinaryPath } from "./semble-binary"
 import { ISembleProvider, SembleConfig, SembleContentType, SembleSearchResult, SEMBLE_DEFAULTS } from "./types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
@@ -15,8 +15,7 @@ import { t } from "../../../i18n"
  * Orchestrates code search via the semble CLI.
  *
  * Semble indexes on-the-fly with each search call — there is no separate
- * "indexing" step. The provider automatically downloads the semble binary
- * on first use, then delegates search queries to `semble search`.
+ * "indexing" step. It runs a locally installed binary for each search.
  *
  * When `embedderProvider === "semble"`, the CodeIndexManager delegates
  * to this provider instead of the ServiceFactory → orchestrator pipeline.
@@ -53,7 +52,7 @@ export class SembleProvider implements ISembleProvider {
 	}
 
 	/**
-	 * Initializes the provider: downloads semble, then validates it works.
+	 * Checks that the local Semble installation works.
 	 * Uses an _initPromise to prevent concurrent initialization races.
 	 */
 	async initialize(): Promise<void> {
@@ -78,35 +77,21 @@ export class SembleProvider implements ISembleProvider {
 	 * Internal initialization logic, called only once via _initPromise guard.
 	 */
 	private async _doInitialize(): Promise<void> {
-		// Check platform support
-		if (!isSembleSupportedPlatform()) {
+		const configuredPath = process.env.SEMBLE_BINARY_PATH
+		const binaryPath = configuredPath || (await getSembleBinaryPath(this.context.globalStorageUri.fsPath))
+		if (!binaryPath || !path.isAbsolute(binaryPath)) {
 			this._state = "Error"
 			this.stateManager.setSystemState(
 				"Error",
-				t("embeddings:semble.unsupportedPlatform", { platform: process.platform, arch: process.arch }),
+				t("embeddings:semble.checkFailed", {
+					errorMessage:
+						"Install Semble locally and set SEMBLE_BINARY_PATH to the absolute path of the executable.",
+				}),
 			)
-			console.error(`[SembleProvider] Unsupported platform: ${process.platform}-${process.arch}`)
 			return
 		}
 
-		// Download semble binary
-		try {
-			this.stateManager.setSystemState("Indexing", t("embeddings:semble.downloadingBinary"))
-			const storageDir = this.context.globalStorageUri.fsPath
-			const binaryPath = await downloadSemble(storageDir)
-			if (!binaryPath) {
-				throw new Error("Download returned no path")
-			}
-			this.cli = new SembleCLI(binaryPath)
-		} catch (error: any) {
-			this._state = "Error"
-			this.stateManager.setSystemState(
-				"Error",
-				t("embeddings:semble.downloadFailed", { errorMessage: error?.message || error }),
-			)
-			console.error("[SembleProvider] Download failed:", error?.message || error)
-			return
-		}
+		this.cli = new SembleCLI(binaryPath)
 
 		// Verify the binary works
 		const checkResult = await this.cli.checkInstalled()
@@ -122,10 +107,11 @@ export class SembleProvider implements ISembleProvider {
 		console.log("[SembleProvider] Semble found and ready.")
 
 		// Semble indexes on-the-fly, so we mark as "Indexed" (ready for search).
-		// The version is included in the status message so the UI (CodeIndexPopover)
-		// surfaces which semble release is active.
 		this._state = "Indexed"
-		this.stateManager.setSystemState("Indexed", t("embeddings:semble.ready", { version: SEMBLE_VERSION }))
+		this.stateManager.setSystemState(
+			"Indexed",
+			t("embeddings:semble.localReady", { defaultValue: "Semble is ready. Searches index on demand." }),
+		)
 
 		this._isInitialized = true
 	}
@@ -146,7 +132,10 @@ export class SembleProvider implements ISembleProvider {
 		// Semble indexes on-the-fly — no separate indexing step needed.
 		// Mark as indexed/ready.
 		this._state = "Indexed"
-		this.stateManager.setSystemState("Indexed", t("embeddings:semble.ready", { version: SEMBLE_VERSION }))
+		this.stateManager.setSystemState(
+			"Indexed",
+			t("embeddings:semble.localReady", { defaultValue: "Semble is ready. Searches index on demand." }),
+		)
 	}
 
 	/**

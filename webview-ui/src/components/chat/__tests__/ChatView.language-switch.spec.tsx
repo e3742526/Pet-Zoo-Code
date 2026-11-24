@@ -51,10 +51,6 @@ vi.mock("@src/components/welcome/RooHero", () => ({
 	default: () => null,
 }))
 
-vi.mock("../../common/TelemetryBanner", () => ({
-	default: () => null,
-}))
-
 const commandAsk: ClineMessage[] = [
 	{ type: "say", say: "task", ts: 1, text: "Initial task" },
 	{ type: "ask", ask: "command", ts: 2, text: "echo hi", partial: false },

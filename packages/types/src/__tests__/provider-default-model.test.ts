@@ -22,7 +22,6 @@ import {
 	openAiNativeDefaultModelId,
 	openRouterDefaultModelId,
 	vscodeLlmDefaultModelId,
-	zooGatewayDefaultModelId,
 } from "../providers/index.js"
 import { getProviderDefaultModelId } from "../provider-settings.js"
 
@@ -52,12 +51,12 @@ describe("getProviderDefaultModelId", () => {
 		expect(getProviderDefaultModelId(providerIdentifiers.openaiNative, {})).toBe(openAiNativeDefaultModelId)
 	})
 
-	it.each([
-		[providerIdentifiers.kimiCode, kimiCodeDefaultModelId],
-		[providerIdentifiers.zooGateway, zooGatewayDefaultModelId],
-	])("preserves the %s default added on main", (provider, expectedModelId) => {
-		expect(getProviderDefaultModelId(provider, {})).toBe(expectedModelId)
-	})
+	it.each([[providerIdentifiers.kimiCode, kimiCodeDefaultModelId]])(
+		"preserves the %s default added on main",
+		(provider, expectedModelId) => {
+			expect(getProviderDefaultModelId(provider, {})).toBe(expectedModelId)
+		},
+	)
 
 	it.each(zaiApiLineCases)("resolves the %s Z.ai default through the provider definition", (zaiApiLine, region) => {
 		const expected = region === "china" ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId

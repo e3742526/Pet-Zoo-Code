@@ -61,15 +61,11 @@ jobs:
                   pnpm --filter @roo-code/vscode-webview build
 
             - name: Bundle extension and verify README sync
-              env:
-                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
               run: |
                   pnpm --filter ./src bundle --production
                   cmp README.md src/README.md
 
             - name: Package extension
-              env:
-                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
               run: |
                   package_version=$(node -p "require('./src/package.json').version")
                   pnpm --filter ./src vsix

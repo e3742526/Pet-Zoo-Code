@@ -247,7 +247,7 @@
 				"$TURBO_ROOT$/.env",
 				"$TURBO_ROOT$/webview-ui/audio/**"
 			],
-			"env": ["PKG_RELEASE_CHANNEL", "POSTHOG_API_KEY"]
+			"env": ["PKG_RELEASE_CHANNEL"]
 		},
 		"vsix": {
 			"dependsOn": ["bundle"],

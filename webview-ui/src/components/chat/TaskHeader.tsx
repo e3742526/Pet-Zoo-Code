@@ -11,14 +11,13 @@ import {
 } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionState } from "@roo-code/types"
 
 import { getModelMaxOutputTokens } from "@roo/api"
 
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"
 import { StandardTooltip, Button, Table, TableBody, TableRow, TableCell, CircularProgress } from "@src/components/ui"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
 import { vscode } from "@src/utils/vscode"
 
@@ -31,7 +30,10 @@ import { Mention } from "./Mention"
 import { TodoListDisplay } from "./TodoListDisplay"
 import { LucideIconButton } from "./LucideIconButton"
 
-export interface TaskHeaderProps {
+export interface TaskHeaderProps extends Pick<
+	ExtensionState,
+	"apiConfiguration" | "currentTaskItem" | "timeFormat" | "dateFormat" | "debug"
+> {
 	task: ClineMessage
 	tokensIn: number
 	tokensOut: number
@@ -50,6 +52,11 @@ export interface TaskHeaderProps {
 
 const TaskHeader = ({
 	task,
+	apiConfiguration,
+	currentTaskItem,
+	timeFormat,
+	dateFormat,
+	debug,
 	tokensIn,
 	tokensOut,
 	cacheWrites,
@@ -65,7 +72,6 @@ const TaskHeader = ({
 	todos,
 }: TaskHeaderProps) => {
 	const { t } = useAppTranslation()
-	const { apiConfiguration, currentTaskItem, timeFormat, dateFormat } = useExtensionState()
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
 	const [isRenaming, setIsRenaming] = useState(false)
@@ -363,6 +369,7 @@ const TaskHeader = ({
 							<TaskActions
 								item={currentTaskItem}
 								buttonsDisabled={buttonsDisabled}
+								debug={debug}
 								onRename={isRenaming ? undefined : () => setIsRenaming(true)}
 							/>
 						</div>

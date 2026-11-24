@@ -2,7 +2,6 @@ import type { HistoryItem } from "@roo-code/types"
 
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
-import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useCopyToClipboard } from "@/utils/clipboard"
 
 import { TaskActions } from "../TaskActions"
@@ -16,10 +15,6 @@ vi.mock("@/utils/vscode", () => ({
 	vscode: {
 		postMessage: vi.fn(),
 	},
-}))
-
-vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
 }))
 
 vi.mock("@/utils/clipboard", () => ({
@@ -47,7 +42,6 @@ vi.mock("pretty-bytes", () => ({
 }))
 
 const mockPostMessage = vi.mocked(vscode.postMessage)
-const mockUseExtensionState = vi.mocked(useExtensionState)
 const mockUseCopyToClipboard = vi.mocked(useCopyToClipboard)
 
 describe("TaskActions", () => {
@@ -64,9 +58,6 @@ describe("TaskActions", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		mockUseExtensionState.mockReturnValue({
-			debug: false,
-		} as any)
 		mockUseCopyToClipboard.mockReturnValue({
 			copyWithFeedback: vi.fn(),
 			showCopyFeedback: false,
@@ -164,43 +155,35 @@ describe("TaskActions", () => {
 
 	describe("debug buttons", () => {
 		it("does not render debug buttons when debug is false", () => {
-			render(<TaskActions item={mockItem} buttonsDisabled={false} />)
+			render(<TaskActions item={mockItem} buttonsDisabled={false} debug={false} />)
 
 			expect(screen.queryByLabelText("Open API History")).not.toBeInTheDocument()
 			expect(screen.queryByLabelText("Open UI History")).not.toBeInTheDocument()
 		})
 
 		it("renders debug buttons when debug is true and item has id", () => {
-			mockUseExtensionState.mockReturnValue({ debug: true } as any)
-
-			render(<TaskActions item={mockItem} buttonsDisabled={false} />)
+			render(<TaskActions item={mockItem} buttonsDisabled={false} debug />)
 
 			expect(screen.getByLabelText("Open API History")).toBeInTheDocument()
 			expect(screen.getByLabelText("Open UI History")).toBeInTheDocument()
 		})
 
 		it("does not render debug buttons when debug is true but item has no id", () => {
-			mockUseExtensionState.mockReturnValue({ debug: true } as any)
-
-			render(<TaskActions item={undefined} buttonsDisabled={false} />)
+			render(<TaskActions buttonsDisabled={false} debug />)
 
 			expect(screen.queryByLabelText("Open API History")).not.toBeInTheDocument()
 			expect(screen.queryByLabelText("Open UI History")).not.toBeInTheDocument()
 		})
 
 		it("sends openDebugApiHistory message when API history button is clicked", () => {
-			mockUseExtensionState.mockReturnValue({ debug: true } as any)
-
-			render(<TaskActions item={mockItem} buttonsDisabled={false} />)
+			render(<TaskActions item={mockItem} buttonsDisabled={false} debug />)
 			fireEvent.click(screen.getByLabelText("Open API History"))
 
 			expect(mockPostMessage).toHaveBeenCalledWith({ type: "openDebugApiHistory" })
 		})
 
 		it("sends openDebugUiHistory message when UI history button is clicked", () => {
-			mockUseExtensionState.mockReturnValue({ debug: true } as any)
-
-			render(<TaskActions item={mockItem} buttonsDisabled={false} />)
+			render(<TaskActions item={mockItem} buttonsDisabled={false} debug />)
 			fireEvent.click(screen.getByLabelText("Open UI History"))
 
 			expect(mockPostMessage).toHaveBeenCalledWith({ type: "openDebugUiHistory" })

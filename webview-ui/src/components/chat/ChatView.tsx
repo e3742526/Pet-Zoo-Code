@@ -108,6 +108,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		currentTaskTodos,
 		taskHistory,
 		apiConfiguration,
+		timeFormat,
+		dateFormat,
+		debug,
 		organizationAllowList,
 		mode,
 		setMode,
@@ -1490,14 +1493,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		},
 	}))
 
-	const handleCondenseContext = (taskId: string) => {
-		if (isCondensing || sendingDisabled) {
-			return
-		}
-		setIsCondensing(true)
-		setSendingDisabled(true)
-		vscode.postMessage({ type: "condenseTaskContextRequest", text: taskId })
-	}
+	const handleCondenseContext = useCallback(
+		(taskId: string) => {
+			if (isCondensing || sendingDisabled) {
+				return
+			}
+			setIsCondensing(true)
+			setSendingDisabled(true)
+			vscode.postMessage({ type: "condenseTaskContextRequest", text: taskId })
+		},
+		[isCondensing, sendingDisabled],
+	)
 
 	const hasApprovalButtons = Boolean(primaryButtonText || secondaryButtonText)
 	const areButtonsVisible = showScrollToBottom || hasApprovalButtons
@@ -1523,6 +1529,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				<>
 					<TaskHeader
 						task={task}
+						apiConfiguration={apiConfiguration}
+						currentTaskItem={currentTaskItem}
+						timeFormat={timeFormat}
+						dateFormat={dateFormat}
+						debug={debug}
 						tokensIn={apiMetrics.totalTokensIn}
 						tokensOut={apiMetrics.totalTokensOut}
 						cacheWrites={apiMetrics.totalCacheWrites}

@@ -5,7 +5,6 @@ import type { HistoryItem } from "@roo-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { useCopyToClipboard } from "@/utils/clipboard"
-import { useExtensionState } from "@/context/ExtensionStateContext"
 
 import { DeleteTaskDialog } from "../history/DeleteTaskDialog"
 import {
@@ -22,14 +21,14 @@ import { LucideIconButton } from "./LucideIconButton"
 interface TaskActionsProps {
 	item?: HistoryItem
 	buttonsDisabled: boolean
+	debug?: boolean
 	onRename?: () => void
 }
 
-export const TaskActions = ({ item, buttonsDisabled, onRename }: TaskActionsProps) => {
+export const TaskActions = ({ item, buttonsDisabled, debug, onRename }: TaskActionsProps) => {
 	const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
 	const { t } = useAppTranslation()
 	const { copyWithFeedback, showCopyFeedback } = useCopyToClipboard()
-	const { debug } = useExtensionState()
 
 	return (
 		<div className="flex flex-row items-center -ml-0.5 mt-1 gap-1">

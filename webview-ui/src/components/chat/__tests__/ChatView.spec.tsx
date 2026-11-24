@@ -15,6 +15,7 @@ import { vscode } from "@src/utils/vscode"
 import type { ClineMessage as TranscriptMessage, SuggestionItem } from "@roo-code/types"
 
 import ChatView, { ChatViewProps } from "../ChatView"
+import type { TaskHeaderProps } from "../TaskHeader"
 
 const mockVirtuosoState = vi.hoisted(() => ({
 	lastConfig: null as {
@@ -99,12 +100,16 @@ vi.mock("../ChatRow", () => ({
 }))
 
 const mockTaskHeaderState = vi.hoisted(() => ({
-	renders: [] as Array<{ taskId?: string; aggregatedCost?: number }>,
+	renders: [] as Array<{
+		taskId?: string
+		aggregatedCost?: number
+		handleCondenseContext: TaskHeaderProps["handleCondenseContext"]
+	}>,
 }))
 
 vi.mock("../TaskHeader", () => ({
-	default: function MockTaskHeader({ task, aggregatedCost }: { task: ClineMessage; aggregatedCost?: number }) {
-		mockTaskHeaderState.renders.push({ taskId: task.text, aggregatedCost })
+	default: function MockTaskHeader({ task, aggregatedCost, handleCondenseContext }: TaskHeaderProps) {
+		mockTaskHeaderState.renders.push({ taskId: task.text, aggregatedCost, handleCondenseContext })
 
 		return (
 			<div
@@ -780,6 +785,15 @@ describe("ChatView - Virtualization Configuration", () => {
 		const row = await screen.findByTestId("chat-row")
 		const instance = row.getAttribute("data-instance")
 		expect(instance).not.toBeNull()
+		const condenseAction = mockTaskHeaderState.renders.at(-1)?.handleCondenseContext
+		expect(typeof condenseAction).toBe("function")
+		await dispatchExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: { ...partial, text: "Still streaming" },
+		})
+		expect(screen.getByTestId("chat-row")).toHaveTextContent("Still streaming")
+		expect(mockTaskHeaderState.renders.at(-1)?.handleCondenseContext).toBe(condenseAction)
+
 		await dispatchExtensionMessage({
 			type: "messageUpdated",
 			clineMessage: { ...partial, text: "Completed", partial: false },

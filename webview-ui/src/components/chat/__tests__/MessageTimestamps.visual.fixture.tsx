@@ -1,4 +1,4 @@
-import type { ClineMessage, HistoryItem } from "@roo-code/types"
+import { providerIdentifiers, type ClineMessage, type HistoryItem } from "@roo-code/types"
 
 import { AppProviders } from "../../../../playwright/AppProviders"
 import TaskItemFooter from "@/components/history/TaskItemFooter"
@@ -66,24 +66,23 @@ export function TaskHeaderTimestampStory() {
 		text: "Fix the login bug in the session store",
 	}
 	return (
-		<AppProviders
-			initialState={{
-				...formats,
-				currentTaskItem: {
-					id: "task-1",
-					number: 1,
-					ts: task.ts,
-					task: task.text ?? "",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
-			}}>
+		<AppProviders>
 			<div
 				data-testid="task-header-timestamp-story"
 				className="w-[480px] max-w-full bg-vscode-editor-background p-2 text-vscode-foreground">
 				<TaskHeader
+					{...formats}
 					task={task}
+					apiConfiguration={{ apiProvider: providerIdentifiers.anthropic }}
+					currentTaskItem={{
+						id: "task-1",
+						number: 1,
+						ts: task.ts,
+						task: task.text ?? "",
+						tokensIn: 0,
+						tokensOut: 0,
+						totalCost: 0,
+					}}
 					tokensIn={1200}
 					tokensOut={800}
 					totalCost={0.12}

@@ -2,9 +2,9 @@ import { providerIdentifiers } from "@roo-code/types"
 // npx vitest src/components/chat/__tests__/TaskHeader.spec.tsx
 
 import React from "react"
-import { renderWithExtensionState, screen, fireEvent } from "@/utils/test-utils"
+import { render, screen, fireEvent } from "@/utils/test-utils"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { HistoryItem } from "@roo-code/types"
 
 import TaskHeader, { TaskHeaderProps } from "../TaskHeader"
 
@@ -38,43 +38,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeBadge: ({ children }: { children: React.ReactNode }) => <div data-testid="vscode-badge">{children}</div>,
 }))
 
-// Create a variable to hold the mock state
-const mockExtensionState: {
-	apiConfiguration: ProviderSettings
-	currentTaskItem: { id: string; task?: string; title?: string; autoTitle?: string } | null
-	clineMessages: any[]
-	taskHistory: any[]
-	timeFormat?: "auto" | "12h" | "24h"
-	dateFormat?: "auto" | "mdy" | "dmy" | "ymd"
-} = {
-	apiConfiguration: {
-		apiProvider: providerIdentifiers.anthropic,
-		apiKey: "test-api-key",
-		apiModelId: "claude-3-opus-20240229",
-	} as ProviderSettings,
-	currentTaskItem: { id: "test-task-id" },
-	clineMessages: [],
-	taskHistory: [],
-}
-
-// Mock the ExtensionStateContext
-vi.mock("@src/context/ExtensionStateContext", () => ({
-	ExtensionStateContextProvider: ({ children }: any) => children,
-	useExtensionState: () => mockExtensionState,
-}))
-
-// Mock findLastIndex from @roo/array
-vi.mock("@roo/array", () => ({
-	findLastIndex: (array: any[], predicate: (item: any) => boolean) => {
-		for (let i = array.length - 1; i >= 0; i--) {
-			if (predicate(array[i])) {
-				return i
-			}
-		}
-		return -1
-	},
-}))
-
 // Create a variable to hold the mock model info for useSelectedModel
 let mockModelInfo: { contextWindow: number; maxTokens: number } | undefined = undefined
 
@@ -96,8 +59,19 @@ vi.mock("@roo/api", () => ({
 }))
 
 describe("TaskHeader", () => {
+	const currentTaskItem: HistoryItem = {
+		id: "test-task-id",
+		number: 1,
+		ts: Date.now(),
+		task: "Test task",
+		tokensIn: 100,
+		tokensOut: 50,
+		totalCost: 0.05,
+	}
 	const defaultProps: TaskHeaderProps = {
 		task: { type: "say", ts: Date.now(), text: "Test task", images: [] },
+		apiConfiguration: { apiProvider: providerIdentifiers.anthropic, apiModelId: "claude-3-opus-20240229" },
+		currentTaskItem,
 		tokensIn: 100,
 		tokensOut: 50,
 		totalCost: 0.05,
@@ -107,7 +81,7 @@ describe("TaskHeader", () => {
 	}
 
 	const renderTaskHeader = (props: Partial<TaskHeaderProps> = {}) => {
-		return renderWithExtensionState(<TaskHeader {...defaultProps} {...props} />)
+		return render(<TaskHeader {...defaultProps} {...props} />)
 	}
 
 	it("should display cost when totalCost is greater than 0", () => {
@@ -160,14 +134,8 @@ describe("TaskHeader", () => {
 		const expand = () => fireEvent.click(screen.getByText("Test task"))
 		const task = { ...defaultProps.task, ts: SENT }
 
-		afterEach(() => {
-			delete mockExtensionState.timeFormat
-			delete mockExtensionState.dateFormat
-		})
-
 		it("shows the time under the expanded task, in the chosen time and date format", () => {
-			Object.assign(mockExtensionState, { timeFormat: "24h", dateFormat: "ymd" })
-			renderWithExtensionState(<TaskHeader {...defaultProps} task={task} />)
+			renderTaskHeader({ task, timeFormat: "24h", dateFormat: "ymd" })
 			expand()
 
 			const timestamp = screen.getByTestId("message-timestamp")
@@ -177,8 +145,7 @@ describe("TaskHeader", () => {
 		})
 
 		it("follows a different format", () => {
-			Object.assign(mockExtensionState, { timeFormat: "12h", dateFormat: "dmy" })
-			renderWithExtensionState(<TaskHeader {...defaultProps} task={task} />)
+			renderTaskHeader({ task, timeFormat: "12h", dateFormat: "dmy" })
 			expand()
 
 			const text = screen.getByTestId("message-timestamp").textContent!
@@ -192,7 +159,7 @@ describe("TaskHeader", () => {
 			["not a number", Number.NaN],
 			["beyond the range of a date", 8.64e15 + 1],
 		])("shows no time, and still the expanded task, when the task's time is %s", (_name, ts) => {
-			renderWithExtensionState(<TaskHeader {...defaultProps} task={{ ...defaultProps.task, ts }} />)
+			renderTaskHeader({ task: { ...task, ts } })
 
 			expand()
 
@@ -201,27 +168,25 @@ describe("TaskHeader", () => {
 		})
 
 		it("leaves no empty block under the expanded task when the time is invalid", () => {
-			const valid = renderWithExtensionState(<TaskHeader {...defaultProps} task={task} />)
+			const valid = renderTaskHeader({ task })
 			expand()
 			const withTime = valid.container.querySelectorAll("div").length
 			valid.unmount()
 
-			const invalid = renderWithExtensionState(
-				<TaskHeader {...defaultProps} task={{ ...defaultProps.task, ts: 0 }} />,
-			)
+			const invalid = renderTaskHeader({ task: { ...task, ts: 0 } })
 			expand()
 
 			expect(invalid.container.querySelectorAll("div").length).toBe(withTime - 1)
 		})
 
 		it("is not shown while the task is collapsed", () => {
-			renderWithExtensionState(<TaskHeader {...defaultProps} task={task} />)
+			renderTaskHeader({ task })
 
 			expect(screen.queryByTestId("message-timestamp")).not.toBeInTheDocument()
 		})
 
 		it("keeps the task expanded when the time is clicked, as for the other controls under the task", () => {
-			renderWithExtensionState(<TaskHeader {...defaultProps} task={task} />)
+			renderTaskHeader({ task })
 			expand()
 			expect(screen.getByText("chat:task.title")).toBeInTheDocument()
 
@@ -302,38 +267,28 @@ describe("TaskHeader", () => {
 	})
 
 	describe("Delegated parent waiting-on-subtask banner", () => {
+		const delegatedTask: HistoryItem = {
+			...currentTaskItem,
+			id: "parent-1",
+			status: "delegated",
+			awaitingChildId: "child-1",
+		}
 		beforeEach(() => {
 			mockPostMessage.mockClear()
 		})
 
-		afterEach(() => {
-			mockExtensionState.currentTaskItem = { id: "test-task-id" }
-			mockExtensionState.taskHistory = []
-		})
-
 		it("does not show the banner when currentTaskItem is not delegated", () => {
-			mockExtensionState.currentTaskItem = { id: "test-task-id", status: "active" } as any
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: { ...currentTaskItem, status: "active" } })
 			expect(screen.queryByText("chat:task.waitingOnSubtask")).not.toBeInTheDocument()
 		})
 
 		it("shows the banner when currentTaskItem is delegated with an awaitingChildId", () => {
-			mockExtensionState.currentTaskItem = {
-				id: "parent-1",
-				status: "delegated",
-				awaitingChildId: "child-1",
-			} as any
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: delegatedTask })
 			expect(screen.getByText("chat:task.waitingOnSubtask")).toBeInTheDocument()
 		})
 
 		it("navigates to the awaited child when the banner is clicked", () => {
-			mockExtensionState.currentTaskItem = {
-				id: "parent-1",
-				status: "delegated",
-				awaitingChildId: "child-1",
-			} as any
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: delegatedTask })
 
 			fireEvent.click(screen.getByText("chat:task.waitingOnSubtask"))
 
@@ -341,12 +296,7 @@ describe("TaskHeader", () => {
 		})
 
 		it("does not show an Abandon button (removed: implicit sever on re-delegation)", () => {
-			mockExtensionState.currentTaskItem = {
-				id: "parent-1",
-				status: "delegated",
-				awaitingChildId: "child-1",
-			} as any
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: delegatedTask })
 
 			expect(screen.getByText("chat:task.waitingOnSubtask")).toBeInTheDocument()
 			expect(screen.queryByText("history:abandonSubtask")).not.toBeInTheDocument()
@@ -356,16 +306,10 @@ describe("TaskHeader", () => {
 	describe("Rename", () => {
 		beforeEach(() => {
 			mockPostMessage.mockClear()
-			mockExtensionState.currentTaskItem = { id: "test-task-id", task: "Test task" }
-		})
-
-		afterEach(() => {
-			mockExtensionState.currentTaskItem = { id: "test-task-id" }
 		})
 
 		it("shows the custom title instead of the first message when the task is renamed", () => {
-			mockExtensionState.currentTaskItem = { id: "test-task-id", task: "Test task", title: "My title" }
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: { ...currentTaskItem, title: "My title" } })
 
 			expect(screen.getByText("My title")).toBeInTheDocument()
 			expect(screen.queryByText("Test task")).not.toBeInTheDocument()
@@ -375,8 +319,7 @@ describe("TaskHeader", () => {
 			["the custom title over the generated title", "My title", "Generated", "My title"],
 			["the generated title without a custom title", undefined, "Generated", "Generated"],
 		])("shows %s in the collapsed header", (_label, title, autoTitle, expected) => {
-			mockExtensionState.currentTaskItem = { id: "test-task-id", task: "Test task", title, autoTitle }
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: { ...currentTaskItem, title, autoTitle } })
 
 			expect(screen.getByText(expected)).toBeInTheDocument()
 			expect(screen.queryByText("Test task")).not.toBeInTheDocument()
@@ -386,8 +329,7 @@ describe("TaskHeader", () => {
 			["the custom title", "My title", "My title"],
 			["the default label without a custom title", undefined, "chat:task.title"],
 		])("shows %s as the expanded heading", (_label, title, expected) => {
-			mockExtensionState.currentTaskItem = { id: "test-task-id", task: "Test task", title }
-			renderTaskHeader()
+			renderTaskHeader({ currentTaskItem: { ...currentTaskItem, title } })
 			fireEvent.click(screen.getByText(title ?? "Test task"))
 
 			expect(screen.getByText(expected)).toHaveClass("font-bold")

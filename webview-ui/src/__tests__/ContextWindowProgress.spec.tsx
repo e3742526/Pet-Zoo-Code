@@ -16,14 +16,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeBadge: ({ children }: { children: React.ReactNode }) => <div data-testid="vscode-badge">{children}</div>,
 }))
 
-// Mock ExtensionStateContext since we use useExtensionState
-vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(() => ({
-		apiConfiguration: { apiProvider: providerIdentifiers.openai },
-		currentTaskItem: { id: "test-id", number: 1, size: 1024 },
-	})),
-}))
-
 // Mock highlighting function to avoid JSX parsing issues in tests
 vi.mock("@src/components/chat/TaskHeader", async () => {
 	const originalModule = await vi.importActual("@src/components/chat/TaskHeader")
@@ -48,6 +40,7 @@ describe("ContextWindowProgress", () => {
 		// Create a simple mock of the task that avoids importing the actual types
 		const defaultProps = {
 			task: { ts: Date.now(), type: "say" as const, say: "text" as const, text: "Test task" },
+			apiConfiguration: { apiProvider: providerIdentifiers.openai },
 			tokensIn: 100,
 			tokensOut: 50,
 			totalCost: 0.001,

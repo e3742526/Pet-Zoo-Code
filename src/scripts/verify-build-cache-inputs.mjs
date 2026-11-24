@@ -11,22 +11,22 @@ import { test } from "node:test"
 // environment must not disturb hashes.
 
 const sharedConsumers = [
-	"zoo-code#build",
+	"pet-zoo-code#build",
 	"@roo-code/vscode-webview#build",
 	"@roo-code/vscode-webview#check-types",
-	"zoo-code#bundle",
-	"zoo-code#check-types",
-	"zoo-code#vsix",
+	"pet-zoo-code#bundle",
+	"pet-zoo-code#check-types",
+	"pet-zoo-code#vsix",
 ]
 
 const webviewConsumers = [
 	"@roo-code/vscode-webview#build",
 	"@roo-code/vscode-webview#check-types",
-	"zoo-code#bundle",
-	"zoo-code#vsix",
+	"pet-zoo-code#bundle",
+	"pet-zoo-code#vsix",
 ]
 
-const bundleConsumers = ["zoo-code#bundle", "zoo-code#vsix"]
+const bundleConsumers = ["pet-zoo-code#bundle", "pet-zoo-code#vsix"]
 
 // Keep this explicit: deriving consumers from the graph would hide a removed edge.
 const typesConsumers = [
@@ -36,10 +36,10 @@ const typesConsumers = [
 	"@roo-code/types#check-types",
 	"@roo-code/vscode-webview#build",
 	"@roo-code/vscode-webview#check-types",
-	"zoo-code#build",
-	"zoo-code#bundle",
-	"zoo-code#check-types",
-	"zoo-code#vsix",
+	"pet-zoo-code#build",
+	"pet-zoo-code#bundle",
+	"pet-zoo-code#check-types",
+	"pet-zoo-code#vsix",
 ]
 
 const trackedTasks = ["@roo-code/types#build", ...typesConsumers]
@@ -49,7 +49,7 @@ const turboArgs = [
 	"check-types",
 	"bundle",
 	"vsix",
-	"--filter=zoo-code",
+	"--filter=pet-zoo-code",
 	"--filter=@roo-code/vscode-webview",
 	"--filter=@roo-code/types",
 ]
@@ -178,25 +178,25 @@ test("build cache input contract", async (context) => {
 			const channel = hashesOnly({ ...process.env, PKG_RELEASE_CHANNEL: "prerelease" })
 			expectChanged(
 				changedTasks(before, channel),
-				["@roo-code/vscode-webview#build", "zoo-code#bundle", "zoo-code#vsix"],
+				["@roo-code/vscode-webview#build", "pet-zoo-code#bundle", "pet-zoo-code#vsix"],
 				"PKG_RELEASE_CHANNEL change",
 			)
 			const textmate = hashesOnly({ ...process.env, VSCODE_TEXTMATE_DEBUG: "1" })
 			expectChanged(
 				changedTasks(before, textmate),
-				["@roo-code/vscode-webview#build", "zoo-code#bundle", "zoo-code#vsix"],
+				["@roo-code/vscode-webview#build", "pet-zoo-code#bundle", "pet-zoo-code#vsix"],
 				"VSCODE_TEXTMATE_DEBUG change",
 			)
 		})
 
 		await context.test("bundle declares the release channel as an embedded input", () => {
-			const bundle = hashes()["zoo-code#bundle"]
+			const bundle = hashes()["pet-zoo-code#bundle"]
 			assert.deepEqual(bundle.definition.env, ["PKG_RELEASE_CHANNEL"])
 		})
 		await context.test("VSIX hashes both bundle inputs without running the development bundle", () => {
 			const tasks = hashes()
-			const vsix = tasks["zoo-code#vsix"]
-			assert.deepEqual(vsix.dependencies, tasks["zoo-code#bundle"].dependencies)
+			const vsix = tasks["pet-zoo-code#vsix"]
+			assert.deepEqual(vsix.dependencies, tasks["pet-zoo-code#bundle"].dependencies)
 			assert.deepEqual(vsix.definition.env, ["PKG_RELEASE_CHANNEL", "VSCODE_TEXTMATE_DEBUG"])
 		})
 		await context.test("files regenerated during packaging do not invalidate the VSIX", () => {
@@ -223,7 +223,7 @@ test("build cache input contract", async (context) => {
 
 		await context.test("typechecks depend on the types build", () => {
 			const tasks = hashes()
-			for (const name of ["zoo-code#check-types", "@roo-code/vscode-webview#check-types"]) {
+			for (const name of ["pet-zoo-code#check-types", "@roo-code/vscode-webview#check-types"]) {
 				assert.deepEqual(tasks[name].dependencies, ["@roo-code/types#build"], name)
 			}
 		})
@@ -239,8 +239,8 @@ test("build cache input contract", async (context) => {
 				"@roo-code/telemetry#build",
 			]) {
 				assert.ok(
-					tasks["zoo-code#build"].dependencies.includes(dependency),
-					`zoo-code#build must wait for ${dependency}`,
+					tasks["pet-zoo-code#build"].dependencies.includes(dependency),
+					`pet-zoo-code#build must wait for ${dependency}`,
 				)
 			}
 		})
@@ -254,7 +254,7 @@ test("build cache input contract", async (context) => {
 					"../src/package.json",
 				],
 				"@roo-code/vscode-webview#check-types": ["../src/package.json"],
-				"zoo-code#bundle": [
+				"pet-zoo-code#bundle": [
 					"../README.md",
 					"../CHANGELOG.md",
 					"../LICENSE",
@@ -262,7 +262,7 @@ test("build cache input contract", async (context) => {
 					"../webview-ui/audio/celebration.wav",
 					"esbuild.mjs",
 				],
-				"zoo-code#vsix": [
+				"pet-zoo-code#vsix": [
 					"../README.md",
 					"../CHANGELOG.md",
 					"../LICENSE",
@@ -281,9 +281,9 @@ test("build cache input contract", async (context) => {
 			const tasks = hashes()
 			const expected = {
 				"@roo-code/types#build": ["dist/**"],
-				"zoo-code#build": ["dist/**"],
+				"pet-zoo-code#build": ["dist/**"],
 				"@roo-code/vscode-webview#build": ["../src/webview-ui/**"],
-				"zoo-code#bundle": [
+				"pet-zoo-code#bundle": [
 					"CHANGELOG.md",
 					"LICENSE",
 					"README.md",
@@ -291,7 +291,7 @@ test("build cache input contract", async (context) => {
 					"dist/**",
 					"webview-ui/audio/**",
 				],
-				"zoo-code#vsix": ["../bin/**"],
+				"pet-zoo-code#vsix": ["../bin/**"],
 			}
 			for (const [name, outputs] of Object.entries(expected)) {
 				assert.deepEqual(tasks[name].definition.outputs, outputs, `${name} cached outputs`)

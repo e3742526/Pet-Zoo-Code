@@ -9,8 +9,8 @@
 const vscode = require("vscode")
 const fs = require("node:fs/promises")
 
-const EXTENSION_ID = "ZooCodeOrganization.zoo-code"
-const FOCUS_COMMAND = "zoo-code.SidebarProvider.focus"
+const EXTENSION_ID = "e3742526.pet-zoo-code"
+const FOCUS_COMMAND = "pet-zoo-code.SidebarProvider.focus"
 const POLL_INTERVAL_MS = 100
 const READY_TIMEOUT_MS = 120_000
 

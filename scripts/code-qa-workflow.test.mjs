@@ -33,20 +33,20 @@ describe("platform unit-test workflow", () => {
 
 		assert.deepEqual(parseWorkflowStep("Run extension coverage lanes"), {
 			if: "matrix.collect-coverage",
-			run: 'pnpm turbo run test:coverage:api test:coverage:core test:coverage:services test:coverage:misc test:coverage:tree-sitter --filter="zoo-code" --concurrency=2 --log-order grouped --output-logs new-only',
+			run: 'pnpm turbo run test:coverage:api test:coverage:core test:coverage:services test:coverage:misc test:coverage:tree-sitter --filter="pet-zoo-code" --concurrency=2 --log-order grouped --output-logs new-only',
 		})
 
 		assert.deepEqual(parseWorkflowStep("Run extension test lanes"), {
 			if: "${{ !matrix.collect-coverage }}",
-			run: 'pnpm turbo run test:api test:core test:services test:misc test:tree-sitter --filter="zoo-code" --concurrency=2 --log-order grouped --output-logs new-only',
+			run: 'pnpm turbo run test:api test:core test:services test:misc test:tree-sitter --filter="pet-zoo-code" --concurrency=2 --log-order grouped --output-logs new-only',
 		})
 
 		for (const [coverageStepName, plainStepName, coverageCommand, plainCommand] of [
 			[
 				"Run non-extension package coverage",
 				"Run non-extension package tests",
-				'test:coverage --filter="!@roo-code/core" --filter="!zoo-code"',
-				'test --filter="!@roo-code/core" --filter="!zoo-code"',
+				'test:coverage --filter="!@roo-code/core" --filter="!pet-zoo-code"',
+				'test --filter="!@roo-code/core" --filter="!pet-zoo-code"',
 			],
 			[
 				"Run core unit coverage",

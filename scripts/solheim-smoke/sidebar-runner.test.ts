@@ -56,7 +56,7 @@ describe("sidebar recording diagnostics", () => {
 			// Flush async focus and file writes without waiting for the intentionally pending run().
 			await new Promise<void>((resolve) => setImmediate(resolve))
 			assert.equal(settled, false)
-			assert.deepEqual(commands, scenario === "extension-missing" ? [] : ["zoo-code.SidebarProvider.focus"])
+			assert.deepEqual(commands, scenario === "extension-missing" ? [] : ["pet-zoo-code.SidebarProvider.focus"])
 			assert.deepEqual(
 				writes,
 				scenario === "write-failed"

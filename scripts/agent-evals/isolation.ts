@@ -15,7 +15,7 @@ export function buildChildEnvironment(
 		USERPROFILE: isolatedHome,
 		XDG_CONFIG_HOME: path.join(isolatedHome, ".config"),
 		XDG_CACHE_HOME: path.join(isolatedHome, ".cache"),
-		ROO_CODE_IPC_SOCKET_PATH: socketPath,
+		PET_ZOO_CODE_IPC_SOCKET_PATH: socketPath,
 	}
 }
 

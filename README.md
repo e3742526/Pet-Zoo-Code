@@ -1,19 +1,8 @@
-<p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=ZooCodeOrganization.zoo-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/ZooCodeDev"><img src="https://img.shields.io/badge/ZooCode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://discord.gg/VxfP4Vx3gX"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/ZooCode/"><img src="https://img.shields.io/badge/Join%20r%2FZooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/ZooCode"></a>
-  <a href="https://github.com/Zoo-Code-Org/Zoo-Code/issues"><img src="https://img.shields.io/badge/GitHub-Issues-181717?style=flat&logo=github&logoColor=white" alt="GitHub Issues"></a>
-</p>
-<p align="center">
-  <em>Get help fast → <a href="https://discord.gg/VxfP4Vx3gX">Join Discord</a> • Prefer async? → <a href="https://www.reddit.com/r/ZooCode/">Join r/ZooCode</a></em>
-</p>
+# Pet-Zoo-Code
 
-# Zoo Code
+Pet-Zoo-Code is an independently maintained fork of [Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code). It uses the Apache 2.0 license. Build and install the [local VSIX](#manual-vsix-installation) to use the fork.
 
-> Your AI-Powered Dev Team, Right in Your Editor
-
-## We are Zoo Code
+## About the upstream project
 
 > Zoo Code continues development of this project after the Roo team wound down
 > active Roo Code work to focus on [Roomote](https://roomote.dev/). Thank you
@@ -31,8 +20,7 @@
 
 ## Roo Code to Zoo Code migration
 
-You can find a quick guide for migrating from Roo Code to Zoo Code in the [Roo→Zoo migration guide](https://docs.zoocode.dev/roo-to-zoo-migration). We plan to try and help users as they transition over, we have our [Reddit](https://www.reddit.com/r/ZooCode) and [Discord](https://discord.gg/VxfP4Vx3gX)
-for this exact support, so if you are having problems or if you have question, jump on and ask.
+The upstream [Roo Code to Zoo Code migration guide](https://docs.zoocode.dev/roo-to-zoo-migration) covers those two extensions.
 
 ## What Zoo Code Has Added Since Roo Code
 
@@ -47,8 +35,6 @@ Zoo Code builds on the foundation created by Roo Code and continues to expand it
 - **More control over your workspace** — rules management, per-mode MCP restrictions, multi-root path controls, model reasoning options, and completion change review actions.
 
 ## What is new in Zoo Code v3.98.2
-
-[https://zoocode.dev/pass](https://zoocode.dev/pass)
 
 - 🔌 Models: Use Gemini 3.8 Flash and the new Gemini 4 Carbon, Hydrogen, and Neon models, with `xhigh` thinking levels on Gemini.
 - 🔧 Fixes and provider support: Stop Vertex Gemini requests that end with a model turn, keep Gemini thought signatures intact through LiteLLM, condense Ollama tasks at the configured context limit, and turn on Responses API support for OpenAI Compatible providers.
@@ -122,7 +108,7 @@ Learn more: [Using Modes](https://docs.zoocode.dev/basic-usage/using-modes) •
 1. **Clone** the repo:
 
 ```sh
-git clone https://github.com/Zoo-Code-Org/Zoo-Code.git
+git clone https://github.com/e3742526/Pet-Zoo-Code.git
 ```
 
 2. **Install dependencies**:
@@ -133,14 +119,14 @@ pnpm install
 
 3. **Run the extension**:
 
-There are several ways to run the Zoo Code extension:
+There are several ways to run the Pet Zoo Code extension.
 
 ### Development Mode (F5)
 
 For active development, use VSCode's built-in debugging:
 
 Press `F5` (or go to **Run** → **Start Debugging**) in VSCode. This will open a
-new VSCode window with the Zoo Code extension running.
+new VS Code window with the Pet Zoo Code extension running.
 
 - Changes to the webview will appear immediately.
 - Changes to the core extension will also hot reload automatically.
@@ -157,7 +143,7 @@ This command will:
 
 - Ask which editor command to use (code/cursor/code-insiders) - defaults to
   'code'
-- Uninstall any existing version of the extension.
+- Replace an existing Pet Zoo Code installation.
 - Build the latest VSIX package.
 - Install the newly built VSIX.
 - Prompt you to restart VS Code for changes to take effect.
@@ -177,10 +163,10 @@ If you prefer to install the VSIX package manually:
     pnpm vsix
     ```
 2. A `.vsix` file will be generated in the `bin/` directory (e.g.,
-   `bin/zoo-code-<version>.vsix`).
+   `bin/pet-zoo-code-<version>.vsix`).
 3. Install it manually using the VSCode CLI:
     ```sh
-    code --install-extension bin/zoo-code-<version>.vsix
+    code --install-extension bin/pet-zoo-code-<version>.vsix
     ```
 
 ---

@@ -45,8 +45,8 @@ jobs:
                   package_name=$(node -p "require('./src/package.json').name")
                   publisher=$(node -p "require('./src/package.json').publisher")
 
-                  test "$package_name" = "zoo-code"
-                  test "$publisher" = "ZooCodeOrganization"
+                  test "$package_name" = "pet-zoo-code"
+                  test "$publisher" = "e3742526"
 
             - name: Validate release metadata
               run: |
@@ -70,7 +70,7 @@ jobs:
                   package_version=$(node -p "require('./src/package.json').version")
                   pnpm --filter ./src vsix
 
-                  vsix_path="bin/zoo-code-${package_version}.vsix"
+                  vsix_path="bin/pet-zoo-code-${package_version}.vsix"
                   test -f "$vsix_path"
 
                   unzip -l "$vsix_path" > /tmp/zoo-code-vsix-contents.txt
@@ -85,10 +85,10 @@ jobs:
             - name: Validate packaged manifest identity
               run: |
                   package_version=$(node -p "require('./src/package.json').version")
-                  vsix_path="bin/zoo-code-${package_version}.vsix"
+                  vsix_path="bin/pet-zoo-code-${package_version}.vsix"
 
                   artifact_name=$(unzip -p "$vsix_path" extension/package.json | jq -r '.name')
                   artifact_publisher=$(unzip -p "$vsix_path" extension/package.json | jq -r '.publisher')
 
-                  test "$artifact_name" = "zoo-code"
-                  test "$artifact_publisher" = "ZooCodeOrganization"
+                  test "$artifact_name" = "pet-zoo-code"
+                  test "$artifact_publisher" = "e3742526"

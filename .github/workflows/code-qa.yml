@@ -157,7 +157,7 @@ jobs:
             - name: Upload test VSIX
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: zoo-code-vsix-pr-${{ github.event.pull_request.number }}
+                  name: pet-zoo-code-vsix-pr-${{ github.event.pull_request.number }}
                   path: bin/*.vsix
                   if-no-files-found: error
                   retention-days: 7
@@ -201,16 +201,16 @@ jobs:
             # authoritative coverage lane.
             - name: Run non-extension package coverage
               if: matrix.collect-coverage
-              run: pnpm turbo run test:coverage --filter="!@roo-code/core" --filter="!zoo-code" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage --filter="!@roo-code/core" --filter="!pet-zoo-code" --log-order grouped --output-logs new-only
             - name: Run non-extension package tests
               if: ${{ !matrix.collect-coverage }}
-              run: pnpm turbo run test --filter="!@roo-code/core" --filter="!zoo-code" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test --filter="!@roo-code/core" --filter="!pet-zoo-code" --log-order grouped --output-logs new-only
             - name: Run extension coverage lanes
               if: matrix.collect-coverage
-              run: pnpm turbo run test:coverage:api test:coverage:core test:coverage:services test:coverage:misc test:coverage:tree-sitter --filter="zoo-code" --concurrency=2 --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage:api test:coverage:core test:coverage:services test:coverage:misc test:coverage:tree-sitter --filter="pet-zoo-code" --concurrency=2 --log-order grouped --output-logs new-only
             - name: Run extension test lanes
               if: ${{ !matrix.collect-coverage }}
-              run: pnpm turbo run test:api test:core test:services test:misc test:tree-sitter --filter="zoo-code" --concurrency=2 --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:api test:core test:services test:misc test:tree-sitter --filter="pet-zoo-code" --concurrency=2 --log-order grouped --output-logs new-only
             # Runs outside Turbo so changes to .coderabbit.yaml,
             # .github/workflows/label-pr-review-state.yml, and
             # .github/workflows/stale.yml always bust the result. Those files
@@ -222,7 +222,7 @@ jobs:
               if: matrix.collect-coverage
               run: pnpm --dir src run verify:coverage-contract
             - name: Run extension dist smoke test
-              run: pnpm turbo run test:dist --filter="zoo-code" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:dist --filter="pet-zoo-code" --log-order grouped --output-logs new-only
             - name: Run core unit coverage
               if: matrix.collect-coverage
               run: pnpm turbo run test:coverage:unit --filter="@roo-code/core" --log-order grouped --output-logs new-only

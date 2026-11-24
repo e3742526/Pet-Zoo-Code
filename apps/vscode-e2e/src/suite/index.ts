@@ -19,7 +19,7 @@ export async function run() {
 		)
 	}
 
-	const extension = vscode.extensions.getExtension<RooCodeAPI>("ZooCodeOrganization.zoo-code")
+	const extension = vscode.extensions.getExtension<RooCodeAPI>("e3742526.pet-zoo-code")
 
 	if (!extension) {
 		throw new Error("Extension not found")
@@ -42,7 +42,7 @@ export async function run() {
 		taskTitleGenerationEnabled: false,
 	})
 
-	await vscode.commands.executeCommand("zoo-code.SidebarProvider.focus")
+	await vscode.commands.executeCommand("pet-zoo-code.SidebarProvider.focus")
 	await waitFor(() => api.isReady())
 
 	// Automatically approve completion_result asks so tests don't stall waiting

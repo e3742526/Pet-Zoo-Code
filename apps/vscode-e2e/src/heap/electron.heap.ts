@@ -129,7 +129,7 @@ for (const workload of ["repeated", "unique"] satisfies Workload[]) {
 				.poll(() => {
 					const parent = page
 						.frames()
-						.find((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code"))
+						.find((frame) => frame.url().includes("extensionId=e3742526.pet-zoo-code"))
 					content = parent?.childFrames().find((frame) => frame.url().includes("/fake.html"))
 					return Boolean(content)
 				})

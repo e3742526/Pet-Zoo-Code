@@ -36,12 +36,12 @@ export async function run(): Promise<void> {
 async function runScene(runDirectory: string, aimockUrl: string): Promise<void> {
 	const storage = path.join(runDirectory, "storage")
 	await vscode.workspace
-		.getConfiguration("zoo-code")
+		.getConfiguration("pet-zoo-code")
 		.update("customStoragePath", storage, vscode.ConfigurationTarget.Global)
-	const extension = vscode.extensions.getExtension<RooCodeTestAPI>("ZooCodeOrganization.zoo-code")
+	const extension = vscode.extensions.getExtension<RooCodeTestAPI>("e3742526.pet-zoo-code")
 	if (!extension) throw new Error("Zoo Code extension not found")
 	const api = extension.isActive ? extension.exports : await extension.activate()
-	await vscode.commands.executeCommand("zoo-code.SidebarProvider.focus")
+	await vscode.commands.executeCommand("pet-zoo-code.SidebarProvider.focus")
 	await poll(async () => api.isReady(), "webview activation")
 	const configuration = {
 		apiProvider: providerIdentifiers.openrouter,

@@ -41,9 +41,9 @@ const laneOwnedTopLevelSpecFiles = {
 let probeRoot
 
 const turboTasks = () => {
-	const graph = turboGraph(probeRoot, [...taskNames, "--filter=zoo-code"], process.env)
+	const graph = turboGraph(probeRoot, [...taskNames, "--filter=pet-zoo-code"], process.env)
 	return taskNames.map((taskName) => {
-		const task = graph.tasks.find(({ taskId }) => taskId === `zoo-code#${taskName}`)
+		const task = graph.tasks.find(({ taskId }) => taskId === `pet-zoo-code#${taskName}`)
 		if (!task) throw new Error(`Extension lane missing from Turbo graph: ${taskName}`)
 		return task
 	})

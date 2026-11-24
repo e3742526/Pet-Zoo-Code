@@ -26,7 +26,7 @@ const scenario: VisualScenario = {
 function contentFrame(page: Page) {
 	return page
 		.frames()
-		.find((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code"))
+		.find((frame) => frame.url().includes("extensionId=e3742526.pet-zoo-code"))
 		?.childFrames()
 		.find((frame) => frame.url().includes("/fake.html"))
 }
@@ -40,7 +40,7 @@ async function waitForContent(page: Page, landmark = scenario.landmark) {
 }
 
 async function observeHeartbeats(page: Page, block = false) {
-	const parent = page.frames().find((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code"))
+	const parent = page.frames().find((frame) => frame.url().includes("extensionId=e3742526.pet-zoo-code"))
 	if (!parent) throw new Error("Zoo Code parent frame not found")
 	return parent.evaluateHandle((blockHeartbeats) => {
 		const observed = { block: blockHeartbeats, blocked: 0, forwarded: 0, launches: 0 }
@@ -154,7 +154,7 @@ for (const explicitRetry of [false, true])
 					const renderer = mainFrame.framesInSubtree.find(
 						(frame: { url: string; parent?: { url: string }; osProcessId: number }) =>
 							frame.url.includes("/fake.html") &&
-							frame.parent?.url.includes("extensionId=ZooCodeOrganization.zoo-code"),
+							frame.parent?.url.includes("extensionId=e3742526.pet-zoo-code"),
 					)
 					if (!renderer) throw new Error("Zoo Code renderer process not found")
 					return { workbench: mainFrame.osProcessId, webview: renderer.osProcessId }
@@ -244,7 +244,7 @@ test("keeps the same document when the sidebar is hidden past the stale threshol
 		await expect
 			.poll(() => performance.now(), { timeout: 135_000, intervals: [1_000] })
 			.toBeGreaterThanOrEqual(deadline)
-		const logs = await glob("logs/**/*Zoo-Code.log", { cwd: running.userDataPath })
+		const logs = await glob("logs/**/*Pet-Zoo-Code.log", { cwd: running.userDataPath })
 		expect(logs.length).toBeGreaterThan(0)
 		for (const logPath of logs) {
 			const output = await fs.readFile(path.join(running.userDataPath, logPath), "utf8")

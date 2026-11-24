@@ -133,7 +133,7 @@ describe("CodeActionProvider", () => {
 			const actions = provider.provideCodeActions(mockDocument, mockRange, mockContext) as vscode.CodeAction[]
 
 			expect(actions).toEqual([])
-			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("zoo-code")
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith("pet-zoo-code")
 			expect(mockGet).toHaveBeenCalledWith("enableCodeActions", true)
 		})
 

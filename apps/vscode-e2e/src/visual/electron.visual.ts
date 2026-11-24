@@ -50,14 +50,12 @@ for (const scenario of scenarios) {
 			await running.page.mouse.move(900, 400)
 			await expect
 				.poll(() =>
-					running.page
-						.frames()
-						.some((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code")),
+					running.page.frames().some((frame) => frame.url().includes("extensionId=e3742526.pet-zoo-code")),
 				)
 				.toBe(true)
 			const parentFrame = running.page
 				.frames()
-				.find((frame) => frame.url().includes("extensionId=ZooCodeOrganization.zoo-code"))
+				.find((frame) => frame.url().includes("extensionId=e3742526.pet-zoo-code"))
 			const contentFrame = parentFrame?.childFrames().find((frame) => frame.url().includes("/fake.html"))
 			if (!contentFrame) throw new Error("Zoo Code webview content frame not found")
 			await contentFrame
@@ -85,7 +83,7 @@ for (const scenario of scenarios) {
 
 			// Mask the dynamic token counter so system-prompt changes that alter
 			// token counts do not cause pixel diffs when layout is unchanged.
-			const webviewFrame = running.page.frameLocator('iframe[src*="extensionId=ZooCodeOrganization.zoo-code"]')
+			const webviewFrame = running.page.frameLocator('iframe[src*="extensionId=e3742526.pet-zoo-code"]')
 			const tokenCountMask = webviewFrame
 				.frameLocator("iframe")
 				.locator('[data-testid="context-tokens-count"],[data-testid="context-window-size"]')
@@ -107,7 +105,7 @@ for (const scenario of scenarios) {
 			})
 
 			if (scenario.webviewSnapshot) {
-				const webview = running.page.locator('iframe[src*="extensionId=ZooCodeOrganization.zoo-code"]')
+				const webview = running.page.locator('iframe[src*="extensionId=e3742526.pet-zoo-code"]')
 				await expect(webview).toHaveCount(1)
 				await expect(webview).toHaveScreenshot(scenario.webviewSnapshot)
 			}

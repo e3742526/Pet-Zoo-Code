@@ -1,8 +1,8 @@
 {
-	"name": "zoo-code",
+	"name": "pet-zoo-code",
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
-	"publisher": "ZooCodeOrganization",
+	"publisher": "e3742526",
 	"version": "3.98.2",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
@@ -54,129 +54,129 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "zoo-code-ActivityBar",
+					"id": "pet-zoo-code-ActivityBar",
 					"title": "%views.activitybar.title%",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
 		},
 		"views": {
-			"zoo-code-ActivityBar": [
+			"pet-zoo-code-ActivityBar": [
 				{
 					"type": "webview",
-					"id": "zoo-code.SidebarProvider",
+					"id": "pet-zoo-code.SidebarProvider",
 					"name": "%views.sidebar.name%"
 				}
 			]
 		},
 		"commands": [
 			{
-				"command": "zoo-code.plusButtonClicked",
+				"command": "pet-zoo-code.plusButtonClicked",
 				"title": "%command.newTask.title%",
 				"icon": "$(edit)"
 			},
 			{
-				"command": "zoo-code.historyButtonClicked",
+				"command": "pet-zoo-code.historyButtonClicked",
 				"title": "%command.history.title%",
 				"icon": "$(history)"
 			},
 			{
-				"command": "zoo-code.marketplaceButtonClicked",
+				"command": "pet-zoo-code.marketplaceButtonClicked",
 				"title": "%command.marketplace.title%",
 				"icon": "$(extensions)"
 			},
 			{
-				"command": "zoo-code.popoutButtonClicked",
+				"command": "pet-zoo-code.popoutButtonClicked",
 				"title": "%command.openInEditor.title%",
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "zoo-code.settingsButtonClicked",
+				"command": "pet-zoo-code.settingsButtonClicked",
 				"title": "%command.settings.title%",
 				"icon": "$(settings-gear)"
 			},
 			{
-				"command": "zoo-code.openInNewTab",
+				"command": "pet-zoo-code.openInNewTab",
 				"title": "%command.openInNewTab.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.explainCode",
+				"command": "pet-zoo-code.explainCode",
 				"title": "%command.explainCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.fixCode",
+				"command": "pet-zoo-code.fixCode",
 				"title": "%command.fixCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.improveCode",
+				"command": "pet-zoo-code.improveCode",
 				"title": "%command.improveCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.addToContext",
+				"command": "pet-zoo-code.addToContext",
 				"title": "%command.addToContext.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.newTask",
+				"command": "pet-zoo-code.newTask",
 				"title": "%command.newTask.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.terminalAddToContext",
+				"command": "pet-zoo-code.terminalAddToContext",
 				"title": "%command.terminal.addToContext.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.terminalFixCommand",
+				"command": "pet-zoo-code.terminalFixCommand",
 				"title": "%command.terminal.fixCommand.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.terminalExplainCommand",
+				"command": "pet-zoo-code.terminalExplainCommand",
 				"title": "%command.terminal.explainCommand.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.setCustomStoragePath",
+				"command": "pet-zoo-code.setCustomStoragePath",
 				"title": "%command.setCustomStoragePath.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.importSettings",
+				"command": "pet-zoo-code.importSettings",
 				"title": "%command.importSettings.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.focusInput",
+				"command": "pet-zoo-code.focusInput",
 				"title": "%command.focusInput.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.acceptInput",
+				"command": "pet-zoo-code.acceptInput",
 				"title": "%command.acceptInput.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.retryWebviewRecovery",
+				"command": "pet-zoo-code.retryWebviewRecovery",
 				"title": "%command.retryWebviewRecovery.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.showRipgrepDiagnostic",
+				"command": "pet-zoo-code.showRipgrepDiagnostic",
 				"title": "%command.showRipgrepDiagnostic.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.createDiagnosticsReport",
+				"command": "pet-zoo-code.createDiagnosticsReport",
 				"title": "%command.createDiagnosticsReport.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.toggleAutoApprove",
+				"command": "pet-zoo-code.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
 			}
@@ -184,102 +184,102 @@
 		"menus": {
 			"editor/context": [
 				{
-					"submenu": "zoo-code.contextMenu",
+					"submenu": "pet-zoo-code.contextMenu",
 					"group": "1"
 				}
 			],
-			"zoo-code.contextMenu": [
+			"pet-zoo-code.contextMenu": [
 				{
-					"command": "zoo-code.addToContext",
+					"command": "pet-zoo-code.addToContext",
 					"group": "1_actions@1"
 				},
 				{
-					"command": "zoo-code.explainCode",
+					"command": "pet-zoo-code.explainCode",
 					"group": "1_actions@2"
 				},
 				{
-					"command": "zoo-code.improveCode",
+					"command": "pet-zoo-code.improveCode",
 					"group": "1_actions@3"
 				}
 			],
 			"terminal/context": [
 				{
-					"submenu": "zoo-code.terminalMenu",
+					"submenu": "pet-zoo-code.terminalMenu",
 					"group": "2"
 				}
 			],
-			"zoo-code.terminalMenu": [
+			"pet-zoo-code.terminalMenu": [
 				{
-					"command": "zoo-code.terminalAddToContext",
+					"command": "pet-zoo-code.terminalAddToContext",
 					"group": "1_actions@1"
 				},
 				{
-					"command": "zoo-code.terminalFixCommand",
+					"command": "pet-zoo-code.terminalFixCommand",
 					"group": "1_actions@2"
 				},
 				{
-					"command": "zoo-code.terminalExplainCommand",
+					"command": "pet-zoo-code.terminalExplainCommand",
 					"group": "1_actions@3"
 				}
 			],
 			"view/title": [
 				{
-					"command": "zoo-code.plusButtonClicked",
+					"command": "pet-zoo-code.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == pet-zoo-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.settingsButtonClicked",
+					"command": "pet-zoo-code.settingsButtonClicked",
 					"group": "navigation@2",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == pet-zoo-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.marketplaceButtonClicked",
+					"command": "pet-zoo-code.marketplaceButtonClicked",
 					"group": "navigation@3",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == pet-zoo-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "pet-zoo-code.historyButtonClicked",
 					"group": "overflow@1",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == pet-zoo-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.popoutButtonClicked",
+					"command": "pet-zoo-code.popoutButtonClicked",
 					"group": "overflow@2",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == pet-zoo-code.SidebarProvider"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "zoo-code.plusButtonClicked",
+					"command": "pet-zoo-code.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == pet-zoo-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.settingsButtonClicked",
+					"command": "pet-zoo-code.settingsButtonClicked",
 					"group": "navigation@2",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == pet-zoo-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.marketplaceButtonClicked",
+					"command": "pet-zoo-code.marketplaceButtonClicked",
 					"group": "navigation@3",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == pet-zoo-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "pet-zoo-code.historyButtonClicked",
 					"group": "overflow@1",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == pet-zoo-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.popoutButtonClicked",
+					"command": "pet-zoo-code.popoutButtonClicked",
 					"group": "overflow@2",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == pet-zoo-code.TabPanelProvider"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "zoo-code.addToContext",
+				"command": "pet-zoo-code.addToContext",
 				"key": "cmd+k cmd+a",
 				"mac": "cmd+k cmd+a",
 				"win": "ctrl+k ctrl+a",
@@ -287,7 +287,7 @@
 				"when": "editorTextFocus && editorHasSelection"
 			},
 			{
-				"command": "zoo-code.toggleAutoApprove",
+				"command": "pet-zoo-code.toggleAutoApprove",
 				"key": "cmd+alt+a",
 				"mac": "cmd+alt+a",
 				"win": "ctrl+alt+a",
@@ -296,18 +296,18 @@
 		],
 		"submenus": [
 			{
-				"id": "zoo-code.contextMenu",
+				"id": "pet-zoo-code.contextMenu",
 				"label": "%views.contextMenu.label%"
 			},
 			{
-				"id": "zoo-code.terminalMenu",
+				"id": "pet-zoo-code.terminalMenu",
 				"label": "%views.terminalMenu.label%"
 			}
 		],
 		"configuration": {
 			"title": "%configuration.title%",
 			"properties": {
-				"zoo-code.allowedCommands": {
+				"pet-zoo-code.allowedCommands": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -319,7 +319,7 @@
 					],
 					"description": "%commands.allowedCommands.description%"
 				},
-				"zoo-code.deniedCommands": {
+				"pet-zoo-code.deniedCommands": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -327,14 +327,14 @@
 					"default": [],
 					"description": "%commands.deniedCommands.description%"
 				},
-				"zoo-code.commandExecutionTimeout": {
+				"pet-zoo-code.commandExecutionTimeout": {
 					"type": "number",
 					"default": 0,
 					"minimum": 0,
 					"maximum": 600,
 					"description": "%commands.commandExecutionTimeout.description%"
 				},
-				"zoo-code.commandTimeoutAllowlist": {
+				"pet-zoo-code.commandTimeoutAllowlist": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -342,12 +342,12 @@
 					"default": [],
 					"description": "%commands.commandTimeoutAllowlist.description%"
 				},
-				"zoo-code.preventCompletionWithOpenTodos": {
+				"pet-zoo-code.preventCompletionWithOpenTodos": {
 					"type": "boolean",
 					"default": false,
 					"description": "%commands.preventCompletionWithOpenTodos.description%"
 				},
-				"zoo-code.vsCodeLmModelSelector": {
+				"pet-zoo-code.vsCodeLmModelSelector": {
 					"type": "object",
 					"properties": {
 						"vendor": {
@@ -361,76 +361,76 @@
 					},
 					"description": "%settings.vsCodeLmModelSelector.description%"
 				},
-				"zoo-code.customStoragePath": {
+				"pet-zoo-code.customStoragePath": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.customStoragePath.description%"
 				},
-				"zoo-code.enableCodeActions": {
+				"pet-zoo-code.enableCodeActions": {
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.enableCodeActions.description%"
 				},
-				"zoo-code.autoImportSettingsPath": {
+				"pet-zoo-code.autoImportSettingsPath": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.autoImportSettingsPath.description%"
 				},
-				"zoo-code.maximumIndexedFilesForFileSearch": {
+				"pet-zoo-code.maximumIndexedFilesForFileSearch": {
 					"type": "number",
 					"default": 10000,
 					"minimum": 5000,
 					"maximum": 500000,
 					"description": "%settings.maximumIndexedFilesForFileSearch.description%"
 				},
-				"zoo-code.useAgentRules": {
+				"pet-zoo-code.useAgentRules": {
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.useAgentRules.description%"
 				},
-				"zoo-code.apiRequestTimeout": {
+				"pet-zoo-code.apiRequestTimeout": {
 					"type": "integer",
 					"default": 600,
 					"minimum": 1,
 					"maximum": 3600,
 					"description": "%settings.apiRequestTimeout.description%"
 				},
-				"zoo-code.newTaskRequireTodos": {
+				"pet-zoo-code.newTaskRequireTodos": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.newTaskRequireTodos.description%"
 				},
-				"zoo-code.codeIndex.embeddingBatchSize": {
+				"pet-zoo-code.codeIndex.embeddingBatchSize": {
 					"type": "number",
 					"default": 60,
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
 				},
-				"zoo-code.debug": {
+				"pet-zoo-code.debug": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debug.description%"
 				},
-				"zoo-code.debugProxy.enabled": {
+				"pet-zoo-code.debugProxy.enabled": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debugProxy.enabled.description%",
 					"markdownDescription": "%settings.debugProxy.enabled.description%"
 				},
-				"zoo-code.debugProxy.serverUrl": {
+				"pet-zoo-code.debugProxy.serverUrl": {
 					"type": "string",
 					"default": "http://127.0.0.1:8888",
 					"description": "%settings.debugProxy.serverUrl.description%",
 					"markdownDescription": "%settings.debugProxy.serverUrl.description%"
 				},
-				"zoo-code.debugProxy.tlsInsecure": {
+				"pet-zoo-code.debugProxy.tlsInsecure": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debugProxy.tlsInsecure.description%",
 					"markdownDescription": "%settings.debugProxy.tlsInsecure.description%"
 				},
-				"zoo-code.workspace.rootResolution": {
+				"pet-zoo-code.workspace.rootResolution": {
 					"type": "string",
 					"enum": [
 						"activeEditor",
@@ -476,8 +476,8 @@
 		"bundle": "node esbuild.mjs",
 		"vscode:prepublish": "pnpm --workspace-root exec turbo run build --filter=\"{./src}^...\" --filter=@roo-code/vscode-webview --log-order=grouped --output-logs=new-only && pnpm bundle --production",
 		"vsix": "mkdirp ../bin && vsce package --no-dependencies --out ../bin",
-		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/zoo-code-$npm_package_version.vsix",
-		"publish:ovsx": "pnpm exec ovsx publish ../bin/zoo-code-$npm_package_version.vsix --skip-duplicate",
+		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/$npm_package_name-$npm_package_version.vsix",
+		"publish:ovsx": "pnpm exec ovsx publish ../bin/$npm_package_name-$npm_package_version.vsix --skip-duplicate",
 		"publish:marketplace": "pnpm vsix && pnpm publish:vsce && pnpm publish:ovsx",
 		"watch:bundle": "pnpm bundle --watch",
 		"watch:tsc": "cd .. && tsc --noEmit --watch --project src/tsconfig.json",

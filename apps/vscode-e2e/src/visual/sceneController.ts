@@ -71,11 +71,11 @@ export async function run(): Promise<void> {
 	if (scene !== "welcome" && scene !== "chat") throw new Error(`Unknown Electron visual scene: ${scene}`)
 	if (!themeKinds[themeId]) throw new Error(`Unsupported Electron visual theme: ${themeId}`)
 
-	const extension = vscode.extensions.getExtension<RooCodeTestAPI>("ZooCodeOrganization.zoo-code")
+	const extension = vscode.extensions.getExtension<RooCodeTestAPI>("e3742526.pet-zoo-code")
 	if (!extension) throw new Error("Zoo Code extension not found")
 	const api = extension.isActive ? extension.exports : await extension.activate()
 
-	await vscode.commands.executeCommand("zoo-code.SidebarProvider.focus")
+	await vscode.commands.executeCommand("pet-zoo-code.SidebarProvider.focus")
 	await poll(async () => api.isReady(), Boolean, "Zoo Code webview activation")
 	await log("webview-ready")
 	await vscode.workspace

@@ -97,7 +97,7 @@ async function checkWorktreeAutoOpen(
 			// Open the Zoo Code sidebar with a slight delay to ensure UI is ready
 			setTimeout(async () => {
 				try {
-					await vscode.commands.executeCommand("zoo-code.plusButtonClicked")
+					await vscode.commands.executeCommand(`${Package.name}.plusButtonClicked`)
 				} catch (error) {
 					outputChannel.appendLine(
 						`[Worktree] Error auto-opening sidebar: ${error instanceof Error ? error.message : String(error)}`,
@@ -268,7 +268,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.executeCommand(`${Package.name}.activationCompleted`)
 
 	// Implements the `RooCodeAPI` interface.
-	const socketPath = process.env.ROO_CODE_IPC_SOCKET_PATH
+	const socketPath = process.env.PET_ZOO_CODE_IPC_SOCKET_PATH
 	const enableLogging = typeof socketPath === "string"
 
 	// Watch the core files and automatically reload the extension host.

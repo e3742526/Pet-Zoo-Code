@@ -46,7 +46,7 @@ vi.mock("../../core/webview/ClineProvider")
 
 vi.mock("../../shared/package", () => ({
 	Package: {
-		name: "zoo-code",
+		name: "pet-zoo-code",
 	},
 }))
 
@@ -194,7 +194,7 @@ describe("registerCommands handlers", () => {
 
 	it.each([false, true])("retries the appropriate provider when a visible provider exists: %s", async (visible) => {
 		vi.mocked(ClineProvider.getVisibleInstance).mockReturnValue(visible ? mockVisibleProviderInstance : undefined)
-		await handlers["zoo-code.retryWebviewRecovery"]()
+		await handlers["pet-zoo-code.retryWebviewRecovery"]()
 		expect(mockVisibleProvider.retryWebviewRecovery).toHaveBeenCalledTimes(visible ? 1 : 0)
 		expect(mockProvider.retryWebviewRecovery).toHaveBeenCalledTimes(visible ? 0 : 1)
 	})
@@ -216,7 +216,7 @@ describe("registerCommands handlers", () => {
 	it("passes the shared focus tracker to the newTask handler", async () => {
 		const { handleNewTask } = await import("../handleTask")
 		const params = { prompt: "new task" }
-		await handlers["zoo-code.newTask"](params)
+		await handlers["pet-zoo-code.newTask"](params)
 		expect(handleNewTask).toHaveBeenCalledWith(params, mockProvider.webviewFocusTracker)
 	})
 
@@ -224,7 +224,7 @@ describe("registerCommands handlers", () => {
 		"%s opens an editor chat using the registered provider's focus tracker",
 		async (command) => {
 			const panel: vscode.WebviewPanel = {
-				viewType: "zoo-code.TabPanelProvider",
+				viewType: "pet-zoo-code.TabPanelProvider",
 				title: "Zoo Code",
 				webview: {
 					options: {},
@@ -245,7 +245,7 @@ describe("registerCommands handlers", () => {
 			}
 			vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(panel)
 
-			const result = await handlers[`zoo-code.${command}`]()
+			const result = await handlers[`pet-zoo-code.${command}`]()
 
 			expect(ClineProvider).toHaveBeenCalledExactlyOnceWith(
 				mockContext,
@@ -266,7 +266,7 @@ describe("registerCommands handlers", () => {
 		;(ClineProvider.getAllInstances as Mock).mockReturnValue(providers)
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
-		await handlers["zoo-code.createDiagnosticsReport"]()
+		await handlers["pet-zoo-code.createDiagnosticsReport"]()
 
 		expect(createDiagnosticsReport).toHaveBeenCalledWith({
 			context: mockContext,
@@ -276,7 +276,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("settingsButtonClicked posts both settingsButtonClicked and didBecomeVisible actions", () => {
-		handlers["zoo-code.settingsButtonClicked"]()
+		handlers["pet-zoo-code.settingsButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
@@ -292,13 +292,13 @@ describe("registerCommands handlers", () => {
 	it("settingsButtonClicked is a no-op when no visible provider", () => {
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
-		handlers["zoo-code.settingsButtonClicked"]()
+		handlers["pet-zoo-code.settingsButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
 
 	it("historyButtonClicked posts historyButtonClicked action", () => {
-		handlers["zoo-code.historyButtonClicked"]()
+		handlers["pet-zoo-code.historyButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
@@ -307,7 +307,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("marketplaceButtonClicked posts marketplaceButtonClicked action", () => {
-		handlers["zoo-code.marketplaceButtonClicked"]()
+		handlers["pet-zoo-code.marketplaceButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
@@ -316,7 +316,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("acceptInput posts acceptInput message", () => {
-		handlers["zoo-code.acceptInput"]()
+		handlers["pet-zoo-code.acceptInput"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "acceptInput",
@@ -335,7 +335,7 @@ describe("registerCommands handlers", () => {
 		})
 		mockVisibleProvider.postMessageToWebview.mockReturnValueOnce(postPromise)
 
-		const handlerPromise = handlers["zoo-code.toggleAutoApprove"]() as Promise<unknown>
+		const handlerPromise = handlers["pet-zoo-code.toggleAutoApprove"]() as Promise<unknown>
 		let settled = false
 		void handlerPromise.then(() => {
 			settled = true
@@ -367,7 +367,7 @@ describe("registerCommands handlers", () => {
 		})
 		mockProvider.postMessageToWebview.mockReturnValueOnce(postPromise)
 
-		const handlerPromise = handlers["zoo-code.focusInput"]() as Promise<unknown>
+		const handlerPromise = handlers["pet-zoo-code.focusInput"]() as Promise<unknown>
 		let settled = false
 		void handlerPromise.then(() => {
 			settled = true
@@ -386,7 +386,7 @@ describe("registerCommands handlers", () => {
 	})
 
 	it("focusInput does not post when no sidebar panel is active", async () => {
-		await handlers["zoo-code.focusInput"]()
+		await handlers["pet-zoo-code.focusInput"]()
 
 		expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
@@ -400,10 +400,10 @@ describe("registerCommands handlers", () => {
 	// remain unambiguous; the prefix is per-handler, not per-call (both of
 	// settingsButtonClicked's posts share the same prefix).
 	it.each([
-		{ command: "zoo-code.settingsButtonClicked", prefix: "settingsButtonClicked", expectedCalls: 2 },
-		{ command: "zoo-code.historyButtonClicked", prefix: "historyButtonClicked", expectedCalls: 1 },
-		{ command: "zoo-code.marketplaceButtonClicked", prefix: "marketplaceButtonClicked", expectedCalls: 1 },
-		{ command: "zoo-code.acceptInput", prefix: "acceptInput", expectedCalls: 1 },
+		{ command: "pet-zoo-code.settingsButtonClicked", prefix: "settingsButtonClicked", expectedCalls: 2 },
+		{ command: "pet-zoo-code.historyButtonClicked", prefix: "historyButtonClicked", expectedCalls: 1 },
+		{ command: "pet-zoo-code.marketplaceButtonClicked", prefix: "marketplaceButtonClicked", expectedCalls: 1 },
+		{ command: "pet-zoo-code.acceptInput", prefix: "acceptInput", expectedCalls: 1 },
 	])(
 		"$command logs to outputChannel when postMessageToWebview rejects",
 		async ({ command, prefix, expectedCalls }) => {
@@ -432,7 +432,7 @@ describe("registerCommands handlers", () => {
 		mockVisibleProvider.postMessageToWebview.mockReset()
 		mockVisibleProvider.postMessageToWebview.mockRejectedValue(boom)
 
-		await handlers["zoo-code.toggleAutoApprove"]()
+		await handlers["pet-zoo-code.toggleAutoApprove"]()
 
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledTimes(1)
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
@@ -446,7 +446,7 @@ describe("registerCommands handlers", () => {
 		mockVisibleProvider.evictCurrentTask = evictCurrentTask
 		mockVisibleProvider.refreshWorkspace = refreshWorkspace
 
-		await handlers["zoo-code.plusButtonClicked"]()
+		await handlers["pet-zoo-code.plusButtonClicked"]()
 
 		expect(evictCurrentTask).toHaveBeenCalledTimes(1)
 	})
@@ -455,7 +455,7 @@ describe("registerCommands handlers", () => {
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
 		// Should not throw even with no visible provider
-		await handlers["zoo-code.plusButtonClicked"]()
+		await handlers["pet-zoo-code.plusButtonClicked"]()
 	})
 })
 
@@ -525,7 +525,7 @@ describe("openClineInNewTab", () => {
 		)
 
 		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
-			"zoo-code.TabPanelProvider",
+			"pet-zoo-code.TabPanelProvider",
 			"Zoo Code",
 			expect.any(Number),
 			expect.objectContaining({

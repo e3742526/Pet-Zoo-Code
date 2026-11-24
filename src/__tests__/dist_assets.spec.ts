@@ -7,10 +7,28 @@ import * as path from "path"
 import * as yaml from "yaml"
 import workerpool from "workerpool"
 
+import manifest from "../package.json"
+
 describe("dist assets", () => {
 	const distPath = path.join(__dirname, "../dist")
 	const marketplaceAssetsPath = path.join(__dirname, "../assets/marketplace")
 	const webviewAssetsPath = path.join(__dirname, "../webview-ui/build/assets")
+
+	it("registers the fork under its own extension and settings IDs", () => {
+		expect(`${manifest.publisher}.${manifest.name}`).toBe("e3742526.pet-zoo-code")
+		expect(manifest.contributes.viewsContainers.activitybar.map(({ id }) => id)).toEqual([
+			"pet-zoo-code-ActivityBar",
+		])
+		expect(manifest.contributes.views["pet-zoo-code-ActivityBar"].map(({ id }) => id)).toEqual([
+			"pet-zoo-code.SidebarProvider",
+		])
+		for (const { command } of manifest.contributes.commands) {
+			expect(command).toMatch(/^pet-zoo-code\./)
+		}
+		for (const setting of Object.keys(manifest.contributes.configuration.properties)) {
+			expect(setting).toMatch(/^pet-zoo-code\./)
+		}
+	})
 
 	it("excludes retired Zoo Gateway, Zoo Pass, account, and analytics URLs from both runtimes", () => {
 		const retiredEndpoints =

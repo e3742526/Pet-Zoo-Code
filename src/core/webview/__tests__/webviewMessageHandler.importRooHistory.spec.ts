@@ -90,7 +90,7 @@ describe("webviewMessageHandler - importRooHistory", () => {
 
 			return {
 				rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-				zooExtensionDomain: "ZooCodeOrganization.zoo-code",
+				zooExtensionDomain: "e3742526.pet-zoo-code",
 				rooStorageRoots: ["/mock/roo-storage"],
 				zooStorageRoot: "/mock/storage",
 				foundTaskCount: 2,
@@ -147,7 +147,7 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	it("uses the singular success message when one Roo task history is imported", async () => {
 		importRooTaskHistoryMock.mockResolvedValue({
 			rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-			zooExtensionDomain: "ZooCodeOrganization.zoo-code",
+			zooExtensionDomain: "e3742526.pet-zoo-code",
 			rooStorageRoots: ["/mock/roo-storage"],
 			zooStorageRoot: "/mock/storage",
 			foundTaskCount: 1,
@@ -174,7 +174,7 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	it("shows a 'not found' warning when no Roo history exists at all", async () => {
 		importRooTaskHistoryMock.mockResolvedValue({
 			rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-			zooExtensionDomain: "ZooCodeOrganization.zoo-code",
+			zooExtensionDomain: "e3742526.pet-zoo-code",
 			rooStorageRoots: ["/mock/roo-storage"],
 			zooStorageRoot: "/mock/storage",
 			foundTaskCount: 0,
@@ -206,7 +206,7 @@ describe("webviewMessageHandler - importRooHistory", () => {
 	it("shows an 'already imported' warning when all Roo tasks are already in Zoo", async () => {
 		importRooTaskHistoryMock.mockResolvedValue({
 			rooExtensionDomain: "RooVeterinaryInc.roo-cline",
-			zooExtensionDomain: "ZooCodeOrganization.zoo-code",
+			zooExtensionDomain: "e3742526.pet-zoo-code",
 			rooStorageRoots: ["/mock/roo-storage"],
 			zooStorageRoot: "/mock/storage",
 			foundTaskCount: 3,

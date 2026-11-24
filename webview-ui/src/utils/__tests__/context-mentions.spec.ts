@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next"
+import { Fzf } from "fzf"
 
 import {
 	insertMention,
@@ -9,6 +10,8 @@ import {
 	ContextMenuQueryItem,
 	SearchResult,
 } from "@src/utils/context-mentions"
+
+vi.mock("fzf", { spy: true })
 
 // Echo interpolation options so assertions can check what a label names
 const t = ((key: string, options?: Record<string, unknown>) =>
@@ -197,6 +200,25 @@ describe("removeMention", () => {
 })
 
 describe("getContextMenuOptions", () => {
+	it("reuses a search index for the same list and rebuilds it for new items", () => {
+		vi.mocked(Fzf).mockClear()
+		const files = [
+			{ type: ContextMenuOptionType.OpenedFile, value: "/src/read.ts" },
+			{ type: ContextMenuOptionType.File, value: "/src/write.ts" },
+		]
+		getContextMenuOptions(t, "rea", ContextMenuOptionType.File, files)
+		const result = getContextMenuOptions(t, "read", ContextMenuOptionType.File, files)
+		expect(result).toContainEqual(files[0])
+		expect(Fzf).toHaveBeenCalledTimes(1)
+		expect(vi.mocked(Fzf).mock.calls[0][0]).toHaveLength(1)
+
+		const updated = [{ type: ContextMenuOptionType.OpenedFile, value: "/docs/readme.md" }]
+		const freshResult = getContextMenuOptions(t, "read", ContextMenuOptionType.File, updated)
+		expect(freshResult).toContainEqual(updated[0])
+		expect(freshResult).not.toContainEqual(files[0])
+		expect(Fzf).toHaveBeenCalledTimes(2)
+	})
+
 	const mockQueryItems: ContextMenuQueryItem[] = [
 		{
 			type: ContextMenuOptionType.File,

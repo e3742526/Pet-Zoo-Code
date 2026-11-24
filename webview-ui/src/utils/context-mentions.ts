@@ -136,14 +136,38 @@ function matchesTopLevelOption(lowerQuery: string, label: string, token: string)
 	)
 }
 
+function createFuzzySearch<Item>(text: (item: Item) => string, include?: (item: Item) => boolean) {
+	type SearchEntry = { item: Item; text: string }
+	const indexes = new WeakMap<readonly Item[], Fzf<SearchEntry[]>>()
+
+	return (items: readonly Item[], query: string): Item[] => {
+		let index = indexes.get(items)
+		if (!index) {
+			const entries = (include ? items.filter(include) : items).map((item) => ({ item, text: text(item) }))
+			index = new Fzf(entries, { selector: (entry) => entry.text })
+			indexes.set(items, index)
+		}
+		return index.find(query).map((result) => result.item.item)
+	}
+}
+
+// The menu receives new arrays when the workspace items, commands, or modes change.
+const findCommands = createFuzzySearch((command: Command) => command.name)
+const findModes = createFuzzySearch((mode: ModeConfig) => mode.name)
+const findContextItems = createFuzzySearch(
+	(item: ContextMenuQueryItem) => [item.value, item.label, item.description].filter(Boolean).join(" "),
+	// The extension search supplies nonempty-query file and folder matches.
+	(item) => item.type === ContextMenuOptionType.OpenedFile || item.type === ContextMenuOptionType.Git,
+)
+
 export function getContextMenuOptions(
 	t: TFunction,
 	query: string,
 	selectedType: ContextMenuOptionType | null = null,
-	queryItems: ContextMenuQueryItem[],
+	queryItems: readonly ContextMenuQueryItem[],
 	dynamicSearchResults: SearchResult[] = [],
-	modes?: ModeConfig[],
-	commands?: Command[],
+	modes?: readonly ModeConfig[],
+	commands?: readonly Command[],
 ): ContextMenuQueryItem[] {
 	// Handle slash commands for modes and commands
 	// Only process as slash command if the query itself starts with "/" (meaning we're typing a slash command)
@@ -153,33 +177,13 @@ export function getContextMenuOptions(
 
 		// Add command suggestions first (prioritize commands at the top)
 		if (commands?.length) {
-			// Create searchable strings array for fzf
-			const searchableCommands = commands.map((command) => ({
-				original: command,
-				searchStr: command.name,
+			const matchingCommands = (slashQuery ? findCommands(commands, slashQuery) : commands).map((command) => ({
+				type: ContextMenuOptionType.Command,
+				value: command.name,
+				slashCommand: `/${command.name}`,
+				description: command.description,
+				argumentHint: command.argumentHint,
 			}))
-
-			// Initialize fzf instance for fuzzy search
-			const fzf = new Fzf(searchableCommands, {
-				selector: (item) => item.searchStr,
-			})
-
-			// Get fuzzy matching commands
-			const matchingCommands = slashQuery
-				? fzf.find(slashQuery).map((result) => ({
-						type: ContextMenuOptionType.Command,
-						value: result.item.original.name,
-						slashCommand: `/${result.item.original.name}`,
-						description: result.item.original.description,
-						argumentHint: result.item.original.argumentHint,
-					}))
-				: commands.map((command) => ({
-						type: ContextMenuOptionType.Command,
-						value: command.name,
-						slashCommand: `/${command.name}`,
-						description: command.description,
-						argumentHint: command.argumentHint,
-					}))
 
 			if (matchingCommands.length > 0) {
 				results.push({
@@ -192,31 +196,12 @@ export function getContextMenuOptions(
 
 		// Add mode suggestions second
 		if (modes?.length) {
-			// Create searchable strings array for fzf
-			const searchableItems = modes.map((mode) => ({
-				original: mode,
-				searchStr: mode.name,
+			const matchingModes = (slashQuery ? findModes(modes, slashQuery) : modes).map((mode) => ({
+				type: ContextMenuOptionType.Mode,
+				value: mode.slug,
+				slashCommand: `/${mode.slug}`,
+				description: getModeDescription(mode),
 			}))
-
-			// Initialize fzf instance for fuzzy search
-			const fzf = new Fzf(searchableItems, {
-				selector: (item) => item.searchStr,
-			})
-
-			// Get fuzzy matching items
-			const matchingModes = slashQuery
-				? fzf.find(slashQuery).map((result) => ({
-						type: ContextMenuOptionType.Mode,
-						value: result.item.original.slug,
-						slashCommand: `/${result.item.original.slug}`,
-						description: getModeDescription(result.item.original),
-					}))
-				: modes.map((mode) => ({
-						type: ContextMenuOptionType.Mode,
-						value: mode.slug,
-						slashCommand: `/${mode.slug}`,
-						description: getModeDescription(mode),
-					}))
 
 			if (matchingModes.length > 0) {
 				results.push({
@@ -325,18 +310,7 @@ export function getContextMenuOptions(
 		}
 	}
 
-	const searchableItems = queryItems.map((item) => ({
-		original: item,
-		searchStr: [item.value, item.label, item.description].filter(Boolean).join(" "),
-	}))
-
-	// Initialize fzf instance for fuzzy search
-	const fzf = new Fzf(searchableItems, {
-		selector: (item) => item.searchStr,
-	})
-
-	// Get fuzzy matching items
-	const matchingItems = query ? fzf.find(query).map((result) => result.item.original) : []
+	const matchingItems = findContextItems(queryItems, query)
 
 	// Separate matches by type
 	const openedFileMatches = matchingItems.filter((item) => item.type === ContextMenuOptionType.OpenedFile)

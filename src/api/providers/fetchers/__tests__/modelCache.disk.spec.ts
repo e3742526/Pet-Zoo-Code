@@ -4,13 +4,17 @@ import { readFile } from "fs/promises"
 import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import type { ApiHandler } from "../../../index"
+import { getCustomStoragePath } from "../../../../utils/storage"
 import { flushModels, getModels, getModelsFromCache, refreshModels } from "../modelCache"
 
 vi.mock("../../../../core/config/ContextProxy", () => ({
 	ContextProxy: { instance: { globalStorageUri: { fsPath: "/test-storage" } } },
 }))
 
-vi.mock("../../../../utils/storage", () => ({ getCacheDirectoryPath: vi.fn(async () => "/test-storage/cache") }))
+vi.mock("../../../../utils/storage", () => ({
+	getCacheDirectoryPath: vi.fn(async () => "/test-storage/cache"),
+	getCustomStoragePath: vi.fn(),
+}))
 vi.mock("../../../../utils/safeWriteJson", () => ({ safeWriteJson: vi.fn(async () => undefined) }))
 vi.mock("@roo-code/telemetry", () => ({ TelemetryService: { instance: { captureEvent: vi.fn() } } }))
 
@@ -56,6 +60,7 @@ beforeEach(async () => {
 	readFromDisk.mockReset().mockResolvedValue(JSON.stringify(diskModels))
 	vi.mocked(existsSync).mockReset().mockReturnValue(false)
 	vi.mocked(readFileSync).mockReset()
+	vi.mocked(getCustomStoragePath).mockReset().mockReturnValue("")
 })
 
 it("shares an asynchronous cold read and returns a separate catalog to each caller", async () => {
@@ -83,6 +88,23 @@ it("still loads a cold catalog for synchronous model metadata callers", () => {
 	expect(getModelsFromCache(options, handler)).toEqual(diskModels)
 	expect(readFileSync).toHaveBeenCalledTimes(1)
 	expect(readFromDisk).not.toHaveBeenCalled()
+})
+
+it("uses a different disk read after the configured location changes", async () => {
+	const finishPrevious = holdDiskRead()
+	const previous = getModels(options, handler)
+	vi.mocked(getCustomStoragePath).mockReturnValue("/new-storage")
+	const finishCurrent = holdDiskRead()
+	const current = getModels(options, handler)
+
+	finishPrevious(JSON.stringify(diskModels))
+	await new Promise<void>((resolve) => setImmediate(resolve))
+	expect(fetchModels).not.toHaveBeenCalled()
+	finishCurrent(JSON.stringify(freshModels))
+	await expect(current).resolves.toEqual(freshModels)
+	await expect(previous).resolves.toEqual(freshModels)
+	expect(readFromDisk).toHaveBeenCalledTimes(2)
+	expect(fetchModels).not.toHaveBeenCalled()
 })
 
 it("reuses a disk miss until the catalog is flushed", async () => {

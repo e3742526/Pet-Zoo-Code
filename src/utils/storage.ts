@@ -6,25 +6,18 @@ import { constants as fsConstants } from "fs"
 import { Package } from "../shared/package"
 import { t } from "../i18n"
 
-/**
- * Gets the base storage path for conversations
- * If a custom path is configured, uses that path
- * Otherwise uses the default VSCode extension global storage path
- */
-export async function getStorageBasePath(defaultPath: string): Promise<string> {
-	// Get user-configured custom storage path
-	let customStoragePath = ""
-
+export function getCustomStoragePath(): string {
 	try {
-		// This is the line causing the error in tests
-		const config = vscode.workspace.getConfiguration(Package.name)
-		customStoragePath = config.get<string>("customStoragePath", "")
+		return vscode.workspace.getConfiguration(Package.name).get<string>("customStoragePath", "")
 	} catch {
-		console.warn("Could not access VSCode configuration - using default path")
-		return defaultPath
+		console.warn("Could not access VS Code configuration. Using the default storage path.")
+		return ""
 	}
+}
 
-	// If no custom path is set, use default path
+/** Resolves a writable storage path for creating files. */
+export async function getStorageBasePath(defaultPath: string): Promise<string> {
+	const customStoragePath = getCustomStoragePath()
 	if (!customStoragePath) {
 		return defaultPath
 	}

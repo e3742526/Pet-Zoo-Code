@@ -155,3 +155,7 @@ Catalog requests share one asynchronous read per cache key when they miss the me
 The fixture loaded a 992,491-byte file with 1,800 models into a cold memory cache. Across 13 runs after three warm-up runs, the median delay before a queued `setImmediate` callback fell from 3.13 ms to 0.04 ms. The observed ranges were 2.83–4.34 ms and 0.012–0.574 ms. Median time to return the full catalog went from 3.02 ms to 3.13 ms. Both versions returned the saved model metadata without calling a provider.
 
 Focused tests cover shared reads, a cancelled caller, stale reads after refresh and flush, negative-cache invalidation, invalid catalog data, and the synchronous fallback.
+
+Cold catalog reads use the configured storage path first and can reopen a file in default storage when the configured cache file is missing or inaccessible. A disk miss for one path does not suppress a read from a newly configured path. OpenRouter endpoint reads use the same model-specific filename as writes.
+
+Real-file tests wrote a catalog to custom storage and reopened it through both catalog entry points while a simulated provider was offline. They also checked default storage fallback, a change of storage path after a miss, and reopening the saved endpoint list after its memory entry expired. The three reopen checks failed with the previous code. With default storage, the 1,800-model fixture recorded a median callback delay of 0.027 ms and a median catalog lookup of 3.09 ms.

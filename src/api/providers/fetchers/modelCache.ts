@@ -13,7 +13,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
-import { getCacheDirectoryPath } from "../../../utils/storage"
+import { getCacheDirectoryPath, getCustomStoragePath } from "../../../utils/storage"
 import type { RouterName } from "../../../shared/api"
 
 import { createAbortError, mergeAbortSignals, rejectOnAbort, throwIfAborted } from "../utils/abort-signal"
@@ -24,8 +24,8 @@ import type { ApiHandler } from "../../index"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 const MISSING_DISK_CACHE_TTL_MS = 5 * 60 * 1000
-const missingDiskCache = new Map<string, number>()
-const inFlightDiskReads = new Map<string, Promise<ModelRecord | undefined>>()
+const missingDiskCache = new Map<string, { path: string; until: number }>()
+const inFlightDiskReads = new Map<string, { path: string; load: Promise<ModelRecord | undefined> }>()
 
 // Zod schema for validating ModelRecord structure from disk cache
 const modelRecordSchema = z.record(z.string(), modelInfoSchema)
@@ -513,14 +513,50 @@ export const flushModels = async (
 	}
 }
 
-function diskCachePath(cacheKey: string): string | undefined {
-	const missingUntil = missingDiskCache.get(cacheKey)
-	if (missingUntil !== undefined) {
-		if (Date.now() < missingUntil) return undefined
+function diskCachePaths(cacheKey: string): [primary: string, fallback?: string] | undefined {
+	const cacheDir = getDefaultCacheDirectory()
+	if (!cacheDir) return undefined
+
+	const fileName = `${cacheKeyToFilename(cacheKey)}_models.json`
+	const defaultPath = path.join(cacheDir, fileName)
+	const customStorage = getCustomStoragePath()
+	const primary = customStorage ? path.join(customStorage, "cache", fileName) : defaultPath
+	const miss = missingDiskCache.get(cacheKey)
+	if (miss) {
+		if (miss.path === primary && Date.now() < miss.until) return undefined
 		missingDiskCache.delete(cacheKey)
 	}
-	const cacheDir = getCacheDirectoryPathSync()
-	return cacheDir ? path.join(cacheDir, `${cacheKeyToFilename(cacheKey)}_models.json`) : undefined
+	return [primary, primary === defaultPath ? undefined : defaultPath]
+}
+
+function rememberDiskMiss(cacheKey: string, path: string): void {
+	missingDiskCache.set(cacheKey, { path, until: Date.now() + MISSING_DISK_CACHE_TTL_MS })
+}
+
+function isDiskCacheMissing(error: unknown): boolean {
+	return error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR")
+}
+
+function canFallBackToDefaultCache(error: unknown): boolean {
+	return (
+		isDiskCacheMissing(error) ||
+		(error instanceof Error && "code" in error && (error.code === "EACCES" || error.code === "EPERM"))
+	)
+}
+
+function readCatalogFile(primary: string, fallback: string | undefined): Promise<string> {
+	const load = readFile(primary, "utf8")
+	if (!fallback) return load
+	return load.catch((error: unknown) => {
+		if (canFallBackToDefaultCache(error)) {
+			return readFile(fallback, "utf8")
+		}
+		throw error
+	})
+}
+
+function copyPendingCatalog(load: Promise<ModelRecord | undefined> | undefined) {
+	return load?.then((models) => models && structuredClone(models))
 }
 
 function validateAndCacheModels(cacheKey: string, data: string): ModelRecord | undefined {
@@ -543,34 +579,39 @@ function readCachedModels(
 	const cached = memoryCache.get<ModelRecord>(cacheKey)
 	if (cached || signal?.aborted) return cached
 
+	const paths = diskCachePaths(cacheKey)
+	if (!paths) return undefined
+	const [primary, fallback] = paths
+
 	const pending = inFlightDiskReads.get(cacheKey)
 	// Each caller receives its own copy, as it would on a memory-cache hit.
-	if (pending) return pending.then((models) => models && structuredClone(models))
+	if (pending?.path === primary) return copyPendingCatalog(pending.load)
 
-	const filePath = diskCachePath(cacheKey)
-	if (!filePath) return undefined
-
-	const load = readFile(filePath, "utf8")
+	const load: Promise<ModelRecord | undefined> = readCatalogFile(primary, fallback)
 		.then((data) => {
 			// A provider refresh or synchronous read can populate memory while this read is pending.
 			const current = memoryCache.get<ModelRecord>(cacheKey)
-			if (current || inFlightDiskReads.get(cacheKey) !== load) return current
+			const latest = inFlightDiskReads.get(cacheKey)?.load
+			if (current) return current
+			if (latest !== load) return copyPendingCatalog(latest)
 			return validateAndCacheModels(cacheKey, data)
 		})
 		.catch((error: unknown) => {
 			const current = memoryCache.get<ModelRecord>(cacheKey)
-			if (current || inFlightDiskReads.get(cacheKey) !== load) return current
-			if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-				missingDiskCache.set(cacheKey, Date.now() + MISSING_DISK_CACHE_TTL_MS)
+			const latest = inFlightDiskReads.get(cacheKey)?.load
+			if (current) return current
+			if (latest !== load) return copyPendingCatalog(latest)
+			if (isDiskCacheMissing(error)) {
+				rememberDiskMiss(cacheKey, primary)
 			} else {
 				console.error(`[MODEL_CACHE] Error loading ${cacheKey} models from disk:`, error)
 			}
 			return undefined
 		})
 		.finally(() => {
-			if (inFlightDiskReads.get(cacheKey) === load) inFlightDiskReads.delete(cacheKey)
+			if (inFlightDiskReads.get(cacheKey)?.load === load) inFlightDiskReads.delete(cacheKey)
 		})
-	inFlightDiskReads.set(cacheKey, load)
+	inFlightDiskReads.set(cacheKey, { path: primary, load })
 	return load
 }
 
@@ -596,26 +637,29 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 		return memoryModels
 	}
 
-	const filePath = diskCachePath(cacheKey)
-	if (!filePath) return undefined
+	const paths = diskCachePaths(cacheKey)
+	if (!paths) return undefined
+	const [primary, fallback] = paths
 
-	try {
-		if (fsSync.existsSync(filePath)) {
+	for (const filePath of paths) {
+		if (!filePath || !fsSync.existsSync(filePath)) continue
+		try {
 			return validateAndCacheModels(cacheKey, fsSync.readFileSync(filePath, "utf8"))
+		} catch (error) {
+			if (filePath === primary && fallback && canFallBackToDefaultCache(error)) continue
+			console.error(`[MODEL_CACHE] Error loading ${cacheKey} models from disk:`, error)
+			return undefined
 		}
-
-		missingDiskCache.set(cacheKey, Date.now() + MISSING_DISK_CACHE_TTL_MS)
-	} catch (error) {
-		console.error(`[MODEL_CACHE] Error loading ${cacheKey} models from disk:`, error)
 	}
 
+	rememberDiskMiss(cacheKey, primary)
 	return undefined
 }
 
 /**
- * Resolve the legacy cache directory for reads without creating it.
+ * Resolve the default cache directory for reads without creating it.
  */
-function getCacheDirectoryPathSync(): string | undefined {
+function getDefaultCacheDirectory(): string | undefined {
 	try {
 		const globalStoragePath = ContextProxy.instance?.globalStorageUri?.fsPath
 		if (!globalStoragePath) {

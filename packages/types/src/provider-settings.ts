@@ -45,6 +45,8 @@ import {
 	internationalZAiModels,
 	minimaxModels,
 	mimoModels,
+	museCodeModels,
+	antigravityModels,
 	isOpencodeGoAnthropicFormatModel,
 	ANTHROPIC_API_PROTOCOL,
 	OPENAI_API_PROTOCOL,
@@ -495,6 +497,16 @@ export const MODELS_BY_PROVIDER: Record<
 		id: providerIdentifiers.mimo,
 		label: "Xiaomi MiMo",
 		models: Object.keys(mimoModels),
+	},
+	[providerIdentifiers.museCode]: {
+		id: providerIdentifiers.museCode,
+		label: "Meta Muse Code (CLI subscription)",
+		models: Object.keys(museCodeModels),
+	},
+	[providerIdentifiers.antigravity]: {
+		id: providerIdentifiers.antigravity,
+		label: "Google Antigravity (CLI subscription)",
+		models: Object.keys(antigravityModels),
 	},
 	[providerIdentifiers.openaiCodex]: {
 		id: providerIdentifiers.openaiCodex,

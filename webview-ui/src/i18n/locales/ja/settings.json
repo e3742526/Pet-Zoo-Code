@@ -701,6 +701,14 @@
 			"step2": "2. アカウントで認証",
 			"step3": "3. OAuth 認証情報は自動的に保存されます",
 			"setupInstructions": "セットアップ手順"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "CLI 実行ファイルのパス",
+			"executablePathDescription": "空のままにすると、PATH と一般的なインストールフォルダーで \"{{defaultExecutable}}\" を探します。",
+			"howItWorks": "Zoo Code はこのコンピューターにインストールされた {{name}} CLI を実行し、そのサインインを使用します。リクエストはサブスクリプションで支払われます。CLI 自身のツールは無効になります。Zoo Code がすべてのツールを実行し、承認を求め、通常どおりチェックポイントを作成します。",
+			"setup": "始める前に CLI をインストールし、ターミナルで \"{{loginCommand}}\" を実行してサインインしてください。",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

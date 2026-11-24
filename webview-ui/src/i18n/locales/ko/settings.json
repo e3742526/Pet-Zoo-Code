@@ -701,6 +701,14 @@
 			"step2": "2. 계정으로 인증",
 			"step3": "3. OAuth 자격 증명이 자동으로 저장됩니다",
 			"setupInstructions": "설정 안내"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "CLI 실행 파일 경로",
+			"executablePathDescription": "비워 두면 PATH와 일반적인 설치 폴더에서 \"{{defaultExecutable}}\"을(를) 찾습니다.",
+			"howItWorks": "Zoo Code는 이 컴퓨터에 설치된 {{name}} CLI를 실행하고 그 로그인을 사용하므로 요청 비용은 구독으로 처리됩니다. CLI 자체 도구는 꺼져 있습니다. Zoo Code가 모든 도구를 실행하고, 승인을 요청하며, 평소처럼 체크포인트를 만듭니다.",
+			"setup": "시작하기 전에 CLI를 설치하고 터미널에서 \"{{loginCommand}}\"(으)로 로그인하세요.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

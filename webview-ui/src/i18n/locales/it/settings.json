@@ -703,6 +703,14 @@
 			"step2": "2. Autenticati con il tuo account",
 			"step3": "3. Le credenziali OAuth verranno salvate automaticamente",
 			"setupInstructions": "Istruzioni di configurazione"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "Percorso dell'eseguibile della CLI",
+			"executablePathDescription": "Lascia vuoto per cercare \"{{defaultExecutable}}\" nel PATH e nelle cartelle di installazione comuni.",
+			"howItWorks": "Zoo Code esegue la CLI di {{name}} installata su questo computer e ne usa l'accesso, quindi le richieste sono pagate dal tuo abbonamento. Gli strumenti propri della CLI sono disattivati. Zoo Code esegue tutti gli strumenti, chiede la tua approvazione e crea checkpoint come sempre.",
+			"setup": "Prima di iniziare, installa la CLI ed esegui l'accesso con \"{{loginCommand}}\" in un terminale.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

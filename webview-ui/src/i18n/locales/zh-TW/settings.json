@@ -728,6 +728,14 @@
 			"step2": "2. 使用你的帳號進行驗證",
 			"step3": "3. OAuth 憑證將自動儲存",
 			"setupInstructions": "設定說明"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "CLI 可執行檔路徑",
+			"executablePathDescription": "留空則在 PATH 與常見安裝資料夾中尋找 \"{{defaultExecutable}}\"。",
+			"howItWorks": "Zoo Code 會執行本機安裝的 {{name}} CLI 並使用其登入資訊，因此請求由你的訂閱支付。CLI 本身的工具已關閉。Zoo Code 負責執行所有工具、請求你的核准，並照常建立檢查點。",
+			"setup": "開始之前，請安裝 CLI 並在終端機中使用 \"{{loginCommand}}\" 登入。",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

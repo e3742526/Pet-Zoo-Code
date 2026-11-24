@@ -1,4 +1,5 @@
 export * from "./anthropic.js"
+export * from "./antigravity.js"
 export * from "./baseten.js"
 export * from "./bedrock.js"
 export * from "./deepseek.js"
@@ -12,6 +13,7 @@ export * from "./litellm.js"
 export * from "./lm-studio.js"
 export * from "./mistral.js"
 export * from "./moonshot.js"
+export * from "./muse-code.js"
 export * from "./ollama.js"
 export * from "./openai.js"
 export * from "./openai-codex.js"
@@ -53,6 +55,8 @@ import { kimiCodeProviderDefinition } from "./kimi-code.js"
 import { litellmProviderDefinition } from "./litellm.js"
 import { lmStudioProviderDefinition } from "./lm-studio.js"
 import { mimoProviderDefinition } from "./mimo.js"
+import { museCodeProviderDefinition } from "./muse-code.js"
+import { antigravityProviderDefinition } from "./antigravity.js"
 import { minimaxProviderDefinition } from "./minimax.js"
 import { mistralProviderDefinition } from "./mistral.js"
 import { moonshotProviderDefinition } from "./moonshot.js"
@@ -114,4 +118,6 @@ export const providerDefinitionList = [
 	nanoGptProviderDefinition,
 	zooGatewayProviderDefinition,
 	basetenProviderDefinition,
+	museCodeProviderDefinition,
+	antigravityProviderDefinition,
 ] as const satisfies readonly ProviderDefinition[]

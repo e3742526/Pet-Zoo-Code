@@ -701,6 +701,14 @@
 			"step2": "2. Xác thực bằng tài khoản của bạn",
 			"step3": "3. Thông tin xác thực OAuth sẽ được lưu tự động",
 			"setupInstructions": "Hướng dẫn thiết lập"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "Đường dẫn tệp thực thi CLI",
+			"executablePathDescription": "Để trống để tìm \"{{defaultExecutable}}\" trong PATH và trong các thư mục cài đặt thông dụng.",
+			"howItWorks": "Zoo Code chạy CLI {{name}} đã cài trên máy này và dùng phiên đăng nhập của nó, nên gói đăng ký của bạn trả cho các yêu cầu. Các công cụ riêng của CLI bị tắt. Zoo Code chạy mọi công cụ, xin bạn phê duyệt và tạo checkpoint như thường lệ.",
+			"setup": "Trước khi bắt đầu, hãy cài CLI và đăng nhập bằng \"{{loginCommand}}\" trong terminal.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

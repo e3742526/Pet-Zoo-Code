@@ -701,6 +701,14 @@
 			"step2": "2. 使用你的账号进行身份验证",
 			"step3": "3. OAuth 凭据将自动保存",
 			"setupInstructions": "设置说明"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "CLI 可执行文件路径",
+			"executablePathDescription": "留空则在 PATH 和常见安装文件夹中查找 \"{{defaultExecutable}}\"。",
+			"howItWorks": "Zoo Code 运行本机安装的 {{name}} CLI 并使用其登录信息，因此请求由你的订阅支付。CLI 自身的工具已关闭。Zoo Code 负责运行所有工具、请求你的批准，并照常创建检查点。",
+			"setup": "开始之前，请安装 CLI 并在终端中使用 \"{{loginCommand}}\" 登录。",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

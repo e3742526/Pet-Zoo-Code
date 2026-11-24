@@ -702,6 +702,14 @@
 			"step2": "2. Hesabınla kimlik doğrula",
 			"step3": "3. OAuth kimlik bilgileri otomatik olarak kaydedilir",
 			"setupInstructions": "Kurulum talimatları"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "CLI çalıştırılabilir dosya yolu",
+			"executablePathDescription": "PATH içinde ve yaygın kurulum klasörlerinde \"{{defaultExecutable}}\" aramak için boş bırakın.",
+			"howItWorks": "Zoo Code bu bilgisayarda kurulu {{name}} CLI'yi çalıştırır ve onun oturumunu kullanır, bu nedenle istekleri aboneliğiniz öder. CLI'nin kendi araçları kapalıdır. Zoo Code tüm araçları çalıştırır, onayınızı ister ve her zamanki gibi kontrol noktaları oluşturur.",
+			"setup": "Başlamadan önce CLI'yi kurun ve bir terminalde \"{{loginCommand}}\" ile oturum açın.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

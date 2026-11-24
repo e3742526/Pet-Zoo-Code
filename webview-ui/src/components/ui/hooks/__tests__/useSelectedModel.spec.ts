@@ -8,6 +8,12 @@ import { renderHook } from "@testing-library/react"
 import type { Mock } from "vitest"
 
 import {
+	antigravityDefaultModelId,
+	antigravityDefaultModelInfo,
+	antigravityModels,
+	museCodeDefaultModelId,
+	museCodeDefaultModelInfo,
+	museCodeModels,
 	ProviderSettings,
 	ModelInfo,
 	type ModelRecord,
@@ -223,6 +229,32 @@ describe("useSelectedModel", () => {
 				? { ...defaultInfo, ...modelInfo }
 				: { ...modelInfo, contextWindow: 32_000 },
 		)
+	})
+
+	describe("CLI subscription providers", () => {
+		it.each([
+			[providerIdentifiers.museCode, museCodeDefaultModelId, museCodeModels[museCodeDefaultModelId]],
+			[providerIdentifiers.antigravity, antigravityDefaultModelId, antigravityModels[antigravityDefaultModelId]],
+		])("uses the %s default model when none is set", (apiProvider, expectedId, expectedInfo) => {
+			mockUseRouterModels.mockReturnValue(createRouterModelsResult({}))
+			const { result } = renderHook(() => useSelectedModel({ apiProvider, apiModelId: "" }), {
+				wrapper: createWrapper(),
+			})
+			expect(result.current.id).toBe(expectedId)
+			expect(result.current.info).toBe(expectedInfo)
+		})
+
+		it.each([
+			[providerIdentifiers.museCode, "muse-new-2.0", museCodeDefaultModelInfo],
+			[providerIdentifiers.antigravity, "gemini-5-preview", antigravityDefaultModelInfo],
+		])("keeps a custom %s model ID with the default model information", (apiProvider, apiModelId, expectedInfo) => {
+			mockUseRouterModels.mockReturnValue(createRouterModelsResult({}))
+			const { result } = renderHook(() => useSelectedModel({ apiProvider, apiModelId }), {
+				wrapper: createWrapper(),
+			})
+			expect(result.current.id).toBe(apiModelId)
+			expect(result.current.info).toBe(expectedInfo)
+		})
 	})
 
 	it("falls back to the OpenRouter default for a retired provider", () => {

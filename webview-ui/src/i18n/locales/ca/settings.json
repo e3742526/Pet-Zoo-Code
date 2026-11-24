@@ -703,6 +703,14 @@
 			"step2": "2. Autentica't amb el teu compte",
 			"step3": "3. Les credencials OAuth es desaran automàticament",
 			"setupInstructions": "Instruccions de configuració"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "Ruta de l'executable de la CLI",
+			"executablePathDescription": "Deixa-ho buit per cercar \"{{defaultExecutable}}\" al PATH i a les carpetes d'instal·lació habituals.",
+			"howItWorks": "Zoo Code executa la CLI de {{name}} instal·lada en aquest ordinador i fa servir la seva sessió, de manera que la teva subscripció paga les sol·licituds. Les eines pròpies de la CLI estan desactivades. Zoo Code executa totes les eines, demana la teva aprovació i crea punts de control com sempre.",
+			"setup": "Abans de començar, instal·la la CLI i inicia sessió amb \"{{loginCommand}}\" en un terminal.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

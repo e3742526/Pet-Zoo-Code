@@ -38,6 +38,8 @@ import {
 	XAIHandler,
 	LiteLLMHandler,
 	QwenCodeHandler,
+	MuseCodeHandler,
+	AntigravityHandler,
 	SambaNovaHandler,
 	ZAiHandler,
 	FireworksHandler,
@@ -235,6 +237,10 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new DeepSeekHandler(options)
 		case providerIdentifiers.qwenCode:
 			return new QwenCodeHandler(options)
+		case providerIdentifiers.museCode:
+			return new MuseCodeHandler(options)
+		case providerIdentifiers.antigravity:
+			return new AntigravityHandler(options)
 		case providerIdentifiers.moonshot:
 			return new MoonshotHandler(options)
 		case providerIdentifiers.kimiCode:

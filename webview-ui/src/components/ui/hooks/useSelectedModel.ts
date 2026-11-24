@@ -10,6 +10,10 @@ import {
 	moonshotModels,
 	minimaxModels,
 	mimoModels,
+	museCodeModels,
+	museCodeDefaultModelInfo,
+	antigravityModels,
+	antigravityDefaultModelInfo,
 	geminiModels,
 	mistralModels,
 	openAiModelInfoSaneDefaults,
@@ -397,6 +401,22 @@ function getSelectedModel({
 		case providerIdentifiers.mimo: {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
 			const info = mimoModels[id as keyof typeof mimoModels] ?? mimoModels["mimo-v2.5-pro"]
+			return { id, info }
+		}
+		// Custom model IDs are allowed (the CLI catalog changes); they use the provider default info,
+		// as the extension-side handlers do.
+		case providerIdentifiers.museCode: {
+			const id = apiConfiguration.apiModelId || defaultModelId
+			const info = Object.hasOwn(museCodeModels, id)
+				? museCodeModels[id as keyof typeof museCodeModels]
+				: museCodeDefaultModelInfo
+			return { id, info }
+		}
+		case providerIdentifiers.antigravity: {
+			const id = apiConfiguration.apiModelId || defaultModelId
+			const info = Object.hasOwn(antigravityModels, id)
+				? antigravityModels[id as keyof typeof antigravityModels]
+				: antigravityDefaultModelInfo
 			return { id, info }
 		}
 		case providerIdentifiers.zai: {

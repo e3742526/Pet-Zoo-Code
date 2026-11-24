@@ -21,6 +21,8 @@ import {
 	minimaxDefaultModelId,
 	basetenDefaultModelId,
 	mimoDefaultModelId,
+	museCodeDefaultModelId,
+	antigravityDefaultModelId,
 	poeDefaultModelId,
 	requestyDefaultModelId,
 	unboundDefaultModelId,
@@ -62,6 +64,11 @@ export const PROVIDER_SERVICE_CONFIG: Partial<Record<ProviderName, ProviderServi
 	[providerIdentifiers.friendli]: { serviceName: "Friendli", serviceUrl: "https://friendli.ai" },
 	[providerIdentifiers.minimax]: { serviceName: "MiniMax", serviceUrl: "https://minimax.chat" },
 	[providerIdentifiers.mimo]: { serviceName: "Xiaomi MiMo", serviceUrl: "https://platform.xiaomimimo.com" },
+	[providerIdentifiers.museCode]: { serviceName: "Muse Code", serviceUrl: "https://dev.meta.ai/docs/muse-code" },
+	[providerIdentifiers.antigravity]: {
+		serviceName: "Antigravity",
+		serviceUrl: "https://antigravity.google/docs/cli",
+	},
 	[providerIdentifiers.baseten]: { serviceName: "Baseten", serviceUrl: "https://baseten.co" },
 	[providerIdentifiers.ollama]: { serviceName: "Ollama", serviceUrl: "https://ollama.ai" },
 	[providerIdentifiers.lmstudio]: { serviceName: "LM Studio", serviceUrl: "https://lmstudio.ai/docs" },
@@ -89,6 +96,8 @@ export const PROVIDER_DEFAULT_MODEL_IDS: Partial<Record<ProviderName, string>> =
 	[providerIdentifiers.friendli]: friendliDefaultModelId,
 	[providerIdentifiers.minimax]: minimaxDefaultModelId,
 	[providerIdentifiers.mimo]: mimoDefaultModelId,
+	[providerIdentifiers.museCode]: museCodeDefaultModelId,
+	[providerIdentifiers.antigravity]: antigravityDefaultModelId,
 	[providerIdentifiers.baseten]: basetenDefaultModelId,
 }
 
@@ -127,6 +136,8 @@ const PROVIDER_MODEL_CONFIG: Partial<Record<ProviderName, ProviderModelConfig>> 
 	[providerIdentifiers.kimiCode]: { field: "apiModelId", default: kimiCodeDefaultModelId },
 	[providerIdentifiers.minimax]: { field: "apiModelId", default: minimaxDefaultModelId },
 	[providerIdentifiers.mimo]: { field: "apiModelId", default: mimoDefaultModelId },
+	[providerIdentifiers.museCode]: { field: "apiModelId", default: museCodeDefaultModelId },
+	[providerIdentifiers.antigravity]: { field: "apiModelId", default: antigravityDefaultModelId },
 	[providerIdentifiers.mistral]: { field: "apiModelId", default: mistralDefaultModelId },
 	[providerIdentifiers.xai]: { field: "apiModelId", default: xaiDefaultModelId },
 	[providerIdentifiers.baseten]: { field: "apiModelId", default: basetenDefaultModelId },

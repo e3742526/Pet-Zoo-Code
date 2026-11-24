@@ -702,6 +702,14 @@
 			"step2": "2. Authenticeer met je account",
 			"step3": "3. OAuth-referenties worden automatisch opgeslagen",
 			"setupInstructions": "Installatie-instructies"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "Pad naar CLI-programma",
+			"executablePathDescription": "Laat leeg om \"{{defaultExecutable}}\" te zoeken in PATH en in gangbare installatiemappen.",
+			"howItWorks": "Zoo Code voert de {{name}}-CLI uit die op deze computer is geïnstalleerd en gebruikt de aanmelding daarvan, zodat je abonnement de verzoeken betaalt. De eigen tools van de CLI staan uit. Zoo Code voert alle tools uit, vraagt om je goedkeuring en maakt zoals gewoonlijk checkpoints.",
+			"setup": "Installeer voordat je begint de CLI en meld je aan met \"{{loginCommand}}\" in een terminal.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

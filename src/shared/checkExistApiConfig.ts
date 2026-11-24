@@ -13,11 +13,14 @@ export function checkExistKey(config: ProviderSettings | undefined, zooCodeIsAut
 		return false
 	}
 
-	// Special case for fake-ai, openai-codex, and qwen-code providers which don't need any configuration.
+	// Special case for providers which don't need any configuration. Muse Code and Antigravity use
+	// the sign-in of their locally installed CLI.
 	const configurationFreeProviders: ProviderSettings["apiProvider"][] = [
 		providerIdentifiers.fakeAi,
 		providerIdentifiers.openaiCodex,
 		providerIdentifiers.qwenCode,
+		providerIdentifiers.museCode,
+		providerIdentifiers.antigravity,
 	]
 	if (config.apiProvider && configurationFreeProviders.includes(config.apiProvider)) {
 		return true

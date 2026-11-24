@@ -702,6 +702,14 @@
 			"step2": "2. अपने खाते से प्रमाणीकरण करो",
 			"step3": "3. OAuth क्रेडेंशियल्स अपने आप सेव हो जाएँगे",
 			"setupInstructions": "सेटअप निर्देश"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "CLI executable पथ",
+			"executablePathDescription": "PATH और सामान्य इंस्टॉल फ़ोल्डरों में \"{{defaultExecutable}}\" खोजने के लिए खाली छोड़ें।",
+			"howItWorks": "Zoo Code इस कंप्यूटर पर इंस्टॉल की गई {{name}} CLI चलाता है और उसके साइन-इन का उपयोग करता है, इसलिए अनुरोधों का भुगतान आपकी सदस्यता से होता है। CLI के अपने टूल बंद हैं। Zoo Code सभी टूल चलाता है, आपकी स्वीकृति मांगता है और हमेशा की तरह चेकपॉइंट बनाता है।",
+			"setup": "शुरू करने से पहले CLI इंस्टॉल करें और टर्मिनल में \"{{loginCommand}}\" से साइन इन करें।",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

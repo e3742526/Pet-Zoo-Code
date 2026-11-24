@@ -90,6 +90,7 @@ import {
 	ZooGateway,
 	MiniMax,
 	Mimo,
+	CliSubscription,
 } from "./providers"
 
 import { MODELS_BY_PROVIDER, PROVIDERS } from "./constants"
@@ -639,6 +640,22 @@ const ApiOptions = ({
 
 					{selectedProvider === providerIdentifiers.mimo && (
 						<Mimo apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
+					)}
+
+					{selectedProvider === providerIdentifiers.museCode && (
+						<CliSubscription
+							kind="museCode"
+							apiConfiguration={apiConfiguration}
+							setApiConfigurationField={setApiConfigurationField}
+						/>
+					)}
+
+					{selectedProvider === providerIdentifiers.antigravity && (
+						<CliSubscription
+							kind="antigravity"
+							apiConfiguration={apiConfiguration}
+							setApiConfigurationField={setApiConfigurationField}
+						/>
 					)}
 
 					{(selectedProvider === providerIdentifiers.vscodeLm ||

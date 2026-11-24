@@ -701,6 +701,14 @@
 			"step2": "2. Autentikasi menggunakan akunmu",
 			"step3": "3. Kredensial OAuth akan disimpan secara otomatis",
 			"setupInstructions": "Petunjuk penyiapan"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "Path executable CLI",
+			"executablePathDescription": "Biarkan kosong untuk mencari \"{{defaultExecutable}}\" di PATH dan di folder instalasi umum.",
+			"howItWorks": "Zoo Code menjalankan CLI {{name}} yang terpasang di komputer ini dan memakai login-nya, sehingga langganan Anda membayar permintaan. Alat bawaan CLI dimatikan. Zoo Code menjalankan semua alat, meminta persetujuan Anda, dan membuat checkpoint seperti biasa.",
+			"setup": "Sebelum mulai, pasang CLI dan masuk dengan \"{{loginCommand}}\" di terminal.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

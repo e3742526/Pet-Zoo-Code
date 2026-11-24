@@ -704,6 +704,14 @@
 			"step2": "2. Uwierzytelnij się swoim kontem",
 			"step3": "3. Poświadczenia OAuth zostaną zapisane automatycznie",
 			"setupInstructions": "Instrukcja konfiguracji"
+		},
+		"cliSubscription": {
+			"executablePathLabel": "Ścieżka do pliku wykonywalnego CLI",
+			"executablePathDescription": "Pozostaw puste, aby wyszukać \"{{defaultExecutable}}\" w PATH i w typowych folderach instalacji.",
+			"howItWorks": "Zoo Code uruchamia CLI {{name}} zainstalowane na tym komputerze i używa jego logowania, więc za żądania płaci Twoja subskrypcja. Własne narzędzia CLI są wyłączone. Zoo Code uruchamia wszystkie narzędzia, prosi o Twoją zgodę i tworzy punkty kontrolne jak zwykle.",
+			"setup": "Przed rozpoczęciem zainstaluj CLI i zaloguj się poleceniem \"{{loginCommand}}\" w terminalu.",
+			"museCode": "Meta Muse Code",
+			"antigravity": "Google Antigravity"
 		}
 	},
 	"checkpoints": {

@@ -20,6 +20,8 @@ import {
 	minimaxModels,
 	basetenModels,
 	mimoModels,
+	museCodeModels,
+	antigravityModels,
 } from "@roo-code/types"
 
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
@@ -40,6 +42,8 @@ export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, Mod
 	[providerIdentifiers.friendli]: friendliModels,
 	[providerIdentifiers.minimax]: minimaxModels,
 	[providerIdentifiers.mimo]: mimoModels,
+	[providerIdentifiers.museCode]: museCodeModels,
+	[providerIdentifiers.antigravity]: antigravityModels,
 	[providerIdentifiers.baseten]: basetenModels,
 }
 
@@ -75,6 +79,8 @@ export const PROVIDERS: Array<{ value: string; label: string; proxy: boolean }> 
 	{ value: providerIdentifiers.zooGateway, label: "Zoo Gateway", proxy: false },
 	{ value: providerIdentifiers.minimax, label: "MiniMax", proxy: false },
 	{ value: providerIdentifiers.mimo, label: "Xiaomi MiMo", proxy: false },
+	{ value: providerIdentifiers.museCode, label: "Meta Muse Code (CLI subscription)", proxy: false },
+	{ value: providerIdentifiers.antigravity, label: "Google Antigravity (CLI subscription)", proxy: false },
 	{ value: providerIdentifiers.baseten, label: "Baseten", proxy: false },
 	{ value: providerIdentifiers.unbound, label: "Unbound", proxy: false },
 	{ value: providerIdentifiers.poe, label: "Poe", proxy: false },

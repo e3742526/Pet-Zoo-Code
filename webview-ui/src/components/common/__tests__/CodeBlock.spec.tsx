@@ -137,6 +137,30 @@ describe("CodeBlock", () => {
 		expect(screen.getByText(/const x = 1/)).toBeInTheDocument()
 	})
 
+	it.each(["resolves", "rejects"])("keeps the latest highlight when a superseded request %s", async (outcome) => {
+		const highlighter = await getHighlighter("typescript")
+		let resolveEarlier!: (value: typeof highlighter) => void
+		let rejectEarlier!: (reason: Error) => void
+		const earlier = new Promise<typeof highlighter>((resolve, reject) => {
+			resolveEarlier = resolve
+			rejectEarlier = reject
+		})
+		vi.mocked(highlighter.codeToHast).mockClear()
+		vi.mocked(getHighlighter).mockReturnValueOnce(earlier)
+		const { rerender } = render(<CodeBlock source="earlier source" language="typescript" />)
+		await act(async () => rerender(<CodeBlock source="latest source" language="typescript" />))
+		expect(screen.getByText("latest source [dark-theme]")).toBeInTheDocument()
+
+		await act(async () => {
+			if (outcome === "resolves") resolveEarlier(highlighter)
+			else rejectEarlier(new Error("The earlier highlighter failed"))
+		})
+
+		expect(highlighter.codeToHast).toHaveBeenCalledTimes(1)
+		expect(screen.getByText("latest source [dark-theme]")).toBeInTheDocument()
+		expect(screen.queryByText(/earlier source/)).not.toBeInTheDocument()
+	})
+
 	it("starts at the top and follows later source updates when already at the bottom", async () => {
 		const highlighter = await getHighlighter("typescript")
 		let resolveHighlighter: (value: typeof highlighter) => void = () => undefined
@@ -176,6 +200,33 @@ describe("CodeBlock", () => {
 		})
 
 		await waitFor(() => expect(screen.getByText(/\[dark-theme\]/)).toBeInTheDocument())
+	})
+
+	it("shares one theme observer across code blocks and releases it on unmount", async () => {
+		const observe = vi.spyOn(MutationObserver.prototype, "observe")
+		const disconnect = vi.spyOn(MutationObserver.prototype, "disconnect")
+		try {
+			const first = render(<CodeBlock source="first" language="typescript" />)
+			const second = render(<CodeBlock source="second" language="typescript" />)
+			const themeObservers = observe.mock.calls.flatMap(([target], index) =>
+				target === document.body || target === document.documentElement ? [observe.mock.contexts[index]] : [],
+			)
+			expect(themeObservers).toHaveLength(2)
+			expect(themeObservers[0]).toBe(themeObservers[1])
+
+			first.unmount()
+			expect(disconnect.mock.contexts).not.toContain(themeObservers[0])
+			await act(async () => {
+				document.body.className = "light"
+			})
+			expect(screen.getByText("second [light-theme]")).toBeInTheDocument()
+
+			second.unmount()
+			expect(disconnect.mock.contexts).toContain(themeObservers[0])
+		} finally {
+			observe.mockRestore()
+			disconnect.mockRestore()
+		}
 	})
 
 	it("handles invalid language gracefully", async () => {

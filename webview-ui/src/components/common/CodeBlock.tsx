@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useCallback, useState } from "react"
+import { memo, useEffect, useRef, useCallback, useState, useSyncExternalStore } from "react"
 import styled from "styled-components"
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import { getHighlighter, isLanguageLoaded, normalizeLanguage } from "@src/utils/highlighter"
@@ -19,6 +19,33 @@ export function getCodeBlockTheme(bodyClass: string): BundledTheme {
 	if (bodyClass.toLowerCase().includes("high-contrast")) return "github-dark-high-contrast"
 	return bodyClass.toLowerCase().includes("light") ? "github-light-high-contrast" : "github-dark-high-contrast"
 }
+
+const themeListeners = new Set<() => void>()
+let themeObserver: MutationObserver | undefined
+
+function subscribeToCodeBlockTheme(listener: () => void) {
+	themeListeners.add(listener)
+	if (!themeObserver) {
+		themeObserver = new MutationObserver(() => {
+			for (const notify of themeListeners) notify()
+		})
+		const options = {
+			attributes: true,
+			attributeFilter: ["class", "data-vscode-theme-id", "data-vscode-theme-kind"],
+		}
+		themeObserver.observe(document.documentElement, options)
+		themeObserver.observe(document.body, options)
+	}
+	return () => {
+		themeListeners.delete(listener)
+		if (themeListeners.size === 0) {
+			themeObserver?.disconnect()
+			themeObserver = undefined
+		}
+	}
+}
+
+const readCodeBlockTheme = () => getCodeBlockTheme(document.body.className)
 
 // Configuration constants
 export const WINDOW_SHADE_SETTINGS = {
@@ -189,34 +216,19 @@ const CodeBlock = memo(
 		const currentLanguage = normalizeLanguage(language)
 		const [highlightedCode, setHighlightedCode] = useState<React.ReactNode>(null)
 		const [showCollapseButton, setShowCollapseButton] = useState(true)
-		const [codeTheme, setCodeTheme] = useState(() => getCodeBlockTheme(document.body.className))
+		const codeTheme = useSyncExternalStore(subscribeToCodeBlockTheme, readCodeBlockTheme)
 		const codeBlockRef = useRef<HTMLDivElement>(null)
 		const preRef = useRef<HTMLDivElement>(null)
 		const copyButtonWrapperRef = useRef<HTMLDivElement>(null)
 		const { showCopyFeedback, copyWithFeedback } = useCopyToClipboard()
 		const { t } = useAppTranslation()
-		const isMountedRef = useRef(true)
 		const buttonPositionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 		const collapseTimeout1Ref = useRef<NodeJS.Timeout | null>(null)
 		const collapseTimeout2Ref = useRef<NodeJS.Timeout | null>(null)
 
+		// Each run owns its result until the source, language, or theme changes.
 		useEffect(() => {
-			const updateTheme = () => setCodeTheme(getCodeBlockTheme(document.body.className))
-			const observer = new MutationObserver(updateTheme)
-			const options: MutationObserverInit = {
-				attributes: true,
-				attributeFilter: ["class", "data-vscode-theme-id", "data-vscode-theme-kind"],
-			}
-
-			observer.observe(document.documentElement, options)
-			observer.observe(document.body, options)
-			return () => observer.disconnect()
-		}, [])
-
-		// Syntax highlighting with cached Shiki instance and mounted state management
-		useEffect(() => {
-			// Set mounted state at the beginning of this effect
-			isMountedRef.current = true
+			let cancelled = false
 
 			// Create a safe fallback using React elements instead of HTML string
 			const fallback = (
@@ -228,15 +240,13 @@ const CodeBlock = memo(
 			const highlight = async () => {
 				// Show plain text if language needs to be loaded.
 				if (currentLanguage && !isLanguageLoaded(currentLanguage)) {
-					if (isMountedRef.current) {
-						setHighlightedCode(fallback)
-					}
+					setHighlightedCode(fallback)
 				}
 
 				const highlighter = await getHighlighter(currentLanguage)
-				if (!isMountedRef.current) return
+				if (cancelled) return
 
-				const hast = await highlighter.codeToHast(source || "", {
+				const hast = highlighter.codeToHast(source || "", {
 					lang: currentLanguage || "txt",
 					theme: codeTheme,
 					transformers: [
@@ -259,7 +269,6 @@ const CodeBlock = memo(
 						},
 					] as ShikiTransformer[],
 				})
-				if (!isMountedRef.current) return
 
 				// Convert HAST to React elements using hast-util-to-jsx-runtime
 				// This approach eliminates XSS vulnerabilities by avoiding dangerouslySetInnerHTML
@@ -272,27 +281,21 @@ const CodeBlock = memo(
 						// Don't override components - let them render as-is to maintain exact output
 					})
 
-					if (isMountedRef.current) {
-						setHighlightedCode(reactElement)
-					}
+					setHighlightedCode(reactElement)
 				} catch (error) {
 					console.error("[CodeBlock] Error converting HAST to JSX:", error)
-					if (isMountedRef.current) {
-						setHighlightedCode(fallback)
-					}
+					setHighlightedCode(fallback)
 				}
 			}
 
 			highlight().catch((e) => {
+				if (cancelled) return
 				console.error("[CodeBlock] Syntax highlighting error:", e, "\nStack trace:", e.stack)
-				if (isMountedRef.current) {
-					setHighlightedCode(fallback)
-				}
+				setHighlightedCode(fallback)
 			})
 
-			// Cleanup function - manage mounted state and clear all timeouts
 			return () => {
-				isMountedRef.current = false
+				cancelled = true
 				if (buttonPositionTimeoutRef.current) {
 					clearTimeout(buttonPositionTimeoutRef.current)
 					buttonPositionTimeoutRef.current = null

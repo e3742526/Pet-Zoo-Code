@@ -1,5 +1,6 @@
 import * as path from "path"
 import * as fsSync from "fs"
+import { readFile } from "fs/promises"
 import { pbkdf2Sync } from "crypto"
 
 import NodeCache from "node-cache"
@@ -15,7 +16,7 @@ import { ContextProxy } from "../../../core/config/ContextProxy"
 import { getCacheDirectoryPath } from "../../../utils/storage"
 import type { RouterName } from "../../../shared/api"
 
-import { createAbortError, mergeAbortSignals, throwIfAborted } from "../utils/abort-signal"
+import { createAbortError, mergeAbortSignals, rejectOnAbort, throwIfAborted } from "../utils/abort-signal"
 
 import { GetModelsOptions } from "../../../shared/api"
 
@@ -24,6 +25,7 @@ import type { ApiHandler } from "../../index"
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 const MISSING_DISK_CACHE_TTL_MS = 5 * 60 * 1000
 const missingDiskCache = new Map<string, number>()
+const inFlightDiskReads = new Map<string, Promise<ModelRecord | undefined>>()
 
 // Zod schema for validating ModelRecord structure from disk cache
 const modelRecordSchema = z.record(z.string(), modelInfoSchema)
@@ -214,7 +216,11 @@ export const getModels = async (options: GetModelsOptions, handler: ApiHandler):
 
 	const shouldSkipCache = handler.getModelCacheScope().authScoped
 
-	const models = shouldSkipCache ? undefined : getModelsFromCache(options, handler)
+	const cached = shouldSkipCache ? undefined : readCachedModels(cacheKey, options.signal)
+	const models =
+		cached instanceof Promise
+			? await (options.signal ? rejectOnAbort(cached, options.signal, "model catalog") : cached)
+			: cached
 
 	if (models) {
 		return models
@@ -442,21 +448,17 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 			? fetchModelsFromProvider(options, handler)
 			: dedupedFetch(cacheKey, options, handler)
 
-		// Force fresh API fetch - skip getModelsFromCache() check
 		const models = await sharedFetch
-		const modelCount = Object.keys(models).length
 
-		// Get existing cached data for comparison
-		const existingCache = shouldSkipCache ? undefined : getModelsFromCache(options, handler)
-		const existingCount = existingCache ? Object.keys(existingCache).length : 0
-
-		if (modelCount === 0) {
+		if (Object.keys(models).length === 0) {
+			const existingCache = shouldSkipCache ? undefined : await readCachedModels(cacheKey)
+			const existingCount = existingCache ? Object.keys(existingCache).length : 0
 			captureModelCacheEmptyResponseOnce(provider, cacheKey, {
 				context: "refreshModels",
 				hasExistingCache: existingCount > 0,
 				existingCacheSize: existingCount,
 			})
-			return existingCount > 0 ? existingCache! : {}
+			return existingCache ?? {}
 		}
 
 		reportedEmptyModelResponse.delete(cacheKey)
@@ -479,7 +481,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		if (shouldSkipCache) {
 			return {}
 		}
-		return getModelsFromCache(options, handler) || {}
+		return (await readCachedModels(cacheKey)) ?? {}
 	}
 }
 
@@ -507,13 +509,73 @@ export const flushModels = async (
 		const key = getCacheKey(options, handler)
 		memoryCache.del(key)
 		missingDiskCache.delete(key)
+		inFlightDiskReads.delete(key)
 	}
 }
 
+function diskCachePath(cacheKey: string): string | undefined {
+	const missingUntil = missingDiskCache.get(cacheKey)
+	if (missingUntil !== undefined) {
+		if (Date.now() < missingUntil) return undefined
+		missingDiskCache.delete(cacheKey)
+	}
+	const cacheDir = getCacheDirectoryPathSync()
+	return cacheDir ? path.join(cacheDir, `${cacheKeyToFilename(cacheKey)}_models.json`) : undefined
+}
+
+function validateAndCacheModels(cacheKey: string, data: string): ModelRecord | undefined {
+	const validation = modelRecordSchema.safeParse(JSON.parse(data))
+	if (!validation.success) {
+		console.error(`[MODEL_CACHE] Invalid disk cache data structure for ${cacheKey}:`, validation.error.format())
+		return undefined
+	}
+
+	missingDiskCache.delete(cacheKey)
+	memoryCache.set(cacheKey, validation.data)
+	return validation.data
+}
+
+// Return memory hits and known misses immediately. Share only the cold disk read.
+function readCachedModels(
+	cacheKey: string,
+	signal?: AbortSignal,
+): ModelRecord | Promise<ModelRecord | undefined> | undefined {
+	const cached = memoryCache.get<ModelRecord>(cacheKey)
+	if (cached || signal?.aborted) return cached
+
+	const pending = inFlightDiskReads.get(cacheKey)
+	// Each caller receives its own copy, as it would on a memory-cache hit.
+	if (pending) return pending.then((models) => models && structuredClone(models))
+
+	const filePath = diskCachePath(cacheKey)
+	if (!filePath) return undefined
+
+	const load = readFile(filePath, "utf8")
+		.then((data) => {
+			// A provider refresh or synchronous read can populate memory while this read is pending.
+			const current = memoryCache.get<ModelRecord>(cacheKey)
+			if (current || inFlightDiskReads.get(cacheKey) !== load) return current
+			return validateAndCacheModels(cacheKey, data)
+		})
+		.catch((error: unknown) => {
+			const current = memoryCache.get<ModelRecord>(cacheKey)
+			if (current || inFlightDiskReads.get(cacheKey) !== load) return current
+			if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+				missingDiskCache.set(cacheKey, Date.now() + MISSING_DISK_CACHE_TTL_MS)
+			} else {
+				console.error(`[MODEL_CACHE] Error loading ${cacheKey} models from disk:`, error)
+			}
+			return undefined
+		})
+		.finally(() => {
+			if (inFlightDiskReads.get(cacheKey) === load) inFlightDiskReads.delete(cacheKey)
+		})
+	inFlightDiskReads.set(cacheKey, load)
+	return load
+}
+
 /**
- * Get models from cache, checking memory first, then disk.
- * This ensures providers always have access to last known good data,
- * preventing fallback to hardcoded defaults on startup.
+ * Get cached models synchronously for callers of ApiHandler.getModel().
  *
  * @param options - The options identifying the cache entry (provider, baseUrl, apiKey).
  * @param handler - The handler whose cache scope determines the compound cache key.
@@ -534,46 +596,12 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 		return memoryModels
 	}
 
-	const missingUntil = missingDiskCache.get(cacheKey)
-	if (missingUntil !== undefined) {
-		if (Date.now() < missingUntil) {
-			return undefined
-		}
-		missingDiskCache.delete(cacheKey)
-	}
+	const filePath = diskCachePath(cacheKey)
+	if (!filePath) return undefined
 
-	// Memory cache miss - try to load from disk synchronously
-	// This is acceptable because it only happens on cold start or after cache expiry
 	try {
-		const filename = `${cacheKeyToFilename(cacheKey)}_models.json`
-		const cacheDir = getCacheDirectoryPathSync()
-		if (!cacheDir) {
-			return undefined
-		}
-
-		const filePath = path.join(cacheDir, filename)
-
-		// Use synchronous fs to avoid async complexity in getModel() callers
 		if (fsSync.existsSync(filePath)) {
-			const data = fsSync.readFileSync(filePath, "utf8")
-			const models = JSON.parse(data)
-
-			// Validate the disk cache data structure using Zod schema
-			// This ensures the data conforms to ModelRecord = Record<string, ModelInfo>
-			const validation = modelRecordSchema.safeParse(models)
-			if (!validation.success) {
-				console.error(
-					`[MODEL_CACHE] Invalid disk cache data structure for ${cacheKey}:`,
-					validation.error.format(),
-				)
-				return undefined
-			}
-
-			// Populate memory cache for future fast access
-			missingDiskCache.delete(cacheKey)
-			memoryCache.set(cacheKey, validation.data)
-
-			return validation.data
+			return validateAndCacheModels(cacheKey, fsSync.readFileSync(filePath, "utf8"))
 		}
 
 		missingDiskCache.set(cacheKey, Date.now() + MISSING_DISK_CACHE_TTL_MS)
@@ -585,8 +613,7 @@ export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandle
 }
 
 /**
- * Synchronous version of getCacheDirectoryPath for use in getModelsFromCache.
- * Returns the cache directory path without async operations.
+ * Resolve the legacy cache directory for reads without creating it.
  */
 function getCacheDirectoryPathSync(): string | undefined {
 	try {

@@ -36,9 +36,10 @@ export async function countTokens(
 ): Promise<number> {
 	// Lazily create the worker pool if it doesn't exist.
 	if (useWorker && typeof pool === "undefined") {
+		// Let the worker drain bursts in order. A queue-limit rejection would
+		// stop the pool and move all pending counts onto the host.
 		pool = workerpool.pool(__dirname + "/workers/countTokens.js", {
 			maxWorkers: 1,
-			maxQueueSize: 10,
 		})
 	}
 

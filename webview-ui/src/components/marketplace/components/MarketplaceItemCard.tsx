@@ -1,14 +1,13 @@
-import React, { useMemo, useState, useEffect } from "react"
-import { MarketplaceItem } from "@roo-code/types"
+import { memo, useMemo, useState, useEffect } from "react"
+import type { MarketplaceItem } from "@roo-code/types"
 import { vscode } from "@/utils/vscode"
-import { ViewState } from "../MarketplaceViewStateManager"
+import type { ViewState } from "../MarketplaceViewStateManager"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { isValidUrl } from "../../../utils/url"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { StandardTooltip } from "@/components/ui"
 import { MarketplaceInstallModal } from "./MarketplaceInstallModal"
-import { useExtensionState } from "@/context/ExtensionStateContext"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,23 +19,24 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui"
 
-interface ItemInstalledMetadata {
-	type: string
-}
-
 interface MarketplaceItemCardProps {
 	item: MarketplaceItem
-	filters: ViewState["filters"]
+	selectedTags: readonly string[]
 	setFilters: (filters: Partial<ViewState["filters"]>) => void
-	installed: {
-		project: ItemInstalledMetadata | undefined
-		global: ItemInstalledMetadata | undefined
-	}
+	hasWorkspace: boolean
+	isInstalledInProject: boolean
+	isInstalledGlobally: boolean
 }
 
-export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, filters, setFilters, installed }) => {
+export const MarketplaceItemCard = memo(function MarketplaceItemCard({
+	item,
+	selectedTags,
+	setFilters,
+	hasWorkspace,
+	isInstalledInProject,
+	isInstalledGlobally,
+}: MarketplaceItemCardProps) {
 	const { t } = useAppTranslation()
-	const { cwd } = useExtensionState()
 	const [showInstallModal, setShowInstallModal] = useState(false)
 	const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
 	const [removeTarget, setRemoveTarget] = useState<"project" | "global">("project")
@@ -71,9 +71,6 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 		return labels[item.type] ?? "N/A"
 	}, [item.type, t])
 
-	// Determine installation status
-	const isInstalledGlobally = !!installed.global
-	const isInstalledInProject = !!installed.project
 	const isInstalled = isInstalledGlobally || isInstalledInProject
 
 	const handleInstallClick = () => {
@@ -163,7 +160,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 								<StandardTooltip
 									key={tag}
 									content={
-										filters.tags.includes(tag)
+										selectedTags.includes(tag)
 											? t("marketplace:filters.tags.removeFromFilter", { tag })
 											: t("marketplace:filters.tags.clickToFilter")
 									}>
@@ -171,12 +168,12 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 										size="sm"
 										variant="secondary"
 										className={cn("rounded-sm capitalize text-xs px-2 h-5", {
-											"border-solid border-primary text-primary": filters.tags.includes(tag),
+											"border-solid border-primary text-primary": selectedTags.includes(tag),
 										})}
 										onClick={() => {
-											const newTags = filters.tags.includes(tag)
-												? filters.tags.filter((t: string) => t !== tag)
-												: [...filters.tags, tag]
+											const newTags = selectedTags.includes(tag)
+												? selectedTags.filter((selected) => selected !== tag)
+												: [...selectedTags, tag]
 											setFilters({ tags: newTags })
 										}}>
 										{tag}
@@ -192,7 +189,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 				item={item}
 				isOpen={showInstallModal}
 				onClose={() => setShowInstallModal(false)}
-				hasWorkspace={!!cwd}
+				hasWorkspace={hasWorkspace}
 			/>
 
 			{/* Remove Confirmation Dialog */}
@@ -239,7 +236,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 			</AlertDialog>
 		</>
 	)
-}
+})
 
 interface AuthorInfoProps {
 	item: MarketplaceItem

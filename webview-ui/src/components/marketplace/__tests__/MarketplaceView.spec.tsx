@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 import { ExtensionStateContext } from "@/context/ExtensionStateContext"
 import { vscode } from "@/utils/vscode"
@@ -162,5 +162,36 @@ describe("MarketplaceView", () => {
 				type: "fetchMarketplaceData",
 			})
 		})
+	})
+
+	it("processes each catalog reply once and filters it without serializing the items", () => {
+		const receive = vi.spyOn(stateManager, "handleMessage")
+		const items = stateManager.getState().allItems
+		render(
+			<ExtensionStateContext.Provider value={mockExtensionState}>
+				<MarketplaceView stateManager={stateManager} />
+			</ExtensionStateContext.Provider>,
+		)
+
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: { type: "marketplaceData", marketplaceItems: items },
+				}),
+			)
+		})
+		expect(receive).toHaveBeenCalledTimes(1)
+
+		const stringify = vi.spyOn(JSON, "stringify")
+		const search = screen.getByPlaceholderText("marketplace:filters.search.placeholderMcp")
+		try {
+			fireEvent.change(search, { target: { value: "missing" } })
+			expect(screen.queryByRole("heading", { name: "Test MCP" })).not.toBeInTheDocument()
+			fireEvent.change(search, { target: { value: "" } })
+			expect(screen.getByRole("heading", { name: "Test MCP" })).toBeInTheDocument()
+			expect(stringify.mock.calls.some(([value]) => Array.isArray(value) && value.includes(items[0]))).toBe(false)
+		} finally {
+			stringify.mockRestore()
+		}
 	})
 })

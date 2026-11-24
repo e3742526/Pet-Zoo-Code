@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useContext } from "react"
+import { useState, useEffect, useMemo, useContext, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
-import { MarketplaceViewStateManager } from "./MarketplaceViewStateManager"
+import type { MarketplaceViewStateManager, ViewState } from "./MarketplaceViewStateManager"
 import { useStateManager } from "./useStateManager"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
@@ -16,10 +16,9 @@ interface MarketplaceViewProps {
 	stateManager: MarketplaceViewStateManager
 	targetTab?: "mcp" | "mode"
 }
-export function MarketplaceView({ stateManager, onDone, targetTab }: MarketplaceViewProps) {
+export function MarketplaceView({ stateManager: manager, onDone, targetTab }: MarketplaceViewProps) {
 	const { t } = useAppTranslation()
-	const [state, manager] = useStateManager(stateManager)
-	const [hasReceivedInitialState, setHasReceivedInitialState] = useState(false)
+	const state = useStateManager(manager)
 	const extensionState = useContext(ExtensionStateContext)
 	const [lastOrganizationSettingsVersion, setLastOrganizationSettingsVersion] = useState<number>(
 		extensionState?.organizationSettingsVersion ?? -1,
@@ -35,63 +34,29 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 		setLastOrganizationSettingsVersion(currentVersion)
 	}, [extensionState?.organizationSettingsVersion, lastOrganizationSettingsVersion])
 
-	// Track when we receive the initial state
-	useEffect(() => {
-		// Check if we already have items (state might have been received before mount)
-		if (state.allItems.length > 0 && !hasReceivedInitialState) {
-			setHasReceivedInitialState(true)
-		}
-	}, [state.allItems, hasReceivedInitialState])
-
 	useEffect(() => {
 		if (targetTab && (targetTab === "mcp" || targetTab === "mode")) {
 			manager.transition({ type: "SET_ACTIVE_TAB", payload: { tab: targetTab } })
 		}
 	}, [targetTab, manager])
 
-	// Ensure marketplace state manager processes messages when component mounts
 	useEffect(() => {
-		// Request the catalog when the marketplace opens before it has received any items.
-		if (!hasReceivedInitialState && state.allItems.length === 0) {
-			// Fetch marketplace data on demand
-			// Note: isFetching is already true by default for initial load
-			vscode.postMessage({
-				type: "fetchMarketplaceData",
-			})
+		if (manager.getState().allItems.length === 0) {
+			vscode.postMessage({ type: "fetchMarketplaceData" })
 		}
+	}, [manager])
 
-		// Listen for state changes to know when initial data arrives
-		const unsubscribe = manager.onStateChange((newState) => {
-			// Mark as received initial state when we get any state update
-			// This prevents infinite loops and ensures proper state handling
-			if (!hasReceivedInitialState && (newState.allItems.length > 0 || newState.displayItems !== undefined)) {
-				setHasReceivedInitialState(true)
-			}
-		})
-
-		const handleVisibilityMessage = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "webviewVisible" && message.visible === true) {
-				// Data will be automatically fresh when panel becomes visible
-				// No manual fetching needed since we removed caching
-			}
-		}
-
-		window.addEventListener("message", handleVisibilityMessage)
-		return () => {
-			window.removeEventListener("message", handleVisibilityMessage)
-			unsubscribe()
-		}
-	}, [manager, hasReceivedInitialState, state.allItems.length])
+	const setFilters = useCallback(
+		(filters: Partial<ViewState["filters"]>) =>
+			manager.transition({ type: "UPDATE_FILTERS", payload: { filters } }),
+		[manager],
+	)
 
 	// Memoize all available tags
 	const allTags = useMemo(
 		() => Array.from(new Set(state.allItems.flatMap((item) => item.tags || []))).sort(),
 		[state.allItems],
 	)
-
-	// Memoize filtered tags
-	const filteredTags = useMemo(() => allTags, [allTags])
 
 	return (
 		<TooltipProvider delayDuration={300}>
@@ -141,22 +106,13 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 				</TabHeader>
 
 				<TabContent className="p-3 pt-2">
-					{state.activeTab === "mcp" && (
-						<MarketplaceListView
-							stateManager={stateManager}
-							allTags={allTags}
-							filteredTags={filteredTags}
-							filterByType="mcp"
-						/>
-					)}
-					{state.activeTab === "mode" && (
-						<MarketplaceListView
-							stateManager={stateManager}
-							allTags={allTags}
-							filteredTags={filteredTags}
-							filterByType="mode"
-						/>
-					)}
+					<MarketplaceListView
+						key={state.activeTab}
+						state={state}
+						setFilters={setFilters}
+						allTags={allTags}
+						filterByType={state.activeTab}
+					/>
 				</TabContent>
 			</Tab>
 		</TooltipProvider>

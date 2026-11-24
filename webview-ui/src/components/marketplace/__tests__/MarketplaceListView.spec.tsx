@@ -6,8 +6,8 @@ import userEvent from "@testing-library/user-event"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 
-import { MarketplaceListView } from "../MarketplaceListView"
-import { ViewState } from "../MarketplaceViewStateManager"
+import { MarketplaceListView, type MarketplaceListViewProps } from "../MarketplaceListView"
+import type { ViewState } from "../MarketplaceViewStateManager"
 
 vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
@@ -15,8 +15,8 @@ vi.mock("@/i18n/TranslationContext", () => ({
 	}),
 }))
 
-const mockTransition = vi.fn()
-const mockState: ViewState = {
+const setFilters = vi.fn<MarketplaceListViewProps["setFilters"]>()
+const initialState: ViewState = {
 	allItems: [],
 	organizationMcps: [],
 	displayItems: [],
@@ -31,29 +31,18 @@ const mockState: ViewState = {
 	},
 }
 
-vi.mock("../useStateManager", () => ({
-	useStateManager: () => [mockState, { transition: mockTransition }],
-}))
-
-const defaultProps = {
-	stateManager: {} as any,
-	allTags: ["tag1", "tag2"],
-	filteredTags: ["tag1", "tag2"],
-}
-
 describe("MarketplaceListView", () => {
+	let state: ViewState
 	beforeEach(() => {
 		vi.clearAllMocks()
-		mockState.filters.tags = []
-		mockState.isFetching = false
-		mockState.displayItems = []
+		state = initialState
 	})
 
-	const renderWithProviders = (props = {}) =>
+	const renderWithProviders = () =>
 		render(
 			<ExtensionStateContextProvider>
 				<TooltipProvider delayDuration={300}>
-					<MarketplaceListView {...defaultProps} {...props} />
+					<MarketplaceListView state={state} setFilters={setFilters} allTags={["tag1", "tag2"]} />
 				</TooltipProvider>
 			</ExtensionStateContextProvider>,
 		)
@@ -86,7 +75,7 @@ describe("MarketplaceListView", () => {
 	})
 
 	it("shows loading state when fetching", () => {
-		mockState.isFetching = true
+		state = { ...state, isFetching: true }
 
 		renderWithProviders()
 
@@ -107,15 +96,12 @@ describe("MarketplaceListView", () => {
 		const searchInput = screen.getByPlaceholderText("marketplace:filters.search.placeholder")
 		fireEvent.change(searchInput, { target: { value: "test" } })
 
-		expect(mockTransition).toHaveBeenCalledWith({
-			type: "UPDATE_FILTERS",
-			payload: { filters: { search: "test" } },
-		})
+		expect(setFilters).toHaveBeenCalledWith({ search: "test" })
 	})
 
 	it("shows clear tags button when tags are selected", async () => {
 		const user = userEvent.setup()
-		mockState.filters.tags = ["tag1"]
+		state = { ...state, filters: { ...state.filters, tags: ["tag1"] } }
 
 		renderWithProviders()
 
@@ -123,9 +109,6 @@ describe("MarketplaceListView", () => {
 		expect(clearButton).toBeInTheDocument()
 
 		await user.click(clearButton)
-		expect(mockTransition).toHaveBeenCalledWith({
-			type: "UPDATE_FILTERS",
-			payload: { filters: { tags: [] } },
-		})
+		expect(setFilters).toHaveBeenCalledWith({ tags: [] })
 	})
 })

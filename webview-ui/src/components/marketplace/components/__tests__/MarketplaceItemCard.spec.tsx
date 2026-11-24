@@ -14,23 +14,16 @@ vi.mock("@/utils/vscode", () => ({
 	},
 }))
 
-vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionState: () => ({
-		cwd: "/test/workspace",
-		filePaths: ["/test/workspace/file1.ts", "/test/workspace/file2.ts"],
-	}),
-}))
-
 vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
-		t: (key: string, params?: any) => {
+		t: (key: string, params?: { author?: string; tag?: string; count?: number }) => {
 			if (key === "marketplace:items.card.by") {
-				return `by ${params.author}`
+				return `by ${params?.author}`
 			}
 			if (key === "marketplace:filters.tags.removeFromFilter") {
-				return `Remove ${params.tag} from filters`
+				return `Remove ${params?.tag} from filters`
 			}
-			const translations: Record<string, any> = {
+			const translations: Record<string, string> = {
 				"marketplace:filters.type.mode": "Mode",
 				"marketplace:filters.type.mcpServer": "MCP Server",
 				"marketplace:filters.tags.clickToFilter": "Add filter",
@@ -76,17 +69,11 @@ describe("MarketplaceItemCard", () => {
 
 	const defaultProps = {
 		item: defaultItem,
-		filters: {
-			type: "",
-			search: "",
-			tags: [],
-			installed: "all" as "all" | "installed" | "not_installed",
-		},
+		selectedTags: [] as string[],
 		setFilters: vi.fn(),
-		installed: {
-			project: undefined,
-			global: undefined,
-		},
+		hasWorkspace: true,
+		isInstalledInProject: false,
+		isInstalledGlobally: false,
 	}
 
 	beforeEach(() => {
@@ -125,9 +112,7 @@ describe("MarketplaceItemCard", () => {
 		{ selectedTags: ["test"], tooltip: "Remove test from filters" },
 	])("shows '$tooltip' on hover when selected tags are $selectedTags", async ({ selectedTags, tooltip }) => {
 		const user = userEvent.setup()
-		renderWithProviders(
-			<MarketplaceItemCard {...defaultProps} filters={{ ...defaultProps.filters, tags: selectedTags }} />,
-		)
+		renderWithProviders(<MarketplaceItemCard {...defaultProps} selectedTags={selectedTags} />)
 
 		await user.hover(screen.getByText("test"))
 
@@ -161,60 +146,16 @@ describe("MarketplaceItemCard", () => {
 		expect(authorText.tagName).not.toBe("BUTTON")
 	})
 
-	describe("MarketplaceItemCard install button", () => {
-		it("renders install button", () => {
-			const setFilters = vi.fn()
-			const item: MarketplaceItem = {
-				id: "test-item",
-				name: "Test Item",
-				description: "Test Description",
-				type: "mode",
-				author: "Test Author",
-				authorUrl: "https://example.com",
-				tags: ["test", "example"],
-				content: "test content",
-			}
-			renderWithProviders(
-				<MarketplaceItemCard
-					item={item}
-					filters={{
-						type: "",
-						search: "",
-						tags: [],
-						installed: "all" as "all" | "installed" | "not_installed",
-					}}
-					setFilters={setFilters}
-					installed={{
-						project: undefined,
-						global: undefined,
-					}}
-				/>,
-			)
+	it("shows the install button when no workspace is open", () => {
+		renderWithProviders(<MarketplaceItemCard {...defaultProps} hasWorkspace={false} />)
 
-			expect(screen.getByText("Install")).toBeInTheDocument()
-		})
-	})
-
-	it("shows install button when no workspace is open", async () => {
-		// Mock useExtensionState to simulate no workspace
-		vi.spyOn(await import("@/context/ExtensionStateContext"), "useExtensionState").mockReturnValue({
-			cwd: undefined,
-			filePaths: [],
-		} as any)
-
-		renderWithProviders(<MarketplaceItemCard {...defaultProps} />)
-
-		// Should still show the Install button (dropdown behavior is handled by MarketplaceItemActionsMenu)
 		expect(screen.getByText("Install")).toBeInTheDocument()
 	})
 
 	it("shows single Installed badge when item is installed", () => {
 		const installedProps = {
 			...defaultProps,
-			installed: {
-				project: { type: "mode" },
-				global: undefined,
-			},
+			isInstalledInProject: true,
 		}
 
 		renderWithProviders(<MarketplaceItemCard {...installedProps} />)
@@ -230,10 +171,8 @@ describe("MarketplaceItemCard", () => {
 	it("shows single Installed badge even when installed in both locations", () => {
 		const installedProps = {
 			...defaultProps,
-			installed: {
-				project: { type: "mode" },
-				global: { type: "mode" },
-			},
+			isInstalledInProject: true,
+			isInstalledGlobally: true,
 		}
 
 		renderWithProviders(<MarketplaceItemCard {...installedProps} />)

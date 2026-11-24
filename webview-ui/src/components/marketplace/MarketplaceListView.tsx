@@ -6,34 +6,25 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { X, ChevronsUpDown } from "lucide-react"
 import { MarketplaceItemCard } from "./components/MarketplaceItemCard"
-import { MarketplaceViewStateManager } from "./MarketplaceViewStateManager"
+import type { ViewState } from "./MarketplaceViewStateManager"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { useStateManager } from "./useStateManager"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { IssueFooter } from "./IssueFooter"
 
 export interface MarketplaceListViewProps {
-	stateManager: MarketplaceViewStateManager
+	state: ViewState
+	setFilters: (filters: Partial<ViewState["filters"]>) => void
 	allTags: string[]
-	filteredTags: string[]
 	filterByType?: "mcp" | "mode"
 }
 
-export function MarketplaceListView({ stateManager, allTags, filteredTags, filterByType }: MarketplaceListViewProps) {
-	const [state, manager] = useStateManager(stateManager)
+export function MarketplaceListView({ state, setFilters, allTags, filterByType }: MarketplaceListViewProps) {
 	const { t } = useAppTranslation()
-	const { marketplaceInstalledMetadata, cloudUserInfo } = useExtensionState()
+	const { marketplaceInstalledMetadata, cloudUserInfo, cwd } = useExtensionState()
 	const [isTagPopoverOpen, setIsTagPopoverOpen] = React.useState(false)
 	const [tagSearch, setTagSearch] = React.useState("")
-	const allItems = state.displayItems || []
-	const organizationMcps = state.displayOrganizationMcps || []
-
-	// NOTE: installed metadata is already synchronized into the state manager via handleMessage("state"/"marketplaceData")
-	// in MarketplaceViewStateManager; avoid dispatching UPDATE_FILTERS here to prevent render loops.
-
-	// Filter items by type if specified
-	const items = filterByType ? allItems.filter((item) => item.type === filterByType) : allItems
-	const orgMcps = filterByType === "mcp" ? organizationMcps : []
+	const items = filterByType ? state.displayItems.filter((item) => item.type === filterByType) : state.displayItems
+	const orgMcps = filterByType === "mcp" ? state.displayOrganizationMcps : []
 
 	const isEmpty = items.length === 0 && orgMcps.length === 0
 
@@ -51,23 +42,13 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 									: t("marketplace:filters.search.placeholder")
 						}
 						value={state.filters.search}
-						onChange={(e) =>
-							manager.transition({
-								type: "UPDATE_FILTERS",
-								payload: { filters: { search: e.target.value } },
-							})
-						}
+						onChange={(e) => setFilters({ search: e.target.value })}
 					/>
 				</div>
 				<div className="mt-2 flex gap-2">
 					<Select
 						value={state.filters.installed}
-						onValueChange={(value: "all" | "installed" | "not_installed") =>
-							manager.transition({
-								type: "UPDATE_FILTERS",
-								payload: { filters: { installed: value } },
-							})
-						}>
+						onValueChange={(installed: ViewState["filters"]["installed"]) => setFilters({ installed })}>
 						<SelectTrigger className="flex-1 h-7">
 							<SelectValue />
 						</SelectTrigger>
@@ -124,23 +105,18 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 												{t("marketplace:filters.tags.noResults")}
 											</CommandEmpty>
 											<CommandGroup>
-												{filteredTags.map((tag: string) => (
+												{allTags.map((tag) => (
 													<CommandItem
 														key={tag}
 														value={tag}
 														onSelect={() => {
 															const isSelected = state.filters.tags.includes(tag)
-															manager.transition({
-																type: "UPDATE_FILTERS",
-																payload: {
-																	filters: {
-																		tags: isSelected
-																			? state.filters.tags.filter(
-																					(t) => t !== tag,
-																				)
-																			: [...state.filters.tags, tag],
-																	},
-																},
+															setFilters({
+																tags: isSelected
+																	? state.filters.tags.filter(
+																			(selected) => selected !== tag,
+																		)
+																	: [...state.filters.tags, tag],
 															})
 														}}
 														data-selected={state.filters.tags.includes(tag)}
@@ -177,10 +153,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 							variant="secondary"
 							onClick={(e) => {
 								e.stopPropagation()
-								manager.transition({
-									type: "UPDATE_FILTERS",
-									payload: { filters: { tags: [] } },
-								})
+								setFilters({ tags: [] })
 							}}>
 							<span className="codicon codicon-close"></span>
 							{t("marketplace:filters.tags.clear")}
@@ -205,12 +178,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 					<p className="font-medium">{t("marketplace:items.empty.noItems")}</p>
 					<p className="text-sm mt-2">{t("marketplace:items.empty.adjustFilters")}</p>
 					<Button
-						onClick={() =>
-							manager.transition({
-								type: "UPDATE_FILTERS",
-								payload: { filters: { search: "", type: "", tags: [], installed: "all" } },
-							})
-						}
+						onClick={() => setFilters({ search: "", type: "", tags: [], installed: "all" })}
 						className="mt-4 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground transition-colors">
 						<span className="codicon codicon-clear-all mr-2"></span>
 						{t("marketplace:items.empty.clearAllFilters")}
@@ -236,17 +204,11 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 									<MarketplaceItemCard
 										key={`org-${item.id}`}
 										item={item}
-										filters={state.filters}
-										setFilters={(filters) =>
-											manager.transition({
-												type: "UPDATE_FILTERS",
-												payload: { filters },
-											})
-										}
-										installed={{
-											project: marketplaceInstalledMetadata?.project?.[item.id],
-											global: marketplaceInstalledMetadata?.global?.[item.id],
-										}}
+										selectedTags={state.filters.tags}
+										setFilters={setFilters}
+										hasWorkspace={!!cwd}
+										isInstalledInProject={!!marketplaceInstalledMetadata?.project?.[item.id]}
+										isInstalledGlobally={!!marketplaceInstalledMetadata?.global?.[item.id]}
 									/>
 								))}
 							</div>
@@ -269,17 +231,11 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 									<MarketplaceItemCard
 										key={item.id}
 										item={item}
-										filters={state.filters}
-										setFilters={(filters) =>
-											manager.transition({
-												type: "UPDATE_FILTERS",
-												payload: { filters },
-											})
-										}
-										installed={{
-											project: marketplaceInstalledMetadata?.project?.[item.id],
-											global: marketplaceInstalledMetadata?.global?.[item.id],
-										}}
+										selectedTags={state.filters.tags}
+										setFilters={setFilters}
+										hasWorkspace={!!cwd}
+										isInstalledInProject={!!marketplaceInstalledMetadata?.project?.[item.id]}
+										isInstalledGlobally={!!marketplaceInstalledMetadata?.global?.[item.id]}
 									/>
 								))}
 							</div>

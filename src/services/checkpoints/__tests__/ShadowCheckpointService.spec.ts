@@ -412,6 +412,125 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 				await expect(fs.readFile(unsavedFile, "utf-8")).rejects.toThrow()
 			})
 
+			it.each(["tracked", "self-ignored"] as const)(
+				"keeps files ignored by the %s .gitignore when the ignore rules change",
+				async (ignoreFileKind) => {
+					const ignoreFile = path.join(service.workspaceDir, ".gitignore")
+					const ignoredDirectory = path.join(service.workspaceDir, "secrets")
+					const ignoredFile = path.join(ignoredDirectory, "key.txt")
+					const literalName = path.join(service.workspaceDir, "credential[1].txt")
+					const similarName = path.join(service.workspaceDir, "credential1.txt")
+					const currentlyIgnored = path.join(service.workspaceDir, "ignored-now.txt")
+					const selfIgnore = ignoreFileKind === "self-ignored" ? ".gitignore\n" : ""
+					const checkpointRules = `${selfIgnore}secrets/\n/credential\\[1\\].txt\n`
+					await fs.writeFile(ignoreFile, checkpointRules)
+					await fs.mkdir(ignoredDirectory)
+					await fs.writeFile(ignoredFile, "ignored directory content")
+					await fs.writeFile(literalName, "ignored file content")
+					await fs.writeFile(testFile, "Checkpointed content")
+					const checkpoint = await service.saveCheckpoint("Before ignore changes")
+					expect(checkpoint?.commit).toBeTruthy()
+
+					const currentRules = `${selfIgnore}/ignored-now.txt\n`
+					await fs.writeFile(ignoreFile, currentRules)
+					await fs.writeFile(similarName, "regular untracked file")
+					await fs.writeFile(currentlyIgnored, "ignored by current rules")
+					await fs.writeFile(testFile, "Later edit")
+
+					const reopened = new klass(taskId, service.checkpointsDir, service.workspaceDir, () => {})
+					await reopened.initShadowGit()
+					await reopened.restoreCheckpoint(checkpoint!.commit)
+
+					expect(await fs.readFile(ignoredFile, "utf8")).toBe("ignored directory content")
+					expect(await fs.readFile(literalName, "utf8")).toBe("ignored file content")
+					expect(await fs.readFile(currentlyIgnored, "utf8")).toBe("ignored by current rules")
+					expect(await fs.readFile(testFile, "utf8")).toBe("Checkpointed content")
+					expect(await fs.readFile(ignoreFile, "utf8")).toBe(
+						ignoreFileKind === "tracked" ? checkpointRules : currentRules,
+					)
+					await expect(fs.stat(similarName)).rejects.toMatchObject({ code: "ENOENT" })
+				},
+			)
+
+			it("captures ignored paths on the initial checkpoint", async () => {
+				const ignoreFile = path.join(service.workspaceDir, ".gitignore")
+				const ignoredFile = path.join(service.workspaceDir, "ignored-at-init.txt")
+				await fs.writeFile(ignoreFile, ".gitignore\nignored-at-init.txt\n")
+				await fs.writeFile(ignoredFile, "ignored at initialization")
+				const initial = new klass(taskId, `${service.checkpointsDir}-initial`, service.workspaceDir, () => {})
+				await initial.initShadowGit()
+				await fs.writeFile(ignoreFile, ".gitignore\n")
+
+				await initial.restoreCheckpoint(initial.baseHash!)
+
+				expect(await fs.readFile(ignoredFile, "utf8")).toBe("ignored at initialization")
+			})
+
+			it("keeps a formerly ignored file tracked by a later checkpoint", async () => {
+				const ignoreFile = path.join(service.workspaceDir, ".gitignore")
+				const ignoredFile = path.join(service.workspaceDir, "later-tracked.txt")
+				await fs.writeFile(ignoreFile, "/later-tracked.txt\n")
+				await fs.writeFile(ignoredFile, "ignored at checkpoint time")
+				const earlier = await service.saveCheckpoint("Before tracking ignored file")
+				expect(earlier?.commit).toBeTruthy()
+
+				await fs.writeFile(ignoreFile, "")
+				await service.saveCheckpoint("File is tracked")
+				await fs.writeFile(ignoredFile, "edits after the later checkpoint")
+
+				await service.restoreCheckpoint(earlier!.commit)
+
+				expect(await fs.readFile(ignoredFile, "utf8")).toBe("edits after the later checkpoint")
+				expect(await fs.readFile(ignoreFile, "utf8")).toBe("/later-tracked.txt\n")
+			})
+
+			it("restores a legacy checkpoint with the current ignore rules", async () => {
+				const git = service["git"]!
+				await fs.writeFile(testFile, "Legacy content")
+				await git.add("test.txt")
+				const { commit } = await git.commit("Legacy checkpoint")
+				await fs.writeFile(testFile, "Later edit")
+				const ignored = path.join(service.workspaceDir, "ignored.log")
+				const regular = path.join(service.workspaceDir, "untracked.txt")
+				await fs.writeFile(ignored, "ignored content")
+				await fs.writeFile(regular, "untracked content")
+
+				await service.restoreCheckpoint(commit)
+
+				expect(await fs.readFile(testFile, "utf8")).toBe("Legacy content")
+				expect(await fs.readFile(ignored, "utf8")).toBe("ignored content")
+				await expect(fs.stat(regular)).rejects.toMatchObject({ code: "ENOENT" })
+			})
+
+			it.each(["missing", "damaged"] as const)(
+				"leaves the workspace intact when the ignore snapshot is %s",
+				async (state) => {
+					const ignoreFile = path.join(service.workspaceDir, ".gitignore")
+					const untracked = path.join(service.workspaceDir, "ignored.txt")
+					await fs.writeFile(ignoreFile, "/ignored.txt\n")
+					await fs.writeFile(untracked, "untracked content")
+					const checkpoint = await service.saveCheckpoint("Before snapshot loss")
+					expect(checkpoint?.commit).toBeTruthy()
+					await fs.writeFile(ignoreFile, "")
+					await fs.writeFile(testFile, "unsaved edit")
+
+					const snapshots = path.join(service.checkpointsDir, ".git", "checkpoint-ignore-snapshots")
+					const filenames = await fs.readdir(snapshots)
+					await Promise.all(
+						filenames.map((name) => {
+							const file = path.join(snapshots, name)
+							return state === "missing" ? fs.unlink(file) : fs.writeFile(file, "[]")
+						}),
+					)
+
+					await expect(service.restoreCheckpoint(checkpoint!.commit)).rejects.toThrow(
+						state === "missing" ? /ENOENT/ : /Invalid ignore snapshot/,
+					)
+					expect(await fs.readFile(untracked, "utf8")).toBe("untracked content")
+					expect(await fs.readFile(testFile, "utf8")).toBe("unsaved edit")
+				},
+			)
+
 			it("does not modify the workspace when a saved checkpoint's commit object was removed", async () => {
 				await fs.writeFile(testFile, "Committed content")
 				const commit = await service.saveCheckpoint("Checkpoint to lose")

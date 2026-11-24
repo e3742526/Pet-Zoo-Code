@@ -287,6 +287,14 @@ The Anthropic, Anthropic Vertex, and OpenCode Go Messages API paths check tool-c
 
 The SDK-call regression reproduces the missing result, duplicate, and stale result in one request. It checks the exact pairs and confirms that the assistant thinking signature and saved history are intact. Additional tests exercise consecutive messages, text before a result, results without matching calls, and a trailing assistant message. The same preparation path omits standalone encrypted reasoning from other providers, which previously caused a crash before the SDK call.
 
+## Checkpoint restore and ignored files
+
+New checkpoint commits refer to a local snapshot of the paths Git ignored when it saved the checkpoint. Restore checks the snapshot before it changes the workspace. It passes the recorded paths to Git as literal exclusions in addition to the live ignore rules. If a later checkpoint tracked one of those paths, restore removes the entry from the shadow index before it resets. This keeps the working file and its latest edits. Legacy checkpoints use the live rules because their original ignore lists are unavailable. [Upstream checkpoint report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1840) · [Git clean](https://git-scm.com/docs/git-clean)
+
+Real Git tests reproduced deletion after an edit to a tracked or self-ignored `.gitignore`. A separate test reproduced deletion during reset after a later checkpoint tracked the file. The tests check a reopened shadow repository, the initial checkpoint, filenames with pattern characters, and ordinary cleanup. They also verify that restore stops before deleting or resetting files when a new checkpoint's snapshot is missing or damaged.
+
+The checkpoint restart tests now supply the direct settings readers that task rehydration uses. The fixture checks that a newer task prevents the restart from replacing or scheduling the old task.
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

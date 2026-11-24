@@ -15,6 +15,7 @@ import { t } from "../../i18n"
 
 import { CheckpointDiff, CheckpointResult, CheckpointEventMap } from "./types"
 import { getExcludePatterns } from "./excludes"
+import { prepareCheckpointRestore, withCheckpointIgnoreSnapshot } from "./checkpointIgnoreSnapshot"
 
 /**
  * Environment variables stripped before passing the env to simple-git.
@@ -216,7 +217,8 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			await git.addConfig("user.email", "noreply@example.com")
 			await this.writeExcludeFile()
 			await this.stageAll(git)
-			const { commit } = await git.commit("initial commit", { "--allow-empty": null })
+			const message = await withCheckpointIgnoreSnapshot(git, this.dotGitDir, "initial commit")
+			const { commit } = await git.commit(message, { "--allow-empty": null })
 			this.baseHash = commit
 			created = true
 		}
@@ -344,7 +346,8 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			const startTime = Date.now()
 			await this.stageAll(this.git)
 			const commitArgs = options?.allowEmpty ? { "--allow-empty": null } : undefined
-			const result = await this.git.commit(message, commitArgs)
+			const checkpointMessage = await withCheckpointIgnoreSnapshot(this.git, this.dotGitDir, message)
+			const result = await this.git.commit(checkpointMessage, commitArgs)
 			const fromHash = this._checkpoints[this._checkpoints.length - 1] ?? this.baseHash!
 			const toHash = result.commit || fromHash
 			this._checkpoints.push(toHash)
@@ -406,7 +409,7 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			}
 
 			const start = Date.now()
-			await this.git.clean("f", ["-d", "-f"])
+			await prepareCheckpointRestore(this.git, this.dotGitDir, commitHash)
 			await this.git.reset(["--hard", commitHash])
 
 			// Remove all checkpoints after the specified commitHash.

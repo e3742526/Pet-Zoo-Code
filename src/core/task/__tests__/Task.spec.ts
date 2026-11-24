@@ -36,7 +36,7 @@ import { parseMentions } from "../../mentions"
 import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
 import type { ApiMessage } from "../../task-persistence"
 import type { RequestPolicySnapshot } from "../../prompts/tools/effective-tool-policy"
-import { asyncStreamFrom } from "../../../test-utils/stream"
+import { asyncStreamFrom, collectStream } from "../../../test-utils/stream"
 import { McpHub } from "../../../services/mcp/McpHub"
 import { McpServerManager } from "../../../services/mcp/McpServerManager"
 import { readFileTool } from "../../tools/ReadFileTool"
@@ -7269,6 +7269,62 @@ describe("Cline", () => {
 	})
 
 	describe("buildCleanConversationHistory", () => {
+		it.each([true, false])(
+			"sends saved tool results before other content (supportsImages=%s)",
+			async (supportsImages) => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					startTask: false,
+				})
+				const model = task.api.getModel()
+				vi.spyOn(task.api, "getModel").mockReturnValue({ ...model, info: { ...model.info, supportsImages } })
+				vi.spyOn(getTaskTestAccess(task), "getSystemPrompt").mockResolvedValue("mock system prompt")
+				const createMessage = vi
+					.spyOn(task.api, "createMessage")
+					.mockReturnValue(asyncStreamFrom<ApiStreamChunk>([{ type: "text", text: "ok" }]))
+
+				const toolCalls: Anthropic.ToolUseBlockParam[] = [
+					{ type: "tool_use", id: "toolu_read", name: "read_file", input: { path: "image.png" } },
+					{ type: "tool_use", id: "toolu_list", name: "list_files", input: { path: "." } },
+				]
+				const readResult: Anthropic.ToolResultBlockParam = {
+					type: "tool_result",
+					tool_use_id: "toolu_read",
+					content: "File: image.png",
+				}
+				const listResult: Anthropic.ToolResultBlockParam = {
+					type: "tool_result",
+					tool_use_id: "toolu_list",
+					content: "image.png",
+				}
+				const image: Anthropic.ImageBlockParam = {
+					type: "image",
+					source: { type: "base64", media_type: "image/png", data: "aW1hZ2U=" },
+				}
+				const followUp: Anthropic.TextBlockParam = { type: "text", text: "Describe the file." }
+				task.apiConversationHistory = [
+					{ role: "user", content: "Read and list the files.", ts: 1 },
+					{ role: "assistant", content: toolCalls, ts: 2 },
+					{ role: "user", content: [readResult, image, listResult], ts: 3 },
+					{ role: "user", content: [followUp], ts: 4 },
+				]
+				const savedHistory = structuredClone(task.apiConversationHistory)
+
+				await collectStream(task.attemptApiRequest(0))
+
+				const sentImage = supportsImages ? image : { type: "text", text: "[Referenced image in conversation]" }
+				expect(createMessage).toHaveBeenCalledOnce()
+				expect(createMessage.mock.calls[0]?.[1]).toEqual([
+					{ role: "user", content: "Read and list the files." },
+					{ role: "assistant", content: toolCalls },
+					{ role: "user", content: [readResult, listResult, sentImage, followUp] },
+				])
+				expect(task.apiConversationHistory).toEqual(savedHistory)
+			},
+		)
+
 		// Assistant message carrying a plain-text (unencrypted) reasoning block:
 		// whether the block survives into the sent history depends solely on the
 		// model snapshot's preserveReasoning flag.

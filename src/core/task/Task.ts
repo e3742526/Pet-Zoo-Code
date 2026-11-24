@@ -143,7 +143,7 @@ import { type AutoDenyDetail, AutoApprovalHandler, checkAutoApproval } from "../
 import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
-import { prepareApiConversationMessage } from "./apiConversationHistory"
+import { orderToolResultsFirst, prepareApiConversationMessage } from "./apiConversationHistory"
 import { shouldAddUserMessageToHistory } from "./messageCounting"
 import { type TaskExecutionContext } from "./providerHandoff"
 import { abort, abortReason, initialRunState, type Ask, type RunEvent, type RunState } from "./run-state/runState"
@@ -616,14 +616,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 		this.userMessageContent.push(toolResult)
 
-		// Partition into [tool_results, other blocks], preserving order within
-		// each group, so results stay first and contiguous regardless of what
-		// other content (images, text) arrived between pushes.
-		const results = this.userMessageContent.filter(
-			(block): block is Anthropic.ToolResultBlockParam => block.type === "tool_result",
-		)
-		const others = this.userMessageContent.filter((block) => block.type !== "tool_result")
-		this.userMessageContent.splice(0, this.userMessageContent.length, ...results, ...others)
+		const orderedContent = orderToolResultsFirst(this.userMessageContent)
+		if (orderedContent !== this.userMessageContent) {
+			this.userMessageContent.splice(0, this.userMessageContent.length, ...orderedContent)
+		}
 
 		return true
 	}
@@ -6364,7 +6360,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (msg.role) {
 				cleanConversationHistory.push({
 					role: msg.role,
-					content: msg.content as Anthropic.Messages.ContentBlockParam[] | string,
+					content:
+						msg.role === "user" && Array.isArray(msg.content)
+							? orderToolResultsFirst(msg.content)
+							: msg.content,
 				})
 			}
 		}

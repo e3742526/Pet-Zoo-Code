@@ -275,6 +275,12 @@ When a line hint no longer points near a qualifying SEARCH block, the strategy r
 
 Regression tests cover a moved block, a hint beyond the end of the file, duplicate positions, prefixed line numbers, relaxed similarity, CRLF and indentation, and multi-block edits that shift later line numbers.
 
+## Tool result order on retry
+
+The request builder puts all tool results before other user content after it merges adjacent messages and applies model image support. The order within each group stays stable. The same function protects the live tool buffer and reuses arrays that already have the correct order. Saved images stay in their existing message because the older format can include both tool and user images without an ownership field. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1839) · [Claude message format](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)
+
+The regression test sends saved history through `Task.attemptApiRequest()` and checks the messages passed to the provider. It reproduces the wrong order with both the image and its text replacement before the fix. It checks the order of the assistant calls, results, image or replacement text, and follow-up text. It also compares the saved history before and after the request. The separate tool-call pairing proposal remains open. [Pairing proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2113)
+
 ## Task history scan and sidebar startup
 
 The startup finding in `gem-hydro-parentrepo-survey-24NOV2026.md` (O4) is implemented. The extension sends the first sidebar state while the history scan or migration is pending. It sends a fresh state with the complete history after initialization. An older launch cannot send its delayed state to a replacement view. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2114)

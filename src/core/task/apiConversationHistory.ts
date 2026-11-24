@@ -38,6 +38,23 @@ export function prepareApiConversationMessage({
 	return prepareUserMessage(message, apiConversationHistory)
 }
 
+/** Put tool results before other user content, preserving order within each group. */
+export function orderToolResultsFirst<Block extends Anthropic.Messages.ContentBlockParam>(content: Block[]): Block[] {
+	let sawOtherContent = false
+	for (const block of content) {
+		if (block.type !== "tool_result") {
+			sawOtherContent = true
+		} else if (sawOtherContent) {
+			// The API reads the leading tool results as the replies to the prior tool calls.
+			return [
+				...content.filter((part) => part.type === "tool_result"),
+				...content.filter((part) => part.type !== "tool_result"),
+			]
+		}
+	}
+	return content
+}
+
 function prepareAssistantMessage(
 	message: Anthropic.MessageParam,
 	reasoning: string | undefined,

@@ -155,6 +155,12 @@ Completed reasoning blocks subscribe to the collapse preference. The active bloc
 
 A JSDOM fixture rendered 24 expanded, completed reasoning blocks and one streaming text row. Across nine runs after three warm-up runs, each batch of 16 tail updates caused 384 completed block renders before the change and zero after it. Median time per batch fell from 74.82 ms to 3.47 ms. Baseline timing varied from 25.48 ms to 214.90 ms. The updated runs ranged from 3.32 ms to 6.18 ms. These measurements cover the fixture. The focused regression tests check that streamed reasoning still appears immediately and that local toggles and saved preference changes still work.
 
+## Tool batches during streaming
+
+The chat view reuses each tool row's batching classification and the serialized text for batches with the same ordered inputs. It repeats the existing boundary checks and applies current row metadata. The cache keeps the batches from the latest pass.
+
+The production-compiler JSDOM fixture displayed 36 tool rows in 12 batches with 480 lines of content per tool. Sixteen streamed text updates reduced tool payload parses across the view from 2,304 to 576 and batch serializations from 192 to zero. Median time fell from 57.50 ms to 17.37 ms over seven runs after two warm-up runs. The observed ranges were 53.94–60.62 ms and 16.86–18.72 ms. The fixture replaced list virtualization and row bodies with test doubles. Focused tests check reuse during text updates and refresh after a tool change for read, list, and edit batches.
+
 ## File diffs
 
 The File Changes panel reuses each merged diff while its original and final contents match. A reply that changes one file rebuilds that file's diff. Toggling a row or reopening the panel can reuse the merged result. The panel still displays the recorded diff when it lacks the contents needed to merge.

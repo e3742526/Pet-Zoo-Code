@@ -18,8 +18,7 @@ import { LRUCache } from "lru-cache"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { appendImages } from "@src/utils/imageUtils"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
-import { batchNearby } from "@src/utils/batchNearby"
-import { isBoundary, isIgnorableBetweenTargets } from "@src/utils/chatBatchingPredicates"
+import { createFileToolBatcher } from "@src/utils/batchFileToolAsks"
 
 import type {
 	ClineAsk,
@@ -1173,171 +1172,19 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		setWasStreaming(isStreaming)
 	}, [isStreaming, lastMessage, wasStreaming, messages.length])
 
+	const [batchFileTools] = useState(createFileToolBatcher)
 	const groupedMessages = useMemo(() => {
-		const filtered: ClineMessage[] = visibleMessages
-
-		// Helper to check if a message is a read_file ask that should be batched
-		const isReadFileAsk = (msg: ClineMessage): boolean => {
-			if (msg.type !== "ask" || msg.ask !== "tool") return false
-			try {
-				const tool = JSON.parse(msg.text || "{}")
-				return tool.tool === "readFile" && !tool.batchFiles // Don't re-batch already batched
-			} catch {
-				return false
-			}
-		}
-
-		// Helper to check if a message is a list_files ask that should be batched
-		const isListFilesAsk = (msg: ClineMessage): boolean => {
-			if (msg.type !== "ask" || msg.ask !== "tool") return false
-			try {
-				const tool = JSON.parse(msg.text || "{}")
-				return (
-					(tool.tool === "listFilesTopLevel" || tool.tool === "listFilesRecursive") && !tool.batchDirs // Don't re-batch already batched
-				)
-			} catch {
-				return false
-			}
-		}
-
-		// Set of tool names that represent file-editing operations
-		const editFileTools = new Set([
-			"editedExistingFile",
-			"appliedDiff",
-			"newFileCreated",
-			"insertContent",
-			"searchAndReplace",
-		])
-
-		// Helper to check if a message is a file-edit ask that should be batched
-		const isEditFileAsk = (msg: ClineMessage): boolean => {
-			if (msg.type !== "ask" || msg.ask !== "tool") return false
-			try {
-				const tool = JSON.parse(msg.text || "{}")
-				return editFileTools.has(tool.tool) && !tool.batchDiffs // Don't re-batch already batched
-			} catch {
-				return false
-			}
-		}
-
-		// Synthesize a batch of consecutive read_file asks into a single message
-		const synthesizeReadFileBatch = (batch: ClineMessage[]): ClineMessage => {
-			const batchFiles = batch.map((batchMsg) => {
-				try {
-					const tool = JSON.parse(batchMsg.text || "{}")
-					return {
-						path: tool.path || "",
-						lineSnippet: tool.reason || "",
-						isOutsideWorkspace: tool.isOutsideWorkspace || false,
-						key: `${tool.path}${tool.reason ? ` (${tool.reason})` : ""}`,
-						content: tool.content || "",
-					}
-				} catch {
-					return { path: "", lineSnippet: "", key: "", content: "" }
-				}
-			})
-
-			let firstTool
-			try {
-				firstTool = JSON.parse(batch[0].text || "{}")
-			} catch {
-				return batch[0]
-			}
-			return {
-				...batch[0],
-				text: JSON.stringify({ ...firstTool, batchFiles }),
-			}
-		}
-
-		// Synthesize a batch of consecutive list_files asks into a single message
-		const synthesizeListFilesBatch = (batch: ClineMessage[]): ClineMessage => {
-			const batchDirs = batch.map((batchMsg) => {
-				try {
-					const tool = JSON.parse(batchMsg.text || "{}")
-					return {
-						path: tool.path || "",
-						recursive: tool.tool === "listFilesRecursive",
-						isOutsideWorkspace: tool.isOutsideWorkspace || false,
-						key: tool.path || "",
-					}
-				} catch {
-					return { path: "", recursive: false, key: "" }
-				}
-			})
-
-			let firstTool
-			try {
-				firstTool = JSON.parse(batch[0].text || "{}")
-			} catch {
-				return batch[0]
-			}
-			return {
-				...batch[0],
-				text: JSON.stringify({ ...firstTool, batchDirs }),
-			}
-		}
-
-		// Synthesize a batch of consecutive file-edit asks into a single message
-		const synthesizeEditFileBatch = (batch: ClineMessage[]): ClineMessage => {
-			const batchDiffs = batch.map((batchMsg) => {
-				try {
-					const tool = JSON.parse(batchMsg.text || "{}")
-					return {
-						path: tool.path || "",
-						changeCount: 1,
-						key: tool.path || "",
-						content: tool.content || tool.diff || "",
-						diffStats: tool.diffStats,
-					}
-				} catch {
-					return { path: "", changeCount: 0, key: "", content: "" }
-				}
-			})
-
-			let firstTool
-			try {
-				firstTool = JSON.parse(batch[0].text || "{}")
-			} catch {
-				return batch[0]
-			}
-			return {
-				...batch[0],
-				text: JSON.stringify({ ...firstTool, batchDiffs }),
-			}
-		}
-
-		// Consolidate tool asks into batches, allowing ignorable messages between targets.
-		// batchNearby skips over api_req_started, empty text rows, and reasoning rows that
-		// models like qwen insert between tool calls during streaming.
-		const readFileBatched = batchNearby(filtered, {
-			isTarget: isReadFileAsk,
-			isIgnorableBetweenTargets,
-			isBoundary,
-			synthesize: synthesizeReadFileBatch,
-		})
-		const listFilesBatched = batchNearby(readFileBatched, {
-			isTarget: isListFilesAsk,
-			isIgnorableBetweenTargets,
-			isBoundary,
-			synthesize: synthesizeListFilesBatch,
-		})
-		const result = batchNearby(listFilesBatched, {
-			isTarget: isEditFileAsk,
-			isIgnorableBetweenTargets,
-			isBoundary,
-			synthesize: synthesizeEditFileBatch,
-		})
-
+		const result = batchFileTools(visibleMessages)
 		if (isCondensing) {
 			result.push({
 				type: "say",
 				say: "condense_context",
 				ts: Date.now(),
 				partial: true,
-			} as ClineMessage)
+			})
 		}
 		return result
-	}, [isCondensing, visibleMessages])
+	}, [batchFileTools, isCondensing, visibleMessages])
 
 	const checkpointIndices = useMemo(() => {
 		const indices: number[] = []

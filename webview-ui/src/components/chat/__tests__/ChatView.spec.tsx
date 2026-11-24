@@ -12,7 +12,7 @@ import {
 } from "@/utils/test-utils"
 
 import { vscode } from "@src/utils/vscode"
-import type { SuggestionItem } from "@roo-code/types"
+import type { ClineMessage as TranscriptMessage, SuggestionItem } from "@roo-code/types"
 
 import ChatView, { ChatViewProps } from "../ChatView"
 
@@ -423,6 +423,52 @@ const renderChatView = (props: Partial<ChatViewProps> = {}) => {
 
 describe("ChatView - Tool Batching Tests", () => {
 	beforeEach(() => vi.clearAllMocks())
+
+	it.each([
+		["readFile", "batchFiles"],
+		["listFilesRecursive", "batchDirs"],
+		["appliedDiff", "batchDiffs"],
+	] as const)("reuses %s tool batches during text updates and updates changed tools", async (tool, batchKey) => {
+		const ask = (ts: number, path: string): TranscriptMessage => ({
+			type: "ask",
+			ask: "tool",
+			ts,
+			isAnswered: true,
+			text: JSON.stringify({ tool, path }),
+		})
+		const tail: TranscriptMessage = { type: "say", say: "text", ts: 4, text: "Thinking", partial: true }
+		renderChatView()
+		await dispatchExtensionMessage({
+			type: "state",
+			state: makeExtensionState({
+				clineMessages: [
+					{ type: "say", say: "task", ts: 1, text: "Review files" },
+					ask(2, "src/a"),
+					ask(3, "src/b"),
+					tail,
+				],
+			}),
+		})
+
+		const stringify = vi.spyOn(JSON, "stringify")
+		const batchWrites = () =>
+			stringify.mock.calls.filter(([input]) => input && typeof input === "object" && batchKey in input)
+		try {
+			await dispatchExtensionMessage({ type: "messageUpdated", clineMessage: { ...tail, text: "New text" } })
+			expect(mockVirtuosoState.lastData.at(-1)?.text).toBe("New text")
+			expect(batchWrites()).toHaveLength(0)
+
+			await dispatchExtensionMessage({ type: "messageUpdated", clineMessage: ask(3, "src/updated") })
+			expect(batchWrites()).toHaveLength(1)
+			const toolRows = mockVirtuosoState.lastData.filter((message) => message.ask === "tool")
+			expect(toolRows).toHaveLength(1)
+			expect(JSON.parse(toolRows[0].text ?? "{}")).toMatchObject({
+				[batchKey]: [{ path: "src/a" }, { path: "src/updated" }],
+			})
+		} finally {
+			stringify.mockRestore()
+		}
+	})
 
 	it("batches readFile asks separated by an API request row", async () => {
 		renderChatView()

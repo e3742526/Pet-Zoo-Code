@@ -1,10 +1,13 @@
 // npx vitest api/providers/__tests__/bedrock-reasoning.test.ts
 
+import type { Anthropic } from "@anthropic-ai/sdk"
+
 import { AwsBedrockHandler } from "../bedrock"
 import { BedrockRuntimeClient, ConverseStreamCommand } from "@aws-sdk/client-bedrock-runtime"
 import { logger } from "../../../utils/logging"
 
 import { clearAllMocks } from "../../../test-utils/reset"
+import { asyncStreamFrom, collectStream } from "../../../test-utils/stream"
 import { providerIdentifiers } from "@roo-code/types/provider-identifiers"
 
 // Mock the AWS SDK
@@ -41,6 +44,97 @@ describe("AwsBedrockHandler - Extended Thinking", () => {
 
 	afterEach(() => {
 		clearAllMocks()
+	})
+
+	describe("Saved reasoning", () => {
+		it.each([
+			{ model: "moonshot.kimi-k2-thinking", toolContinuation: true, replaysReasoning: true },
+			{ model: "minimax.minimax-m2", toolContinuation: true, replaysReasoning: true },
+			{ model: "moonshot.kimi-k2-thinking", toolContinuation: false, replaysReasoning: false },
+			{ model: "anthropic.claude-sonnet-4-20250514-v1:0", toolContinuation: true, replaysReasoning: false },
+		])(
+			"formats $model reasoning when toolContinuation is $toolContinuation",
+			async ({ model, toolContinuation, replaysReasoning }) => {
+				handler = new AwsBedrockHandler({ apiModelId: model, awsRegion: "us-east-1" })
+				mockSend.mockResolvedValue({ stream: asyncStreamFrom([]) })
+				const reasoningText = "  Check the file first.\n"
+				// Task history can carry the extension's reasoning block, outside the SDK union.
+				const savedReasoning = {
+					type: "reasoning",
+					text: reasoningText,
+					summary: [],
+				} as unknown as Anthropic.Messages.ContentBlockParam
+				const assistantContent: Anthropic.Messages.ContentBlockParam[] = [
+					savedReasoning,
+					{ type: "thinking", thinking: "Check the previous result.", signature: "foreign-signature" },
+					{ type: "redacted_thinking", data: "foreign-data" },
+					{ type: "text", text: "I'll check." },
+				]
+				let nextUserContent: Anthropic.Messages.MessageParam["content"] = "Here is a new task."
+				if (toolContinuation) {
+					assistantContent.push({
+						type: "tool_use",
+						id: "read-1",
+						name: "read_file",
+						input: { path: "file.txt" },
+					})
+					nextUserContent = [{ type: "tool_result", tool_use_id: "read-1", content: "File contents" }]
+				}
+				await collectStream(
+					handler.createMessage("System prompt", [
+						{ role: "user", content: "Read the file." },
+						{ role: "assistant", content: assistantContent },
+						{ role: "user", content: nextUserContent },
+					]),
+				)
+
+				const messages = vi.mocked(ConverseStreamCommand).mock.lastCall?.[0].messages
+				expect(messages?.[1]?.content).toEqual([
+					...(replaysReasoning
+						? [
+								{ reasoningContent: { reasoningText: { text: reasoningText } } },
+								{ reasoningContent: { reasoningText: { text: "Check the previous result." } } },
+							]
+						: []),
+					{ text: "I'll check." },
+					...(toolContinuation
+						? [{ toolUse: { toolUseId: "read-1", name: "read_file", input: { path: "file.txt" } } }]
+						: []),
+				])
+				expect(messages?.[2]?.content).toEqual(
+					toolContinuation
+						? [
+								{
+									toolResult: {
+										toolUseId: "read-1",
+										content: [{ text: "File contents" }],
+										status: "success",
+									},
+								},
+							]
+						: [{ text: "Here is a new task." }],
+				)
+			},
+		)
+
+		it("sends the conversation after skipping standalone encrypted reasoning from history", async () => {
+			handler = new AwsBedrockHandler({ apiModelId: "moonshot.kimi-k2-thinking", awsRegion: "us-east-1" })
+			mockSend.mockResolvedValue({ stream: asyncStreamFrom([]) })
+			// The task can pass a roleless reasoning item retained from a different provider.
+			const history = [
+				{ role: "user", content: "First question" },
+				{ type: "reasoning", encrypted_content: "foreign-data", summary: [] },
+				{ role: "assistant", content: "First answer" },
+				{ role: "user", content: "Next question" },
+			] as unknown as Anthropic.Messages.MessageParam[]
+			await collectStream(handler.createMessage("System prompt", history))
+
+			expect(vi.mocked(ConverseStreamCommand).mock.lastCall?.[0].messages).toEqual([
+				{ role: "user", content: [{ text: "First question" }] },
+				{ role: "assistant", content: [{ text: "First answer" }] },
+				{ role: "user", content: [{ text: "Next question" }] },
+			])
+		})
 	})
 
 	describe("Extended Thinking Support", () => {

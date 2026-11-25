@@ -434,17 +434,17 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			(this.options.awsUsePromptCache ?? true) && this.supportsAwsPromptCache(modelConfig),
 		)
 
-		const conversationId =
-			messages.length > 0
-				? `conv_${messages[0].role}_${
-						typeof messages[0].content === "string"
-							? messages[0].content.substring(0, 20)
-							: "complex_content"
-					}`
-				: "default_conversation"
+		// History can contain roleless encrypted reasoning stored by another provider.
+		const conversationMessages = messages.filter(({ role }) => role === "user" || role === "assistant")
+		const firstMessage = conversationMessages[0]
+		const conversationId = firstMessage
+			? `conv_${firstMessage.role}_${
+					typeof firstMessage.content === "string" ? firstMessage.content.substring(0, 20) : "complex_content"
+				}`
+			: "default_conversation"
 
 		const formatted = this.convertToBedrockConverseMessages(
-			messages,
+			conversationMessages,
 			systemPrompt,
 			usePromptCache,
 			modelConfig.info,
@@ -984,14 +984,13 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	 * Convert Anthropic messages to Bedrock Converse format
 	 */
 	private convertToBedrockConverseMessages(
-		anthropicMessages: Anthropic.Messages.MessageParam[] | { role: string; content: string }[],
+		anthropicMessages: Anthropic.Messages.MessageParam[],
 		systemMessage?: string,
 		usePromptCache: boolean = false,
-		modelInfo?: any,
+		modelInfo?: ModelInfo,
 		conversationId?: string, // Optional conversation ID to track cache points across messages
 	): { system: SystemContentBlock[]; messages: Message[] } {
-		// First convert messages using shared converter for proper image handling
-		const convertedMessages = sharedConverter(anthropicMessages as Anthropic.Messages.MessageParam[])
+		const convertedMessages = sharedConverter(anthropicMessages, modelInfo?.preserveReasoning === true)
 
 		// If prompt caching is disabled, return the converted messages directly
 		if (!usePromptCache) {
@@ -1008,7 +1007,10 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			supportsPromptCache: modelInfo?.supportsPromptCache || false,
 			maxCachePoints: modelInfo?.maxCachePoints || 0,
 			minTokensPerCachePoint: modelInfo?.minTokensPerCachePoint || 50,
-			cachableFields: modelInfo?.cachableFields || [],
+			cachableFields:
+				modelInfo?.cachableFields?.filter(
+					(field) => field === "system" || field === "messages" || field === "tools",
+				) ?? [],
 		}
 
 		// Get previous cache point placements for this conversation if available
@@ -1021,7 +1023,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		const config = {
 			modelInfo: cacheModelInfo,
 			systemPrompt: systemMessage,
-			messages: anthropicMessages as Anthropic.Messages.MessageParam[],
+			messages: anthropicMessages,
 			usePromptCache,
 			previousCachePointPlacements: previousPlacements,
 		}

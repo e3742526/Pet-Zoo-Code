@@ -23,12 +23,11 @@ interface BedrockMessageContent {
 	output?: any // Used for tool_result type
 }
 
-/**
- * Convert Anthropic messages to Bedrock Converse format
- * @param anthropicMessages Messages in Anthropic format
- */
-export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Messages.MessageParam[]): Message[] {
-	return anthropicMessages.map((anthropicMessage) => {
+export function convertToBedrockConverseMessages(
+	anthropicMessages: Anthropic.Messages.MessageParam[],
+	preserveReasoning = false,
+): Message[] {
+	return anthropicMessages.map((anthropicMessage, index) => {
 		// Map Anthropic roles to Bedrock roles
 		const role: ConversationRole = anthropicMessage.role === "assistant" ? "assistant" : "user"
 
@@ -43,8 +42,32 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 			}
 		}
 
-		// Process complex content types
-		const content = anthropicMessage.content.map((block) => {
+		const blocks = anthropicMessage.content
+		const nextMessage = anthropicMessages[index + 1]
+		const replayReasoning =
+			preserveReasoning &&
+			role === "assistant" &&
+			nextMessage?.role === "user" &&
+			Array.isArray(nextMessage.content) &&
+			nextMessage.content.some(
+				(result) =>
+					result.type === "tool_result" &&
+					blocks.some((call) => call.type === "tool_use" && call.id === result.tool_use_id),
+			)
+		const convertedBlocks = blocks.map((block): ContentBlock | undefined => {
+			// Saved history also uses block types outside the Anthropic SDK union.
+			const blockType: string = block.type
+			if (blockType === "reasoning" || block.type === "thinking") {
+				const text = block.type === "thinking" ? block.thinking : "text" in block ? block.text : undefined
+				if (replayReasoning && typeof text === "string" && text.trim()) {
+					return { reasoningContent: { reasoningText: { text } } }
+				}
+				return undefined
+			}
+			if (blockType === "redacted_thinking" || blockType === "thoughtSignature") {
+				return undefined
+			}
+
 			const messageBlock = block as BedrockMessageContent & {
 				id?: string
 				tool_use_id?: string
@@ -201,9 +224,11 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 			} as ContentBlock
 		})
 
+		const content = convertedBlocks.filter((block) => block !== undefined)
+		// Keep the message position stable for the prompt cache and supply a valid text block.
 		return {
 			role,
-			content,
+			content: content.length === 0 && blocks.length > 0 ? [{ text: "[Reasoning omitted]" }] : content,
 		}
 	})
 }

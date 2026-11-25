@@ -351,3 +351,9 @@ Settings keeps a local draft for both general settings and individual provider f
 A successful time or date save clears only the edits it sent. If the host changed a submitted field before acknowledgement, the field takes the latest host value when it becomes clean. A subsequent local edit stays in the draft. An earlier save answer cannot clear edits made after an import resets the form.
 
 The regression tests reproduced stale values in the general settings and provider payloads. The focused checks cover settings editing, save results, provider selection, and the packaged build.
+
+## Bedrock reasoning during tool calls
+
+Bedrock now replays saved reasoning as Converse `reasoningContent` when a model enables reasoning preservation and the next message contains a matching tool result. The current models are Kimi K2 Thinking and MiniMax M2. The converter keeps the original block order and whitespace. It omits opaque reasoning and signatures from other providers. If a reasoning-only message loses all its blocks, it gets a short marker that preserves its position for prompt caching. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1666) · [AWS reasoning text contract](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ReasoningTextBlock.html)
+
+The five request regressions reproduced placeholder text and a crash on roleless encrypted reasoning. The corrected build passed 314 focused tests, with one test skipped, and 45 distribution checks. The VSIX contains the updated host and 556 matching webview scripts. Verification used Node 24.22.3 and a mocked Bedrock client. Live Bedrock, signed Claude reasoning, and the direct MiniMax handler need separate verification.

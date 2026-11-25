@@ -26,6 +26,20 @@ describe("convertToBedrockConverseMessages", () => {
 		])
 	})
 
+	it("keeps the message position when a prior assistant response contains only reasoning", () => {
+		const messages: Anthropic.Messages.MessageParam[] = [
+			{ role: "user", content: "First question" },
+			{ role: "assistant", content: [{ type: "redacted_thinking", data: "opaque-data" }] },
+			{ role: "user", content: "Next question" },
+		]
+
+		expect(convertToBedrockConverseMessages(messages, true)).toEqual([
+			{ role: "user", content: [{ text: "First question" }] },
+			{ role: "assistant", content: [{ text: "[Reasoning omitted]" }] },
+			{ role: "user", content: [{ text: "Next question" }] },
+		])
+	})
+
 	it("converts messages with images correctly", () => {
 		const messages: Anthropic.Messages.MessageParam[] = [
 			{

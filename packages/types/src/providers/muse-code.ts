@@ -66,5 +66,6 @@ export const museCodeProviderDefinition = createProviderDefinition({
 		...apiModelIdProviderModelShape,
 		museCodeExecutablePath: z.string().optional(),
 		museCodeQuotaFallbackProfileId: z.string().min(1).optional(),
+		museCodeQuotaFallbackAfterPartialReply: z.boolean().optional(),
 	},
 })

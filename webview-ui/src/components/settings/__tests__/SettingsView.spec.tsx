@@ -13,17 +13,14 @@ import SettingsView from "../SettingsView"
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
 describe("Muse quota fallback", () => {
-	it.each([
-		{ saved: undefined, next: "backup-id" },
-		{ saved: "backup-id", next: "" },
-	])("buffers the fallback change from $saved and includes it in Save", ({ saved, next }) => {
+	function renderMuseSettings(apiConfiguration: ProviderSettings) {
 		vi.clearAllMocks()
 		renderWithExtensionState(<SettingsView onDone={vi.fn()} targetSection="providers" />, {
 			state: {
 				currentApiConfigName: "Muse",
 				apiConfiguration: {
 					apiProvider: providerIdentifiers.museCode,
-					museCodeQuotaFallbackProfileId: saved,
+					...apiConfiguration,
 				},
 				listApiConfigMeta: [
 					{ id: "muse-id", name: "Muse", apiProvider: providerIdentifiers.museCode },
@@ -32,19 +29,45 @@ describe("Muse quota fallback", () => {
 				],
 			},
 		})
+	}
 
+	const upsert = () =>
+		vi.mocked(vscode.postMessage).mock.calls.find(([message]) => message.type === "upsertApiConfiguration")
+
+	it.each([
+		{ saved: undefined, next: "backup-id" },
+		{ saved: "backup-id", next: "" },
+	])("buffers the fallback change from $saved and includes it in Save", ({ saved, next }) => {
+		renderMuseSettings({ museCodeQuotaFallbackProfileId: saved })
 		const select = screen.getByRole("combobox", { name: "settings:providers.cliSubscription.quotaFallbackLabel" })
 		expect(select).toHaveValue(saved ?? "")
 		expect(within(select).queryByRole("option", { name: "Other Muse" })).not.toBeInTheDocument()
 		fireEvent.change(select, { target: { value: next } })
-		const upsert = () =>
-			vi.mocked(vscode.postMessage).mock.calls.find(([message]) => message.type === "upsertApiConfiguration")
 		expect(upsert()).toBeUndefined()
 
 		fireEvent.click(screen.getByTestId("save-button"))
 		expect(upsert()?.[0]).toMatchObject({
 			text: "Muse",
 			apiConfiguration: { museCodeQuotaFallbackProfileId: next || undefined },
+		})
+	})
+
+	it.each([undefined, true])("buffers automatic resume when its saved value is %s", (saved) => {
+		renderMuseSettings({
+			museCodeQuotaFallbackProfileId: "backup-id",
+			museCodeQuotaFallbackAfterPartialReply: saved,
+		})
+		const automatic = screen.getByRole("checkbox", {
+			name: "settings:providers.cliSubscription.quotaFallbackAfterPartialReply",
+		})
+		expect(automatic).toHaveProperty("checked", saved ?? false)
+
+		fireEvent.click(automatic)
+		expect(upsert()).toBeUndefined()
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(upsert()?.[0]).toMatchObject({
+			text: "Muse",
+			apiConfiguration: { museCodeQuotaFallbackAfterPartialReply: !saved },
 		})
 	})
 })

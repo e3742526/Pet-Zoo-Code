@@ -4311,7 +4311,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				let assistantContentFromProvider: ApiStreamAssistantContentChunk | undefined
 				const pendingGroundingSources: GroundingSource[] = []
 				let streamStarted = false
-				let receivedAssistantOutput = false
+				let assistantOutput: "none" | "text" | "other" = "none"
 				this.isStreaming = true
 
 				try {
@@ -4348,7 +4348,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					streamStarted = !item.done
 					while (!item.done) {
 						const chunk = item.value
-						if (chunk && chunk.type !== "usage") receivedAssistantOutput = true
+						if (chunk && chunk.type !== "usage" && assistantOutput !== "other") {
+							assistantOutput = chunk.type === "text" ? "text" : "other"
+						}
 						item = await nextChunkWithAbort()
 						if (!chunk) {
 							// Sometimes chunk is undefined, no idea that can cause
@@ -4856,11 +4858,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							// The request generator already handles failures before the first chunk.
 							throw error
 						} else {
-							// Never replay a turn automatically after it started to produce text or tools.
+							// Muse can defer sending tools to the host, so a partial text reply can be retried.
+							const canReplayTurn =
+								assistantOutput === "none" ||
+								(assistantOutput === "text" &&
+									requestConfiguration.museCodeQuotaFallbackAfterPartialReply === true)
 							const quotaFallback =
 								quotaExhausted &&
 								!currentItem.quotaFallback &&
-								!receivedAssistantOutput &&
+								canReplayTurn &&
 								(await this.switchToQuotaFallback(requestConfiguration))
 							const retryAttempt = currentItem.retryAttempt ?? 0
 							// Quota, output limits, and a failed alternate need a user decision.

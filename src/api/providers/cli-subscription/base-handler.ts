@@ -87,6 +87,10 @@ export abstract class CliSubscriptionHandler extends BaseProvider implements Sin
 	/** Runs one CLI turn and yields its normalized output. Throws on failure. */
 	protected abstract runTurn(request: CliTurnRequest): AsyncGenerator<CliTurnEvent>
 
+	protected get deferToolCallsUntilTurnEnds(): boolean {
+		return false
+	}
+
 	abstract override getModel(): { id: string; info: ModelInfo }
 
 	private async *runTurnWithDirectories(prompt: string, signal?: AbortSignal): AsyncGenerator<CliTurnEvent> {
@@ -111,6 +115,8 @@ export abstract class CliSubscriptionHandler extends BaseProvider implements Sin
 		})
 		const singleToolCall = metadata?.parallelToolCalls === false
 		const parser = new ToolCallStreamParser()
+		const deferToolCalls = this.deferToolCallsUntilTurnEnds
+		const deferredOutput: Array<ApiStreamTextChunk | ApiStreamToolCallChunk> = []
 		let toolCallCount = 0
 
 		const convert = function* (
@@ -120,11 +126,23 @@ export abstract class CliSubscriptionHandler extends BaseProvider implements Sin
 				// With parallel calls off, anything after the first call is dropped: the model was told
 				// to stop there, and Zoo Code must not receive a second call.
 				if (singleToolCall && toolCallCount > 0) continue
+				let chunk: ApiStreamTextChunk | ApiStreamToolCallChunk
 				if (event.type === "text") {
-					yield { type: "text", text: event.text }
+					chunk = { type: "text", text: event.text }
 				} else {
 					toolCallCount++
-					yield { type: "tool_call", id: createCliToolCallId(), name: event.name, arguments: event.arguments }
+					chunk = {
+						type: "tool_call",
+						id: createCliToolCallId(),
+						name: event.name,
+						arguments: event.arguments,
+					}
+				}
+				// Keep the order of text and tools while holding calls from a turn that can be retried.
+				if (deferToolCalls && (chunk.type === "tool_call" || deferredOutput.length > 0)) {
+					deferredOutput.push(chunk)
+				} else {
+					yield chunk
 				}
 			}
 		}
@@ -137,6 +155,7 @@ export abstract class CliSubscriptionHandler extends BaseProvider implements Sin
 			}
 		}
 		yield* convert(parser.finish())
+		yield* deferredOutput
 	}
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions): Promise<string> {

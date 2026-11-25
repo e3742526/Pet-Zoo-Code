@@ -66,6 +66,13 @@ export class MuseCodeHandler extends CliSubscriptionHandler {
 		super()
 	}
 
+	protected override get deferToolCallsUntilTurnEnds(): boolean {
+		return (
+			!!this.options.museCodeQuotaFallbackProfileId &&
+			this.options.museCodeQuotaFallbackAfterPartialReply === true
+		)
+	}
+
 	override getModel() {
 		const id = this.options.apiModelId || museCodeDefaultModelId
 		const info: ModelInfo = Object.hasOwn(museCodeModels, id)

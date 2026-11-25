@@ -185,6 +185,35 @@ describe.skipIf(process.platform === "win32")("MuseCodeHandler", () => {
 		expect(await cli.records()).toHaveLength(1)
 	})
 
+	it.each([true, false])("only releases deferred tools when the CLI turn succeeds (%s)", async (succeeds) => {
+		await cli.script({
+			lines: [
+				started,
+				delta("Reading it."),
+				delta('<zoo_tool_call>{"name":"read_file","arguments":{"path":"a.ts"}}</zoo_tool_call>'),
+				delta("Finishing the reply."),
+				usage,
+				succeeds ? terminal("completed") : terminal("failed", "Subscription quota exhausted"),
+			],
+			exitCode: succeeds ? 0 : 1,
+		})
+		const stream = handler({
+			museCodeQuotaFallbackProfileId: "backup",
+			museCodeQuotaFallbackAfterPartialReply: true,
+		}).createMessage("S", messages, { tools })
+
+		await expect(stream.next()).resolves.toMatchObject({ value: { type: "text", text: "Reading it." } })
+		await expect(stream.next()).resolves.toMatchObject({ value: { type: "usage" } })
+		if (succeeds) {
+			await expect(collectStream(stream)).resolves.toEqual([
+				{ type: "tool_call", id: expect.any(String), name: "read_file", arguments: '{"path":"a.ts"}' },
+				{ type: "text", text: "Finishing the reply." },
+			])
+		} else {
+			await expect(stream.next()).rejects.toMatchObject({ name: "ProviderQuotaExhaustedError" })
+		}
+	})
+
 	it("explains an exit without a result and includes stderr", async () => {
 		await cli.script({ lines: [], stderr: "error: not logged in", exitCode: 2 })
 		await expect(collectStream(handler().createMessage("S", messages, { taskId: "t1" }))).rejects.toThrow(

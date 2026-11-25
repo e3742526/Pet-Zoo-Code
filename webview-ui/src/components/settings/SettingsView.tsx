@@ -60,6 +60,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogFooter,
 	Button,
+	Checkbox,
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
@@ -193,6 +194,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		[settingsDraft, providerDraft],
 	)
 	const quotaFallbackId = cachedState.apiConfiguration.museCodeQuotaFallbackProfileId ?? ""
+	const hasQuotaFallback = quotaFallbackProfiles.some(({ id }) => id === quotaFallbackId)
 	const quotaFallbackControlId = useId()
 	const quotaFallbackDescriptionId = `${quotaFallbackControlId}-description`
 	// The save waiting for the host's answer, and the form state it sent. The "unsaved changes" flag stays on until the
@@ -835,14 +837,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 											<option value="">
 												{t("settings:providers.cliSubscription.quotaFallbackOff")}
 											</option>
-											{quotaFallbackId &&
-												!quotaFallbackProfiles.some(({ id }) => id === quotaFallbackId) && (
-													<option value={quotaFallbackId}>
-														{t(
-															"settings:providers.cliSubscription.quotaFallbackUnavailable",
-														)}
-													</option>
-												)}
+											{quotaFallbackId && !hasQuotaFallback && (
+												<option value={quotaFallbackId}>
+													{t("settings:providers.cliSubscription.quotaFallbackUnavailable")}
+												</option>
+											)}
 											{quotaFallbackProfiles.map(({ id, name }) => (
 												<option key={id} value={id}>
 													{name}
@@ -854,6 +853,32 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 											className="text-sm text-vscode-descriptionForeground">
 											{t("settings:providers.cliSubscription.quotaFallbackDescription")}
 										</span>
+										{hasQuotaFallback && (
+											<>
+												<label className="mt-2 flex items-center gap-2">
+													<Checkbox
+														checked={
+															apiConfiguration.museCodeQuotaFallbackAfterPartialReply ??
+															false
+														}
+														onCheckedChange={(checked) =>
+															setApiConfigurationField(
+																"museCodeQuotaFallbackAfterPartialReply",
+																checked === true,
+															)
+														}
+													/>
+													{t(
+														"settings:providers.cliSubscription.quotaFallbackAfterPartialReply",
+													)}
+												</label>
+												<span className="text-sm text-vscode-descriptionForeground">
+													{t(
+														"settings:providers.cliSubscription.quotaFallbackAfterPartialReplyDescription",
+													)}
+												</span>
+											</>
+										)}
 									</div>
 								)}
 							</Section>

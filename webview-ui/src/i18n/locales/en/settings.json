@@ -786,7 +786,9 @@
 			"quotaFallbackLabel": "Quota fallback profile",
 			"quotaFallbackOff": "Off",
 			"quotaFallbackUnavailable": "Unavailable profile",
-			"quotaFallbackDescription": "If Muse Code runs out of quota before it replies, continue this task with the selected profile. That provider receives the conversation and can charge for requests."
+			"quotaFallbackDescription": "If Muse Code runs out of quota before it replies, continue this task with the selected profile. That provider receives the conversation and can charge for requests.",
+			"quotaFallbackAfterPartialReply": "Switch automatically after a partial reply",
+			"quotaFallbackAfterPartialReplyDescription": "Muse tool calls wait until the reply ends so the backup can safely retry an interrupted turn."
 		}
 	},
 	"checkpoints": {

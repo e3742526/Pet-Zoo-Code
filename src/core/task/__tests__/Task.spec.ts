@@ -802,35 +802,53 @@ describe("Cline", () => {
 		const quotaError = () => new ProviderQuotaExhaustedError("Subscription quota exhausted")
 
 		it.each([
-			{ case: "no fallback", fallbackId: undefined, output: false },
-			{ case: "partial output", fallbackId: "alternate-id", output: true },
-		])("asks instead of automatically retrying exhausted quota with $case", async ({ fallbackId, output }) => {
-			const task = createStreamingTask(true, {
-				apiProvider: providerIdentifiers.museCode,
-				museCodeQuotaFallbackProfileId: fallbackId,
-			})
-			const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
-			const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
-			const getProfile = vi.spyOn(mockProvider.providerSettingsManager, "getProfile")
-			const primary = vi.spyOn(task.api, "createMessage").mockImplementation(async function* () {
-				if (output) yield { type: "text", text: "partial answer" }
-				throw quotaError()
-			})
+			{ case: "no fallback", fallbackId: undefined, output: undefined, afterPartial: true },
+			{ case: "partial output", fallbackId: "alternate-id", output: "text", afterPartial: false },
+			{ case: "a tool already sent to Dory", fallbackId: "alternate-id", output: "tool", afterPartial: true },
+		])(
+			"asks instead of automatically retrying exhausted quota with $case",
+			async ({ fallbackId, output, afterPartial }) => {
+				const task = createStreamingTask(true, {
+					apiProvider: providerIdentifiers.museCode,
+					museCodeQuotaFallbackProfileId: fallbackId,
+					museCodeQuotaFallbackAfterPartialReply: afterPartial,
+				})
+				const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
+				const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
+				const getProfile = vi.spyOn(mockProvider.providerSettingsManager, "getProfile")
+				const primary = vi.spyOn(task.api, "createMessage").mockImplementation(async function* () {
+					if (output === "text") yield { type: "text", text: "partial answer" }
+					if (output === "tool") {
+						yield { type: "tool_call", id: "call_test", name: "read_file", arguments: "{}" }
+						yield { type: "usage", inputTokens: 10, outputTokens: 1 }
+					}
+					throw quotaError()
+				})
 
-			await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+				await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
 
-			expect(primary).toHaveBeenCalledOnce()
-			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", expect.stringContaining(quotaError().message))
-			expect(backoff).not.toHaveBeenCalled()
-			expect(getProfile).not.toHaveBeenCalled()
-		})
+				expect(primary).toHaveBeenCalledOnce()
+				expect(ask).toHaveBeenCalledExactlyOnceWith(
+					"api_req_failed",
+					expect.stringContaining(quotaError().message),
+				)
+				expect(backoff).not.toHaveBeenCalled()
+				expect(getProfile).not.toHaveBeenCalled()
+			},
+		)
 
-		it.each(["Alternate unavailable", "context length exceeded", undefined])(
-			"uses the saved quota fallback once and asks on fallback failure %s",
-			async (failure) => {
+		it.each([
+			{ failure: "Alternate unavailable", partialReply: false },
+			{ failure: "context length exceeded", partialReply: false },
+			{ failure: undefined, partialReply: false },
+			{ failure: "Alternate unavailable", partialReply: true },
+		])(
+			"switches without asking with partial reply $partialReply and asks only on fallback failure $failure",
+			async ({ failure, partialReply }) => {
 				const task = createStreamingTask(true, {
 					apiProvider: providerIdentifiers.museCode,
 					museCodeQuotaFallbackProfileId: "alternate-id",
+					museCodeQuotaFallbackAfterPartialReply: partialReply,
 				})
 				const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
 				const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
@@ -839,6 +857,7 @@ describe("Cline", () => {
 					.spyOn(mockProvider.providerSettingsManager, "getProfile")
 					.mockResolvedValue({ ...mockApiConfig, id: "alternate-id", name: "Backup" })
 				const primary = vi.spyOn(task.api, "createMessage").mockImplementation(async function* () {
+					if (partialReply) yield { type: "text", text: "partial answer" }
 					yield { type: "usage", inputTokens: 10, outputTokens: 0 }
 					throw quotaError()
 				})

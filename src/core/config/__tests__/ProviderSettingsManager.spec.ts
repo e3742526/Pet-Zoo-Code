@@ -713,23 +713,28 @@ describe("ProviderSettingsManager", () => {
 			},
 		)
 
-		it("stores and clears the fallback profile ID on a Muse profile", async () => {
-			const apiProvider = providerIdentifiers.museCode
-			await providerSettingsManager.saveConfig("Muse", {
-				apiProvider,
-				museCodeQuotaFallbackProfileId: "alternate-id",
-			})
-			mockSecrets.get.mockResolvedValue(mockSecrets.store.mock.calls.at(-1)?.[1])
-			await expect(providerSettingsManager.getProfile({ name: "Muse" })).resolves.toMatchObject({
-				museCodeQuotaFallbackProfileId: "alternate-id",
-			})
+		it.each([true, false])(
+			"stores and clears fallback settings on a Muse profile with automatic resume %s",
+			async (automaticResume) => {
+				const apiProvider = providerIdentifiers.museCode
+				await providerSettingsManager.saveConfig("Muse", {
+					apiProvider,
+					museCodeQuotaFallbackProfileId: "alternate-id",
+					museCodeQuotaFallbackAfterPartialReply: automaticResume,
+				})
+				mockSecrets.get.mockResolvedValue(mockSecrets.store.mock.calls.at(-1)?.[1])
+				await expect(providerSettingsManager.getProfile({ name: "Muse" })).resolves.toMatchObject({
+					museCodeQuotaFallbackProfileId: "alternate-id",
+					museCodeQuotaFallbackAfterPartialReply: automaticResume,
+				})
 
-			await providerSettingsManager.saveConfig("Muse", { apiProvider })
-			mockSecrets.get.mockResolvedValue(mockSecrets.store.mock.calls.at(-1)?.[1])
-			await expect(providerSettingsManager.getProfile({ name: "Muse" })).resolves.not.toHaveProperty(
-				"museCodeQuotaFallbackProfileId",
-			)
-		})
+				await providerSettingsManager.saveConfig("Muse", { apiProvider })
+				mockSecrets.get.mockResolvedValue(mockSecrets.store.mock.calls.at(-1)?.[1])
+				const cleared = await providerSettingsManager.getProfile({ name: "Muse" })
+				expect(cleared).not.toHaveProperty("museCodeQuotaFallbackProfileId")
+				expect(cleared).not.toHaveProperty("museCodeQuotaFallbackAfterPartialReply")
+			},
+		)
 
 		it.each([undefined, "auto", "on", "off"] as const)(
 			"round-trips LiteLLM reasoning preservation %s through profile storage",

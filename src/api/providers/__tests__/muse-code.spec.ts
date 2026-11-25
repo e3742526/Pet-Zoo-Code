@@ -200,7 +200,7 @@ describe.skipIf(process.platform === "win32")("MuseCodeHandler", () => {
 		const stream = handler({
 			museCodeQuotaFallbackProfileId: "backup",
 			museCodeQuotaFallbackAfterPartialReply: true,
-		}).createMessage("S", messages, { tools })
+		}).createMessage("S", messages, { taskId: "t1", tools })
 
 		await expect(stream.next()).resolves.toMatchObject({ value: { type: "text", text: "Reading it." } })
 		await expect(stream.next()).resolves.toMatchObject({ value: { type: "usage" } })

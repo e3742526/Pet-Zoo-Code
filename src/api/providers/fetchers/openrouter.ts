@@ -7,6 +7,7 @@ import {
 	OPEN_ROUTER_REASONING_BUDGET_MODELS,
 	OPEN_ROUTER_REQUIRED_REASONING_BUDGET_MODELS,
 	anthropicModels,
+	releaseDateFromUnixSeconds,
 } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../../shared/api"
@@ -43,6 +44,8 @@ const modelRouterBaseModelSchema = z.object({
 	context_length: z.number(),
 	max_completion_tokens: z.number().nullish(),
 	pricing: openRouterPricingSchema.optional(),
+	// Unix seconds when OpenRouter listed the model. Endpoint entries omit it.
+	created: z.number().nullish(),
 })
 
 export type OpenRouterBaseModel = z.infer<typeof modelRouterBaseModelSchema>
@@ -309,6 +312,12 @@ export const parseOpenRouterModel = ({
 		description: model.description,
 		supportsReasoningEffort: supportedParameters ? supportedParameters.includes("reasoning") : undefined,
 		supportedParameters: supportedParameters ? supportedParameters.filter(isModelParameter) : undefined,
+	}
+
+	// The listing date drives the selection age limit in model pickers.
+	const releaseDate = releaseDateFromUnixSeconds(model.created)
+	if (releaseDate) {
+		modelInfo.releaseDate = releaseDate
 	}
 
 	if (id === "openai/gpt-6-astra" || id === "openai/gpt-6-astra-pro") {

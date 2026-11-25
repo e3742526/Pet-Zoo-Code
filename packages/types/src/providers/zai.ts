@@ -46,6 +46,7 @@ export type InternationalZAiModelId = keyof typeof internationalZAiModels
 export const internationalZAiDefaultModelId: InternationalZAiModelId = "glm-4.7"
 export const internationalZAiModels = {
 	"glm-4.5": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -58,6 +59,7 @@ export const internationalZAiModels = {
 			"GLM-4.5 is Zhipu's latest featured model. Its comprehensive capabilities in reasoning, coding, and agent reach the state-of-the-art (SOTA) level among open-source models, with a context length of up to 128k.",
 	},
 	"glm-4.5-air": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -70,6 +72,7 @@ export const internationalZAiModels = {
 			"GLM-4.5-Air is the lightweight version of GLM-4.5. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
 	},
 	"glm-4.5-x": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -82,6 +85,7 @@ export const internationalZAiModels = {
 			"GLM-4.5-X is a high-performance variant optimized for strong reasoning with ultra-fast responses.",
 	},
 	"glm-4.5-airx": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -93,6 +97,7 @@ export const internationalZAiModels = {
 		description: "GLM-4.5-AirX is a lightweight, ultra-fast variant delivering strong performance with lower cost.",
 	},
 	"glm-4.5-flash": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -104,6 +109,7 @@ export const internationalZAiModels = {
 		description: "GLM-4.5-Flash is a free, high-speed model excellent for reasoning, coding, and agentic tasks.",
 	},
 	"glm-4.5v": {
+		releaseDate: "2025-08-11",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: true,
@@ -281,6 +287,7 @@ export const internationalZAiModels = {
 			"GLM-4.6V-FlashX is an ultra-fast multimodal vision model optimized for high-speed visual processing at low cost.",
 	},
 	"glm-4-32b-0414-128k": {
+		releaseDate: "2025-04-14",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -297,6 +304,7 @@ export type MainlandZAiModelId = keyof typeof mainlandZAiModels
 export const mainlandZAiDefaultModelId: MainlandZAiModelId = "glm-4.7"
 export const mainlandZAiModels = {
 	"glm-4.5": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -309,6 +317,7 @@ export const mainlandZAiModels = {
 			"GLM-4.5 is Zhipu's latest featured model. Its comprehensive capabilities in reasoning, coding, and agent reach the state-of-the-art (SOTA) level among open-source models, with a context length of up to 128k.",
 	},
 	"glm-4.5-air": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -321,6 +330,7 @@ export const mainlandZAiModels = {
 			"GLM-4.5-Air is the lightweight version of GLM-4.5. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
 	},
 	"glm-4.5-x": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -333,6 +343,7 @@ export const mainlandZAiModels = {
 			"GLM-4.5-X is a high-performance variant optimized for strong reasoning with ultra-fast responses.",
 	},
 	"glm-4.5-airx": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -344,6 +355,7 @@ export const mainlandZAiModels = {
 		description: "GLM-4.5-AirX is a lightweight, ultra-fast variant delivering strong performance with lower cost.",
 	},
 	"glm-4.5-flash": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -355,6 +367,7 @@ export const mainlandZAiModels = {
 		description: "GLM-4.5-Flash is a free, high-speed model excellent for reasoning, coding, and agentic tasks.",
 	},
 	"glm-4.5v": {
+		releaseDate: "2025-08-11",
 		maxTokens: 16_384,
 		contextWindow: 131_072,
 		supportsImages: true,

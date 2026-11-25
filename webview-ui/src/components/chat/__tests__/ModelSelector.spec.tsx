@@ -132,6 +132,20 @@ describe("ModelSelector", () => {
 		expect(screen.getAllByTestId("model-selector-item")).toHaveLength(2)
 	})
 
+	test("leaves out models released more than two years ago", () => {
+		staticModelsOverride.value = {
+			"model-a": base,
+			"aged-model": { ...base, releaseDate: "2020-01-01" },
+		}
+
+		render(<ModelSelector apiConfiguration={anthropicConfig} title="Select model" />)
+		fireEvent.click(screen.getByTestId("model-selector-trigger"))
+
+		const items = screen.getAllByTestId("model-selector-item")
+		expect(items).toHaveLength(1)
+		expect(items[0]).toHaveTextContent("model-a")
+	})
+
 	test("selecting a model patches the latest profile via updateProfileModel and closes the popover", () => {
 		render(<ModelSelector apiConfiguration={anthropicConfig} title="Select model" />)
 

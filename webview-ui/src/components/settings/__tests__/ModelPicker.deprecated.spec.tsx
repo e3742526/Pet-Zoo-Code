@@ -46,6 +46,12 @@ vi.mock("@/components/ui/hooks/useSelectedModel", () => ({
 				supportsPromptCache: true,
 				deprecated: true,
 			},
+			"aged-model": {
+				maxTokens: 1500,
+				contextWindow: 6000,
+				supportsPromptCache: true,
+				releaseDate: "2020-01-01",
+			},
 		}
 		return {
 			id: modelId,
@@ -81,6 +87,20 @@ describe("ModelPicker - Deprecated Models", () => {
 			contextWindow: 6000,
 			supportsPromptCache: true,
 			deprecated: true,
+		},
+		// Released more than two years ago, so it is left out of new selection.
+		"aged-model": {
+			maxTokens: 1500,
+			contextWindow: 6000,
+			supportsPromptCache: true,
+			releaseDate: "2020-01-01",
+		},
+		// Released today, so it stays selectable.
+		"recent-model": {
+			maxTokens: 1500,
+			contextWindow: 6000,
+			supportsPromptCache: true,
+			releaseDate: new Date().toISOString().slice(0, 10),
 		},
 	}
 
@@ -190,5 +210,54 @@ describe("ModelPicker - Deprecated Models", () => {
 
 		// Model info should not be displayed for deprecated models
 		expect(screen.queryByText("This is a deprecated model")).not.toBeInTheDocument()
+	})
+
+	it("hides models released more than two years ago and keeps recent ones", async () => {
+		const user = userEvent.setup()
+
+		renderWithExtensionState(
+			<ModelPicker
+				defaultModelId="model-1"
+				models={regularModels}
+				modelIdKey="openRouterModelId"
+				serviceName="Test Service"
+				serviceUrl="https://test.com"
+				apiConfiguration={{ apiProvider: providerIdentifiers.openrouter }}
+				setApiConfigurationField={mockSetApiConfigurationField}
+				organizationAllowList={{ allowAll: true, providers: {} }}
+			/>,
+			{ queryClient },
+		)
+
+		await user.click(screen.getByTestId("model-picker-button"))
+
+		expect(screen.getByTestId("model-option-recent-model")).toBeInTheDocument()
+		expect(screen.queryByTestId("model-option-aged-model")).not.toBeInTheDocument()
+	})
+
+	it("keeps an aged model that the profile already uses, without the deprecation error", async () => {
+		const user = userEvent.setup()
+
+		renderWithExtensionState(
+			<ModelPicker
+				defaultModelId="model-1"
+				models={regularModels}
+				modelIdKey="openRouterModelId"
+				serviceName="Test Service"
+				serviceUrl="https://test.com"
+				apiConfiguration={{ apiProvider: providerIdentifiers.openrouter, openRouterModelId: "aged-model" }}
+				setApiConfigurationField={mockSetApiConfigurationField}
+				organizationAllowList={{ allowAll: true, providers: {} }}
+			/>,
+			{ queryClient },
+		)
+
+		expect(
+			screen.queryByText("This model is no longer available. Please select a different model."),
+		).not.toBeInTheDocument()
+
+		await user.click(screen.getByTestId("model-picker-button"))
+
+		expect(screen.getByTestId("model-option-aged-model")).toBeInTheDocument()
 	})
 })

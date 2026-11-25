@@ -127,6 +127,7 @@ export const xaiModels = {
 		excludedTools: ["apply_diff"],
 	},
 	"grok-4-0709": {
+		releaseDate: "2025-07-09",
 		maxTokens: 8192,
 		contextWindow: 256_000,
 		supportsImages: true,
@@ -140,6 +141,7 @@ export const xaiModels = {
 		excludedTools: ["apply_diff"],
 	},
 	"grok-3-mini": {
+		releaseDate: "2025-02-17",
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: true,
@@ -155,6 +157,7 @@ export const xaiModels = {
 		excludedTools: ["apply_diff"],
 	},
 	"grok-3": {
+		releaseDate: "2025-02-17",
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: true,

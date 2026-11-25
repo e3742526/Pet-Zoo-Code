@@ -24,6 +24,7 @@ export const sambaNovaDefaultModelId: SambaNovaModelId = "Meta-Llama-3.3-70B-Ins
 
 export const sambaNovaModels = {
 	"Meta-Llama-3.1-8B-Instruct": {
+		releaseDate: "2024-07-23",
 		maxTokens: 8192,
 		contextWindow: 16384,
 		supportsImages: false,
@@ -33,6 +34,7 @@ export const sambaNovaModels = {
 		description: "Meta Llama 3.1 8B Instruct model with 16K context window.",
 	},
 	"Meta-Llama-3.3-70B-Instruct": {
+		releaseDate: "2024-12-06",
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
@@ -42,6 +44,7 @@ export const sambaNovaModels = {
 		description: "Meta Llama 3.3 70B Instruct model with 128K context window.",
 	},
 	"DeepSeek-R1": {
+		releaseDate: "2025-01-20",
 		maxTokens: 8192,
 		contextWindow: 32768,
 		supportsImages: false,
@@ -52,6 +55,7 @@ export const sambaNovaModels = {
 		description: "DeepSeek R1 reasoning model with 32K context window.",
 	},
 	"DeepSeek-V3-0324": {
+		releaseDate: "2025-03-24",
 		maxTokens: 8192,
 		contextWindow: 32768,
 		supportsImages: false,
@@ -61,6 +65,7 @@ export const sambaNovaModels = {
 		description: "DeepSeek V3 model with 32K context window.",
 	},
 	"DeepSeek-V3.1": {
+		releaseDate: "2025-08-21",
 		maxTokens: 8192,
 		contextWindow: 32768,
 		supportsImages: false,
@@ -70,6 +75,7 @@ export const sambaNovaModels = {
 		description: "DeepSeek V3.1 model with 32K context window.",
 	},
 	"Llama-4-Maverick-17B-128E-Instruct": {
+		releaseDate: "2025-04-05",
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: true,
@@ -79,6 +85,7 @@ export const sambaNovaModels = {
 		description: "Meta Llama 4 Maverick 17B 128E Instruct model with 128K context window.",
 	},
 	"Qwen3-32B": {
+		releaseDate: "2025-04-29",
 		maxTokens: 8192,
 		contextWindow: 8192,
 		supportsImages: false,
@@ -88,6 +95,7 @@ export const sambaNovaModels = {
 		description: "Alibaba Qwen 3 32B model with 8K context window.",
 	},
 	"gpt-oss-120b": {
+		releaseDate: "2025-08-05",
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,

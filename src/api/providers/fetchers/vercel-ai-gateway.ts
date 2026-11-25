@@ -39,6 +39,8 @@ const vercelAiGatewayModelSchema = z.object({
 	id: z.string(),
 	object: z.string(),
 	// Zoo Gateway / Bedrock catalog entries omit these; they are not used for routing.
+	// `created` is one shared value for the whole catalog, so it is not a release date
+	// and does not feed ModelInfo.releaseDate.
 	created: z.number().optional(),
 	owned_by: z.string(),
 	name: z.string(),

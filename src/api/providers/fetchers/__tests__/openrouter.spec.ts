@@ -41,6 +41,8 @@ describe("OpenRouter API", () => {
 				supportsReasoningBudget: false,
 				supportsReasoningEffort: false,
 				supportedParameters: ["max_tokens", "temperature", "reasoning", "include_reasoning"],
+				// From the fixture's `created` timestamp.
+				releaseDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
 			})
 
 			expect(models["anthropic/claude-3.7-sonnet:thinking"]).toEqual({
@@ -57,6 +59,8 @@ describe("OpenRouter API", () => {
 				requiredReasoningBudget: true,
 				supportsReasoningEffort: true,
 				supportedParameters: ["max_tokens", "temperature", "reasoning", "include_reasoning"],
+				// From the fixture's `created` timestamp.
+				releaseDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
 			})
 
 			expect(models["google/gemini-2.5-flash-preview-05-20"].maxTokens).toEqual(65535)
@@ -483,6 +487,26 @@ describe("OpenRouter API", () => {
 				})
 			},
 		)
+
+		it.each([
+			["a listing timestamp", 1715558400, "2024-05-13"],
+			["no listing timestamp", undefined, undefined],
+		])("maps %s to releaseDate", (_label, created, releaseDate) => {
+			const result = parseOpenRouterModel({
+				id: "openai/gpt-4o",
+				model: {
+					name: "GPT-4o",
+					context_length: 128_000,
+					pricing: { prompt: "0.0000025", completion: "0.00001" },
+					created,
+				},
+				inputModality: ["text"],
+				outputModality: ["text"],
+				maxTokens: 16_384,
+			})
+
+			expect(result.releaseDate).toBe(releaseDate)
+		})
 
 		it("sets claude-sonnet-4.6 model to Anthropic max tokens", () => {
 			const mockModel = {

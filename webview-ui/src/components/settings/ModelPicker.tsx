@@ -10,6 +10,7 @@ import {
 	type OrganizationAllowList,
 	isRetiredProvider,
 	providerIdentifiers,
+	isModelHiddenFromSelection,
 } from "@roo-code/types"
 
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
@@ -122,14 +123,12 @@ export const ModelPicker = ({
 	const modelIds = useMemo(() => {
 		const filteredModels = filterModels(models, activeProvider, organizationAllowList)
 
-		// Include the currently selected model even if deprecated (so users can see what they have selected)
-		// But filter out other deprecated models from being newly selectable
+		// Keep the currently selected model so a saved choice stays visible, even if it is
+		// deprecated or older than the selection age limit. Hide every other such model.
 		const availableModels = Object.entries(filteredModels ?? {})
 			.filter(([modelId, modelInfo]) => {
-				// Always include the currently selected model
 				if (modelId === selectedModelId) return true
-				// Filter out deprecated models that aren't currently selected
-				return !modelInfo.deprecated
+				return !isModelHiddenFromSelection(modelInfo)
 			})
 			.reduce(
 				(acc, [modelId, modelInfo]) => {

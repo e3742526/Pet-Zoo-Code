@@ -5,6 +5,7 @@ import type { ModelInfo } from "../model.js"
 
 export const legacyModels = {
 	"gpt-5": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],
@@ -25,6 +26,7 @@ export const legacyModels = {
 		description: "GPT-5: The best model for coding and agentic tasks across domains",
 	},
 	"gpt-5-mini": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],
@@ -61,6 +63,7 @@ export const legacyModels = {
 		description: "GPT-5-Codex: A version of GPT-5 optimized for agentic coding in Codex",
 	},
 	"gpt-5-nano": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],
@@ -90,6 +93,7 @@ export const legacyModels = {
 		description: "GPT-5 Chat: Optimized for conversational AI and non-reasoning tasks",
 	},
 	"gpt-4.1": {
+		releaseDate: "2025-04-14",
 		maxTokens: 32_768,
 		contextWindow: 1_047_576,
 		includedTools: ["apply_patch"],
@@ -105,6 +109,7 @@ export const legacyModels = {
 		],
 	},
 	"gpt-4.1-mini": {
+		releaseDate: "2025-04-14",
 		maxTokens: 32_768,
 		contextWindow: 1_047_576,
 		includedTools: ["apply_patch"],
@@ -120,6 +125,7 @@ export const legacyModels = {
 		],
 	},
 	"gpt-4.1-nano": {
+		releaseDate: "2025-04-14",
 		maxTokens: 32_768,
 		contextWindow: 1_047_576,
 		includedTools: ["apply_patch"],
@@ -135,6 +141,7 @@ export const legacyModels = {
 		],
 	},
 	o3: {
+		releaseDate: "2025-04-16",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -151,6 +158,7 @@ export const legacyModels = {
 		],
 	},
 	"o3-high": {
+		releaseDate: "2025-04-16",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -162,6 +170,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o3-low": {
+		releaseDate: "2025-04-16",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -173,6 +182,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o4-mini": {
+		releaseDate: "2025-04-16",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -189,6 +199,7 @@ export const legacyModels = {
 		],
 	},
 	"o4-mini-high": {
+		releaseDate: "2025-04-16",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -200,6 +211,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o4-mini-low": {
+		releaseDate: "2025-04-16",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -211,6 +223,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o3-mini": {
+		releaseDate: "2025-01-31",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: false,
@@ -223,6 +236,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o3-mini-high": {
+		releaseDate: "2025-01-31",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: false,
@@ -234,6 +248,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o3-mini-low": {
+		releaseDate: "2025-01-31",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: false,
@@ -245,6 +260,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	o1: {
+		releaseDate: "2024-12-17",
 		maxTokens: 100_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -255,6 +271,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o1-preview": {
+		releaseDate: "2024-09-12",
 		maxTokens: 32_768,
 		contextWindow: 128_000,
 		supportsImages: true,
@@ -265,6 +282,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"o1-mini": {
+		releaseDate: "2024-09-12",
 		maxTokens: 65_536,
 		contextWindow: 128_000,
 		supportsImages: true,
@@ -275,6 +293,7 @@ export const legacyModels = {
 		supportsTemperature: false,
 	},
 	"gpt-4o": {
+		releaseDate: "2024-05-13",
 		maxTokens: 16_384,
 		contextWindow: 128_000,
 		supportsImages: true,
@@ -288,6 +307,7 @@ export const legacyModels = {
 		],
 	},
 	"gpt-4o-mini": {
+		releaseDate: "2024-07-18",
 		maxTokens: 16_384,
 		contextWindow: 128_000,
 		supportsImages: true,
@@ -314,6 +334,7 @@ export const legacyModels = {
 	},
 	// Dated clones (snapshots) preserved for backward compatibility
 	"gpt-5-2025-08-07": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],
@@ -334,6 +355,7 @@ export const legacyModels = {
 		description: "GPT-5: The best model for coding and agentic tasks across domains",
 	},
 	"gpt-5-mini-2025-08-07": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],
@@ -354,6 +376,7 @@ export const legacyModels = {
 		description: "GPT-5 Mini: A faster, more cost-efficient version of GPT-5 for well-defined tasks",
 	},
 	"gpt-5-nano-2025-08-07": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],

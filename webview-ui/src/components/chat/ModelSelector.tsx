@@ -8,6 +8,7 @@ import {
 	type ModelInfo,
 	providerIdentifiers,
 	isRetiredProvider,
+	isModelHiddenFromSelection,
 } from "@roo-code/types"
 
 import { cn } from "@/lib/utils"
@@ -119,7 +120,8 @@ export const ModelSelector = ({
 				if (id === selectedModelId) return true
 				// The host cannot set awsCustomArn, so picking this here would save a model id without an ARN.
 				if (id === BEDROCK_CUSTOM_ARN_MODEL_ID) return false
-				return !info.deprecated
+				// Hide deprecated models and models past the selection age limit.
+				return !isModelHiddenFromSelection(info)
 			})
 			.map(([id]) => id)
 			.sort((a, b) => a.localeCompare(b))

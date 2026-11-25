@@ -31,6 +31,7 @@ export const moonshotModels = {
 		description: `Kimi K3 is Kimi's most capable flagship model with 2.8 trillion parameters, native visual understanding, and a 1M-token context window, designed for long-horizon coding, knowledge work, and deep reasoning. Thinking is always enabled with configurable reasoning effort (low/high/max, default max).`,
 	},
 	"kimi-k2-0711-preview": {
+		releaseDate: "2025-07-11",
 		maxTokens: 32_000,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -42,6 +43,7 @@ export const moonshotModels = {
 		description: `Kimi K2 is a state-of-the-art mixture-of-experts (MoE) language model with 32 billion activated parameters and 1 trillion total parameters.`,
 	},
 	"kimi-k2-0905-preview": {
+		releaseDate: "2025-09-05",
 		maxTokens: 16384,
 		contextWindow: 262144,
 		supportsImages: false,

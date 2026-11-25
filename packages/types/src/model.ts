@@ -183,6 +183,15 @@ export const modelInfoSchema = z.object({
 	cachableFields: z.array(z.string()).optional(),
 	// Flag to indicate if the model is deprecated and should not be used
 	deprecated: z.boolean().optional(),
+	/**
+	 * First public release date as `YYYY-MM-DD` (UTC). Model selection lists hide a
+	 * model once this date is older than MODEL_SELECTION_MAX_AGE_MONTHS.
+	 * Leave it unset when the date is unknown; an undated model stays selectable.
+	 */
+	releaseDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 	// Flag to indicate if the model should hide vendor/company identity in responses
 	isStealthModel: z.boolean().optional(),
 	// Flag to indicate if the model is free (no cost)
@@ -219,6 +228,48 @@ export const modelInfoSchema = z.object({
 })
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>
+
+/**
+ * Converts a catalog timestamp in Unix seconds (for example OpenRouter `created`)
+ * to a `releaseDate` string. Returns undefined for a missing or invalid value.
+ */
+export function releaseDateFromUnixSeconds(seconds: number | null | undefined): string | undefined {
+	if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
+		return undefined
+	}
+	const date = new Date(seconds * 1000)
+	return Number.isNaN(date.getTime()) ? undefined : date.toISOString().slice(0, 10)
+}
+
+/** Model selection lists leave out models released more than this many months ago. */
+export const MODEL_SELECTION_MAX_AGE_MONTHS = 24
+
+/**
+ * Returns true when a model must not be offered as a new choice in a model list:
+ * it is deprecated, or its `releaseDate` is more than MODEL_SELECTION_MAX_AGE_MONTHS
+ * before `now`. A model without a valid release date stays selectable.
+ *
+ * Callers still show the model that a profile already uses, so a saved selection
+ * keeps working and keeps its metadata. Only new selection is affected.
+ */
+export function isModelHiddenFromSelection(
+	info: Pick<ModelInfo, "deprecated" | "releaseDate">,
+	now: Date = new Date(),
+): boolean {
+	if (info.deprecated) {
+		return true
+	}
+	if (!info.releaseDate) {
+		return false
+	}
+	const released = Date.parse(`${info.releaseDate}T00:00:00Z`)
+	if (Number.isNaN(released)) {
+		return false
+	}
+	// Compare whole UTC days: a model released on the cutoff date stays selectable all day.
+	const cutoff = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - MODEL_SELECTION_MAX_AGE_MONTHS, now.getUTCDate())
+	return released < cutoff
+}
 
 /**
  * Multipliers vendors apply to the base input price for a cache write, by TTL class.

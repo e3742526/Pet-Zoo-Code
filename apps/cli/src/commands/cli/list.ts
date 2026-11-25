@@ -6,7 +6,7 @@ import pWaitFor from "p-wait-for"
 
 import type { TaskSessionEntry } from "@roo-code/core/cli"
 import type { Command, ModelRecord, WebviewMessage } from "@roo-code/types"
-import { openRouterDefaultModelId, providerIdentifiers } from "@roo-code/types"
+import { isModelHiddenFromSelection, openRouterDefaultModelId, providerIdentifiers } from "@roo-code/types"
 
 import { ExtensionHost, type ExtensionHostOptions } from "@/agent/index.js"
 import { readWorkspaceTaskSessions } from "@/lib/task-history/index.js"
@@ -290,7 +290,11 @@ export async function listModels(options: BaseListOptions): Promise<void> {
 	const format = parseFormat(options.format)
 
 	await withHostAndSignalHandlers(options, { ephemeral: true }, async (host) => {
-		const models = await requestOpenRouterModels(host)
+		// Match the extension's model lists: leave out deprecated models and models
+		// released more than MODEL_SELECTION_MAX_AGE_MONTHS ago.
+		const models = Object.fromEntries(
+			Object.entries(await requestOpenRouterModels(host)).filter(([, info]) => !isModelHiddenFromSelection(info)),
+		) as ModelRecord
 
 		if (format === "json") {
 			outputJson({ models })

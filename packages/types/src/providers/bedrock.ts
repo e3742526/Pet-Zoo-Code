@@ -23,6 +23,7 @@ export const bedrockDefaultPromptRouterModelId: BedrockModelId = "anthropic.clau
 // feature.
 export const bedrockModels = {
 	"anthropic.claude-sonnet-4-5-20250929-v1:0": {
+		releaseDate: "2025-09-29",
 		maxTokens: 64_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -104,6 +105,7 @@ export const bedrockModels = {
 		description: "Claude Sonnet 5.5 is the best combination of speed and intelligence for everyday tasks.",
 	},
 	"amazon.nova-pro-v1:0": {
+		releaseDate: "2024-12-03",
 		maxTokens: 5000,
 		contextWindow: 300_000,
 		supportsImages: true,
@@ -117,6 +119,7 @@ export const bedrockModels = {
 		cachableFields: ["system"],
 	},
 	"amazon.nova-pro-latency-optimized-v1:0": {
+		releaseDate: "2024-12-03",
 		maxTokens: 5000,
 		contextWindow: 300_000,
 		supportsImages: true,
@@ -128,6 +131,7 @@ export const bedrockModels = {
 		description: "Amazon Nova Pro with latency optimized inference",
 	},
 	"amazon.nova-lite-v1:0": {
+		releaseDate: "2024-12-03",
 		maxTokens: 5000,
 		contextWindow: 300_000,
 		supportsImages: true,
@@ -155,6 +159,7 @@ export const bedrockModels = {
 		description: "Amazon Nova 2 Lite - Comparable to Claude Haiku 4.5",
 	},
 	"amazon.nova-micro-v1:0": {
+		releaseDate: "2024-12-03",
 		maxTokens: 5000,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -168,6 +173,7 @@ export const bedrockModels = {
 		cachableFields: ["system"],
 	},
 	"anthropic.claude-sonnet-4-20250514-v1:0": {
+		releaseDate: "2025-05-14",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -183,6 +189,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-opus-4-1-20250805-v1:0": {
+		releaseDate: "2025-08-05",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -389,6 +396,7 @@ export const bedrockModels = {
 			"Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
 	},
 	"anthropic.claude-opus-4-5-20251101-v1:0": {
+		releaseDate: "2025-11-01",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -404,6 +412,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-opus-4-20250514-v1:0": {
+		releaseDate: "2025-05-14",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -419,6 +428,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-3-7-sonnet-20250219-v1:0": {
+		releaseDate: "2025-02-19",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -434,6 +444,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-3-5-sonnet-20241022-v2:0": {
+		releaseDate: "2024-10-22",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -448,6 +459,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-3-5-haiku-20241022-v1:0": {
+		releaseDate: "2024-10-22",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: false,
@@ -462,6 +474,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-haiku-4-5-20251001-v1:0": {
+		releaseDate: "2025-10-01",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -477,6 +490,7 @@ export const bedrockModels = {
 		cachableFields: ["system", "messages", "tools"],
 	},
 	"anthropic.claude-3-5-sonnet-20240620-v1:0": {
+		releaseDate: "2024-06-20",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -485,6 +499,7 @@ export const bedrockModels = {
 		outputPrice: 15.0,
 	},
 	"anthropic.claude-3-opus-20240229-v1:0": {
+		releaseDate: "2024-02-29",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -493,6 +508,7 @@ export const bedrockModels = {
 		outputPrice: 75.0,
 	},
 	"anthropic.claude-3-sonnet-20240229-v1:0": {
+		releaseDate: "2024-02-29",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -501,6 +517,7 @@ export const bedrockModels = {
 		outputPrice: 15.0,
 	},
 	"anthropic.claude-3-haiku-20240307-v1:0": {
+		releaseDate: "2024-03-07",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -509,6 +526,7 @@ export const bedrockModels = {
 		outputPrice: 1.25,
 	},
 	"deepseek.r1-v1:0": {
+		releaseDate: "2025-01-20",
 		maxTokens: 32_768,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -517,6 +535,7 @@ export const bedrockModels = {
 		outputPrice: 5.4,
 	},
 	"openai.gpt-oss-20b-1:0": {
+		releaseDate: "2025-08-05",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -526,6 +545,7 @@ export const bedrockModels = {
 		description: "GPT-OSS 20B - Optimized for low latency and local/specialized use cases",
 	},
 	"openai.gpt-oss-120b-1:0": {
+		releaseDate: "2025-08-05",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -535,6 +555,7 @@ export const bedrockModels = {
 		description: "GPT-OSS 120B - Production-ready, general-purpose, high-reasoning model",
 	},
 	"meta.llama3-3-70b-instruct-v1:0": {
+		releaseDate: "2024-12-06",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -544,6 +565,7 @@ export const bedrockModels = {
 		description: "Llama 3.3 Instruct (70B)",
 	},
 	"meta.llama3-2-90b-instruct-v1:0": {
+		releaseDate: "2024-09-25",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: true,
@@ -553,6 +575,7 @@ export const bedrockModels = {
 		description: "Llama 3.2 Instruct (90B)",
 	},
 	"meta.llama3-2-11b-instruct-v1:0": {
+		releaseDate: "2024-09-25",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: true,
@@ -562,6 +585,7 @@ export const bedrockModels = {
 		description: "Llama 3.2 Instruct (11B)",
 	},
 	"meta.llama3-2-3b-instruct-v1:0": {
+		releaseDate: "2024-09-25",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -571,6 +595,7 @@ export const bedrockModels = {
 		description: "Llama 3.2 Instruct (3B)",
 	},
 	"meta.llama3-2-1b-instruct-v1:0": {
+		releaseDate: "2024-09-25",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -580,6 +605,7 @@ export const bedrockModels = {
 		description: "Llama 3.2 Instruct (1B)",
 	},
 	"meta.llama3-1-405b-instruct-v1:0": {
+		releaseDate: "2024-07-23",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -589,6 +615,7 @@ export const bedrockModels = {
 		description: "Llama 3.1 Instruct (405B)",
 	},
 	"meta.llama3-1-70b-instruct-v1:0": {
+		releaseDate: "2024-07-23",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -598,6 +625,7 @@ export const bedrockModels = {
 		description: "Llama 3.1 Instruct (70B)",
 	},
 	"meta.llama3-1-70b-instruct-latency-optimized-v1:0": {
+		releaseDate: "2024-07-23",
 		maxTokens: 8192,
 		contextWindow: 128_000,
 		supportsImages: false,
@@ -607,6 +635,7 @@ export const bedrockModels = {
 		description: "Llama 3.1 Instruct (70B) (w/ latency optimized inference)",
 	},
 	"meta.llama3-1-8b-instruct-v1:0": {
+		releaseDate: "2024-07-23",
 		maxTokens: 8192,
 		contextWindow: 8_000,
 		supportsImages: false,
@@ -616,6 +645,7 @@ export const bedrockModels = {
 		description: "Llama 3.1 Instruct (8B)",
 	},
 	"meta.llama3-70b-instruct-v1:0": {
+		releaseDate: "2024-04-18",
 		maxTokens: 2048,
 		contextWindow: 8_000,
 		supportsImages: false,
@@ -624,6 +654,7 @@ export const bedrockModels = {
 		outputPrice: 3.5,
 	},
 	"meta.llama3-8b-instruct-v1:0": {
+		releaseDate: "2024-04-18",
 		maxTokens: 2048,
 		contextWindow: 4_000,
 		supportsImages: false,
@@ -632,6 +663,7 @@ export const bedrockModels = {
 		outputPrice: 0.6,
 	},
 	"amazon.titan-text-lite-v1:0": {
+		releaseDate: "2023-11-29",
 		maxTokens: 4096,
 		contextWindow: 8_000,
 		supportsImages: false,
@@ -641,6 +673,7 @@ export const bedrockModels = {
 		description: "Amazon Titan Text Lite",
 	},
 	"amazon.titan-text-express-v1:0": {
+		releaseDate: "2023-11-29",
 		maxTokens: 4096,
 		contextWindow: 8_000,
 		supportsImages: false,

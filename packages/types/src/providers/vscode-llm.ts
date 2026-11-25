@@ -422,6 +422,7 @@ export const vscodeLlmModels = {
 		maxInputTokens: 271790,
 	},
 	"gpt-5-mini": {
+		releaseDate: "2025-08-07",
 		contextWindow: 127790,
 		supportsImages: true,
 		supportsPromptCache: false,
@@ -434,6 +435,7 @@ export const vscodeLlmModels = {
 		maxInputTokens: 127790,
 	},
 	"gpt-4o-mini": {
+		releaseDate: "2024-07-18",
 		contextWindow: 12078,
 		supportsImages: false,
 		supportsPromptCache: false,
@@ -545,6 +547,7 @@ export const vscodeLlmModels = {
 		maxInputTokens: 108594,
 	},
 	"gemini-2.5-pro": {
+		releaseDate: "2025-06-17",
 		contextWindow: 108594,
 		supportsImages: true,
 		supportsPromptCache: false,

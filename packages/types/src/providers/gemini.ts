@@ -273,6 +273,7 @@ export const geminiModels = {
 
 	// 2.5 Pro models
 	"gemini-2.5-pro": {
+		releaseDate: "2025-06-17",
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -301,6 +302,7 @@ export const geminiModels = {
 		],
 	},
 	"gemini-2.5-pro-preview-06-05": {
+		releaseDate: "2025-06-05",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -328,6 +330,7 @@ export const geminiModels = {
 		],
 	},
 	"gemini-2.5-pro-preview-05-06": {
+		releaseDate: "2025-05-06",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -353,6 +356,7 @@ export const geminiModels = {
 		],
 	},
 	"gemini-2.5-pro-preview-03-25": {
+		releaseDate: "2025-03-25",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -395,6 +399,7 @@ export const geminiModels = {
 		supportsReasoningBudget: true,
 	},
 	"gemini-2.5-flash-preview-09-2025": {
+		releaseDate: "2025-09-25",
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -408,6 +413,7 @@ export const geminiModels = {
 		supportsReasoningBudget: true,
 	},
 	"gemini-2.5-flash": {
+		releaseDate: "2025-06-17",
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -436,6 +442,7 @@ export const geminiModels = {
 		maxThinkingTokens: 24_576,
 	},
 	"gemini-2.5-flash-lite-preview-09-2025": {
+		releaseDate: "2025-09-25",
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
 		supportsImages: true,

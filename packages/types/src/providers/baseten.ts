@@ -36,6 +36,7 @@ export const basetenModels = {
 		description: "Frontier open model with advanced agentic, reasoning and coding capabilities",
 	},
 	"deepseek-ai/DeepSeek-R1": {
+		releaseDate: "2025-01-20",
 		maxTokens: 16_384,
 		contextWindow: 163_840,
 		supportsImages: false,
@@ -47,6 +48,7 @@ export const basetenModels = {
 		description: "DeepSeek's first-generation reasoning model",
 	},
 	"deepseek-ai/DeepSeek-R1-0528": {
+		releaseDate: "2025-05-28",
 		maxTokens: 16_384,
 		contextWindow: 163_840,
 		supportsImages: false,
@@ -58,6 +60,7 @@ export const basetenModels = {
 		description: "The latest revision of DeepSeek's first-generation reasoning model",
 	},
 	"deepseek-ai/DeepSeek-V3-0324": {
+		releaseDate: "2025-03-24",
 		maxTokens: 16_384,
 		contextWindow: 163_840,
 		supportsImages: false,
@@ -69,6 +72,7 @@ export const basetenModels = {
 		description: "Fast general-purpose LLM with enhanced reasoning capabilities",
 	},
 	"deepseek-ai/DeepSeek-V3.1": {
+		releaseDate: "2025-08-21",
 		maxTokens: 16_384,
 		contextWindow: 163_840,
 		supportsImages: false,
@@ -119,6 +123,7 @@ export const basetenModels = {
 			"DeepSeek V4 Pro 0813 is a 1.6T-parameter mixture-of-experts model with a 1M context window for advanced reasoning, coding, and agentic workloads.",
 	},
 	"openai/gpt-oss-120b": {
+		releaseDate: "2025-08-05",
 		maxTokens: 16_384,
 		contextWindow: 128_072,
 		supportsImages: false,
@@ -130,6 +135,7 @@ export const basetenModels = {
 		description: "Extremely capable general-purpose LLM with strong, controllable reasoning capabilities",
 	},
 	"Qwen/Qwen3-235B-A22B-Instruct-2507": {
+		releaseDate: "2025-07-21",
 		maxTokens: 16_384,
 		contextWindow: 262_144,
 		supportsImages: false,
@@ -141,6 +147,7 @@ export const basetenModels = {
 		description: "Mixture-of-experts LLM with math and reasoning capabilities",
 	},
 	"Qwen/Qwen3-Coder-480B-A35B-Instruct": {
+		releaseDate: "2025-07-22",
 		maxTokens: 16_384,
 		contextWindow: 262_144,
 		supportsImages: false,
@@ -152,6 +159,7 @@ export const basetenModels = {
 		description: "Mixture-of-experts LLM with advanced coding and reasoning capabilities",
 	},
 	"moonshotai/Kimi-K2-Instruct-0905": {
+		releaseDate: "2025-09-05",
 		maxTokens: 16_384,
 		contextWindow: 262_000,
 		supportsImages: false,

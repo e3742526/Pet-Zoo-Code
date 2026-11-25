@@ -83,6 +83,7 @@ export const anthropicModels = {
 		description: "Claude Sonnet 5.5 is the best combination of speed and intelligence for everyday tasks.",
 	},
 	"claude-sonnet-4-5": {
+		releaseDate: "2025-09-29",
 		maxTokens: 64_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
@@ -107,6 +108,7 @@ export const anthropicModels = {
 		],
 	},
 	"claude-sonnet-4-20250514": {
+		releaseDate: "2025-05-14",
 		maxTokens: 64_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
@@ -295,6 +297,7 @@ export const anthropicModels = {
 			"Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
 	},
 	"claude-opus-4-5-20251101": {
+		releaseDate: "2025-11-01",
 		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -308,6 +311,7 @@ export const anthropicModels = {
 		supportsReasoningBudget: true,
 	},
 	"claude-opus-4-1-20250805": {
+		releaseDate: "2025-08-05",
 		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -321,6 +325,7 @@ export const anthropicModels = {
 		supportsReasoningBudget: true,
 	},
 	"claude-opus-4-20250514": {
+		releaseDate: "2025-05-14",
 		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -334,6 +339,7 @@ export const anthropicModels = {
 		supportsReasoningBudget: true,
 	},
 	"claude-3-7-sonnet-20250219:thinking": {
+		releaseDate: "2025-02-19",
 		maxTokens: 128_000, // Unlocked by passing `beta` flag to the model. Otherwise, it's 64k.
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -348,6 +354,7 @@ export const anthropicModels = {
 		requiredReasoningBudget: true,
 	},
 	"claude-3-7-sonnet-20250219": {
+		releaseDate: "2025-02-19",
 		maxTokens: 8192, // Since we already have a `:thinking` virtual model we aren't setting `supportsReasoningBudget: true` here.
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -360,6 +367,7 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.3, // $0.30 per million tokens
 	},
 	"claude-3-5-sonnet-20241022": {
+		releaseDate: "2024-10-22",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -372,6 +380,7 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.3, // $0.30 per million tokens
 	},
 	"claude-3-5-haiku-20241022": {
+		releaseDate: "2024-10-22",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: false,
@@ -384,6 +393,7 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.1,
 	},
 	"claude-3-opus-20240229": {
+		releaseDate: "2024-02-29",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -396,6 +406,7 @@ export const anthropicModels = {
 		cacheReadsPrice: 1.5,
 	},
 	"claude-3-haiku-20240307": {
+		releaseDate: "2024-03-07",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -408,6 +419,7 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.03,
 	},
 	"claude-haiku-4-5-20251001": {
+		releaseDate: "2025-10-01",
 		maxTokens: 64_000,
 		contextWindow: 200_000,
 		supportsImages: true,

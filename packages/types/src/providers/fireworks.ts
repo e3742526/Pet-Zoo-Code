@@ -42,6 +42,7 @@ export const fireworksDefaultModelId: FireworksModelId = "accounts/fireworks/mod
 
 export const fireworksModels = {
 	"accounts/fireworks/models/kimi-k2-instruct-0905": {
+		releaseDate: "2025-09-05",
 		maxTokens: 16384,
 		contextWindow: 262144,
 		supportsImages: false,
@@ -53,6 +54,7 @@ export const fireworksModels = {
 			"Kimi K2 model gets a new version update: Agentic coding: more accurate, better generalization across scaffolds. Frontend coding: improved aesthetics and functionalities on web, 3d, and other tasks. Context length: extended from 128k to 256k, providing better long-horizon support.",
 	},
 	"accounts/fireworks/models/kimi-k2-instruct": {
+		releaseDate: "2025-07-11",
 		maxTokens: 16384,
 		contextWindow: 128000,
 		supportsImages: false,
@@ -98,6 +100,7 @@ export const fireworksModels = {
 			"MiniMax M2 is a high-performance language model with 204.8K context window, optimized for long-context understanding and generation tasks.",
 	},
 	"accounts/fireworks/models/qwen3-235b-a22b-instruct-2507": {
+		releaseDate: "2025-07-21",
 		maxTokens: 32768,
 		contextWindow: 256000,
 		supportsImages: false,
@@ -107,6 +110,7 @@ export const fireworksModels = {
 		description: "Latest Qwen3 thinking model, competitive against the best closed source models in Jul 2025.",
 	},
 	"accounts/fireworks/models/qwen3-coder-480b-a35b-instruct": {
+		releaseDate: "2025-07-22",
 		maxTokens: 32768,
 		contextWindow: 256000,
 		supportsImages: false,
@@ -116,6 +120,7 @@ export const fireworksModels = {
 		description: "Qwen3's most agentic code model to date.",
 	},
 	"accounts/fireworks/models/deepseek-r1-0528": {
+		releaseDate: "2025-05-28",
 		maxTokens: 20480,
 		contextWindow: 160000,
 		supportsImages: false,
@@ -126,6 +131,7 @@ export const fireworksModels = {
 			"05/28 updated checkpoint of Deepseek R1. Its overall performance is now approaching that of leading models, such as O3 and Gemini 2.5 Pro. Compared to the previous version, the upgraded model shows significant improvements in handling complex reasoning tasks, and this version also offers a reduced hallucination rate, enhanced support for function calling, and better experience for vibe coding. Note that fine-tuning for this model is only available through contacting fireworks at https://fireworks.ai/company/contact-us.",
 	},
 	"accounts/fireworks/models/deepseek-v3": {
+		releaseDate: "2024-12-26",
 		maxTokens: 16384,
 		contextWindow: 128000,
 		supportsImages: false,
@@ -136,6 +142,7 @@ export const fireworksModels = {
 			"A strong Mixture-of-Experts (MoE) language model with 671B total parameters with 37B activated for each token from Deepseek. Note that fine-tuning for this model is only available through contacting fireworks at https://fireworks.ai/company/contact-us.",
 	},
 	"accounts/fireworks/models/deepseek-v3p1": {
+		releaseDate: "2025-08-21",
 		maxTokens: 16384,
 		contextWindow: 163840,
 		supportsImages: false,
@@ -146,6 +153,7 @@ export const fireworksModels = {
 			"DeepSeek v3.1 is an improved version of the v3 model with enhanced performance, better reasoning capabilities, and improved code generation. This Mixture-of-Experts (MoE) model maintains the same 671B total parameters with 37B activated per token.",
 	},
 	"accounts/fireworks/models/glm-4p5": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16384,
 		contextWindow: 128000,
 		supportsImages: false,
@@ -156,6 +164,7 @@ export const fireworksModels = {
 			"Z.ai GLM-4.5 with 355B total parameters and 32B active parameters. Features unified reasoning, coding, and intelligent agent capabilities.",
 	},
 	"accounts/fireworks/models/glm-4p5-air": {
+		releaseDate: "2025-07-28",
 		maxTokens: 16384,
 		contextWindow: 128000,
 		supportsImages: false,
@@ -176,6 +185,7 @@ export const fireworksModels = {
 			"Z.ai GLM-4.6 is an advanced coding model with exceptional performance on complex programming tasks. Features improved reasoning capabilities and enhanced code generation quality, making it ideal for software development workflows.",
 	},
 	"accounts/fireworks/models/gpt-oss-20b": {
+		releaseDate: "2025-08-05",
 		maxTokens: 16384,
 		contextWindow: 128000,
 		supportsImages: false,
@@ -186,6 +196,7 @@ export const fireworksModels = {
 			"OpenAI gpt-oss-20b: Compact model for local/edge deployments. Optimized for low-latency and resource-constrained environments with chain-of-thought output, adjustable reasoning, and agentic workflows.",
 	},
 	"accounts/fireworks/models/gpt-oss-120b": {
+		releaseDate: "2025-08-05",
 		maxTokens: 16384,
 		contextWindow: 128000,
 		supportsImages: false,
@@ -226,6 +237,7 @@ export const fireworksModels = {
 			"Z.ai GLM-4.7 is the latest coding model with exceptional performance on complex programming tasks. Features improved reasoning capabilities and enhanced code generation quality.",
 	},
 	"accounts/fireworks/models/llama-v3p3-70b-instruct": {
+		releaseDate: "2024-12-06",
 		maxTokens: 16384,
 		contextWindow: 131072,
 		supportsImages: false,
@@ -236,6 +248,7 @@ export const fireworksModels = {
 			"Meta Llama 3.3 70B Instruct is a highly capable instruction-tuned model with strong reasoning, coding, and general task performance.",
 	},
 	"accounts/fireworks/models/llama4-maverick-instruct-basic": {
+		releaseDate: "2025-04-05",
 		maxTokens: 16384,
 		contextWindow: 131072,
 		supportsImages: true,
@@ -246,6 +259,7 @@ export const fireworksModels = {
 			"Llama 4 Maverick is Meta's latest multimodal model with vision capabilities, optimized for instruction following and coding tasks.",
 	},
 	"accounts/fireworks/models/llama4-scout-instruct-basic": {
+		releaseDate: "2025-04-05",
 		maxTokens: 16384,
 		contextWindow: 131072,
 		supportsImages: true,

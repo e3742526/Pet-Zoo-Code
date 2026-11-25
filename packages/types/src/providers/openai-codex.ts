@@ -282,6 +282,7 @@ export const openAiCodexModels = {
 		description: "GPT-5.1: General GPT-5.1 model via ChatGPT subscription",
 	},
 	"gpt-5": {
+		releaseDate: "2025-08-07",
 		maxTokens: 128000,
 		contextWindow: 400000,
 		includedTools: ["apply_patch"],

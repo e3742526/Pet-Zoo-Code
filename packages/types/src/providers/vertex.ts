@@ -249,6 +249,7 @@ export const vertexModels = {
 		cacheReadsPrice: 0.05,
 	},
 	"gemini-2.5-flash-preview-05-20:thinking": {
+		releaseDate: "2025-05-20",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -261,6 +262,7 @@ export const vertexModels = {
 		requiredReasoningBudget: true,
 	},
 	"gemini-2.5-flash-preview-05-20": {
+		releaseDate: "2025-05-20",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -270,6 +272,7 @@ export const vertexModels = {
 		outputPrice: 0.6,
 	},
 	"gemini-2.5-flash": {
+		releaseDate: "2025-06-17",
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -283,6 +286,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 	},
 	"gemini-2.5-flash-preview-04-17:thinking": {
+		releaseDate: "2025-04-17",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -295,6 +299,7 @@ export const vertexModels = {
 		requiredReasoningBudget: true,
 	},
 	"gemini-2.5-flash-preview-04-17": {
+		releaseDate: "2025-04-17",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -304,6 +309,7 @@ export const vertexModels = {
 		outputPrice: 0.6,
 	},
 	"gemini-2.5-pro-preview-03-25": {
+		releaseDate: "2025-03-25",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -313,6 +319,7 @@ export const vertexModels = {
 		outputPrice: 15,
 	},
 	"gemini-2.5-pro-preview-05-06": {
+		releaseDate: "2025-05-06",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -322,6 +329,7 @@ export const vertexModels = {
 		outputPrice: 15,
 	},
 	"gemini-2.5-pro-preview-06-05": {
+		releaseDate: "2025-06-05",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -333,6 +341,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 	},
 	"gemini-2.5-pro": {
+		releaseDate: "2025-06-17",
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -359,6 +368,7 @@ export const vertexModels = {
 		],
 	},
 	"gemini-2.5-pro-exp-03-25": {
+		releaseDate: "2025-03-25",
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -368,6 +378,7 @@ export const vertexModels = {
 		outputPrice: 0,
 	},
 	"gemini-2.0-pro-exp-02-05": {
+		releaseDate: "2025-02-05",
 		maxTokens: 8192,
 		contextWindow: 2_097_152,
 		supportsImages: true,
@@ -377,6 +388,7 @@ export const vertexModels = {
 		outputPrice: 0,
 	},
 	"gemini-2.0-flash-001": {
+		releaseDate: "2025-02-05",
 		maxTokens: 8192,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -386,6 +398,7 @@ export const vertexModels = {
 		outputPrice: 0.6,
 	},
 	"gemini-2.0-flash-lite-001": {
+		releaseDate: "2025-02-25",
 		maxTokens: 8192,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -395,6 +408,7 @@ export const vertexModels = {
 		outputPrice: 0.3,
 	},
 	"gemini-2.0-flash-thinking-exp-01-21": {
+		releaseDate: "2025-01-21",
 		maxTokens: 8192,
 		contextWindow: 32_768,
 		supportsImages: true,
@@ -404,6 +418,7 @@ export const vertexModels = {
 		outputPrice: 0,
 	},
 	"gemini-1.5-flash-002": {
+		releaseDate: "2024-09-24",
 		maxTokens: 8192,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -413,6 +428,7 @@ export const vertexModels = {
 		outputPrice: 0.3,
 	},
 	"gemini-1.5-pro-002": {
+		releaseDate: "2024-09-24",
 		maxTokens: 8192,
 		contextWindow: 2_097_152,
 		supportsImages: true,
@@ -422,6 +438,7 @@ export const vertexModels = {
 		outputPrice: 5,
 	},
 	"claude-sonnet-4@20250514": {
+		releaseDate: "2025-05-14",
 		maxTokens: 8192,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
@@ -443,6 +460,7 @@ export const vertexModels = {
 		],
 	},
 	"claude-sonnet-4-5@20250929": {
+		releaseDate: "2025-09-29",
 		maxTokens: 8192,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
@@ -514,6 +532,7 @@ export const vertexModels = {
 		description: "Claude Sonnet 5.5 is the best combination of speed and intelligence for everyday tasks.",
 	},
 	"claude-haiku-4-5@20251001": {
+		releaseDate: "2025-10-01",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -669,6 +688,7 @@ export const vertexModels = {
 			"Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
 	},
 	"claude-opus-4-5@20251101": {
+		releaseDate: "2025-11-01",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -680,6 +700,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 	},
 	"claude-opus-4-1@20250805": {
+		releaseDate: "2025-08-05",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -691,6 +712,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 	},
 	"claude-opus-4@20250514": {
+		releaseDate: "2025-05-14",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -701,6 +723,7 @@ export const vertexModels = {
 		cacheReadsPrice: 1.5,
 	},
 	"claude-3-7-sonnet@20250219:thinking": {
+		releaseDate: "2025-02-19",
 		maxTokens: 64_000,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -713,6 +736,7 @@ export const vertexModels = {
 		requiredReasoningBudget: true,
 	},
 	"claude-3-7-sonnet@20250219": {
+		releaseDate: "2025-02-19",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -723,6 +747,7 @@ export const vertexModels = {
 		cacheReadsPrice: 0.3,
 	},
 	"claude-3-5-sonnet-v2@20241022": {
+		releaseDate: "2024-10-22",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -733,6 +758,7 @@ export const vertexModels = {
 		cacheReadsPrice: 0.3,
 	},
 	"claude-3-5-sonnet@20240620": {
+		releaseDate: "2024-06-20",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -743,6 +769,7 @@ export const vertexModels = {
 		cacheReadsPrice: 0.3,
 	},
 	"claude-3-5-haiku@20241022": {
+		releaseDate: "2024-10-22",
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: false,
@@ -753,6 +780,7 @@ export const vertexModels = {
 		cacheReadsPrice: 0.1,
 	},
 	"claude-3-opus@20240229": {
+		releaseDate: "2024-02-29",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -763,6 +791,7 @@ export const vertexModels = {
 		cacheReadsPrice: 1.5,
 	},
 	"claude-3-haiku@20240307": {
+		releaseDate: "2024-03-07",
 		maxTokens: 4096,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -773,6 +802,7 @@ export const vertexModels = {
 		cacheReadsPrice: 0.03,
 	},
 	"gemini-2.5-flash-lite-preview-06-17": {
+		releaseDate: "2025-06-17",
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -786,6 +816,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 	},
 	"llama-4-maverick-17b-128e-instruct-maas": {
+		releaseDate: "2025-04-05",
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
@@ -795,6 +826,7 @@ export const vertexModels = {
 		description: "Meta Llama 4 Maverick 17B Instruct model, 128K context.",
 	},
 	"deepseek-r1-0528-maas": {
+		releaseDate: "2025-05-28",
 		maxTokens: 32_768,
 		contextWindow: 163_840,
 		supportsImages: false,
@@ -804,6 +836,7 @@ export const vertexModels = {
 		description: "DeepSeek R1 (0528). Available in us-central1",
 	},
 	"deepseek-v3.1-maas": {
+		releaseDate: "2025-08-21",
 		maxTokens: 32_768,
 		contextWindow: 163_840,
 		supportsImages: false,
@@ -813,6 +846,7 @@ export const vertexModels = {
 		description: "DeepSeek V3.1. Available in us-west2",
 	},
 	"gpt-oss-120b-maas": {
+		releaseDate: "2025-08-05",
 		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -822,6 +856,7 @@ export const vertexModels = {
 		description: "OpenAI gpt-oss 120B. Available in us-central1",
 	},
 	"gpt-oss-20b-maas": {
+		releaseDate: "2025-08-05",
 		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: false,
@@ -831,6 +866,7 @@ export const vertexModels = {
 		description: "OpenAI gpt-oss 20B. Available in us-central1",
 	},
 	"qwen3-coder-480b-a35b-instruct-maas": {
+		releaseDate: "2025-07-22",
 		maxTokens: 32_768,
 		contextWindow: 262_144,
 		supportsImages: false,
@@ -840,6 +876,7 @@ export const vertexModels = {
 		description: "Qwen3 Coder 480B A35B Instruct. Available in us-south1",
 	},
 	"qwen3-235b-a22b-instruct-2507-maas": {
+		releaseDate: "2025-07-21",
 		maxTokens: 16_384,
 		contextWindow: 262_144,
 		supportsImages: false,

@@ -44,6 +44,7 @@ Dory Code removes the upstream account, gateway, billing, and analytics services
 
 - **Local-first runtime.** The fork starts no analytics client. Saved Zoo Gateway profiles and task history stay, and the retired provider asks you to select a different provider. See [standalone independence](docs/standalone-independence.md).
 - **OpenRouter.** Catalog and endpoint discovery use your configured base URL and copy only the selected model. Prompt caching uses catalog capabilities. A hashed `session_id` keeps cache routing stable within a task, and a canceled task stops its request.
+- **Current models only.** Model lists do not show a model released more than 24 months ago. Bundled catalogs record each release date, and OpenRouter supplies its listing date. A profile that already uses an older model keeps it.
 - **Long MCP tool names.** A name over 64 characters becomes a stable alias (`mcp--0--<hint>_<hash>`). Saved history with old names is repaired in the request copy.
 - **No workspace.** Open file tabs and `@` mentions work without a workspace folder. The environment details do not list the home directory.
 - **Performance work.** [Optimization review](docs/optimization-review-2026-11-24.md) lists each finding and its status. The upstream survey is in [gem-hydro-parentrepo-survey-24NOV2026.md](gem-hydro-parentrepo-survey-24NOV2026.md).

@@ -5,7 +5,7 @@ import { type ModelInfo, type ModelRecord } from "@roo-code/types"
 import { ApiHandlerOptions, RouterName } from "../../shared/api"
 
 import { BaseProvider } from "./base-provider"
-import { getModels, getModelsFromCache, refreshModels } from "./fetchers/modelCache"
+import { getModelFromCache, getModels, refreshModels } from "./fetchers/modelCache"
 import { detachOnAbort } from "./utils/abort-signal"
 
 import { DEFAULT_HEADERS, NOT_PROVIDED } from "./constants"
@@ -136,21 +136,21 @@ export abstract class RouterProvider extends BaseProvider {
 			return { id, info: this.models[id] }
 		}
 
-		// Fall back to global cache (synchronous disk/memory cache).
+		// Copy only the selected model from the synchronous disk/memory cache.
 		// Pass the full options so URL-scoped providers (litellm, ollama, etc.)
 		// resolve the same compound cache key that fetchModel() wrote under.
-		const cachedModels = getModelsFromCache(
+		const cachedModel = getModelFromCache(
 			{
 				provider: this.name,
 				baseUrl: this.client.baseURL,
 				apiKey: this.apiKey,
 			},
 			this,
+			id,
 		)
-		if (cachedModels?.[id]) {
-			// Also populate instance models for future calls
-			this.models = cachedModels
-			return { id, info: cachedModels[id] }
+		if (cachedModel) {
+			this.models = { [id]: cachedModel }
+			return { id, info: cachedModel }
 		}
 
 		// Last resort: keep the configured id so we don't swap models, but zero

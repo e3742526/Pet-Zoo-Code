@@ -59,7 +59,7 @@ vitest.mock("../fetchers/modelCache", () => ({
 			"muse-spark-1.2-contributor": { ...opencodeGoModels["muse-spark-1.2-contributor"] },
 		})
 	}),
-	getModelsFromCache: vitest.fn().mockReturnValue(undefined),
+	getModelFromCache: vitest.fn().mockReturnValue(undefined),
 }))
 
 const mockCreate = vitest.fn()

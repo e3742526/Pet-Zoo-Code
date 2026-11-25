@@ -7,6 +7,7 @@ import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import { makeWorkspaceConfiguration } from "../../../../test-utils/vscode"
 import type { ApiHandler } from "../../../index"
+import { LiteLLMHandler } from "../../lite-llm"
 import { flushModels, getModels, getModelsFromCache, refreshModels } from "../modelCache"
 import { getOpenRouterModelEndpoints } from "../openrouter"
 
@@ -121,6 +122,53 @@ it("retains both LiteLLM output token capabilities in the disk cache", async () 
 		await flushModels(liteOptions, handler)
 	}
 })
+
+it.each(["memory", "disk"] as const)(
+	"copies only the router's selected model from the %s catalog",
+	async (storageKind) => {
+		const modelId = "team-chat"
+		const baseUrl = "http://127.0.0.1:4000"
+		const apiKey = "cache-test-key"
+		const request = { provider: providerIdentifiers.litellm, baseUrl, apiKey } as const
+		const model = {
+			maxTokens: 1024,
+			contextWindow: 32768,
+			supportsPromptCache: false,
+			requiresMaxCompletionTokens: true,
+		}
+		const models = { [modelId]: model, "other-model": { ...model, maxTokens: 2048 } }
+		const makeRouter = (litellmModelId = modelId) =>
+			new LiteLLMHandler({ litellmModelId, litellmBaseUrl: baseUrl, litellmApiKey: apiKey })
+		const source = makeRouter()
+		const fetch = vi.spyOn(source, "fetchModels").mockResolvedValue(models)
+		try {
+			await refreshModels(request, source)
+			if (storageKind === "disk") await flushModels(request, source)
+			fetch.mockClear().mockRejectedValue(new Error("Provider offline"))
+			const router = makeRouter()
+			const clone = vi.spyOn(globalThis, "structuredClone")
+			try {
+				const result = router.getModel()
+				expect(result).toEqual({ id: modelId, info: model })
+				expect(router.getModel().info).toBe(result.info)
+				const unavailable = makeRouter("missing-model")
+				expect(unavailable.getModel()).toMatchObject({
+					id: "missing-model",
+					info: { inputPrice: 0, outputPrice: 0 },
+				})
+				expect(clone.mock.calls).toEqual([[model]])
+				result.info.maxTokens = 12
+			} finally {
+				clone.mockRestore()
+			}
+			expect(makeRouter().getModel().info).toEqual(model)
+			await expect(getModels(request, source)).resolves.toEqual(models)
+			expect(fetch).not.toHaveBeenCalled()
+		} finally {
+			await flushModels(request, source)
+		}
+	},
+)
 
 it("keeps a catalog in default storage available after a custom path is set", async () => {
 	const destination = customStoragePath

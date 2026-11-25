@@ -32,14 +32,12 @@ const fetchers = vi.hoisted(() => ({
 const modelCache = vi.hoisted(() => ({
 	getModels: vi.fn(),
 	getModelFromCache: vi.fn(),
-	getModelsFromCache: vi.fn(),
 }))
 
 vi.mock("../fetchers/modelCache", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../fetchers/modelCache")>()),
 	getModels: modelCache.getModels,
 	getModelFromCache: modelCache.getModelFromCache,
-	getModelsFromCache: modelCache.getModelsFromCache,
 }))
 
 vi.mock("../fetchers/deepseek", async (importOriginal) => ({
@@ -276,8 +274,6 @@ describe("model catalog adapters", () => {
 		modelCache.getModels.mockImplementation((opts: GetModelsOptions, handler: ApiHandler) =>
 			handler.fetchModels!(opts),
 		)
-		modelCache.getModelsFromCache.mockReset()
-		modelCache.getModelsFromCache.mockReturnValue(undefined)
 		modelCache.getModelFromCache.mockReset()
 	})
 

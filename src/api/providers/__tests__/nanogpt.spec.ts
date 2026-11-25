@@ -34,7 +34,7 @@ vi.mock("../fetchers/modelCache", () => ({
 			supportsReasoningEffort: ["low", "medium", "high"],
 		},
 	}),
-	getModelsFromCache: vi.fn(),
+	getModelFromCache: vi.fn(),
 }))
 
 const mockCreate = vi.fn()

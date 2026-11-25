@@ -5,7 +5,7 @@ import axios from "axios"
 import { providerIdentifiers } from "@roo-code/types/provider-identifiers"
 
 import { LiteLLMHandler } from "../lite-llm"
-import { getModels, getModelsFromCache, refreshModels } from "../fetchers/modelCache"
+import { getModelFromCache, getModels, refreshModels } from "../fetchers/modelCache"
 import { prepareApiConversationMessage } from "../../../core/task/apiConversationHistory"
 import { sanitizeToolUseId } from "../../../utils/tool-id"
 import {
@@ -92,7 +92,7 @@ vi.mock("../fetchers/modelCache", () => ({
 		const { getModels } = await import("../fetchers/modelCache")
 		return getModels(options, handler)
 	}),
-	getModelsFromCache: vi.fn().mockReturnValue(undefined),
+	getModelFromCache: vi.fn().mockReturnValue(undefined),
 }))
 
 describe("LiteLLMHandler", () => {
@@ -301,7 +301,7 @@ describe("LiteLLMHandler", () => {
 			const originalRefresh = refresh.getMockImplementation()
 			const originalGet = get.getMockImplementation()
 			refresh.mockImplementation(async () => refreshed)
-			vi.mocked(getModelsFromCache).mockReturnValueOnce(legacy)
+			vi.mocked(getModelFromCache).mockReturnValueOnce(previous)
 			try {
 				expect(proxy.getModel().info).toBe(previous)
 				get.mockResolvedValueOnce(legacy)

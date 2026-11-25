@@ -233,6 +233,21 @@ LM Studio and Poe copy only the selected model from the cache. The cache keeps i
 
 The 1,800-model fixture ran nine trials after two warm-up runs. The median for 64 warm model lookups fell from 54.76 ms to 0.06 ms, with ranges of 54.37–57.72 ms and 0.04–0.08 ms. The median for 16 full catalog copies fell from 13.65 ms to 12.58 ms. The first selected-model lookup took 1.79 ms, down from 2.93 ms. The fixture used a simulated file read and included JSON parsing and validation. The regression tests verify that changes to returned model metadata and catalogs cannot change later cache results.
 
+### Router provider model lookups
+
+LiteLLM, OpenCode Go, Kenari, NanoGPT, and Vercel AI Gateway now copy only the selected entry on synchronous model lookups. A missing entry makes no copy and keeps the configured model ID and zero-price fallback. The first lookup can still read and validate a saved catalog on disk. The cache keeps its copy separate from each handler.
+
+The LiteLLM fixture saved 1,800 models in a 1,057,291-byte file. It alternated the baseline and new implementations over ten paired trials after three warm-up pairs, using the same storage, cache, and model profile. It compared cold disk lookup and eight full catalog copies with a 1 ms median regression limit. Neither crossed that limit. All requests stayed on the saved catalog.
+
+| Workload                              | Median before (ms) | Median after (ms) | Range before (ms) | Range after (ms) |
+| ------------------------------------- | -----------------: | ----------------: | ----------------: | ---------------: |
+| 64 warm lookups across fresh handlers |              77.29 |             0.092 |       71.96–87.80 |      0.079–0.110 |
+| 64 warm lookups for a missing model   |              69.67 |             0.027 |       66.22–75.02 |      0.024–0.041 |
+| One cold disk lookup                  |               3.36 |              2.14 |         3.00–4.45 |        1.92–3.00 |
+| Eight full catalog copies             |               8.25 |              8.21 |         7.79–8.98 |        7.71–8.73 |
+
+Two before-change tests observed a full catalog copy. The corrected tests cover memory and cold disk reads, absent metadata, and isolation from changes to returned data. The corrected build passed 731 focused tests and 45 distribution checks. Host type and lint checks passed. The VSIX build used Node 24.22.3.
+
 ## OpenCode Go model limits
 
 Curated OpenCode Go models use the registry context window in live catalogs, when the host reads a saved catalog, and while the handler waits for model metadata. Models outside the registry use the live context window when available. The fetcher reads nested limits and image input types, and accepts flat fields from older responses. It lists chat models and entries without a type. A catalog refresh applies the type filter to new data because older cache files contain no model types. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2646) · [Public model catalog](https://opencode.ai/zen/go/v1/models)

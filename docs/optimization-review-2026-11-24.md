@@ -270,6 +270,14 @@ Curated OpenCode Go models use the registry context window in live catalogs, whe
 
 Regression tests reproduced the 200,000-token window for a 1,000,000-token model through both cold disk readers and before the provider loads a catalog. They also cover nested and flat fields, an image MIME type, and embedding and decision entries. The production fetcher returned 31 chat models from the public endpoint and reported a 1,000,000-token context window, a 384,000-token output limit, and image support for DeepSeek V4.1 Flash.
 
+## OpenRouter prompt caching
+
+OpenRouter requests can now use explicit cache markers for Claude models when the catalog reports cache support. Gemini models also need a cache-write price. If the user pins an endpoint, its entry supplies the capability. Model IDs in the existing cache list retain their previous behavior. The change uses the catalog that the request already loads. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2664) · [OpenRouter caching guide](https://openrouter.ai/docs/guides/best-practices/prompt-caching)
+
+Three request tests failed before the fix. They cover Claude and Gemini model entries and a pinned endpoint. The other cases cover implicit caching, missing metadata, and legacy compatibility. The tests check the exact directives, including when the handler omits the TTL. All 128 focused tests and 45 distribution checks passed. Host type and lint checks passed. The VSIX build used Node 24.22.3.
+
+With non-loopback traffic blocked, the installed VSIX loaded a mock catalog and sent both system and user cache markers for an unlisted Claude model. It completed the task and reopened the saved result. This run checked the request body and did not measure provider cache hits or costs.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

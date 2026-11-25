@@ -484,7 +484,7 @@ describe("OpenRouterHandler", () => {
 			)
 		})
 
-		describe("prompt cache TTL", () => {
+		describe("prompt caching", () => {
 			const mockStreamWithUsage = () =>
 				asyncStreamFrom([
 					{ id: "test-id", choices: [{ delta: { content: "test response" } }] },
@@ -520,6 +520,92 @@ describe("OpenRouterHandler", () => {
 				walk(JSON.parse(JSON.stringify(body)))
 				return found
 			}
+
+			const noCache: ModelInfo = { maxTokens: 8192, contextWindow: 200000, supportsPromptCache: false }
+			const cachedReads: ModelInfo = { ...noCache, supportsPromptCache: true, cacheReadsPrice: 0.3 }
+			const cachedWrites: ModelInfo = { ...cachedReads, cacheWritesPrice: 3.75 }
+			const claudeId = "anthropic/claude-catalog-fixture"
+			const geminiId = "google/gemini-catalog-fixture"
+			const pinnedProvider = "pinned-provider"
+
+			it.each([
+				{ scenario: "a Claude catalog entry", modelId: claudeId, modelInfo: cachedReads, markers: 2 },
+				{
+					scenario: "a Gemini catalog entry with explicit cache writes",
+					modelId: geminiId,
+					provider: OPENROUTER_DEFAULT_PROVIDER_NAME,
+					modelInfo: { ...cachedWrites, promptCacheTtlSupport: ["5m", "1h"] } satisfies ModelInfo,
+					markers: 1,
+				},
+				{
+					scenario: "a Gemini entry with implicit caching",
+					modelId: geminiId,
+					modelInfo: cachedReads,
+					markers: 0,
+				},
+				{
+					scenario: "an OpenAI entry with automatic caching",
+					modelId: "openai/gpt-4o",
+					modelInfo: cachedReads,
+					markers: 0,
+				},
+				{ scenario: "an absent catalog entry", modelId: claudeId, markers: 0 },
+				{
+					scenario: "a cache-capable pinned endpoint",
+					modelId: claudeId,
+					provider: pinnedProvider,
+					endpointInfo: cachedReads,
+					markers: 2,
+				},
+				{
+					scenario: "a pinned endpoint without cache support",
+					modelId: claudeId,
+					provider: pinnedProvider,
+					modelInfo: cachedWrites,
+					endpointInfo: noCache,
+					markers: 0,
+				},
+				{
+					scenario: "a missing pinned endpoint",
+					modelId: claudeId,
+					provider: pinnedProvider,
+					modelInfo: cachedWrites,
+					markers: 0,
+				},
+				{
+					scenario: "a legacy model with an incomplete catalog entry",
+					modelId: "anthropic/claude-sonnet-4",
+					modelInfo: noCache,
+					markers: 2,
+				},
+			])(
+				"sends $markers cache markers for $scenario",
+				async ({ modelId, provider, modelInfo, endpointInfo, markers }) => {
+					const { getModels } = await import("../fetchers/modelCache")
+					vitest.mocked(getModels).mockResolvedValueOnce(modelInfo ? { [modelId]: modelInfo } : {})
+					mockGetModelEndpoints.mockResolvedValueOnce(
+						endpointInfo ? { [pinnedProvider]: endpointInfo } : { "other-provider": cachedWrites },
+					)
+					const handler = new OpenRouterHandler(
+						makeApiHandlerOptions({
+							...mockOptions,
+							openRouterModelId: modelId,
+							openRouterSpecificProvider: provider,
+							promptCacheTtl: "1h",
+						}),
+					)
+					const mockCreate = vitest.fn().mockResolvedValue(mockStreamWithUsage())
+					stubChatCreate(mockCreate)
+
+					await collectStream(
+						handler.createMessage("test system prompt", [{ role: "user", content: "test message" }]),
+					)
+
+					expect(cacheControlsIn(requestBody(mockCreate))).toEqual(
+						Array.from({ length: markers }, () => ({ type: "ephemeral" })),
+					)
+				},
+			)
 
 			it("emits no ttl key when the knob is unset", async () => {
 				const handler = new OpenRouterHandler(

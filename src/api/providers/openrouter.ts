@@ -302,10 +302,17 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			})
 		}
 
-		// https://openrouter.ai/docs/features/prompt-caching
-		// TODO: Add a `promptCacheStratey` field to `ModelInfo`.
-		if (OPEN_ROUTER_PROMPT_CACHING_MODELS.has(modelId)) {
-			if (modelId.startsWith("google")) {
+		// Use the selected route's catalog entry. Default metadata can describe another model.
+		const endpoint = this.hasSpecificProvider ? this.options.openRouterSpecificProvider : undefined
+		const catalog = endpoint ? this.endpoints : this.models
+		const catalogKey = endpoint ?? modelId
+		const cacheInfo = Object.hasOwn(catalog, catalogKey) ? catalog[catalogKey] : undefined
+		// Gemini can advertise cache reads for implicit caching. Explicit writes have separate pricing.
+		const supportsExplicitCaching =
+			cacheInfo?.supportsPromptCache &&
+			(modelId.startsWith("anthropic/") || (isGemini && cacheInfo.cacheWritesPrice !== undefined))
+		if (supportsExplicitCaching || OPEN_ROUTER_PROMPT_CACHING_MODELS.has(modelId)) {
+			if (isGemini) {
 				// Gemini markers keep their default TTL: ADR-0006 scopes the knob to
 				// Anthropic-shaped markers only, and Gemini has no 1h class.
 				addGeminiCacheBreakpoints(systemPrompt, openAiMessages)

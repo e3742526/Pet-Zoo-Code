@@ -7,6 +7,13 @@ import { baseProviderSettingsShape, createModelIdAccessor, createProviderDefinit
 // https://openrouter.ai/models?order=newest&supported_parameters=tools
 export const openRouterDefaultModelId = "anthropic/claude-sonnet-4.5"
 
+export const OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1"
+
+export function canSignInToOpenRouter(baseUrl?: string): boolean {
+	const configuredUrl = baseUrl?.trim()
+	return !configuredUrl || configuredUrl.replace(/\/+$/, "") === OPENROUTER_API_BASE_URL
+}
+
 export const openRouterDefaultModelInfo: ModelInfo = {
 	maxTokens: 8192,
 	contextWindow: 200_000,

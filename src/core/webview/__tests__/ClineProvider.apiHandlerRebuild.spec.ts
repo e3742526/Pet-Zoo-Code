@@ -12,8 +12,14 @@ import type { Mode } from "../../../shared/modes"
 import { Task, TaskOptions } from "../../task/Task"
 import { ClineProvider } from "../ClineProvider"
 import { providerIdentifiers } from "@roo-code/types/provider-identifiers"
+import { exchangeOpenRouterAuthorization, requestOpenRouterAuthorization } from "../../../integrations/openrouter/oauth"
 
 // Mock setup
+vi.mock("../../../integrations/openrouter/oauth", () => ({
+	requestOpenRouterAuthorization: vi.fn(),
+	exchangeOpenRouterAuthorization: vi.fn(),
+}))
+
 vi.mock("fs/promises", () => ({
 	mkdir: vi.fn().mockResolvedValue(undefined),
 	writeFile: vi.fn().mockResolvedValue(undefined),
@@ -414,6 +420,73 @@ describe("ClineProvider - API Handler Rebuild Guard", () => {
 
 			// Should not call buildApiHandler when there's no task
 			expect(buildApiHandlerMock).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("signInToOpenRouter", () => {
+		const profile = {
+			name: "test-config",
+			id: "test-id",
+			apiProvider: providerIdentifiers.openrouter,
+			openRouterModelId: "openai/gpt-4",
+		}
+
+		beforeEach(async () => {
+			await provider.contextProxy.setValue("currentApiConfigName", profile.name)
+			provider.providerSettingsManager.getProfile = vi.fn().mockResolvedValue(profile)
+			vi.mocked(requestOpenRouterAuthorization).mockReset().mockResolvedValue({
+				code: "mock-code",
+				verifier: "mock-verifier",
+			})
+			vi.mocked(exchangeOpenRouterAuthorization).mockReset().mockResolvedValue("mock-key")
+		})
+
+		it("saves the key in the selected profile and keeps its latest model", async () => {
+			vi.mocked(exchangeOpenRouterAuthorization).mockImplementation(async () => {
+				vi.mocked(provider.providerSettingsManager.getProfile).mockResolvedValue({
+					...profile,
+					openRouterModelId: "openai/gpt-5",
+				})
+				return "mock-key"
+			})
+			await provider.signInToOpenRouter()
+			expect(exchangeOpenRouterAuthorization).toHaveBeenCalledWith("mock-code", "mock-verifier")
+			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith(
+				"test-config",
+				expect.objectContaining({ openRouterApiKey: "mock-key", openRouterModelId: "openai/gpt-5" }),
+			)
+		})
+
+		it("keeps browser sign-in on the official endpoint", async () => {
+			vi.mocked(provider.providerSettingsManager.getProfile).mockResolvedValue({
+				...profile,
+				openRouterBaseUrl: "https://proxy.example/v1",
+			})
+			await provider.signInToOpenRouter()
+			expect(requestOpenRouterAuthorization).not.toHaveBeenCalled()
+			expect(provider.providerSettingsManager.saveConfig).not.toHaveBeenCalled()
+		})
+
+		it("ends sign-in before exchange if the active profile changes during authorization", async () => {
+			vi.mocked(requestOpenRouterAuthorization).mockImplementation(async () => {
+				await provider.contextProxy.setValue("currentApiConfigName", "another")
+				return { code: "mock-code", verifier: "mock-verifier" }
+			})
+			await provider.signInToOpenRouter()
+			expect(exchangeOpenRouterAuthorization).not.toHaveBeenCalled()
+			expect(provider.providerSettingsManager.saveConfig).not.toHaveBeenCalled()
+		})
+
+		it("keeps an API key saved during the exchange", async () => {
+			vi.mocked(exchangeOpenRouterAuthorization).mockImplementation(async () => {
+				vi.mocked(provider.providerSettingsManager.getProfile).mockResolvedValue({
+					...profile,
+					openRouterApiKey: "new-key",
+				})
+				return "mock-key"
+			})
+			await provider.signInToOpenRouter()
+			expect(provider.providerSettingsManager.saveConfig).not.toHaveBeenCalled()
 		})
 	})
 

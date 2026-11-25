@@ -147,6 +147,10 @@
 			"success_other": "{{count}} riwayat tugas Roo Code berhasil diimpor ke Zoo Code."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Tempel kode otorisasi dari OpenRouter.",
+		"retry": "Mulai ulang proses masuk ke OpenRouter dari pengaturan atau masukkan kunci API."
+	},
 	"zooHistoryImport": {
 		"title": "Impor riwayat tugas Zoo Code",
 		"nothingFound": "Tidak ada riwayat tugas untuk {{domain}}.",

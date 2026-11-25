@@ -13,10 +13,8 @@ export const handleUri = async (uri: vscode.Uri) => {
 
 	switch (path) {
 		case "/openrouter": {
-			if (!visibleProvider) return
-			const code = query.get("code")
-			if (code) {
-				await visibleProvider.handleOpenRouterCallback(code)
+			if (query.has("code")) {
+				void vscode.window.showInformationMessage(t("common:openRouterSignIn.retry"))
 			}
 			break
 		}

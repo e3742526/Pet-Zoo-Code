@@ -152,6 +152,10 @@
 			"success_other": "已将 {{count}} 条 Roo Code 任务历史记录导入 Zoo Code。"
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "粘贴 OpenRouter 的授权码。",
+		"retry": "请在设置中重新登录 OpenRouter，或输入 API 密钥。"
+	},
 	"zooHistoryImport": {
 		"title": "导入 Zoo Code 任务历史",
 		"nothingFound": "未找到 {{domain}} 的任务历史。",

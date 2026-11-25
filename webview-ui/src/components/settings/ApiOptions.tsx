@@ -471,7 +471,6 @@ const ApiOptions = ({
 							setApiConfigurationField={setApiConfigurationField}
 							routerModels={routerModels}
 							selectedModelId={selectedModelId}
-							uriScheme={uriScheme}
 							simplifySettings={fromWelcomeView}
 							organizationAllowList={organizationAllowList}
 							modelValidationError={modelValidationError}

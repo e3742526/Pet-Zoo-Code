@@ -153,6 +153,10 @@
 			"success_other": "Zaimportowano {{count}} historii zadań Roo Code do Zoo Code."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Wklej kod autoryzacji z OpenRouter.",
+		"retry": "Rozpocznij logowanie do OpenRouter ponownie w ustawieniach lub wpisz klucz API."
+	},
 	"zooHistoryImport": {
 		"title": "Importuj historię zadań z Zoo Code",
 		"nothingFound": "Nie znaleziono historii zadań dla {{domain}}.",

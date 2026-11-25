@@ -56,6 +56,7 @@ import {
 	RooCodeEventName,
 	requestyDefaultModelId,
 	openRouterDefaultModelId,
+	canSignInToOpenRouter,
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
@@ -329,6 +330,7 @@ export class ClineProvider
 	private taskHistoryInitialization?: Promise<void>
 	public static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
 	private providerProfileMutationQueue = Promise.resolve()
+	private openRouterSignInPending = false
 	private historyTaskCreationQueue = Promise.resolve()
 
 	private runDelegationTransition<T>(parentTaskId: string, fn: () => Promise<T>): Promise<T> {
@@ -2571,38 +2573,58 @@ export class ClineProvider
 
 	// OpenRouter
 
-	async handleOpenRouterCallback(code: string) {
-		const { apiConfiguration, currentApiConfigName = "default" } = await this.getState()
-
-		let apiKey: string
-
+	async signInToOpenRouter(): Promise<void> {
+		if (this.openRouterSignInPending) return
+		this.openRouterSignInPending = true
 		try {
-			const baseUrl = apiConfiguration.openRouterBaseUrl || "https://openrouter.ai/api/v1"
-			// Extract the base domain for the auth endpoint.
-			const baseUrlDomain = baseUrl.match(/^(https?:\/\/[^/]+)/)?.[1] || "https://openrouter.ai"
-			const response = await axios.post(`${baseUrlDomain}/api/v1/auth/keys`, { code })
-
-			if (response.data && response.data.key) {
-				apiKey = response.data.key
-			} else {
-				throw new Error("Invalid response from OpenRouter API")
+			const name = this.contextProxy.getValue("currentApiConfigName") ?? "default"
+			const original = await this.providerSettingsManager.getProfile({ name })
+			const getSignInProfile = async () => {
+				const profile = await this.providerSettingsManager.getProfile({ name })
+				if (
+					profile.id !== original.id ||
+					(this.contextProxy.getValue("currentApiConfigName") ?? "default") !== name ||
+					profile.apiProvider !== original.apiProvider ||
+					profile.openRouterApiKey ||
+					!canSignInToOpenRouter(profile.openRouterBaseUrl)
+				) {
+					throw new Error("OpenRouter sign-in requires the same profile and the default endpoint.")
+				}
+				return profile
 			}
-		} catch (error) {
-			this.log(
-				`Error exchanging code for API key: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+
+			await getSignInProfile()
+			const { requestOpenRouterAuthorization, exchangeOpenRouterAuthorization } =
+				await import("../../integrations/openrouter/oauth")
+			const authorization = await requestOpenRouterAuthorization()
+			if (!authorization) return
+
+			await getSignInProfile()
+			const apiKey = await exchangeOpenRouterAuthorization(authorization.code, authorization.verifier)
+			await this.enqueueProviderProfileMutation(
+				async (signal) => {
+					const { name: _profileName, ...profile } = await getSignInProfile()
+					await this.persistProviderProfile(
+						name,
+						{
+							...profile,
+							apiProvider: providerIdentifiers.openrouter,
+							openRouterBaseUrl: undefined,
+							openRouterApiKey: apiKey,
+							openRouterModelId: profile.openRouterModelId || openRouterDefaultModelId,
+						},
+						true,
+						signal,
+					)
+				},
+				{ runToCompletion: true },
 			)
-
-			throw error
+		} catch {
+			// Authorization codes, the verifier, and provider responses can contain credentials.
+			void vscode.window.showErrorMessage(t("common:openRouterSignIn.retry"))
+		} finally {
+			this.openRouterSignInPending = false
 		}
-
-		const newConfiguration: ProviderSettings = {
-			...apiConfiguration,
-			apiProvider: providerIdentifiers.openrouter,
-			openRouterApiKey: apiKey,
-			openRouterModelId: apiConfiguration?.openRouterModelId || openRouterDefaultModelId,
-		}
-
-		await this.upsertProviderProfile(currentApiConfigName, newConfiguration)
 	}
 
 	// Requesty

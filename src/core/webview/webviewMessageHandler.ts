@@ -2941,6 +2941,9 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebviewWithoutClineMessages()
 			await provider.postMessageToWebview({ type: "authenticatedUser", userInfo: undefined })
 			break
+		case "openRouterSignIn":
+			await provider.signInToOpenRouter()
+			break
 		case "openAiCodexSignIn": {
 			try {
 				const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")

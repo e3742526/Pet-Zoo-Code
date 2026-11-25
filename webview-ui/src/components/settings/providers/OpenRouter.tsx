@@ -1,17 +1,18 @@
 import { useCallback, useState } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
 	type ProviderSettings,
 	type OrganizationAllowList,
 	type RouterModels,
+	canSignInToOpenRouter,
+	OPENROUTER_API_BASE_URL,
 	openRouterDefaultModelId,
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { getOpenRouterAuthUrl } from "@src/oauth/urls"
-import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
+import { vscode } from "@src/utils/vscode"
 
 import { inputEventTransform } from "../transforms"
 
@@ -23,7 +24,6 @@ type OpenRouterProps = {
 	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
 	routerModels?: RouterModels
 	selectedModelId: string
-	uriScheme: string | undefined
 	simplifySettings?: boolean
 	organizationAllowList: OrganizationAllowList
 	modelValidationError?: string
@@ -33,7 +33,6 @@ export const OpenRouter = ({
 	apiConfiguration,
 	setApiConfigurationField,
 	routerModels,
-	uriScheme,
 	simplifySettings,
 	organizationAllowList,
 	modelValidationError,
@@ -74,10 +73,13 @@ export const OpenRouter = ({
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
-			{!apiConfiguration.openRouterApiKey && (
-				<VSCodeButtonLink href={getOpenRouterAuthUrl(uriScheme)} style={{ width: "100%" }} appearance="primary">
+			{!apiConfiguration.openRouterApiKey && canSignInToOpenRouter(apiConfiguration.openRouterBaseUrl) && (
+				<VSCodeButton
+					onClick={() => vscode.postMessage({ type: "openRouterSignIn" })}
+					style={{ width: "100%" }}
+					appearance="primary">
 					{t("settings:providers.getOpenRouterApiKey")}
-				</VSCodeButtonLink>
+				</VSCodeButton>
 			)}
 			{!simplifySettings && (
 				<div>
@@ -98,7 +100,7 @@ export const OpenRouter = ({
 							type="url"
 							onInput={handleInputChange("openRouterBaseUrl")}
 							placeholder={t("settings:placeholders.defaultValue", {
-								value: "https://openrouter.ai/api/v1",
+								value: OPENROUTER_API_BASE_URL,
 							})}
 							className="w-full mt-1"
 						/>

@@ -149,6 +149,10 @@
 			"success_other": "{{count}} Roo Code कार्य इतिहास Zoo Code में आयात किए।"
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "OpenRouter का प्राधिकरण कोड चिपकाएँ।",
+		"retry": "सेटिंग से फिर से OpenRouter में साइन इन करें या API कुंजी दर्ज करें।"
+	},
 	"zooHistoryImport": {
 		"title": "Zoo Code का कार्य इतिहास आयात करें",
 		"nothingFound": "{{domain}} का कोई कार्य इतिहास नहीं मिला।",

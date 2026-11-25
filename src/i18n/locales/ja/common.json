@@ -147,6 +147,10 @@
 			"success_other": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。"
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "OpenRouter の認証コードを貼り付けてください。",
+		"retry": "設定から OpenRouter へのサインインをやり直すか、API キーを入力してください。"
+	},
 	"zooHistoryImport": {
 		"title": "Zoo Code のタスク履歴をインポート",
 		"nothingFound": "{{domain}} のタスク履歴が見つかりませんでした。",

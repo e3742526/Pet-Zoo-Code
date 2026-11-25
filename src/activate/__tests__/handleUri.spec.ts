@@ -37,9 +37,8 @@ vi.mock("../../i18n", async () => {
 import * as vscode from "vscode"
 
 const { mockGetVisibleInstance, mockVisibleProvider } = vi.hoisted(() => {
-	// Visible provider double provides the OpenRouter, Requesty, callbacks.
+	// Visible provider double provides the Requesty callback.
 	const mockVisibleProvider = {
-		handleOpenRouterCallback: vi.fn(),
 		handleRequestyCallback: vi.fn(),
 	} as unknown as ClineProvider
 
@@ -68,17 +67,18 @@ describe("handleUri", () => {
 		mockGetVisibleInstance.mockReturnValue(mockVisibleProvider)
 	})
 
-	it.each(["/openrouter", "/requesty"])("dispatches %s codes without losing literal plus signs", async (path) => {
-		mockShowWarningMessage.mockImplementation(async () => "Activate Requesty")
-		await handleUri(makeUri({ path, query: "code=a+b%2Bc&baseUrl=https%3A%2F%2Fexample.com" }))
+	it("passes Requesty codes without losing literal plus signs", async () => {
+		mockShowWarningMessage.mockResolvedValue("Activate Requesty")
+		await handleUri(makeUri({ path: "/requesty", query: "code=a+b%2Bc&baseUrl=https%3A%2F%2Fexample.com" }))
+		expect(mockVisibleProvider.handleRequestyCallback).toHaveBeenCalledWith("a+b+c", "https://example.com")
+	})
 
-		if (path === "/openrouter") {
-			expect(mockVisibleProvider.handleOpenRouterCallback).toHaveBeenCalledWith("a+b+c")
-			expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
-		} else {
-			expect(mockVisibleProvider.handleRequestyCallback).toHaveBeenCalledWith("a+b+c", "https://example.com")
-			expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
-		}
+	it("directs old OpenRouter callbacks to the new sign-in flow", async () => {
+		await handleUri(makeUri({ path: "/openrouter", query: "code=test-code" }))
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+			"Start OpenRouter sign-in again from settings or enter an API key.",
+		)
+		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 	})
 
 	it("passes null when Requesty has no base URL", async () => {
@@ -170,10 +170,9 @@ describe("handleUri", () => {
 		expect(mockVisibleProvider.handleRequestyCallback).toHaveBeenCalledWith("test-code", null)
 	})
 
-	it.each(["/openrouter", "/requesty"])("ignores %s when no provider is visible", async (path) => {
+	it("ignores Requesty when no provider is visible", async () => {
 		mockGetVisibleInstance.mockReturnValue(null)
-		await handleUri(makeUri({ path, query: "code=test-code" }))
-		expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
+		await handleUri(makeUri({ path: "/requesty", query: "code=test-code" }))
 		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 	})
 
@@ -181,7 +180,6 @@ describe("handleUri", () => {
 		"ignores %s without callback credentials",
 		async (path) => {
 			await handleUri(makeUri({ path, query: "" }))
-			expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
 			expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 		},
 	)
@@ -194,7 +192,6 @@ describe("handleUri", () => {
 			}),
 		)
 
-		expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
 		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
 			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
@@ -204,7 +201,6 @@ describe("handleUri", () => {
 	it("ignores credentials sent to the retired Zoo login callback", async () => {
 		await handleUri(makeUri({ path: "/auth-callback", query: "token=retired-token" }))
 
-		expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
 		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 	})

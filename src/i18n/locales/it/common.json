@@ -151,6 +151,10 @@
 			"success_other": "Importate {{count}} cronologie di attività Roo Code in Zoo Code."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Incolla il codice di autorizzazione di OpenRouter.",
+		"retry": "Avvia di nuovo l’accesso a OpenRouter dalle impostazioni oppure inserisci una chiave API."
+	},
 	"zooHistoryImport": {
 		"title": "Importa la cronologia delle attività di Zoo Code",
 		"nothingFound": "Non è stata trovata alcuna cronologia delle attività per {{domain}}.",

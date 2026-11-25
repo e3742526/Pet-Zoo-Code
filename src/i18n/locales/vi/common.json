@@ -147,6 +147,10 @@
 			"success_other": "Đã nhập {{count}} lịch sử nhiệm vụ Roo Code vào Zoo Code."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Dán mã ủy quyền từ OpenRouter.",
+		"retry": "Bắt đầu đăng nhập lại vào OpenRouter từ phần cài đặt hoặc nhập khóa API."
+	},
 	"zooHistoryImport": {
 		"title": "Nhập lịch sử tác vụ từ Zoo Code",
 		"nothingFound": "Không tìm thấy lịch sử tác vụ của {{domain}}.",

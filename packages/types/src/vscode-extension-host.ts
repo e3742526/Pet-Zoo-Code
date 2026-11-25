@@ -652,6 +652,7 @@ export interface WebviewMessage {
 		| "rooCloudSignOut"
 		| "rooCloudManualUrl"
 		| "openAiCodexSignIn"
+		| "openRouterSignIn"
 		| "openAiCodexSignOut"
 		| "kimiCodeSignIn"
 		| "kimiCodeSignOut"

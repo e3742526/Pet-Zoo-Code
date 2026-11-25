@@ -149,6 +149,10 @@
 			"success_other": "{{count}} Roo Code-taakgeschiedenissen geïmporteerd in Zoo Code."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Plak de autorisatiecode van OpenRouter.",
+		"retry": "Meld je opnieuw aan bij OpenRouter via de instellingen of voer een API-sleutel in."
+	},
 	"zooHistoryImport": {
 		"title": "Taakgeschiedenis uit Zoo Code importeren",
 		"nothingFound": "Geen taakgeschiedenis gevonden voor {{domain}}.",

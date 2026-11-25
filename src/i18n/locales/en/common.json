@@ -149,6 +149,10 @@
 			"signInUnavailable": "Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Paste the authorization code from OpenRouter.",
+		"retry": "Start OpenRouter sign-in again from settings or enter an API key."
+	},
 	"zooHistoryImport": {
 		"title": "Import Zoo Code task history",
 		"nothingFound": "No task history was found for {{domain}}.",

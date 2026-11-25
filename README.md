@@ -174,7 +174,9 @@ If you prefer to install the VSIX package manually:
 1. In Zoo Code, complete or stop active tasks. Open **Settings → About** and select **Export** under **Manage Settings**. Import the file from the same screen in Pet Zoo Code. Treat the export as private because it can contain provider API keys.
 2. Copy any VS Code settings you want to keep from `zoo-code.*` to `pet-zoo-code.*`. Use a different custom storage folder for each extension.
 3. Run **Pet Zoo Code: Import Zoo Code Task History** from the Command Palette. Pet Zoo Code copies saved task history and conversations into its own store and skips tasks already present. Checkpoint repositories stay in the original store.
-4. Sign in again to any subscription providers that you use. For an installation with administrator policy, ask the administrator to apply the policy to Pet Zoo Code before using it.
+4. Sign in again to any subscription providers that you use. For OpenRouter, use **Get OpenRouter API Key** and paste the authorization code from the browser. For a custom OpenRouter endpoint, enter the API key for that endpoint.
+
+For a managed installation, the administrator can supply the same provider allowlist through `ROO_CODE_CLOUD_ORG_SETTINGS` before launching VS Code. The variable takes a base64-encoded JSON object with `allowList` and an optional `version`. This also covers installations that only have a policy cached under the old extension ID.
 
 ---
 

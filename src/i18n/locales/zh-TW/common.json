@@ -147,6 +147,10 @@
 			"success_other": "已將 {{count}} 筆 Roo Code 工作歷史記錄匯入 Zoo Code。"
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "貼上 OpenRouter 的授權碼。",
+		"retry": "請在設定中重新登入 OpenRouter，或輸入 API 金鑰。"
+	},
 	"zooHistoryImport": {
 		"title": "匯入 Zoo Code 工作記錄",
 		"nothingFound": "找不到 {{domain}} 的工作記錄。",

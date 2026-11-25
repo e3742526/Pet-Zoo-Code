@@ -149,6 +149,10 @@
 			"success_other": "{{count}} Roo Code-Aufgabenverläufe in Zoo Code importiert."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Füge den Autorisierungscode von OpenRouter ein.",
+		"retry": "Starte die OpenRouter-Anmeldung in den Einstellungen erneut oder gib einen API-Schlüssel ein."
+	},
 	"zooHistoryImport": {
 		"title": "Aufgabenverlauf aus Zoo Code importieren",
 		"nothingFound": "Für {{domain}} wurde kein Aufgabenverlauf gefunden.",

@@ -149,6 +149,10 @@
 			"success_other": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "OpenRouter yetkilendirme kodunu yapıştırın.",
+		"retry": "Ayarlardan OpenRouter oturum açma işlemini yeniden başlatın veya bir API anahtarı girin."
+	},
 	"zooHistoryImport": {
 		"title": "Zoo Code görev geçmişini içe aktar",
 		"nothingFound": "{{domain}} için görev geçmişi bulunamadı.",

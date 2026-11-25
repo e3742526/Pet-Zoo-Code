@@ -7,6 +7,7 @@ import { type ModelInfo, type ProviderSettings, openAiModelInfoSaneDefaults } fr
 import { openAiCodexDefaultModelId, opencodeGoModels } from "@roo-code/types"
 
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { vscode } from "@src/utils/vscode"
 
 import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 
@@ -24,7 +25,9 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeLink: ({ children, href }: any) => <a href={href}>{children}</a>,
 	VSCodeRadio: ({ value, checked }: any) => <input type="radio" value={value} checked={checked} />,
 	VSCodeRadioGroup: ({ children }: any) => <div>{children}</div>,
-	VSCodeButton: ({ children }: any) => <div>{children}</div>,
+	VSCodeButton: ({ children, onClick }: Pick<React.ComponentProps<"button">, "children" | "onClick">) => (
+		<button onClick={onClick}>{children}</button>
+	),
 	VSCodeCheckbox: ({ children, checked, onChange }: any) => (
 		<label>
 			<input
@@ -318,6 +321,28 @@ const renderApiOptions = (props: Partial<ApiOptionsProps> = {}) => {
 }
 
 describe("ApiOptions", () => {
+	it("starts OpenRouter sign-in through the extension host", () => {
+		const postMessage = vi.spyOn(vscode, "postMessage").mockImplementation(() => undefined)
+		try {
+			renderApiOptions({ apiConfiguration: { apiProvider: providerIdentifiers.openrouter } })
+			fireEvent.click(screen.getByRole("button", { name: "settings:providers.getOpenRouterApiKey" }))
+			expect(postMessage).toHaveBeenCalledWith({ type: "openRouterSignIn" })
+		} finally {
+			postMessage.mockRestore()
+		}
+	})
+
+	it("keeps manual key entry available for a custom OpenRouter endpoint", () => {
+		renderApiOptions({
+			apiConfiguration: {
+				apiProvider: providerIdentifiers.openrouter,
+				openRouterBaseUrl: "https://proxy.example/v1",
+			},
+		})
+		expect(screen.queryByRole("button", { name: "settings:providers.getOpenRouterApiKey" })).not.toBeInTheDocument()
+		expect(screen.getByText("settings:providers.openRouterApiKey")).toBeInTheDocument()
+	})
+
 	it("resets model to provider default when switching to openai-codex with an invalid prior apiModelId", () => {
 		const mockSetApiConfigurationField = vi.fn()
 

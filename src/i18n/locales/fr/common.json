@@ -151,6 +151,10 @@
 			"success_other": "{{count}} historiques de tâches Roo Code importés dans Zoo Code."
 		}
 	},
+	"openRouterSignIn": {
+		"pasteCode": "Collez le code d’autorisation fourni par OpenRouter.",
+		"retry": "Relancez la connexion à OpenRouter depuis les paramètres ou saisissez une clé API."
+	},
 	"zooHistoryImport": {
 		"title": "Importer l’historique des tâches de Zoo Code",
 		"nothingFound": "Aucun historique de tâches trouvé pour {{domain}}.",

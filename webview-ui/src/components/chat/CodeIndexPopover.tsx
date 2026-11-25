@@ -605,6 +605,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		undefined,
 		{
 			enabled:
+				open &&
 				currentSettings.codebaseIndexEmbedderProvider === providerIdentifiers.openrouter &&
 				!!currentSettings.codebaseIndexEmbedderModelId,
 		},

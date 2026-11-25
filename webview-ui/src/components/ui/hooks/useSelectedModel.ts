@@ -4,6 +4,7 @@ import {
 	type ModelInfo,
 	type ModelRecord,
 	type RouterModels,
+	OPENROUTER_DEFAULT_PROVIDER_NAME,
 	anthropicModels,
 	bedrockModels,
 	deepSeekModels,
@@ -104,8 +105,13 @@ export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
 	const provider = apiConfiguration.apiProvider || providerIdentifiers.anthropic
 	const activeProvider: ProviderName | undefined = isRetiredProvider(provider) ? undefined : provider
 	const dynamicProvider = activeProvider && isDynamicProvider(activeProvider) ? activeProvider : undefined
-	const openRouterModelId =
-		activeProvider === providerIdentifiers.openrouter ? apiConfiguration.openRouterModelId : undefined
+	const openRouterProvider = apiConfiguration.openRouterSpecificProvider
+	const openRouterEndpointModelId =
+		activeProvider === providerIdentifiers.openrouter &&
+		openRouterProvider &&
+		openRouterProvider !== OPENROUTER_DEFAULT_PROVIDER_NAME
+			? apiConfiguration.openRouterModelId
+			: undefined
 	const openRouterBaseUrl =
 		activeProvider === providerIdentifiers.openrouter ? (apiConfiguration.openRouterBaseUrl ?? "") : undefined
 	const lmStudioModelId =
@@ -120,7 +126,10 @@ export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
 		...(openRouterBaseUrl !== undefined && { openRouterBaseUrl }),
 	})
 
-	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId, openRouterBaseUrl || undefined)
+	const openRouterModelProviders = useOpenRouterModelProviders(
+		openRouterEndpointModelId,
+		openRouterBaseUrl || undefined,
+	)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
 	const ollamaModels = useOllamaModels(ollamaModelId)
 	// Not part of readiness: until the host reports, the curated catalog describes the model.
@@ -129,7 +138,7 @@ export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
 
 	// Compute readiness only for the data actually needed for the selected provider
 	const needRouterModels = shouldFetchRouterModels
-	const needOpenRouterProviders = activeProvider === providerIdentifiers.openrouter
+	const needOpenRouterProviders = Boolean(openRouterEndpointModelId)
 	const needLmStudio = typeof lmStudioModelId !== "undefined"
 	const needOllama = typeof ollamaModelId !== "undefined"
 
@@ -162,7 +171,7 @@ export const useSelectedModel = (apiConfiguration: ProviderSettings) => {
 					provider: activeProvider,
 					apiConfiguration,
 					routerModels: (routerModels.data || {}) as RouterModels,
-					openRouterModelProviders: (openRouterModelProviders.data || {}) as Record<string, ModelInfo>,
+					openRouterModelProviders: needOpenRouterProviders ? (openRouterModelProviders.data ?? {}) : {},
 					lmStudioModels: (lmStudioModels.data || undefined) as ModelRecord | undefined,
 					ollamaModels: (ollamaModels.data || undefined) as ModelRecord | undefined,
 					copilotModels: copilotModels.data,

@@ -327,6 +327,24 @@ The regression tests reproduced duplicate requests in concurrent and outage case
 
 With non-loopback traffic blocked and the sidebar closed, the installed VSIX ran two tasks using the saved pinned endpoint limit after one failed discovery request. The second task reopened with its saved result. The settings picker uses its own discovery path. The build used Node 24.22.3.
 
+### OpenRouter endpoint requests in the sidebar
+
+The task host and sidebar use the model catalog when the provider is unset or `[default]`. A pinned provider still uses endpoint metadata. The code index looks up embedding providers when its settings popover opens.
+
+The webview reuses endpoint replies for the same model and base URL. A populated reply stays fresh for 30 seconds. An empty reply stays fresh for five seconds. When the view remounts after that interval, it can request an updated reply.
+
+| Webview fixture                                 | Requests before | Requests after |
+| ----------------------------------------------- | --------------: | -------------: |
+| Eight mounts with a populated reply             |               8 |              1 |
+| Eight mounts with an empty reply                |               8 |              1 |
+| Same model and base URL with two slash variants |               2 |              1 |
+
+The tests use the webview message count. A mount after the freshness interval makes one new request. Changing the model or server also makes one new request per selection.
+
+The installed VSIX completed and reopened an unpinned task with zero endpoint requests. Opening provider settings then made one endpoint request. In a separate run, two pinned tasks used the saved endpoint limit during an outage. The second task sent zero additional endpoint requests with the sidebar open, down from one in the prior build. Both runs used a local mock server and blocked non-loopback traffic.
+
+All 456 focused tests and 45 distribution checks passed. Host and webview type and lint checks passed with no new suppressions. All 560 packaged scripts matched the build. The build and tests used Node 24.22.3.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

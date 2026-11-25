@@ -156,10 +156,7 @@ describe("OpenRouterHandler", () => {
 
 	beforeEach(() => {
 		clearAllMocks()
-		// Endpoint records default to "not fetched" (same as the real guard for
-		// missing options); tests that exercise the specific-provider branch
-		// override this per test.
-		mockGetModelEndpoints.mockResolvedValue({})
+		mockGetModelEndpoints.mockReset().mockResolvedValue({})
 	})
 
 	it("initializes with correct options", () => {
@@ -1741,16 +1738,20 @@ describe("OpenRouterHandler", () => {
 			expect(mockGetModelEndpoints).toHaveBeenCalledTimes(3)
 		})
 
-		it("memoizes the default-provider load even when the endpoint catalog is empty", async () => {
-			const handler = new OpenRouterHandler(mockOptions)
+		it.each([undefined, OPENROUTER_DEFAULT_PROVIDER_NAME])(
+			"loads the model catalog once and skips endpoint discovery for provider %s",
+			async (openRouterSpecificProvider) => {
+				const { getCatalogModel } = await import("../fetchers/modelCache")
+				const handler = new OpenRouterHandler({ ...mockOptions, openRouterSpecificProvider })
 
-			await handler.ensureModelFetched()
-			await handler.ensureModelFetched()
+				await handler.ensureModelFetched()
+				await handler.ensureModelFetched()
 
-			// Without a selected provider the model-level catalog is what getModel()
-			// uses, so an empty endpoint response must not force a refetch.
-			expect(mockGetModelEndpoints).toHaveBeenCalledTimes(1)
-		})
+				expect(getCatalogModel).toHaveBeenCalledOnce()
+				expect(mockGetModelEndpoints).not.toHaveBeenCalled()
+				expect(handler.getModel().info.description).toBe("Claude 3.7 Sonnet")
+			},
+		)
 
 		it("keeps fallback metadata for an unlisted selection when the model catalog is populated", async () => {
 			const { getCatalogModel } = await import("../fetchers/modelCache")
@@ -1761,20 +1762,6 @@ describe("OpenRouterHandler", () => {
 
 			expect(getCatalogModel).toHaveBeenCalledOnce()
 			expect(handler.getModel()).toMatchObject({ id: "vendor/unlisted", info: openRouterDefaultModelInfo })
-		})
-
-		it("treats the [default] provider sentinel as the default provider", async () => {
-			const handler = new OpenRouterHandler(
-				makeApiHandlerOptions({
-					...mockOptions,
-					openRouterSpecificProvider: OPENROUTER_DEFAULT_PROVIDER_NAME,
-				}),
-			)
-
-			await handler.ensureModelFetched()
-			await handler.ensureModelFetched()
-
-			expect(mockGetModelEndpoints).toHaveBeenCalledTimes(1)
 		})
 	})
 })

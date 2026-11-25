@@ -18,6 +18,7 @@ import {
 	ModelInfo,
 	type ModelRecord,
 	type RouterModels,
+	OPENROUTER_DEFAULT_PROVIDER_NAME,
 	anthropicDefaultModelId,
 	anthropicModels,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
@@ -366,8 +367,33 @@ describe("useSelectedModel", () => {
 				enabled: true,
 				openRouterBaseUrl: baseUrl,
 			})
-			expect(mockUseOpenRouterModelProviders).toHaveBeenLastCalledWith(id, baseUrl)
+			expect(mockUseOpenRouterModelProviders).toHaveBeenLastCalledWith(undefined, baseUrl)
 		})
+
+		it.each([undefined, OPENROUTER_DEFAULT_PROVIDER_NAME])(
+			"uses the model catalog without an endpoint lookup for provider selection %s",
+			(openRouterSpecificProvider) => {
+				const id = "vendor/model"
+				const modelInfo: ModelInfo = { contextWindow: 65536, maxTokens: 4096, supportsPromptCache: false }
+				mockUseRouterModels.mockReturnValue(createRouterModelsResult({ openrouter: { [id]: modelInfo } }))
+				mockUseOpenRouterModelProviders.mockReturnValue(
+					createOpenRouterModelProvidersResult(undefined, { isLoading: true }),
+				)
+
+				const { result } = renderHook(
+					() =>
+						useSelectedModel({
+							apiProvider: providerIdentifiers.openrouter,
+							openRouterModelId: id,
+							openRouterSpecificProvider,
+						}),
+					{ wrapper: createWrapper() },
+				)
+
+				expect(mockUseOpenRouterModelProviders).toHaveBeenLastCalledWith(undefined, undefined)
+				expect(result.current).toMatchObject({ id, info: modelInfo, isLoading: false, isError: false })
+			},
+		)
 
 		it("should merge base model info with specific provider info when both exist", () => {
 			const baseModelInfo: ModelInfo = {
@@ -674,9 +700,15 @@ describe("useSelectedModel", () => {
 			)
 
 			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel({ apiProvider: providerIdentifiers.openrouter }), {
-				wrapper,
-			})
+			const { result } = renderHook(
+				() =>
+					useSelectedModel({
+						apiProvider: providerIdentifiers.openrouter,
+						openRouterModelId: "vendor/model",
+						openRouterSpecificProvider: "pinned",
+					}),
+				{ wrapper },
+			)
 
 			expect(result.current.isLoading).toBe(true)
 		})

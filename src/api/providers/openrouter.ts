@@ -620,23 +620,23 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		const id = this.options.openRouterModelId ?? openRouterDefaultModelId
 		const baseUrl = this.options.openRouterBaseUrl
 		const parentLoad = getCatalogModel({ provider: providerIdentifiers.openrouter, baseUrl }, this, id)
-		const [{ model, hasModels }, endpoints] = await Promise.all([
-			parentLoad,
-			getModelEndpoints(
-				{
-					router: providerIdentifiers.openrouter,
-					modelId: this.options.openRouterModelId,
-					endpoint: this.options.openRouterSpecificProvider,
-					baseUrl,
-				},
-				this,
-				parentLoad,
-			),
-		])
+		const endpointLoad = this.hasSpecificProvider
+			? getModelEndpoints(
+					{
+						router: providerIdentifiers.openrouter,
+						modelId: this.options.openRouterModelId,
+						endpoint: this.options.openRouterSpecificProvider,
+						baseUrl,
+					},
+					this,
+					parentLoad,
+				)
+			: undefined
+		const [{ model, hasModels }, endpoints] = await Promise.all([parentLoad, endpointLoad])
 
 		this.models = model ? { [id]: model } : {}
 		this.hasModelCatalog = hasModels
-		this.endpoints = endpoints
+		this.endpoints = endpoints ?? {}
 
 		return this.getModel()
 	}

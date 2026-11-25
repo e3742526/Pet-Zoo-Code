@@ -18,10 +18,14 @@ vi.mock("@src/components/ui", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@src/components/ui")>()
 	return {
 		...actual,
-		Popover: ({ children, onOpenChange }: React.PropsWithChildren<{ onOpenChange?: (open: boolean) => void }>) => {
-			React.useEffect(() => onOpenChange?.(true), [onOpenChange])
-			return <>{children}</>
-		},
+		Popover: ({ children, onOpenChange }: React.PropsWithChildren<{ onOpenChange?: (open: boolean) => void }>) => (
+			<>
+				<button type="button" onClick={() => onOpenChange?.(true)}>
+					Open code index settings
+				</button>
+				{children}
+			</>
+		),
 		PopoverContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 		Select: ({
 			children,
@@ -121,25 +125,26 @@ describe("CodeIndexPopover OpenRouter provider lookup", () => {
 		provider: EmbedderProvider,
 		modelId: string,
 		apiProvider?: ExtensionState["apiConfiguration"],
-	) =>
-		renderWithExtensionState(
-			<CodeIndexPopover indexingStatus={indexingStatus}>
-				<button>Open code index settings</button>
-			</CodeIndexPopover>,
-			{
-				state: {
-					codebaseIndexConfig: {
-						...baseSettings,
-						codebaseIndexEmbedderProvider: provider,
-						codebaseIndexEmbedderModelId: modelId,
-					},
-					codebaseIndexModels: {},
-					apiConfiguration: apiProvider,
-					platform: "darwin",
-					arch: "arm64",
-				} as Partial<ExtensionState>,
-			},
-		)
+		open = true,
+	) => {
+		renderWithExtensionState(<CodeIndexPopover indexingStatus={indexingStatus}>{null}</CodeIndexPopover>, {
+			state: {
+				codebaseIndexConfig: {
+					...baseSettings,
+					codebaseIndexEmbedderProvider: provider,
+					codebaseIndexEmbedderModelId: modelId,
+				},
+				codebaseIndexModels: {},
+				apiConfiguration: apiProvider,
+				platform: "darwin",
+				arch: "arm64",
+			} as Partial<ExtensionState>,
+		})
+
+		if (open) {
+			fireEvent.click(screen.getByRole("button", { name: "Open code index settings" }))
+		}
+	}
 
 	beforeEach(() => {
 		mockedUseOpenRouterModelProviders.mockClear()
@@ -184,8 +189,14 @@ describe("CodeIndexPopover OpenRouter provider lookup", () => {
 		expect(mockedUseOpenRouterModelProviders).toHaveBeenLastCalledWith("", undefined, { enabled: false })
 	})
 
-	it("loads providers for the selected OpenRouter embedding model", () => {
-		renderPopover(providerIdentifiers.openrouter, "openai/text-embedding-3-small")
+	it("loads providers for the selected OpenRouter embedding model only when the popover opens", () => {
+		renderPopover(providerIdentifiers.openrouter, "openai/text-embedding-3-small", undefined, false)
+
+		expect(mockedUseOpenRouterModelProviders).toHaveBeenLastCalledWith("openai/text-embedding-3-small", undefined, {
+			enabled: false,
+		})
+
+		fireEvent.click(screen.getByRole("button", { name: "Open code index settings" }))
 
 		expect(mockedUseOpenRouterModelProviders).toHaveBeenLastCalledWith("openai/text-embedding-3-small", undefined, {
 			enabled: true,

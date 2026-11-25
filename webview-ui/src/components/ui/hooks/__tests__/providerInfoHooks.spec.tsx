@@ -167,6 +167,75 @@ describe("provider info hooks", () => {
 		expect(vscode.postMessage).not.toHaveBeenCalled()
 	})
 
+	it.each([
+		{ name: "available endpoints", data: { pinned: { label: "pinned" } }, refreshAfter: 30_001 },
+		{ name: "an empty reply", data: {}, refreshAfter: 5_001 },
+	])("reuses $name when consumers remount until the reply expires", async ({ data, refreshAfter }) => {
+		const initialTime = Date.now()
+		const now = vi.spyOn(Date, "now").mockReturnValue(initialTime)
+		const { sent } = stubHost(() => ({ data }))
+		const queryClient = createTestQueryClient()
+		const sharedWrapper = ({ children }: React.PropsWithChildren) => (
+			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+		)
+		const visit = async () => {
+			const { result, unmount } = renderHook(
+				() => useOpenRouterModelProviders("vendor/model", "https://proxy.test/api/v1"),
+				{ wrapper: sharedWrapper },
+			)
+			try {
+				await waitFor(() => expect(result.current.fetchStatus).toBe("idle"))
+				expect(result.current.data).toEqual(data)
+			} finally {
+				unmount()
+			}
+		}
+
+		try {
+			for (let i = 0; i < 8; i++) await visit()
+			expect(sent).toHaveLength(1)
+
+			now.mockReturnValue(initialTime + refreshAfter)
+			await visit()
+			expect(sent).toHaveLength(2)
+		} finally {
+			queryClient.clear()
+		}
+	})
+
+	it("reuses equivalent endpoint URLs and keeps other model and server selections separate", async () => {
+		const { sent } = stubHost(({ modelId, baseUrl }) => ({
+			data: { pinned: { label: `${String(baseUrl).replace(/\/+$/, "")}/${modelId}` } },
+		}))
+		const client = createTestQueryClient()
+		const sharedWrapper = ({ children }: React.PropsWithChildren) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		)
+		const firstUrl = "https://first.example.test/api/v1"
+		const secondUrl = "https://second.example.test/api/v1"
+		const { result, rerender, unmount } = renderHook(({ id, url }) => useOpenRouterModelProviders(id, url), {
+			wrapper: sharedWrapper,
+			initialProps: { id: "vendor/model", url: firstUrl },
+		})
+
+		try {
+			const expectLabel = (label: string) => waitFor(() => expect(result.current.data?.pinned?.label).toBe(label))
+			await expectLabel(firstUrl + "/vendor/model")
+			rerender({ id: "vendor/model", url: firstUrl + "/" })
+			await expectLabel(firstUrl + "/vendor/model")
+			expect(sent).toHaveLength(1)
+
+			rerender({ id: "vendor/model", url: secondUrl })
+			await expectLabel(secondUrl + "/vendor/model")
+			rerender({ id: "vendor/new", url: secondUrl })
+			await expectLabel(secondUrl + "/vendor/new")
+			expect(sent).toHaveLength(3)
+		} finally {
+			unmount()
+			client.clear()
+		}
+	})
+
 	it.each<[string, () => UseQueryResult<unknown>, Record<string, string>, unknown]>([
 		[
 			"useOpenRouterKeyInfo",

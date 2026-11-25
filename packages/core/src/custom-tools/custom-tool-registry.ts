@@ -12,12 +12,70 @@ import fs from "fs"
 import path from "path"
 import { createHash } from "crypto"
 import os from "os"
+import { pathToFileURL } from "url"
 
 import type { CustomToolDefinition, SerializedCustomToolDefinition, CustomToolParametersSchema } from "@roo-code/types"
 
 import type { StoredCustomTool, LoadResult } from "./types.js"
 import { serializeCustomTool } from "./serialize.js"
 import { runEsbuild, NODE_BUILTIN_MODULES, COMMONJS_REQUIRE_BANNER } from "./esbuild-runner.js"
+
+function assertPrivateCacheEntry(filePath: string, stat: fs.Stats, kind: "directory" | "file"): void {
+	const userId = process.getuid?.()
+	const validType = kind === "directory" ? stat.isDirectory() : stat.isFile() && stat.nlink === 1
+	if (!validType || (userId !== undefined && (stat.uid !== userId || (stat.mode & 0o077) !== 0))) {
+		throw new Error(`Unsafe custom tool cache ${kind}: ${filePath}`)
+	}
+}
+
+function resolveCacheDirectory(cachePath: string, create: boolean): string | undefined {
+	const cacheName = path.basename(cachePath)
+	if (!cacheName) throw new Error(`Unsafe custom tool cache directory: ${cachePath}`)
+
+	const missingParts = [cacheName]
+	let parent = path.dirname(cachePath)
+	while (!fs.existsSync(parent)) {
+		if (!create) return undefined
+		missingParts.unshift(path.basename(parent))
+		parent = path.dirname(parent)
+	}
+
+	// Use the canonical parent. Some systems place the user temp directory under a system link.
+	let directory = fs.realpathSync(parent)
+	const userId = process.getuid?.()
+	if (userId !== undefined) {
+		for (let ancestor = directory; ; ancestor = path.dirname(ancestor)) {
+			const stat = fs.lstatSync(ancestor)
+			const trustedOwner = stat.uid === 0 || stat.uid === userId
+			const permitsReplacement = (stat.mode & 0o022) !== 0 && (stat.mode & 0o1000) === 0
+			if (!stat.isDirectory() || !trustedOwner || permitsReplacement) {
+				throw new Error(`Unsafe custom tool cache parent: ${ancestor}`)
+			}
+			if (ancestor === path.dirname(ancestor)) break
+		}
+	}
+
+	for (const part of missingParts) {
+		directory = path.join(directory, part)
+		if (create) fs.mkdirSync(directory, { recursive: true, mode: 0o700 })
+		const stat = fs.lstatSync(directory, { throwIfNoEntry: false })
+		if (!stat) return undefined
+		assertPrivateCacheEntry(directory, stat, "directory")
+	}
+	return directory
+}
+
+function getCachedBundle(directory: string): string | undefined {
+	const stat = fs.lstatSync(directory, { throwIfNoEntry: false })
+	if (!stat) return undefined
+	assertPrivateCacheEntry(directory, stat, "directory")
+
+	const bundle = path.join(directory, "bundle.mjs")
+	const bundleStat = fs.lstatSync(bundle, { throwIfNoEntry: false })
+	if (!bundleStat) return undefined
+	assertPrivateCacheEntry(bundle, bundleStat, "file")
+	return bundle
+}
 
 export interface RegistryOptions {
 	/** Directory for caching compiled TypeScript files. */
@@ -30,14 +88,13 @@ export interface RegistryOptions {
 
 export class CustomToolRegistry {
 	private tools = new Map<string, StoredCustomTool>()
-	private tsCache = new Map<string, string>()
-	private cacheDir: string
+	private readonly cacheDir: string
 	private nodePaths: string[]
 	private extensionPath?: string
 	private lastLoaded: Map<string, number> = new Map()
 
 	constructor(options?: RegistryOptions) {
-		this.cacheDir = options?.cacheDir ?? path.join(os.tmpdir(), "dynamic-tools-cache")
+		this.cacheDir = path.resolve(options?.cacheDir ?? path.join(os.homedir(), ".pet-zoo-code-tool-cache"))
 		// Default to current working directory's node_modules.
 		this.nodePaths = options?.nodePaths ?? [path.join(process.cwd(), "node_modules")]
 		this.extensionPath = options?.extensionPath
@@ -235,30 +292,22 @@ export class CustomToolRegistry {
 	}
 
 	/**
-	 * Clear the TypeScript compilation cache (both in-memory and on disk).
-	 * This removes all tool-specific subdirectories and their contents.
+	 * Remove published TypeScript compilation cache entries.
 	 */
 	clearCache(): void {
-		this.tsCache.clear()
+		try {
+			const cacheDir = resolveCacheDirectory(this.cacheDir, false)
+			if (!cacheDir) return
 
-		if (fs.existsSync(this.cacheDir)) {
-			try {
-				const entries = fs.readdirSync(this.cacheDir, { withFileTypes: true })
-				for (const entry of entries) {
-					const entryPath = path.join(this.cacheDir, entry.name)
-					if (entry.isDirectory()) {
-						// Remove tool-specific subdirectory and all its contents.
-						fs.rmSync(entryPath, { recursive: true, force: true })
-					} else if (entry.name.endsWith(".mjs")) {
-						// Also clean up any legacy flat .mjs files from older cache format.
-						fs.unlinkSync(entryPath)
-					}
+			for (const entry of fs.readdirSync(cacheDir, { withFileTypes: true })) {
+				if (/^[a-f0-9]{16}$/.test(entry.name)) {
+					fs.rmSync(path.join(cacheDir, entry.name), { recursive: true, force: true })
 				}
-			} catch (error) {
-				console.error(
-					`[CustomToolRegistry] clearCache failed to clean disk cache: ${error instanceof Error ? error.message : String(error)}`,
-				)
 			}
+		} catch (error) {
+			console.error(
+				`[CustomToolRegistry] clearCache failed to clean disk cache: ${error instanceof Error ? error.message : String(error)}`,
+			)
 		}
 	}
 
@@ -276,30 +325,21 @@ export class CustomToolRegistry {
 		const ext = path.extname(absolutePath)
 
 		if (ext === ".js" || ext === ".mjs") {
-			return import(`file://${absolutePath}`)
+			return import(pathToFileURL(absolutePath).href)
 		}
 
 		const stat = fs.statSync(absolutePath)
 		const cacheKey = `${absolutePath}:${stat.mtimeMs}`
-
-		// Check if we have a cached version in memory.
-		if (this.tsCache.has(cacheKey)) {
-			const cachedPath = this.tsCache.get(cacheKey)!
-			return import(`file://${cachedPath}`)
+		const cacheDir = resolveCacheDirectory(this.cacheDir, true)
+		if (!cacheDir) {
+			throw new Error(`Custom tool cache is unavailable: ${this.cacheDir}`)
 		}
 
 		const hash = createHash("sha256").update(cacheKey).digest("hex").slice(0, 16)
-
-		// Use a tool-specific subdirectory to avoid .env file conflicts between tools.
-		const toolCacheDir = path.join(this.cacheDir, hash)
-		fs.mkdirSync(toolCacheDir, { recursive: true })
-
-		const tempFile = path.join(toolCacheDir, "bundle.mjs")
-
-		// Check if we have a cached version on disk (from a previous run/instance).
-		if (fs.existsSync(tempFile)) {
-			this.tsCache.set(cacheKey, tempFile)
-			return import(`file://${tempFile}`)
+		const toolCacheDir = path.join(cacheDir, hash)
+		const cachedBundle = getCachedBundle(toolCacheDir)
+		if (cachedBundle) {
+			return import(pathToFileURL(cachedBundle).href)
 		}
 
 		// Get the tool's directory to include its node_modules in resolution path.
@@ -310,33 +350,42 @@ export class CustomToolRegistry {
 		// Tool's node_modules takes priority (listed first).
 		const nodePaths = fs.existsSync(toolNodeModules) ? [toolNodeModules, ...this.nodePaths] : this.nodePaths
 
-		// Bundle the TypeScript file with dependencies using esbuild CLI.
-		// - Node.js built-ins are external (they can't be bundled and are always available)
-		// - npm packages are bundled with CommonJS require() shim for compatibility
-		await runEsbuild(
-			{
-				entryPoint: absolutePath,
-				outfile: tempFile,
-				format: "esm",
-				platform: "node",
-				target: "node18",
-				bundle: true,
-				sourcemap: "inline",
-				packages: "bundle",
-				nodePaths,
-				external: NODE_BUILTIN_MODULES,
-				banner: COMMONJS_REQUIRE_BANNER,
-			},
-			this.extensionPath,
-		)
+		// Publish the complete directory so a concurrent reader can only see a finished bundle and its .env files.
+		const stagingDir = fs.mkdtempSync(path.join(cacheDir, ".build-"))
+		try {
+			const outfile = path.join(stagingDir, "bundle.mjs")
+			await runEsbuild(
+				{
+					entryPoint: absolutePath,
+					outfile,
+					format: "esm",
+					platform: "node",
+					target: "node18",
+					bundle: true,
+					sourcemap: "inline",
+					packages: "bundle",
+					nodePaths,
+					external: NODE_BUILTIN_MODULES,
+					banner: COMMONJS_REQUIRE_BANNER,
+				},
+				this.extensionPath,
+			)
+			if (process.getuid) fs.chmodSync(outfile, 0o600)
+			this.copyEnvFiles(toolDir, stagingDir)
 
-		// Copy .env files from the tool's source directory to the tool-specific cache directory.
-		// This allows tools that use dotenv with __dirname to find their .env files,
-		// while ensuring different tools' .env files don't overwrite each other.
-		this.copyEnvFiles(toolDir, toolCacheDir)
+			try {
+				fs.renameSync(stagingDir, toolCacheDir)
+			} catch (error) {
+				// Another registry can finish first. Reuse its bundle only if it passes the same checks.
+				if (!getCachedBundle(toolCacheDir)) throw error
+			}
 
-		this.tsCache.set(cacheKey, tempFile)
-		return import(`file://${tempFile}`)
+			const bundle = getCachedBundle(toolCacheDir)
+			if (!bundle) throw new Error(`Custom tool bundle is unavailable: ${toolCacheDir}`)
+			return import(pathToFileURL(bundle).href)
+		} finally {
+			fs.rmSync(stagingDir, { recursive: true, force: true })
+		}
 	}
 
 	/**
@@ -360,6 +409,7 @@ export class CustomToolRegistry {
 				const stat = fs.statSync(srcPath)
 				if (stat.isFile()) {
 					fs.copyFileSync(srcPath, destPath)
+					if (process.getuid) fs.chmodSync(destPath, 0o600)
 					console.log(`[CustomToolRegistry] copied ${envFile} to tool cache directory`)
 				}
 			}

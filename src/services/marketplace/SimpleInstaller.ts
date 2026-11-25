@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 import * as yaml from "yaml"
-import type { MarketplaceItem, InstallMarketplaceItemOptions, McpParameter } from "@roo-code/types"
+import type { MarketplaceItem, InstallMarketplaceItemOptions, McpMarketplaceItem } from "@roo-code/types"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
 import type { CustomModesManager } from "../../core/config/CustomModesManager"
@@ -155,76 +155,35 @@ export class SimpleInstaller {
 	}
 
 	private async installMcp(
-		item: MarketplaceItem,
+		item: McpMarketplaceItem,
 		target: "project" | "global",
 		options?: InstallOptions,
 	): Promise<{ filePath: string; line?: number }> {
-		if (!item.content) {
+		const methods = Array.isArray(item.content) ? item.content : undefined
+		const parameters: Record<string, unknown> | undefined = options?.parameters
+		const legacyIndex = parameters?._selectedIndex
+		const legacyMethod =
+			methods && typeof legacyIndex === "number" && Number.isInteger(legacyIndex)
+				? methods[legacyIndex]
+				: undefined
+		const method = legacyMethod ?? methods?.[options?.selectedIndex ?? 0] ?? methods?.[0]
+		const content = typeof item.content === "string" ? item.content : method?.content
+		if (!content) {
 			throw new Error("MCP item missing content")
 		}
 
-		// Get the content to use
-		let contentToUse: string
-		if (Array.isArray(item.content)) {
-			// Array of McpInstallationMethod objects
-			const index = options?.selectedIndex ?? 0
-			const method = item.content[index] || item.content[0]
-			contentToUse = method.content
-		} else {
-			contentToUse = item.content
-		}
+		const keys = new Set([...(item.parameters ?? []), ...(method?.parameters ?? [])].map(({ key }) => key))
+		// Apply parameters to parsed string values. The replacement text stays literal.
+		const mcpData: unknown = JSON.parse(content, (_key: string, value: unknown) => {
+			if (typeof value !== "string" || !parameters || keys.size === 0) return value
 
-		// Get method-specific parameters if using array content
-		let methodParameters: McpParameter[] = []
-		if (Array.isArray(item.content)) {
-			const index = options?.selectedIndex ?? 0
-			const method = item.content[index] || item.content[0]
-			methodParameters = method.parameters || []
-		}
-
-		// Merge parameters (method-specific override global)
-		const itemParameters = item.type === "mcp" ? item.parameters || [] : []
-		const allParameters = [...itemParameters, ...methodParameters]
-		const uniqueParameters = Array.from(new Map(allParameters.map((p) => [p.key, p])).values())
-
-		// Replace parameters if provided
-		if (options?.parameters && uniqueParameters.length > 0) {
-			for (const param of uniqueParameters) {
-				const value = options.parameters[param.key]
-				if (value !== undefined) {
-					contentToUse = contentToUse.replace(new RegExp(`{{${param.key}}}`, "g"), String(value))
-				}
-			}
-		}
-
-		// Handle _selectedIndex from parameters if provided
-		if (options?.parameters?._selectedIndex !== undefined && Array.isArray(item.content)) {
-			const index = options.parameters._selectedIndex
-			if (index >= 0 && index < item.content.length) {
-				// Array of McpInstallationMethod objects
-				const method = item.content[index]
-				contentToUse = method.content
-				methodParameters = method.parameters || []
-
-				// Re-merge parameters with the newly selected method
-				const itemParametersForNewMethod = item.type === "mcp" ? item.parameters || [] : []
-				const allParametersForNewMethod = [...itemParametersForNewMethod, ...methodParameters]
-				const uniqueParametersForNewMethod = Array.from(
-					new Map(allParametersForNewMethod.map((p) => [p.key, p])).values(),
-				)
-
-				// Re-apply parameter replacements to the newly selected content
-				for (const param of uniqueParametersForNewMethod) {
-					const value = options.parameters[param.key]
-					if (value !== undefined) {
-						contentToUse = contentToUse.replace(new RegExp(`{{${param.key}}}`, "g"), String(value))
-					}
-				}
-			}
-		}
+			return value.replace(/\{\{([^{}]+)\}\}/g, (placeholder: string, key: string) => {
+				const parameter = keys.has(key) && Object.hasOwn(parameters, key) ? parameters[key] : undefined
+				return parameter === undefined ? placeholder : String(parameter)
+			})
+		})
 
 		const filePath = await this.getMcpFilePath(target)
-		const mcpData = JSON.parse(contentToUse)
 
 		// Read existing file or create new structure
 		let existingData: any = { mcpServers: {} }

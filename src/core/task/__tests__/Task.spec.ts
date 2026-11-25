@@ -691,15 +691,15 @@ describe("Cline", () => {
 		})
 	})
 
-	describe("output token limit mid-stream", () => {
+	describe("mid-stream failures", () => {
 		async function* truncatedStream(): AsyncGenerator<ApiStreamChunk> {
 			yield { type: "text", text: "partial answer" }
 			throw new OutputTokenLimitError()
 		}
 
-		async function createAutoApprovedTask() {
+		function createStreamingTask(autoApprovalEnabled = true) {
 			vi.spyOn(mockProvider, "getState").mockResolvedValue(
-				providerStateWith({ autoApprovalEnabled: true, requestDelaySeconds: 0 }),
+				providerStateWith({ autoApprovalEnabled, requestDelaySeconds: 0 }),
 			)
 			const task = new Task({
 				provider: mockProvider,
@@ -714,7 +714,7 @@ describe("Cline", () => {
 		}
 
 		it("asks once instead of auto-retrying, even with auto-approval", async () => {
-			const task = await createAutoApprovedTask()
+			const task = createStreamingTask()
 			const askSpy = vi
 				.spyOn(task, "ask")
 				.mockResolvedValue({ response: "noButtonClicked" } satisfies TaskAskResult)
@@ -729,7 +729,7 @@ describe("Cline", () => {
 		})
 
 		it("retries from a fresh attempt count when the user confirms", async () => {
-			const task = await createAutoApprovedTask()
+			const task = createStreamingTask()
 			vi.spyOn(task, "ask").mockResolvedValue({ response: "yesButtonClicked" } satisfies TaskAskResult)
 			const attemptApiRequestSpy = vi
 				.spyOn(task, "attemptApiRequest")
@@ -742,6 +742,59 @@ describe("Cline", () => {
 			await task.recursivelyMakeClineRequests([{ type: "text", text: "long request" }])
 
 			expect(attemptApiRequestSpy.mock.calls.slice(0, 2).map(([retryAttempt]) => retryAttempt)).toEqual([0, 0])
+			const userRequests = task.apiConversationHistory.filter(
+				({ role, content }) =>
+					role === "user" &&
+					Array.isArray(content) &&
+					content.some((block) => block.type === "text" && block.text === "long request"),
+			)
+			expect(userRequests).toHaveLength(1)
+		})
+
+		it.each([
+			{ autoApprovalEnabled: true, retries: 5 },
+			{ autoApprovalEnabled: false, retries: 0 },
+		])("asks for a decision after $retries automatic retries", async ({ autoApprovalEnabled, retries }) => {
+			const task = createStreamingTask(autoApprovalEnabled)
+			const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
+			const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
+			const attempt = vi.spyOn(task, "attemptApiRequest").mockImplementation(() => {
+				throw new Error("Unexpected extra stream")
+			})
+			for (let count = 0; count <= retries; count++) {
+				attempt.mockImplementationOnce(async function* () {
+					yield { type: "text", text: "partial answer" }
+					throw new Error("Provider closed the stream")
+				})
+			}
+
+			await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+			expect(attempt.mock.calls.map(([retryAttempt]) => retryAttempt)).toEqual(
+				Array.from({ length: retries + 1 }, (_, index) => index),
+			)
+			expect(backoff).toHaveBeenCalledTimes(retries)
+			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", "Provider closed the stream")
+		})
+
+		it("does not requeue a failure that the request generator handled before yielding", async () => {
+			const task = createStreamingTask()
+			const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
+			const attempt = vi
+				.spyOn(task, "attemptApiRequest")
+				.mockImplementationOnce(async function* () {
+					await task.ask("api_req_failed", "Provider unavailable")
+					yield* []
+					throw new Error("API request failed")
+				})
+				.mockImplementation(() => {
+					throw new Error("Unexpected extra stream")
+				})
+
+			await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+			expect(attempt).toHaveBeenCalledOnce()
+			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", "Provider unavailable")
 		})
 	})
 
@@ -1292,6 +1345,7 @@ describe("Cline", () => {
 			vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
 			vi.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched").mockResolvedValue(stubModelInfo)
 			vi.spyOn(getTaskTestAccess(task), "presentAssistantMessageSafe").mockImplementation(() => {})
+			vi.spyOn(task, "ask").mockResolvedValueOnce({ response: "yesButtonClicked" })
 
 			const firstStream = async function* (): AsyncGenerator<ApiStreamChunk> {
 				yield { type: "tool_call_partial", index: 0, id: "call_stale", name: "read_file" }
@@ -1340,6 +1394,7 @@ describe("Cline", () => {
 			vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
 			vi.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched").mockResolvedValue(stubModelInfo)
 			vi.spyOn(getTaskTestAccess(task), "presentAssistantMessageSafe").mockImplementation(() => {})
+			vi.spyOn(task, "ask").mockResolvedValueOnce({ response: "yesButtonClicked" })
 
 			const failingStream = async function* (): AsyncGenerator<ApiStreamChunk> {
 				yield { type: "text", text: "partial" }

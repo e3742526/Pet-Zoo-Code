@@ -508,3 +508,13 @@ On November 24, 2026, these changes followed the review:
 - A canceled task aborts model discovery, the chat request, and the stream. Each request uses its own signal because the SDK attaches listeners to it.
 - MCP tool names over 64 characters become stable aliases. `resolveMcpToolByName` ranks exact, folded, and legacy-truncated matches, and an ambiguous match has no target.
 - `getNoWorkspaceFallbackPath` selects `~/Desktop` or the home directory when no workspace folder exists. Environment details do not list either path.
+
+## Marketplace installer, tool cache, and stream retries
+
+On November 24, 2026, the fork implemented three findings from the [upstream survey](../gem-hydro-parentrepo-survey-24NOV2026.md).
+
+- The MCP installer parses the selected JSON template before it applies parameters to string values. Quotes, backslashes, and literal placeholder text survive the installation. Tests cover item and method parameters and the legacy method selector. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2487)
+- The custom-tool registry uses a new cache in the user's home directory. On POSIX it checks ownership and permissions before reuse. It checks the file and directory types before loading a cached bundle. Compilation uses a private staging directory and publishes the bundle and its environment files together. Tests cover permission checks, concurrent publication, and reuse. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2485)
+- After a mid-stream failure, a task makes up to five automatic retries when auto-approval is on. Once the limit is reached, or if auto-approval is off, the task asks the user whether to retry. A confirmed retry starts a fresh count and reuses the saved user message. Tests cover the limit, manual retry, and cancellation during backoff. [Upstream proposal](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2111)
+
+All 498 focused tests, 45 distribution checks, and the task lifecycle model check passed. Host and core type and lint checks passed. All 560 packaged scripts matched the build. The build used Node 24.22.3. POSIX cache permission checks ran on macOS.

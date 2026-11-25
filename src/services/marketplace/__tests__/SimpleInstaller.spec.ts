@@ -47,6 +47,7 @@ describe("SimpleInstaller", () => {
 		} as any
 		installer = new SimpleInstaller(mockContext, mockCustomModesManager)
 		vi.clearAllMocks()
+		mockFs.readFile.mockReset()
 
 		// Mock mkdir to always succeed
 		mockFs.mkdir.mockResolvedValue(undefined as any)
@@ -150,6 +151,68 @@ describe("SimpleInstaller", () => {
 				args: ["--test"],
 			}),
 		}
+
+		it("keeps quotes, paths, and placeholder text in parameter values", async () => {
+			const label = '"C:\\Local Tools" {{SUFFIX}} $&'
+			const config = {
+				command: "test-server",
+				args: ["--label={{LABEL}}", "{{SUFFIX}}", "{{UNDECLARED}}"],
+				env: { LABEL: "{{LABEL}}" },
+			}
+			mockFs.readFile.mockResolvedValueOnce('{"mcpServers":{}}')
+
+			await installer.installItem(
+				{
+					...mockMcpItem,
+					content: JSON.stringify(config),
+					parameters: [
+						{ key: "LABEL", name: "Label", optional: false },
+						{ key: "SUFFIX", name: "Suffix", optional: false },
+					],
+				},
+				{ target: "project", parameters: { LABEL: label, SUFFIX: "plain", UNDECLARED: "ignored" } },
+			)
+
+			const written = mockFs.writeFile.mock.calls[0][1]
+			expect(JSON.parse(String(written))).toEqual({
+				mcpServers: {
+					"test-mcp": {
+						command: config.command,
+						args: [`--label=${label}`, "plain", "{{UNDECLARED}}"],
+						env: { LABEL: label },
+					},
+				},
+			})
+		})
+
+		it.each([
+			{ selectedIndex: 1, parameters: { ITEM: "item", OPTION: "method" } },
+			{ selectedIndex: 0, parameters: { ITEM: "item", OPTION: "method", _selectedIndex: 1 } },
+			{ selectedIndex: 1, parameters: { ITEM: "item", OPTION: "method", _selectedIndex: 8 } },
+		])("applies parameters to the selected method with options %j", async (selection) => {
+			mockFs.readFile.mockResolvedValueOnce('{"mcpServers":{}}')
+
+			await installer.installItem(
+				{
+					...mockMcpItem,
+					parameters: [{ key: "ITEM", name: "Item", optional: false }],
+					content: [
+						{ name: "First", content: '{"command":"first"}' },
+						{
+							name: "Second",
+							content: '{"command":"second","args":["{{ITEM}}","{{OPTION}}"]}',
+							parameters: [{ key: "OPTION", name: "Method option", optional: false }],
+						},
+					],
+				},
+				{ target: "project", ...selection },
+			)
+
+			const written = mockFs.writeFile.mock.calls[0][1]
+			expect(JSON.parse(String(written))).toEqual({
+				mcpServers: { "test-mcp": { command: "second", args: ["item", "method"] } },
+			})
+		})
 
 		it("should install MCP when mcp.json file does not exist", async () => {
 			const notFoundError = new Error("File not found") as any

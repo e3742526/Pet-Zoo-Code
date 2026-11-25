@@ -188,8 +188,8 @@ describe("Task abort-reason race", () => {
 		vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
 		vi.spyOn(task, "dispose").mockResolvedValue(undefined)
 
-		// eslint-disable-next-line require-yield -- intentional error-only async source
 		task["attemptApiRequest"] = async function* () {
+			yield { type: "text", text: "partial response" }
 			throw new Error("mid-stream failure")
 		}
 

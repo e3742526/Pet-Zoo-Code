@@ -1,5 +1,7 @@
 // pnpm --filter @roo-code/core test src/custom-tools/__tests__/custom-tool-registry.integration.spec.ts
 
+import fs from "fs"
+import os from "os"
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -12,9 +14,18 @@ const TEST_FIXTURES_OVERRIDE_DIR = path.join(__dirname, "fixtures-override")
 
 describe.sequential("CustomToolRegistry integration", () => {
 	let registry: CustomToolRegistry
+	let suiteCacheRoot: string
+
+	beforeAll(() => {
+		suiteCacheRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pet-zoo-tool-registry-"))
+	})
+
+	afterAll(() => {
+		fs.rmSync(suiteCacheRoot, { recursive: true, force: true })
+	})
 
 	beforeEach(() => {
-		registry = new CustomToolRegistry()
+		registry = new CustomToolRegistry({ cacheDir: path.join(suiteCacheRoot, "cache") })
 	})
 
 	describe("loadFromDirectory", () => {
@@ -76,6 +87,75 @@ describe.sequential("CustomToolRegistry integration", () => {
 
 			expect(result.loaded).toContain("cached")
 		}, 300_000)
+	})
+
+	describe.skipIf(process.platform === "win32")("private compilation cache", () => {
+		let fixture: string
+		let tools: string
+		let cacheDir: string
+
+		beforeEach(() => {
+			fixture = fs.mkdtempSync(path.join(os.tmpdir(), "pet-zoo-tool-cache-"))
+			tools = path.join(fixture, "tools")
+			cacheDir = path.join(fixture, "cache")
+			fs.mkdirSync(tools)
+			fs.writeFileSync(
+				path.join(tools, "simple.ts"),
+				'export default { name: "simple", description: "Test tool", execute: () => "ok" }',
+			)
+			fs.writeFileSync(path.join(tools, ".env"), "MODE=test\n")
+		})
+
+		afterEach(() => {
+			fs.rmSync(fixture, { recursive: true, force: true })
+		})
+
+		it("publishes a private bundle that another registry can reuse", async () => {
+			const first = new CustomToolRegistry({ cacheDir })
+			const second = new CustomToolRegistry({ cacheDir })
+			const results = await Promise.all([first.loadFromDirectory(tools), second.loadFromDirectory(tools)])
+
+			expect(results).toEqual([
+				{ loaded: ["simple"], failed: [] },
+				{ loaded: ["simple"], failed: [] },
+			])
+			const entries = fs.readdirSync(cacheDir)
+			expect(entries).toHaveLength(1)
+			const [entry] = entries
+			if (!entry) throw new Error("Missing published tool cache entry")
+			const toolCacheDir = path.join(cacheDir, entry)
+			const bundle = path.join(toolCacheDir, "bundle.mjs")
+			const env = path.join(toolCacheDir, ".env")
+			for (const file of [cacheDir, toolCacheDir, bundle, env]) {
+				expect(fs.statSync(file).mode & 0o077).toBe(0)
+			}
+			expect(fs.readFileSync(env, "utf8")).toBe("MODE=test\n")
+
+			const reused = new CustomToolRegistry({ cacheDir })
+			expect(await reused.loadFromDirectory(tools)).toEqual({ loaded: ["simple"], failed: [] })
+			expect(fs.readdirSync(cacheDir)).toEqual(entries)
+
+			fs.chmodSync(bundle, 0o644)
+			const rejected = await reused.loadFromDirectory(tools)
+			expect(rejected.loaded).toEqual([])
+			expect(rejected.failed).toEqual([
+				{ file: "simple.ts", error: expect.stringContaining("Unsafe custom tool cache file") },
+			])
+		}, 30_000)
+
+		it("declines a cache directory accessible to other users", async () => {
+			fs.mkdirSync(cacheDir)
+			fs.chmodSync(cacheDir, 0o755)
+			const registry = new CustomToolRegistry({ cacheDir })
+
+			const result = await registry.loadFromDirectory(tools)
+
+			expect(result.loaded).toEqual([])
+			expect(result.failed).toEqual([
+				{ file: "simple.ts", error: expect.stringContaining("Unsafe custom tool cache") },
+			])
+			expect(fs.readdirSync(cacheDir)).toEqual([])
+		}, 30_000)
 	})
 
 	describe("loadFromDirectories", () => {

@@ -156,6 +156,7 @@ import {
 } from "./run-state/runStateDivergence"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
+const MAX_MID_STREAM_AUTO_RETRIES = 5
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 // Streamed deltas arrive far faster than the webview can usefully re-render a growing message
 // (tables and code fences reflow on nearly every update), so partial updates post at most this often.
@@ -3994,6 +3995,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			pendingContent?: Promise<Anthropic.Messages.ContentBlockParam[]> // Resolved after the request row shows
 			includeFileDetails: boolean
 			retryAttempt?: number
+			reuseUserMessage?: boolean
 			userMessageWasRemoved?: boolean // Track if user message was removed due to empty response
 		}
 
@@ -4102,11 +4104,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
 			// See shouldAddUserMessageToHistory for the full add/skip rules (retry/empty/removed).
 			const isEmptyUserContent = currentUserContent.length === 0
-			const shouldAddUserMessage = shouldAddUserMessageToHistory({
-				retryAttempt: currentItem.retryAttempt,
-				isEmptyUserContent,
-				userMessageWasRemoved: currentItem.userMessageWasRemoved,
-			})
+			const shouldAddUserMessage =
+				!currentItem.reuseUserMessage &&
+				shouldAddUserMessageToHistory({
+					retryAttempt: currentItem.retryAttempt,
+					isEmptyUserContent,
+					userMessageWasRemoved: currentItem.userMessageWasRemoved,
+				})
 			if (shouldAddUserMessage) {
 				await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
 				this.messageCounts.user++
@@ -4261,6 +4265,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				let reasoningMessage = ""
 				let assistantContentFromProvider: ApiStreamAssistantContentChunk | undefined
 				const pendingGroundingSources: GroundingSource[] = []
+				let streamStarted = false
 				this.isStreaming = true
 
 				try {
@@ -4294,6 +4299,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					}
 
 					let item = await nextChunkWithAbort()
+					streamStarted = !item.done
 					while (!item.done) {
 						const chunk = item.value
 						item = await nextChunkWithAbort()
@@ -4798,53 +4804,44 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							// A cancel can land during abortStream after cancelReason was computed; setAbortReason keeps the first reason.
 							this.setAbortReason("user_cancelled")
 							await this.abortTask()
-						} else if (error instanceof OutputTokenLimitError) {
-							// Truncation repeats on an identical request, so never auto-retry it
-							// (even with auto-approval); let the user decide once.
-							const { response } = await this.ask("api_req_failed", rawErrorMessage)
-
-							if (response !== "yesButtonClicked") {
-								throw new Error("API request failed")
-							}
-
-							await this.say("api_req_retried")
-							stack.push({
-								userContent: currentUserContent,
-								includeFileDetails: false,
-								retryAttempt: 0,
-							})
-							continue
+						} else if (!streamStarted) {
+							// The request generator already handles failures before the first chunk.
+							throw error
 						} else {
-							// Stream failed - log the error and retry with the same content
-							// The existing rate limiting will prevent rapid retries
-							console.error(
-								`[Task#${this.taskId}.${this.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
-							)
+							const retryAttempt = currentItem.retryAttempt ?? 0
+							// The same request can hit the output limit again. Ask before retrying it.
+							const retryAutomatically =
+								!(error instanceof OutputTokenLimitError) &&
+								retryAttempt < MAX_MID_STREAM_AUTO_RETRIES &&
+								(await this.providerRef.deref()?.getState())?.autoApprovalEnabled === true
 
-							// Apply exponential backoff similar to first-chunk errors when auto-resubmit is enabled
-							const stateForBackoff = await this.providerRef.deref()?.getState()
-							if (stateForBackoff?.autoApprovalEnabled) {
-								await this.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
-
-								// Check if task was aborted during the backoff
-								if (this.abort) {
-									console.log(
-										`[Task#${this.taskId}.${this.instanceId}] Task aborted during mid-stream retry backoff`,
-									)
-									this.setAbortReason("user_cancelled")
-									await this.abortTask()
-									break
-								}
+							if (retryAutomatically && !this.abort) {
+								console.error(
+									`[Task#${this.taskId}.${this.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
+								)
+								await this.backoffAndAnnounce(retryAttempt, error)
 							}
 
-							// Push the same content back onto the stack to retry, incrementing the retry attempt counter
+							if (this.abort) {
+								this.setAbortReason("user_cancelled")
+								await this.abortTask()
+								break
+							}
+
+							if (!retryAutomatically) {
+								const { response } = await this.ask("api_req_failed", rawErrorMessage)
+								if (response !== "yesButtonClicked") {
+									throw new Error("API request failed")
+								}
+								await this.say("api_req_retried")
+							}
+
 							stack.push({
 								userContent: currentUserContent,
 								includeFileDetails: false,
-								retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
+								retryAttempt: retryAutomatically ? retryAttempt + 1 : 0,
+								reuseUserMessage: true,
 							})
-
-							// Continue to retry the request
 							continue
 						}
 					}
@@ -6109,7 +6106,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				return
 			}
 
-			// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
+			// This handler owns first-chunk retries. The outer loop cleans up a partial stream before deciding on a retry.
 			if (autoApprovalEnabled) {
 				// Apply shared exponential backoff and countdown UX
 				await this.backoffAndAnnounce(retryAttempt, error)
@@ -6148,14 +6145,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
-		// No error, so we can continue to yield all remaining chunks.
-		// (Needs to be placed outside of try/catch since it we want caller to
-		// handle errors not with api_req_failed as that is reserved for first
-		// chunk failures only.)
-		// This delegates to another generator or iterable object. In this case,
-		// it's saying "yield all remaining values from this iterator". This
-		// effectively passes along all subsequent chunks from the original
-		// stream.
+		// Let the caller handle failures after the first chunk.
 		yield* iterator
 	}
 

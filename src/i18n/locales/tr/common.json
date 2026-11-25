@@ -124,11 +124,11 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Seçili terminal içeriği yok",
-		"auto_import_failed": "ZooCode ayarları otomatik olarak içe aktarılamadı: {{error}}",
+		"auto_import_failed": "Dory Code ayarları otomatik olarak içe aktarılamadı: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "{{domain}} kaynağından içe aktarılacak Roo Code görev geçmişi bulunamadı.",
-			"alreadyImported_one": "{{count}} Roo Code görev geçmişinin tamamı zaten Zoo Code'a aktarılmış.",
-			"alreadyImported_other": "{{count}} Roo Code görev geçmişinin tamamı zaten Zoo Code'a aktarılmış."
+			"alreadyImported_one": "{{count}} Roo Code görev geçmişinin tamamı zaten Dory Code'a aktarılmış.",
+			"alreadyImported_other": "{{count}} Roo Code görev geçmişinin tamamı zaten Dory Code'a aktarılmış."
 		}
 	},
 	"info": {
@@ -136,7 +136,7 @@
 		"custom_storage_path_set": "Özel depolama yolu ayarlandı: {{path}}",
 		"default_storage_path": "Varsayılan depolama yoluna geri dönüldü",
 		"settings_imported": "Ayarlar başarıyla içe aktarıldı.",
-		"auto_import_success": "ZooCode ayarları {{filename}} dosyasından otomatik olarak içe aktarıldı",
+		"auto_import_success": "Dory Code ayarları {{filename}} dosyasından otomatik olarak içe aktarıldı",
 		"image_copied_to_clipboard": "Resim veri URI'si panoya kopyalandı",
 		"image_saved": "Resim {{path}} konumuna kaydedildi",
 		"mode_exported": "'{{mode}}' modu başarıyla dışa aktarıldı",
@@ -145,8 +145,8 @@
 			"signInUnavailable": "Roo Code Cloud girişi şu anda kullanılamıyor. Devam etmek için farklı bir sağlayıcı yapılandırın."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı.",
-			"success_other": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı."
+			"success_one": "{{count}} Roo Code görev geçmişi Dory Code'a aktarıldı.",
+			"success_other": "{{count}} Roo Code görev geçmişi Dory Code'a aktarıldı."
 		}
 	},
 	"openRouterSignIn": {
@@ -181,7 +181,7 @@
 		"enter_valid_path": "Lütfen geçerli bir yol girin"
 	},
 	"input": {
-		"task_prompt": "Zoo ne yapsın?",
+		"task_prompt": "Dory Code ne yapsın?",
 		"task_placeholder": "Görevini buraya yaz"
 	},
 	"customModes": {
@@ -242,9 +242,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Code ile açıkla",
-		"fix": "Zoo Code ile düzelt",
-		"improve": "Zoo Code ile iyileştir",
-		"addToContext": "Zoo Code'a ekle"
+		"explain": "Dory Code ile açıkla",
+		"fix": "Dory Code ile düzelt",
+		"improve": "Dory Code ile iyileştir",
+		"addToContext": "Dory Code'a ekle"
 	}
 }

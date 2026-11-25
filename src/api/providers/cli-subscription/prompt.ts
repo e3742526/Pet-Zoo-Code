@@ -59,7 +59,7 @@ function renderBlock(block: Anthropic.Messages.ContentBlockParam, toolNames: Map
 	}
 }
 
-/** Renders the Zoo Code conversation as plain text for a stateless CLI turn. */
+/** Renders the Dory Code conversation as plain text for a stateless CLI turn. */
 export function renderConversation(messages: Anthropic.Messages.MessageParam[]): string {
 	const toolNames = new Map<string, string>()
 	const turns: string[] = []
@@ -108,10 +108,10 @@ function renderProtocol(parallelToolCalls: boolean): string {
 
 	return [
 		"<zoo_host_protocol>",
-		"For this request you are the model behind Zoo Code, a coding assistant in VS Code. Zoo Code runs every tool and asks the user to approve actions.",
+		"For this request you are the model behind Dory Code, a coding assistant in VS Code. Dory Code runs every tool and asks the user to approve actions.",
 		"Your own built-in tools (file, shell, search, web, task, and subagent tools) are switched off for this request. Do not call them. A call to a built-in tool fails and ends your turn.",
-		"Some built-in tools have the same names as Zoo Code tools (for example read_file). Never use your native function-calling mechanism. Zoo Code tools exist only as the text blocks described here.",
-		"To use a Zoo Code tool, write a tool call block as plain text in your reply in exactly this format:",
+		"Some built-in tools have the same names as Dory Code tools (for example read_file). Never use your native function-calling mechanism. Dory Code tools exist only as the text blocks described here.",
+		"To use a Dory Code tool, write a tool call block as plain text in your reply in exactly this format:",
 		"",
 		TOOL_CALL_OPEN_TAG,
 		'{"name": "tool_name", "arguments": {"parameter": "value"}}',
@@ -121,16 +121,16 @@ function renderProtocol(parallelToolCalls: boolean): string {
 		'1. Each block contains one JSON object with "name" and "arguments". The arguments must match the JSON schema of that tool in <zoo_tools>. Escape newlines and quotes inside JSON strings.',
 		"2. Use only the tools in <zoo_tools>.",
 		callCountRule,
-		"4. Stop writing after your last tool call block. Zoo Code runs the tools and sends the results in the next user turn in <tool_result> blocks. Do not write <tool_result> blocks yourself and do not guess results.",
-		"5. Every reply must contain at least one tool call block. To speak to the user or to finish, use the tools that Zoo Code gives for that purpose.",
+		"4. Stop writing after your last tool call block. Dory Code runs the tools and sends the results in the next user turn in <tool_result> blocks. Do not write <tool_result> blocks yourself and do not guess results.",
+		"5. Every reply must contain at least one tool call block. To speak to the user or to finish, use the tools that Dory Code gives for that purpose.",
 		"6. Follow the instructions in <zoo_system_prompt>. They replace your default persona and rules for this request, but this protocol takes priority over them.",
 		"</zoo_host_protocol>",
 	].join("\n")
 }
 
 /**
- * Builds the complete prompt for one agent turn: protocol, callable tools, the Zoo Code system
- * prompt, and the conversation so far. Zoo Code owns the conversation, so each turn is stateless
+ * Builds the complete prompt for one agent turn: protocol, callable tools, the Dory Code system
+ * prompt, and the conversation so far. Dory Code owns the conversation, so each turn is stateless
  * from the CLI's point of view.
  */
 export function buildAgentPrompt(
@@ -154,7 +154,7 @@ export function buildAgentPrompt(
 export const BUILT_IN_TOOL_CORRECTION = [
 	"<zoo_host_correction>",
 	"Your previous reply to this exact request used your native function calling to call a built-in tool. Built-in tools are switched off, so that call failed and nothing ran.",
-	`Write the Zoo Code tool call as plain text in a ${TOOL_CALL_OPEN_TAG} block, as <zoo_host_protocol> describes.`,
+	`Write the Dory Code tool call as plain text in a ${TOOL_CALL_OPEN_TAG} block, as <zoo_host_protocol> describes.`,
 	"</zoo_host_correction>",
 ].join("\n")
 
@@ -162,7 +162,7 @@ export const BUILT_IN_TOOL_CORRECTION = [
 export function buildCompletionPrompt(prompt: string): string {
 	return [
 		"<zoo_host_protocol>",
-		"For this request you are a text completion model for Zoo Code. Do not call any tools. Reply only with the requested text.",
+		"For this request you are a text completion model for Dory Code. Do not call any tools. Reply only with the requested text.",
 		"</zoo_host_protocol>",
 		"",
 		prompt,

@@ -1,12 +1,12 @@
 {
 	"landing": {
-		"greeting": "Selamat datang di Zoo Code!",
-		"introduction": "Dengan berbagai Mode bawaan dan dapat diperluas, Zoo Code memungkinkan Anda merencanakan, merancang, coding, debug, dan meningkatkan produktivitas seperti yang belum pernah terjadi sebelumnya.",
-		"logoAlt": "Logo Roo"
+		"greeting": "Selamat datang di Dory Code!",
+		"introduction": "Dengan berbagai Mode bawaan dan dapat diperluas, Dory Code memungkinkan Anda merencanakan, merancang, coding, debug, dan meningkatkan produktivitas seperti yang belum pernah terjadi sebelumnya.",
+		"logoAlt": "Logo Dory Code"
 	},
 	"providerSignup": {
 		"heading": "Pilih penyedia Anda",
-		"chooseProvider": "Zoo Code memerlukan penyedia LLM untuk bekerja. Pilih satu untuk memulai, Anda dapat menambahkan lebih banyak nanti.",
+		"chooseProvider": "Dory Code memerlukan penyedia LLM untuk bekerja. Pilih satu untuk memulai, Anda dapat menambahkan lebih banyak nanti.",
 		"goBack": "Kembali",
 		"finish": "Selesai"
 	},

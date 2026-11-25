@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Nhập lịch sử từ Roo Code",
 			"cardTitle": "Lịch sử Roo Code",
-			"cardDescription": "Sao chép các cuộc trò chuyện Roo Code đã lưu vào Zoo Code.",
+			"cardDescription": "Sao chép các cuộc trò chuyện Roo Code đã lưu vào Dory Code.",
 			"statusImporting": "Đang nhập lịch sử",
 			"statusFailed": "Nhập thất bại",
 			"statusComplete": "Nhập hoàn tất",
@@ -120,7 +120,7 @@
 		"footer": "Sử dụng lệnh slash để truy cập nhanh các prompt và quy trình công việc được sử dụng thường xuyên."
 	},
 	"rules": {
-		"description": "Quản lý các tệp quy tắc Zoo Code từ thư mục .roo/rules toàn cục và workspace. Tạo quy tắc chung hoặc quy tắc theo mode mà không cần tự duyệt các thư mục cấu hình.",
+		"description": "Quản lý các tệp quy tắc Dory Code từ thư mục .roo/rules toàn cục và workspace. Tạo quy tắc chung hoặc quy tắc theo mode mà không cần tự duyệt các thư mục cấu hình.",
 		"workspaceRules": "Quy tắc Workspace",
 		"globalRules": "Quy tắc Toàn cục",
 		"noWorkspaceRules": "Chưa có quy tắc nào trong dự án này.",
@@ -166,7 +166,7 @@
 		"footer": "Quy tắc tải hướng dẫn theo mode trước hướng dẫn chung. Quy tắc toàn cục tải trước quy tắc workspace."
 	},
 	"prompts": {
-		"description": "Cấu hình các lời nhắc hỗ trợ được sử dụng cho các hành động nhanh như cải thiện lời nhắc, giải thích mã và khắc phục sự cố. Những lời nhắc này giúp Zoo cung cấp hỗ trợ tốt hơn cho các tác vụ phát triển phổ biến."
+		"description": "Cấu hình các lời nhắc hỗ trợ được sử dụng cho các hành động nhanh như cải thiện lời nhắc, giải thích mã và khắc phục sự cố. Những lời nhắc này giúp Dory Code cung cấp hỗ trợ tốt hơn cho các tác vụ phát triển phổ biến."
 	},
 	"codeIndex": {
 		"title": "Lập chỉ mục mã nguồn",
@@ -268,15 +268,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "Bạn có thể định cấu hình một phím tắt chung cho cài đặt này <SettingsLink>trong tùy chọn IDE của bạn</SettingsLink>.",
-		"description": "Cho phép Zoo tự động thực hiện các hoạt động mà không cần phê duyệt. Chỉ bật những cài đặt này nếu bạn hoàn toàn tin tưởng AI và hiểu rõ các rủi ro bảo mật liên quan.",
+		"description": "Cho phép Dory Code tự động thực hiện các hoạt động mà không cần phê duyệt. Chỉ bật những cài đặt này nếu bạn hoàn toàn tin tưởng AI và hiểu rõ các rủi ro bảo mật liên quan.",
 		"enabled": "Phê duyệt tự động đã bật",
 		"toggleAriaLabel": "Chuyển đổi tự động phê duyệt",
 		"readOnly": {
 			"label": "Đọc",
-			"description": "Khi được bật, Zoo sẽ tự động xem nội dung thư mục và đọc tệp mà không yêu cầu bạn nhấp vào nút Phê duyệt.",
+			"description": "Khi được bật, Dory Code sẽ tự động xem nội dung thư mục và đọc tệp mà không yêu cầu bạn nhấp vào nút Phê duyệt.",
 			"outsideWorkspace": {
 				"label": "Bao gồm các tệp ngoài không gian làm việc",
-				"description": "Cho phép Zoo đọc các tệp bên ngoài không gian làm việc hiện tại mà không yêu cầu phê duyệt."
+				"description": "Cho phép Dory Code đọc các tệp bên ngoài không gian làm việc hiện tại mà không yêu cầu phê duyệt."
 			}
 		},
 		"write": {
@@ -284,11 +284,11 @@
 			"description": "Tự động tạo và chỉnh sửa tệp mà không cần phê duyệt",
 			"outsideWorkspace": {
 				"label": "Bao gồm các tệp ngoài không gian làm việc",
-				"description": "Cho phép Zoo tạo và chỉnh sửa các tệp bên ngoài không gian làm việc hiện tại mà không yêu cầu phê duyệt."
+				"description": "Cho phép Dory Code tạo và chỉnh sửa các tệp bên ngoài không gian làm việc hiện tại mà không yêu cầu phê duyệt."
 			},
 			"protected": {
 				"label": "Bao gồm các tệp được bảo vệ",
-				"description": "Cho phép Zoo tạo và chỉnh sửa các tệp được bảo vệ (như .rooignore và các tệp cấu hình .roo/) mà không yêu cầu phê duyệt."
+				"description": "Cho phép Dory Code tạo và chỉnh sửa các tệp được bảo vệ (như .rooignore và các tệp cấu hình .roo/) mà không yêu cầu phê duyệt."
 			}
 		},
 		"allowlists": {
@@ -296,12 +296,12 @@
 			"description": "Cấp quyền truy cập vào từng tệp cụ thể, mà không tự động phê duyệt cả một nhóm hành động. Mỗi dòng một mẫu, theo cú pháp lấy cảm hứng từ .gitignore: \"notes.md\" khớp với tệp đó trong bất kỳ thư mục nào của workspace, \"docs/scratch/**\" khớp với mọi thứ bên dưới thư mục đó, và \"*.md\" khớp với mọi tệp Markdown. Một mẫu luôn chỉ tệp, không bao giờ chỉ thư mục: \"docs\" chỉ cấp một tệp tên \"docs\"; hãy viết \"docs/**\" cho nội dung của một thư mục. Dấu \"./\" ở đầu chỉ gốc workspace, còn dấu \"/\" ở đầu chỉ gốc hệ thống tệp, nên \"/tmp/notes.md\" vươn ra ngoài workspace, cũng như \"~/notes.md\", trong đó dấu \"~/\" ở đầu chỉ thư mục home của bạn. Thêm \"!\" trước một mẫu để loại trừ những gì dòng trước đã khớp; như trong .gitignore, dòng khớp cuối cùng thắng, nên thứ tự có ý nghĩa. Khi chưa mở thư mục nào, các mẫu tương đối với workspace sẽ bị bỏ qua. Chữ hoa và chữ thường được phân biệt, trừ trên Windows. Không có gì được tự động phê duyệt khi \"Tự động phê duyệt\" ở trên đang tắt.",
 			"readFiles": {
 				"label": "Mẫu danh sách cho phép đọc",
-				"description": "Các tệp mà Zoo có thể đọc không cần phê duyệt, kể cả khi \"Đọc\" ở trên đang tắt. Các tệp trong danh sách cho phép ghi bên dưới cũng luôn đọc được, nên không cần thêm hai lần. Việc liệt kê thư mục và tìm kiếm luôn tuân theo cài đặt \"Đọc\". Các tệp bị .rooignore loại trừ vẫn không đọc được.",
+				"description": "Các tệp mà Dory Code có thể đọc không cần phê duyệt, kể cả khi \"Đọc\" ở trên đang tắt. Các tệp trong danh sách cho phép ghi bên dưới cũng luôn đọc được, nên không cần thêm hai lần. Việc liệt kê thư mục và tìm kiếm luôn tuân theo cài đặt \"Đọc\". Các tệp bị .rooignore loại trừ vẫn không đọc được.",
 				"placeholder": "Mỗi dòng một mẫu, ví dụ notes.md"
 			},
 			"writeFiles": {
 				"label": "Mẫu danh sách cho phép ghi",
-				"description": "Các tệp mà Zoo có thể tạo và chỉnh sửa không cần phê duyệt, kể cả khi \"Ghi\" ở trên đang tắt. Các tệp được bảo vệ vẫn cần phê duyệt trừ khi bật \"Bao gồm các tệp được bảo vệ\" (trong cài đặt tự động phê duyệt \"Ghi\"). Các tệp bị .rooignore loại trừ vẫn không ghi được.",
+				"description": "Các tệp mà Dory Code có thể tạo và chỉnh sửa không cần phê duyệt, kể cả khi \"Ghi\" ở trên đang tắt. Các tệp được bảo vệ vẫn cần phê duyệt trừ khi bật \"Bao gồm các tệp được bảo vệ\" (trong cài đặt tự động phê duyệt \"Ghi\"). Các tệp bị .rooignore loại trừ vẫn không ghi được.",
 				"placeholder": "Mỗi dòng một mẫu, ví dụ notes.md"
 			}
 		},
@@ -327,7 +327,7 @@
 			"description": "Tự động thực thi các lệnh terminal được phép mà không cần phê duyệt",
 			"destructiveCommandGuard": {
 				"label": "Bật bảo vệ khỏi lệnh phá hoại",
-				"description": "Tải xuống và sử dụng Destructive Command Guard (DCG) cho nền tảng này. Các lệnh được DCG cho phép sẽ tự động chạy. Các lệnh bị DCG chặn cần bạn phê duyệt. Danh sách lệnh của Zoo sẽ bị vô hiệu hóa khi tùy chọn này được bật. Tệp thực thi đã tải xuống vẫn được giữ lại nếu bạn tắt tùy chọn."
+				"description": "Tải xuống và sử dụng Destructive Command Guard (DCG) cho nền tảng này. Các lệnh được DCG cho phép sẽ tự động chạy. Các lệnh bị DCG chặn cần bạn phê duyệt. Danh sách lệnh của Dory Code sẽ bị vô hiệu hóa khi tùy chọn này được bật. Tệp thực thi đã tải xuống vẫn được giữ lại nếu bạn tắt tùy chọn."
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -379,7 +379,7 @@
 		"awsCustomArnDesc": "Đảm bảo rằng vùng trong ARN khớp với vùng AWS đã chọn ở trên.",
 		"awsCustomArnBaseModel": "Mô hình nền",
 		"awsCustomArnBaseModelOther": "Khác (không có trong danh sách)",
-		"awsCustomArnBaseModelDesc": "Mô hình mà ARN này trỏ tới. Zoo Code dùng nó cho suy nghĩ, nhiệt độ, cửa sổ ngữ cảnh, đầu ra tối đa và giá. Được tự động phát hiện khi ARN có tên mô hình.",
+		"awsCustomArnBaseModelDesc": "Mô hình mà ARN này trỏ tới. Dory Code dùng nó cho suy nghĩ, nhiệt độ, cửa sổ ngữ cảnh, đầu ra tối đa và giá. Được tự động phát hiện khi ARN có tên mô hình.",
 		"awsCustomArnContextWindow": "Cửa sổ ngữ cảnh (token)",
 		"awsCustomArnMaxTokens": "Số token đầu ra tối đa",
 		"openRouterApiKey": "Khóa API OpenRouter",
@@ -448,7 +448,7 @@
 		"headerValue": "Giá trị tiêu đề",
 		"noCustomHeaders": "Chưa có tiêu đề tùy chỉnh nào được định nghĩa. Nhấp vào nút + để thêm.",
 		"extraBody": "Nội dung bổ sung",
-		"extraBodyDescription": "Đối tượng JSON tùy chọn được hợp nhất vào phần thân yêu cầu API. Không thể ghi đè các trường do Zoo Code quản lý như model, messages, tools và stream. Không bao gồm thông tin bí mật.",
+		"extraBodyDescription": "Đối tượng JSON tùy chọn được hợp nhất vào phần thân yêu cầu API. Không thể ghi đè các trường do Dory Code quản lý như model, messages, tools và stream. Không bao gồm thông tin bí mật.",
 		"unboundApiKey": "Khóa API Unbound",
 		"getUnboundApiKey": "Lấy khóa API Unbound",
 		"requestyApiKey": "Khóa API Requesty",
@@ -594,18 +594,18 @@
 			"speculativeDecoding": "Bật giải mã suy đoán",
 			"draftModelId": "ID mô hình nháp",
 			"draftModelDesc": "Mô hình nháp phải từ cùng một họ mô hình để giải mã suy đoán hoạt động chính xác.",
-			"description": "LM Studio cho phép bạn chạy các mô hình cục bộ trên máy tính của bạn. Để biết hướng dẫn về cách bắt đầu, xem <a>hướng dẫn nhanh</a> của họ. Bạn cũng sẽ cần khởi động tính năng <b>máy chủ cục bộ</b> của LM Studio để sử dụng nó với tiện ích mở rộng này. <span>Lưu ý:</span> Zoo Code sử dụng các lời nhắc phức tạp và hoạt động tốt nhất với các mô hình Claude. Các mô hình kém mạnh hơn có thể không hoạt động như mong đợi."
+			"description": "LM Studio cho phép bạn chạy các mô hình cục bộ trên máy tính của bạn. Để biết hướng dẫn về cách bắt đầu, xem <a>hướng dẫn nhanh</a> của họ. Bạn cũng sẽ cần khởi động tính năng <b>máy chủ cục bộ</b> của LM Studio để sử dụng nó với tiện ích mở rộng này. <span>Lưu ý:</span> Dory Code sử dụng các lời nhắc phức tạp và hoạt động tốt nhất với các mô hình Claude. Các mô hình kém mạnh hơn có thể không hoạt động như mong đợi."
 		},
 		"ollama": {
 			"baseUrl": "URL cơ sở (tùy chọn)",
 			"apiKey": "Khóa API Ollama",
-			"apiKeyHelp": "Khóa API tùy chọn cho các phiên bản Ollama cần xác thực, hoặc cho dịch vụ đám mây. Zoo Code chỉ gửi khóa đến endpoint HTTPS hoặc loopback. Endpoint HTTP từ xa không nhận khóa, vì khóa sẽ đi dưới dạng văn bản thuần. Hãy dùng HTTPS cho phiên bản từ xa cần khóa. Để trống cho cài đặt cục bộ.",
+			"apiKeyHelp": "Khóa API tùy chọn cho các phiên bản Ollama cần xác thực, hoặc cho dịch vụ đám mây. Dory Code chỉ gửi khóa đến endpoint HTTPS hoặc loopback. Endpoint HTTP từ xa không nhận khóa, vì khóa sẽ đi dưới dạng văn bản thuần. Hãy dùng HTTPS cho phiên bản từ xa cần khóa. Để trống cho cài đặt cục bộ.",
 			"numCtx": "Kích thước cửa sổ ngữ cảnh (num_ctx)",
 			"numCtxHelp": "Ghi đè kích thước cửa sổ ngữ cảnh mặc định của mô hình. Để trống để sử dụng cấu hình Modelfile của mô hình. Giá trị tối thiểu là 128.",
 			"thinking": "Bật suy luận",
 			"thinkingHelp": "Bật suy luận gốc của Ollama cho các mô hình suy luận (ví dụ: qwen3, deepseek-r1). Khi được bật, suy luận của mô hình được truyền và hiển thị riêng biệt. Các mô hình không được hỗ trợ sẽ bỏ qua cài đặt này.",
 			"description": "Ollama cho phép bạn chạy các mô hình cục bộ trên máy tính của bạn. Để biết hướng dẫn về cách bắt đầu, xem hướng dẫn nhanh của họ.",
-			"warning": "Lưu ý: Zoo Code sử dụng các lời nhắc phức tạp và hoạt động tốt nhất với các mô hình Claude. Các mô hình kém mạnh hơn có thể không hoạt động như mong đợi."
+			"warning": "Lưu ý: Dory Code sử dụng các lời nhắc phức tạp và hoạt động tốt nhất với các mô hình Claude. Các mô hình kém mạnh hơn có thể không hoạt động như mong đợi."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -615,7 +615,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Cấu hình các khả năng và giá cả cho mô hình tương thích OpenAI tùy chỉnh của bạn. Hãy cẩn thận khi chỉ định khả năng của mô hình, vì chúng có thể ảnh hưởng đến cách Zoo Code hoạt động.",
+			"capabilities": "Cấu hình các khả năng và giá cả cho mô hình tương thích OpenAI tùy chỉnh của bạn. Hãy cẩn thận khi chỉ định khả năng của mô hình, vì chúng có thể ảnh hưởng đến cách Dory Code hoạt động.",
 			"maxTokens": {
 				"label": "Số token đầu ra tối đa",
 				"description": "Số lượng token tối đa mà mô hình có thể tạo ra trong một phản hồi. (Chỉ định -1 để cho phép máy chủ đặt số token tối đa.)"
@@ -658,7 +658,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Giới hạn lỗi và lặp lại",
-			"description": "Số lỗi liên tiếp hoặc hành động lặp lại trước khi hiển thị hộp thoại 'Zoo đang gặp sự cố'. Đặt thành 0 để tắt cơ chế an toàn này (nó sẽ không bao giờ kích hoạt).",
+			"description": "Số lỗi liên tiếp hoặc hành động lặp lại trước khi hiển thị hộp thoại 'Dory Code đang gặp sự cố'. Đặt thành 0 để tắt cơ chế an toàn này (nó sẽ không bao giờ kích hoạt).",
 			"unlimitedDescription": "Đã bật thử lại không giới hạn (tự động tiếp tục). Hộp thoại sẽ không bao giờ xuất hiện.",
 			"warning": "⚠️ Đặt thành 0 cho phép thử lại không giới hạn, điều này có thể tiêu tốn mức sử dụng API đáng kể"
 		},
@@ -705,7 +705,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "Đường dẫn tệp thực thi CLI",
 			"executablePathDescription": "Để trống để tìm \"{{defaultExecutable}}\" trong PATH và trong các thư mục cài đặt thông dụng.",
-			"howItWorks": "Zoo Code chạy CLI {{name}} đã cài trên máy này và dùng phiên đăng nhập của nó, nên gói đăng ký của bạn trả cho các yêu cầu. Các công cụ riêng của CLI bị tắt. Zoo Code chạy mọi công cụ, xin bạn phê duyệt và tạo checkpoint như thường lệ.",
+			"howItWorks": "Dory Code chạy CLI {{name}} đã cài trên máy này và dùng phiên đăng nhập của nó, nên gói đăng ký của bạn trả cho các yêu cầu. Các công cụ riêng của CLI bị tắt. Dory Code chạy mọi công cụ, xin bạn phê duyệt và tạo checkpoint như thường lệ.",
 			"setup": "Trước khi bắt đầu, hãy cài CLI và đăng nhập bằng \"{{loginCommand}}\" trong terminal.",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -718,18 +718,18 @@
 		},
 		"enable": {
 			"label": "Bật điểm kiểm tra tự động",
-			"description": "Khi được bật, Zoo sẽ tự động tạo các điểm kiểm tra trong quá trình thực hiện nhiệm vụ, giúp dễ dàng xem lại các thay đổi hoặc quay lại trạng thái trước đó. <0>Tìm hiểu thêm</0>"
+			"description": "Khi được bật, Dory Code sẽ tự động tạo các điểm kiểm tra trong quá trình thực hiện nhiệm vụ, giúp dễ dàng xem lại các thay đổi hoặc quay lại trạng thái trước đó. <0>Tìm hiểu thêm</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Bật hiệu ứng âm thanh",
-			"description": "Khi được bật, Zoo sẽ phát hiệu ứng âm thanh cho thông báo và sự kiện.",
+			"description": "Khi được bật, Dory Code sẽ phát hiệu ứng âm thanh cho thông báo và sự kiện.",
 			"volumeLabel": "Âm lượng"
 		},
 		"tts": {
 			"label": "Bật chuyển văn bản thành giọng nói",
-			"description": "Khi được bật, Zoo sẽ đọc to các phản hồi của nó bằng chức năng chuyển văn bản thành giọng nói.",
+			"description": "Khi được bật, Dory Code sẽ đọc to các phản hồi của nó bằng chức năng chuyển văn bản thành giọng nói.",
 			"speedLabel": "Tốc độ"
 		}
 	},
@@ -821,7 +821,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "Kích thước xem trước đầu ra lệnh",
-			"description": "Kiểm soát lượng đầu ra lệnh mà Zoo nhìn thấy trực tiếp. Đầu ra đầy đủ luôn được lưu và có thể truy cập khi cần thiết.",
+			"description": "Kiểm soát lượng đầu ra lệnh mà Dory Code nhìn thấy trực tiếp. Đầu ra đầy đủ luôn được lưu và có thể truy cập khi cần thiết.",
 			"options": {
 				"small": "Nhỏ (5KB)",
 				"medium": "Trung bình (10KB)",
@@ -834,7 +834,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Sử dụng Terminal nội tuyến (được khuyến nghị)",
-			"description": "Chạy lệnh trong Terminal nội tuyến (trò chuyện) để bỏ qua hồ sơ/tích hợp shell để chạy nhanh hơn, đáng tin cậy hơn. Khi bị tắt, Zoo sử dụng terminal VS Code với hồ sơ shell, lời nhắc và plugin của bạn. <0>Tìm hiểu thêm</0>"
+			"description": "Chạy lệnh trong Terminal nội tuyến (trò chuyện) để bỏ qua hồ sơ/tích hợp shell để chạy nhanh hơn, đáng tin cậy hơn. Khi bị tắt, Dory Code sử dụng terminal VS Code với hồ sơ shell, lời nhắc và plugin của bạn. <0>Tìm hiểu thêm</0>"
 		},
 		"commandDelay": {
 			"label": "Delay lệnh terminal",
@@ -865,9 +865,9 @@
 			"description": "Bật tính năng này để kế thừa các biến môi trường từ quy trình mẹ của VS Code. <0>Tìm hiểu thêm</0>"
 		},
 		"profile": {
-			"label": "Hồ sơ terminal Zoo Code",
+			"label": "Hồ sơ terminal Dory Code",
 			"followVscode": "Đang theo hồ sơ VS Code (được khuyến nghị)",
-			"description": "Theo mặc định Zoo Code sử dụng shell được cấu hình trong VS Code. Chọn một hồ sơ shell từ danh sách để chọn hồ sơ shell dựa trên đường dẫn được VS Code cung cấp. Các hồ sơ chỉ nguồn (ví dụ: mục PowerShell tích hợp) không thể được liệt kê ở đây. <0>Tìm hiểu thêm</0>",
+			"description": "Theo mặc định Dory Code sử dụng shell được cấu hình trong VS Code. Chọn một hồ sơ shell từ danh sách để chọn hồ sơ shell dựa trên đường dẫn được VS Code cung cấp. Các hồ sơ chỉ nguồn (ví dụ: mục PowerShell tích hợp) không thể được liệt kê ở đây. <0>Tìm hiểu thêm</0>",
 			"configureButton": "Chọn hồ sơ mặc định trong VS Code",
 			"noProfiles": "(không tìm thấy hồ sơ dựa trên đường dẫn trong terminal.integrated.profiles)"
 		}
@@ -878,7 +878,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "Bật công cụ danh sách việc cần làm",
-			"description": "Khi được bật, Zoo có thể tạo và quản lý danh sách việc cần làm để theo dõi tiến độ công việc. Điều này giúp tổ chức các tác vụ phức tạp thành các bước có thể quản lý được."
+			"description": "Khi được bật, Dory Code có thể tạo và quản lý danh sách việc cần làm để theo dõi tiến độ công việc. Điều này giúp tổ chức các tác vụ phức tạp thành các bước có thể quản lý được."
 		}
 	},
 	"experimental": {
@@ -888,15 +888,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Sử dụng công cụ chèn nội dung thử nghiệm",
-			"description": "Bật công cụ chèn nội dung thử nghiệm, cho phép Zoo chèn nội dung tại số dòng cụ thể mà không cần tạo diff."
+			"description": "Bật công cụ chèn nội dung thử nghiệm, cho phép Dory Code chèn nội dung tại số dòng cụ thể mà không cần tạo diff."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Sử dụng công cụ diff đa khối thử nghiệm",
-			"description": "Khi được bật, Zoo sẽ sử dụng công cụ diff đa khối. Điều này sẽ cố gắng cập nhật nhiều khối mã trong tệp trong một yêu cầu."
+			"description": "Khi được bật, Dory Code sẽ sử dụng công cụ diff đa khối. Điều này sẽ cố gắng cập nhật nhiều khối mã trong tệp trong một yêu cầu."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Bật đọc tệp đồng thời",
-			"description": "Khi bật, Zoo có thể đọc nhiều tệp trong một yêu cầu duy nhất. Khi tắt, Zoo phải đọc từng tệp một. Việc tắt có thể hữu ích khi làm việc với các mô hình ít khả năng hơn hoặc khi bạn muốn kiểm soát nhiều hơn quyền truy cập tệp."
+			"description": "Khi bật, Dory Code có thể đọc nhiều tệp trong một yêu cầu duy nhất. Khi tắt, Dory Code phải đọc từng tệp một. Việc tắt có thể hữu ích khi làm việc với các mô hình ít khả năng hơn hoặc khi bạn muốn kiểm soát nhiều hơn quyền truy cập tệp."
 		},
 		"MARKETPLACE": {
 			"name": "Bật Marketplace",
@@ -904,7 +904,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Chỉnh sửa nền",
-			"description": "Khi được bật, ngăn chặn gián đoạn tiêu điểm trình soạn thảo. Việc chỉnh sửa tệp diễn ra ở nền mà không mở chế độ xem diff hoặc chiếm tiêu điểm. Bạn có thể tiếp tục làm việc không bị gián đoạn trong khi Zoo thực hiện thay đổi. Các tệp có thể được mở mà không có tiêu điểm để thu thập chẩn đoán hoặc giữ hoàn toàn đóng."
+			"description": "Khi được bật, ngăn chặn gián đoạn tiêu điểm trình soạn thảo. Việc chỉnh sửa tệp diễn ra ở nền mà không mở chế độ xem diff hoặc chiếm tiêu điểm. Bạn có thể tiếp tục làm việc không bị gián đoạn trong khi Dory Code thực hiện thay đổi. Các tệp có thể được mở mà không có tiêu điểm để thu thập chẩn đoán hoặc giữ hoàn toàn đóng."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Dùng bộ phân tích tin nhắn mới",
@@ -918,7 +918,7 @@
 			"providerLabel": "Nhà cung cấp",
 			"providerDescription": "Chọn nhà cung cấp để tạo hình ảnh.",
 			"name": "Bật tạo hình ảnh AI",
-			"description": "Khi được bật, Zoo có thể tạo hình ảnh từ lời nhắc văn bản bằng các mô hình tạo hình ảnh của OpenRouter. Yêu cầu khóa API OpenRouter được cấu hình.",
+			"description": "Khi được bật, Dory Code có thể tạo hình ảnh từ lời nhắc văn bản bằng các mô hình tạo hình ảnh của OpenRouter. Yêu cầu khóa API OpenRouter được cấu hình.",
 			"openRouterApiKeyLabel": "Khóa API OpenRouter",
 			"openRouterApiKeyPlaceholder": "Nhập khóa API OpenRouter của bạn",
 			"getApiKeyText": "Lấy khóa API của bạn từ",
@@ -929,11 +929,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Bật lệnh slash do mô hình khởi tạo",
-			"description": "Khi được bật, Zoo có thể chạy các lệnh slash của bạn để thực hiện các quy trình làm việc."
+			"description": "Khi được bật, Dory Code có thể chạy các lệnh slash của bạn để thực hiện các quy trình làm việc."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Bật công cụ tùy chỉnh",
-			"description": "Khi được bật, Zoo có thể tải và sử dụng các công cụ TypeScript/JavaScript tùy chỉnh từ thư mục .roo/tools của dự án hoặc ~/.roo/tools cho các công cụ toàn cục. Lưu ý: các công cụ này sẽ được tự động phê duyệt.",
+			"description": "Khi được bật, Dory Code có thể tải và sử dụng các công cụ TypeScript/JavaScript tùy chỉnh từ thư mục .roo/tools của dự án hoặc ~/.roo/tools cho các công cụ toàn cục. Lưu ý: các công cụ này sẽ được tự động phê duyệt.",
 			"toolsHeader": "Công cụ tùy chỉnh có sẵn",
 			"noTools": "Không có công cụ tùy chỉnh nào được tải. Thêm tệp .ts hoặc .js vào thư mục .roo/tools của dự án hoặc ~/.roo/tools cho các công cụ toàn cục.",
 			"refreshButton": "Làm mới",
@@ -957,7 +957,7 @@
 		"imageSupportUnknown": "Chưa báo cáo khả năng hỗ trợ hình ảnh",
 		"toolSupportUnknown": "Chưa báo cáo khả năng hỗ trợ công cụ",
 		"promptCacheManagedByCopilot": "Bộ nhớ đệm prompt do GitHub Copilot quản lý",
-		"promptCacheCopilotDetails": "Bộ nhớ đệm phụ thuộc vào mô hình và backend của GitHub Copilot. Zoo Code không thể cấu hình thời gian lưu bộ nhớ đệm hay quan sát lượt trúng bộ nhớ đệm qua API của VS Code.",
+		"promptCacheCopilotDetails": "Bộ nhớ đệm phụ thuộc vào mô hình và backend của GitHub Copilot. Dory Code không thể cấu hình thời gian lưu bộ nhớ đệm hay quan sát lượt trúng bộ nhớ đệm qua API của VS Code.",
 		"supportsImages": "Hỗ trợ hình ảnh",
 		"noImages": "Không hỗ trợ hình ảnh",
 		"supportsTools": "Hỗ trợ công cụ",
@@ -986,7 +986,7 @@
 		"showLess": "Thu gọn"
 	},
 	"modelPicker": {
-		"automaticFetch": "Tiện ích mở rộng tự động lấy danh sách mới nhất các mô hình có sẵn trên <serviceLink>{{serviceName}}</serviceLink>. Nếu bạn không chắc chắn nên chọn mô hình nào, Zoo Code hoạt động tốt nhất với <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Bạn cũng có thể thử tìm kiếm \"free\" cho các tùy chọn miễn phí hiện có.",
+		"automaticFetch": "Tiện ích mở rộng tự động lấy danh sách mới nhất các mô hình có sẵn trên <serviceLink>{{serviceName}}</serviceLink>. Nếu bạn không chắc chắn nên chọn mô hình nào, Dory Code hoạt động tốt nhất với <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Bạn cũng có thể thử tìm kiếm \"free\" cho các tùy chọn miễn phí hiện có.",
 		"label": "Mô hình",
 		"searchPlaceholder": "Tìm kiếm",
 		"noMatchFound": "Không tìm thấy kết quả",
@@ -1018,7 +1018,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "Nội dung bổ sung phải chứa JSON hợp lệ.",
 			"objectRequired": "Nội dung bổ sung phải là một đối tượng JSON.",
-			"reservedKeys": "Nội dung bổ sung không thể ghi đè các trường do Zoo Code quản lý: {{keys}}."
+			"reservedKeys": "Nội dung bổ sung không thể ghi đè các trường do Dory Code quản lý: {{keys}}."
 		},
 		"arn": {
 			"regionMismatch": "Cảnh báo: Vùng trong ARN của bạn ({{arnRegion}}) không khớp với vùng bạn đã chọn ({{region}}). Điều này có thể gây ra vấn đề truy cập. Nhà cung cấp sẽ sử dụng vùng từ ARN."
@@ -1093,20 +1093,20 @@
 		},
 		"chatFontSize": {
 			"label": "Cỡ chữ trò chuyện",
-			"description": "Đặt cỡ chữ (tính bằng pixel) cho cuộc trò chuyện Zoo Code. Để ở giá trị mặc định để khớp với cỡ chữ của VS Code.",
+			"description": "Đặt cỡ chữ (tính bằng pixel) cho cuộc trò chuyện Dory Code. Để ở giá trị mặc định để khớp với cỡ chữ của VS Code.",
 			"reset": "Dùng mặc định của VS Code"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Tự động đóng các tệp do Zoo mở",
-			"description": "Khi bật, các tab trình soạn thảo mà Zoo mở tạm thời để hiển thị diff sẽ tự động đóng sau khi chấp nhận hoặc từ chối thay đổi. Các tab mà người dùng đã mở trước khi chỉnh sửa sẽ không bao giờ bị tự động đóng."
+			"label": "Tự động đóng các tệp do Dory Code mở",
+			"description": "Khi bật, các tab trình soạn thảo mà Dory Code mở tạm thời để hiển thị diff sẽ tự động đóng sau khi chấp nhận hoặc từ chối thay đổi. Các tab mà người dùng đã mở trước khi chỉnh sửa sẽ không bao giờ bị tự động đóng."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Tự động đóng ngay cả sau khi người dùng tương tác",
-			"description": "Khi bật, các tab do Zoo mở sẽ đóng ngay cả khi người dùng đã nhấn chuột hoặc gõ phím vào tệp hoặc diff trong phiên chỉnh sửa. Không có tác dụng nếu 'Tự động đóng các tệp do Zoo mở' bị tắt."
+			"description": "Khi bật, các tab do Dory Code mở sẽ đóng ngay cả khi người dùng đã nhấn chuột hoặc gõ phím vào tệp hoặc diff trong phiên chỉnh sửa. Không có tác dụng nếu 'Tự động đóng các tệp do Dory Code mở' bị tắt."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Tự động đóng các tệp mới tạo",
-			"description": "Khi bật, các tab của các tệp mà Zoo đã tạo (thay vì chỉnh sửa) cũng sẽ tự động đóng sau khi chấp nhận thay đổi."
+			"description": "Khi bật, các tab của các tệp mà Dory Code đã tạo (thay vì chỉnh sửa) cũng sẽ tự động đóng sau khi chấp nhận thay đổi."
 		}
 	},
 	"skills": {
@@ -1159,7 +1159,7 @@
 		"description": "Ngôn ngữ và cách hiển thị ngày/giờ.",
 		"languageTitle": "Ngôn ngữ",
 		"displayLanguage": "Ngôn ngữ hiển thị",
-		"displayLanguageDescription": "Ngôn ngữ của giao diện Zoo Code.",
+		"displayLanguageDescription": "Ngôn ngữ của giao diện Dory Code.",
 		"dateTimeTitle": "Ngày và giờ",
 		"timeFormat": {
 			"label": "Định dạng giờ",

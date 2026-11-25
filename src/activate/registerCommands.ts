@@ -22,7 +22,7 @@ import { t } from "../i18n"
 export function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): ClineProvider | undefined {
 	const visibleProvider = ClineProvider.getVisibleInstance()
 	if (!visibleProvider) {
-		outputChannel.appendLine("Cannot find any visible Roo Code instances.")
+		outputChannel.appendLine("Cannot find any visible Dory Code instances.")
 		return undefined
 	}
 	return visibleProvider
@@ -259,7 +259,7 @@ export const openClineInNewTab = async ({ context, outputChannel, webviewFocusTr
 
 	const targetCol = hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two
 
-	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "Zoo Code", targetCol, {
+	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "Dory Code", targetCol, {
 		enableScripts: true,
 		retainContextWhenHidden: true,
 		localResourceRoots: [context.extensionUri],
@@ -268,12 +268,7 @@ export const openClineInNewTab = async ({ context, outputChannel, webviewFocusTr
 	// Save as tab type panel.
 	setPanel(newPanel, "tab")
 
-	// TODO: Use better svg icon with light and dark variants (see
-	// https://stackoverflow.com/questions/58365687/vscode-extension-iconpath).
-	newPanel.iconPath = {
-		light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
-		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
-	}
+	newPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "icon.png")
 
 	await tabProvider.resolveWebviewView(newPanel)
 

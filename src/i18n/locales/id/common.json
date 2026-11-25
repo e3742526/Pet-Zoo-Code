@@ -124,10 +124,10 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Tidak ada konten terminal yang dipilih",
-		"auto_import_failed": "Gagal mengimpor pengaturan ZooCode secara otomatis: {{error}}",
+		"auto_import_failed": "Gagal mengimpor pengaturan Dory Code secara otomatis: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "Tidak ada riwayat tugas Roo Code yang ditemukan untuk diimpor dari {{domain}}.",
-			"alreadyImported_other": "Semua {{count}} riwayat tugas Roo Code sudah diimpor ke Zoo Code."
+			"alreadyImported_other": "Semua {{count}} riwayat tugas Roo Code sudah diimpor ke Dory Code."
 		}
 	},
 	"info": {
@@ -135,7 +135,7 @@
 		"custom_storage_path_set": "Path penyimpanan kustom diatur: {{path}}",
 		"default_storage_path": "Kembali menggunakan path penyimpanan default",
 		"settings_imported": "Pengaturan berhasil diimpor.",
-		"auto_import_success": "Pengaturan ZooCode berhasil diimpor secara otomatis dari {{filename}}",
+		"auto_import_success": "Pengaturan Dory Code berhasil diimpor secara otomatis dari {{filename}}",
 		"image_copied_to_clipboard": "Data URI gambar disalin ke clipboard",
 		"image_saved": "Gambar disimpan ke {{path}}",
 		"mode_exported": "Mode '{{mode}}' berhasil diekspor",
@@ -144,7 +144,7 @@
 			"signInUnavailable": "Masuk ke Roo Code Cloud saat ini tidak tersedia. Konfigurasikan penyedia lain untuk melanjutkan."
 		},
 		"rooHistoryImport": {
-			"success_other": "{{count}} riwayat tugas Roo Code berhasil diimpor ke Zoo Code."
+			"success_other": "{{count}} riwayat tugas Roo Code berhasil diimpor ke Dory Code."
 		}
 	},
 	"openRouterSignIn": {
@@ -179,7 +179,7 @@
 		"enter_valid_path": "Silakan masukkan path yang valid"
 	},
 	"input": {
-		"task_prompt": "Apa yang harus Zoo lakukan?",
+		"task_prompt": "Apa yang harus Dory Code lakukan?",
 		"task_placeholder": "Ketik tugas kamu di sini"
 	},
 	"customModes": {
@@ -240,9 +240,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Jelaskan dengan Zoo Code",
-		"fix": "Perbaiki dengan Zoo Code",
-		"improve": "Tingkatkan dengan Zoo Code",
-		"addToContext": "Tambahkan ke Zoo Code"
+		"explain": "Jelaskan dengan Dory Code",
+		"fix": "Perbaiki dengan Dory Code",
+		"improve": "Tingkatkan dengan Dory Code",
+		"addToContext": "Tambahkan ke Dory Code"
 	}
 }

@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "Eksperymentalne",
 		"language": "Język",
-		"about": "O Zoo Code",
+		"about": "O Dory Code",
 		"skills": "Skills",
 		"rules": "Reguły"
 	},
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Importuj historię z Roo Code",
 			"cardTitle": "Historia Roo Code",
-			"cardDescription": "Skopiuj zapisane rozmowy Roo Code do Zoo Code.",
+			"cardDescription": "Skopiuj zapisane rozmowy Roo Code do Dory Code.",
 			"statusImporting": "Importowanie historii",
 			"statusFailed": "Import nie powiódł się",
 			"statusComplete": "Import zakończony",
@@ -123,7 +123,7 @@
 		"footer": "Używaj poleceń slash do szybkiego dostępu do często używanych podpowiedzi i przepływów pracy."
 	},
 	"rules": {
-		"description": "Zarządzaj plikami reguł Zoo Code z globalnych i workspace’owych katalogów .roo/rules. Twórz reguły ogólne lub specyficzne dla trybu bez ręcznego przeglądania folderów konfiguracji.",
+		"description": "Zarządzaj plikami reguł Dory Code z globalnych i workspace’owych katalogów .roo/rules. Twórz reguły ogólne lub specyficzne dla trybu bez ręcznego przeglądania folderów konfiguracji.",
 		"workspaceRules": "Reguły workspace",
 		"globalRules": "Reguły globalne",
 		"noWorkspaceRules": "W tym projekcie nie ma jeszcze reguł.",
@@ -169,7 +169,7 @@
 		"footer": "Reguły ładują wskazówki specyficzne dla trybu przed ogólnymi. Reguły globalne ładują się przed regułami workspace."
 	},
 	"prompts": {
-		"description": "Skonfiguruj podpowiedzi wsparcia używane do szybkich działań, takich jak ulepszanie podpowiedzi, wyjaśnianie kodu i rozwiązywanie problemów. Te podpowiedzi pomagają Zoo zapewnić lepsze wsparcie dla typowych zadań programistycznych."
+		"description": "Skonfiguruj podpowiedzi wsparcia używane do szybkich działań, takich jak ulepszanie podpowiedzi, wyjaśnianie kodu i rozwiązywanie problemów. Te podpowiedzi pomagają Dory Code zapewnić lepsze wsparcie dla typowych zadań programistycznych."
 	},
 	"codeIndex": {
 		"title": "Indeksowanie kodu",
@@ -271,15 +271,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "Możesz skonfigurować globalny skrót dla tego ustawienia <SettingsLink>w preferencjach swojego IDE</SettingsLink>.",
-		"description": "Pozwól Zoo na automatyczne wykonywanie operacji bez wymagania zatwierdzenia. Włącz te ustawienia tylko jeśli w pełni ufasz AI i rozumiesz związane z tym zagrożenia bezpieczeństwa.",
+		"description": "Pozwól Dory Code na automatyczne wykonywanie operacji bez wymagania zatwierdzenia. Włącz te ustawienia tylko jeśli w pełni ufasz AI i rozumiesz związane z tym zagrożenia bezpieczeństwa.",
 		"enabled": "Auto-zatwierdzanie włączone",
 		"toggleAriaLabel": "Przełącz automatyczne zatwierdzanie",
 		"readOnly": {
 			"label": "Odczyt",
-			"description": "Gdy włączone, Zoo automatycznie będzie wyświetlać zawartość katalogów i czytać pliki bez konieczności klikania przycisku Zatwierdź.",
+			"description": "Gdy włączone, Dory Code automatycznie będzie wyświetlać zawartość katalogów i czytać pliki bez konieczności klikania przycisku Zatwierdź.",
 			"outsideWorkspace": {
 				"label": "Uwzględnij pliki poza obszarem roboczym",
-				"description": "Pozwól Zoo na odczyt plików poza bieżącym obszarem roboczym bez konieczności zatwierdzania."
+				"description": "Pozwól Dory Code na odczyt plików poza bieżącym obszarem roboczym bez konieczności zatwierdzania."
 			}
 		},
 		"write": {
@@ -287,11 +287,11 @@
 			"description": "Automatycznie twórz i edytuj pliki bez konieczności zatwierdzania",
 			"outsideWorkspace": {
 				"label": "Uwzględnij pliki poza obszarem roboczym",
-				"description": "Pozwól Zoo na tworzenie i edycję plików poza bieżącym obszarem roboczym bez konieczności zatwierdzania."
+				"description": "Pozwól Dory Code na tworzenie i edycję plików poza bieżącym obszarem roboczym bez konieczności zatwierdzania."
 			},
 			"protected": {
 				"label": "Uwzględnij pliki chronione",
-				"description": "Pozwól Zoo na tworzenie i edycję plików chronionych (takich jak .rooignore i pliki konfiguracyjne .roo/) bez konieczności zatwierdzania."
+				"description": "Pozwól Dory Code na tworzenie i edycję plików chronionych (takich jak .rooignore i pliki konfiguracyjne .roo/) bez konieczności zatwierdzania."
 			}
 		},
 		"allowlists": {
@@ -299,12 +299,12 @@
 			"description": "Przyznaj dostęp do pojedynczych plików, bez automatycznego zatwierdzania całej kategorii działań. Jeden wzorzec na wiersz, w składni inspirowanej .gitignore: \"notes.md\" pasuje do tego pliku w dowolnym katalogu obszaru roboczego, \"docs/scratch/**\" do wszystkiego poniżej tego katalogu, a \"*.md\" do dowolnego pliku Markdown. Wzorzec zawsze nazywa pliki, nigdy katalogi: \"docs\" przyznaje dostęp tylko do pliku o nazwie \"docs\"; zawartość katalogu zapisz jako \"docs/**\". Początkowe \"./\" oznacza katalog główny obszaru roboczego, natomiast początkowe \"/\" oznacza katalog główny systemu plików, więc \"/tmp/notes.md\" sięga poza obszar roboczy, podobnie jak \"~/notes.md\", gdzie początkowe \"~/\" oznacza twój katalog domowy. Poprzedź wzorzec znakiem \"!\", aby wykluczyć to, co dopasował wcześniejszy wiersz; tak jak w .gitignore wygrywa ostatni pasujący wiersz, więc kolejność ma znaczenie. Wzorce względne wobec obszaru roboczego są ignorowane, dopóki nie jest otwarty żaden folder. Wielkość liter ma znaczenie, z wyjątkiem Windows. Dopóki \"Automatyczne zatwierdzanie\" powyżej jest wyłączone, nic nie jest zatwierdzane automatycznie.",
 			"readFiles": {
 				"label": "Wzorce listy dozwolonych do odczytu",
-				"description": "Pliki, które Zoo może czytać bez zatwierdzania, nawet gdy \"Odczyt\" powyżej jest wyłączony. Pliki z listy dozwolonych do zapisu poniżej zawsze można także czytać, więc nie trzeba ich dodawać dwukrotnie. Listowanie katalogów i wyszukiwanie zawsze podlegają ustawieniu \"Odczyt\". Pliki wykluczone przez .rooignore i tak pozostają nieczytelne.",
+				"description": "Pliki, które Dory Code może czytać bez zatwierdzania, nawet gdy \"Odczyt\" powyżej jest wyłączony. Pliki z listy dozwolonych do zapisu poniżej zawsze można także czytać, więc nie trzeba ich dodawać dwukrotnie. Listowanie katalogów i wyszukiwanie zawsze podlegają ustawieniu \"Odczyt\". Pliki wykluczone przez .rooignore i tak pozostają nieczytelne.",
 				"placeholder": "Jeden wzorzec na wiersz, np. notes.md"
 			},
 			"writeFiles": {
 				"label": "Wzorce listy dozwolonych do zapisu",
-				"description": "Pliki, które Zoo może tworzyć i edytować bez zatwierdzania, nawet gdy \"Zapis\" powyżej jest wyłączony. Pliki chronione nadal wymagają zatwierdzenia, chyba że włączysz \"Uwzględnij pliki chronione\" (w ustawieniach automatycznego zatwierdzania \"Zapis\"). Pliki wykluczone przez .rooignore i tak pozostają niezapisywalne.",
+				"description": "Pliki, które Dory Code może tworzyć i edytować bez zatwierdzania, nawet gdy \"Zapis\" powyżej jest wyłączony. Pliki chronione nadal wymagają zatwierdzenia, chyba że włączysz \"Uwzględnij pliki chronione\" (w ustawieniach automatycznego zatwierdzania \"Zapis\"). Pliki wykluczone przez .rooignore i tak pozostają niezapisywalne.",
 				"placeholder": "Jeden wzorzec na wiersz, np. notes.md"
 			}
 		},
@@ -330,7 +330,7 @@
 			"description": "Automatycznie wykonuj dozwolone polecenia terminala bez konieczności zatwierdzania",
 			"destructiveCommandGuard": {
 				"label": "Włącz ochronę przed destrukcyjnymi poleceniami",
-				"description": "Pobiera i używa Destructive Command Guard (DCG) dla tej platformy. Polecenia dozwolone przez DCG są wykonywane automatycznie. Polecenia zablokowane przez DCG wymagają twojej zgody. Listy poleceń Zoo są wyłączone, gdy ta opcja jest aktywna. Pobrany plik wykonywalny pozostaje na dysku po wyłączeniu opcji."
+				"description": "Pobiera i używa Destructive Command Guard (DCG) dla tej platformy. Polecenia dozwolone przez DCG są wykonywane automatycznie. Polecenia zablokowane przez DCG wymagają twojej zgody. Listy poleceń Dory Code są wyłączone, gdy ta opcja jest aktywna. Pobrany plik wykonywalny pozostaje na dysku po wyłączeniu opcji."
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -382,7 +382,7 @@
 		"awsCustomArnDesc": "Upewnij się, że region w ARN odpowiada wybranemu powyżej regionowi AWS.",
 		"awsCustomArnBaseModel": "Model bazowy",
 		"awsCustomArnBaseModelOther": "Inny (niewymieniony)",
-		"awsCustomArnBaseModelDesc": "Model, na który wskazuje ten ARN. Zoo Code używa go do myślenia, temperatury, okna kontekstu, maksymalnego wyjścia i cen. Wykrywany automatycznie, gdy ARN zawiera nazwę modelu.",
+		"awsCustomArnBaseModelDesc": "Model, na który wskazuje ten ARN. Dory Code używa go do myślenia, temperatury, okna kontekstu, maksymalnego wyjścia i cen. Wykrywany automatycznie, gdy ARN zawiera nazwę modelu.",
 		"awsCustomArnContextWindow": "Okno kontekstu (tokeny)",
 		"awsCustomArnMaxTokens": "Maksymalna liczba tokenów wyjściowych",
 		"openRouterApiKey": "Klucz API OpenRouter",
@@ -451,7 +451,7 @@
 		"headerValue": "Wartość nagłówka",
 		"noCustomHeaders": "Brak zdefiniowanych niestandardowych nagłówków. Kliknij przycisk +, aby dodać.",
 		"extraBody": "Dodatkowa treść",
-		"extraBodyDescription": "Opcjonalny obiekt JSON scalany z treścią żądań API. Pola zarządzane przez Zoo Code, takie jak model, messages, tools i stream, nie mogą zostać nadpisane. Nie umieszczaj tu sekretów.",
+		"extraBodyDescription": "Opcjonalny obiekt JSON scalany z treścią żądań API. Pola zarządzane przez Dory Code, takie jak model, messages, tools i stream, nie mogą zostać nadpisane. Nie umieszczaj tu sekretów.",
 		"unboundApiKey": "Klucz API Unbound",
 		"getUnboundApiKey": "Uzyskaj klucz API Unbound",
 		"requestyApiKey": "Klucz API Requesty",
@@ -597,18 +597,18 @@
 			"speculativeDecoding": "Włącz dekodowanie spekulacyjne",
 			"draftModelId": "ID modelu szkicu",
 			"draftModelDesc": "Aby dekodowanie spekulacyjne działało poprawnie, model szkicu musi pochodzić z tej samej rodziny modeli.",
-			"description": "LM Studio pozwala na lokalne uruchamianie modeli na twoim komputerze. Aby rozpocząć, zapoznaj się z ich <a>przewodnikiem szybkiego startu</a>. Będziesz również musiał uruchomić funkcję <b>serwera lokalnego</b> LM Studio, aby używać go z tym rozszerzeniem. <span>Uwaga:</span> Zoo Code używa złożonych podpowiedzi i działa najlepiej z modelami Claude. Modele o niższych możliwościach mogą nie działać zgodnie z oczekiwaniami."
+			"description": "LM Studio pozwala na lokalne uruchamianie modeli na twoim komputerze. Aby rozpocząć, zapoznaj się z ich <a>przewodnikiem szybkiego startu</a>. Będziesz również musiał uruchomić funkcję <b>serwera lokalnego</b> LM Studio, aby używać go z tym rozszerzeniem. <span>Uwaga:</span> Dory Code używa złożonych podpowiedzi i działa najlepiej z modelami Claude. Modele o niższych możliwościach mogą nie działać zgodnie z oczekiwaniami."
 		},
 		"ollama": {
 			"baseUrl": "URL bazowy (opcjonalnie)",
 			"apiKey": "Klucz API Ollama",
-			"apiKeyHelp": "Opcjonalny klucz API dla instancji Ollama, które wymagają uwierzytelnienia, lub dla usług chmurowych. Zoo Code wysyła klucz tylko do punktów końcowych HTTPS lub loopback. Zdalny punkt końcowy HTTP nie dostaje klucza, ponieważ klucz byłby przesłany jawnym tekstem. Użyj HTTPS dla zdalnej instancji, która wymaga klucza. Dla instalacji lokalnej pozostaw to pole puste.",
+			"apiKeyHelp": "Opcjonalny klucz API dla instancji Ollama, które wymagają uwierzytelnienia, lub dla usług chmurowych. Dory Code wysyła klucz tylko do punktów końcowych HTTPS lub loopback. Zdalny punkt końcowy HTTP nie dostaje klucza, ponieważ klucz byłby przesłany jawnym tekstem. Użyj HTTPS dla zdalnej instancji, która wymaga klucza. Dla instalacji lokalnej pozostaw to pole puste.",
 			"numCtx": "Rozmiar okna kontekstu (num_ctx)",
 			"numCtxHelp": "Zastępuje domyślny rozmiar okna kontekstu modelu. Pozostaw puste, aby użyć konfiguracji Modelfile modelu. Minimalna wartość to 128.",
 			"thinking": "Włącz wnioskowanie",
 			"thinkingHelp": "Włącz natywne wnioskowanie Ollama dla modeli wnioskujących (np. qwen3, deepseek-r1). Po włączeniu wnioskowanie modelu jest przesyłane i wyświetlane oddzielnie. Nieobsługiwane modele zignorują to ustawienie.",
 			"description": "Ollama pozwala na lokalne uruchamianie modeli na twoim komputerze. Aby rozpocząć, zapoznaj się z przewodnikiem szybkiego startu.",
-			"warning": "Uwaga: Zoo Code używa złożonych podpowiedzi i działa najlepiej z modelami Claude. Modele o niższych możliwościach mogą nie działać zgodnie z oczekiwaniami."
+			"warning": "Uwaga: Dory Code używa złożonych podpowiedzi i działa najlepiej z modelami Claude. Modele o niższych możliwościach mogą nie działać zgodnie z oczekiwaniami."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -618,7 +618,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Skonfiguruj możliwości i ceny swojego niestandardowego modelu zgodnego z OpenAI. Zachowaj ostrożność podczas określania możliwości modelu, ponieważ mogą one wpływać na wydajność Zoo Code.",
+			"capabilities": "Skonfiguruj możliwości i ceny swojego niestandardowego modelu zgodnego z OpenAI. Zachowaj ostrożność podczas określania możliwości modelu, ponieważ mogą one wpływać na wydajność Dory Code.",
 			"maxTokens": {
 				"label": "Maksymalna liczba tokenów wyjściowych",
 				"description": "Maksymalna liczba tokenów, które model może wygenerować w odpowiedzi. (Określ -1, aby pozwolić serwerowi ustawić maksymalną liczbę tokenów.)"
@@ -661,7 +661,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Limit błędów i powtórzeń",
-			"description": "Liczba kolejnych błędów lub powtórzonych akcji przed wyświetleniem okna dialogowego 'Zoo ma problemy'. Ustaw na 0, aby wyłączyć ten mechanizm bezpieczeństwa (nigdy się nie uruchomi).",
+			"description": "Liczba kolejnych błędów lub powtórzonych akcji przed wyświetleniem okna dialogowego 'Dory Code ma problemy'. Ustaw na 0, aby wyłączyć ten mechanizm bezpieczeństwa (nigdy się nie uruchomi).",
 			"unlimitedDescription": "Włączono nieograniczone próby (automatyczne kontynuowanie). Okno dialogowe nigdy się nie pojawi.",
 			"warning": "⚠️ Ustawienie na 0 pozwala na nieograniczone próby, co może zużyć znaczną ilość API"
 		},
@@ -708,7 +708,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "Ścieżka do pliku wykonywalnego CLI",
 			"executablePathDescription": "Pozostaw puste, aby wyszukać \"{{defaultExecutable}}\" w PATH i w typowych folderach instalacji.",
-			"howItWorks": "Zoo Code uruchamia CLI {{name}} zainstalowane na tym komputerze i używa jego logowania, więc za żądania płaci Twoja subskrypcja. Własne narzędzia CLI są wyłączone. Zoo Code uruchamia wszystkie narzędzia, prosi o Twoją zgodę i tworzy punkty kontrolne jak zwykle.",
+			"howItWorks": "Dory Code uruchamia CLI {{name}} zainstalowane na tym komputerze i używa jego logowania, więc za żądania płaci Twoja subskrypcja. Własne narzędzia CLI są wyłączone. Dory Code uruchamia wszystkie narzędzia, prosi o Twoją zgodę i tworzy punkty kontrolne jak zwykle.",
 			"setup": "Przed rozpoczęciem zainstaluj CLI i zaloguj się poleceniem \"{{loginCommand}}\" w terminalu.",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -721,18 +721,18 @@
 		},
 		"enable": {
 			"label": "Włącz automatyczne punkty kontrolne",
-			"description": "Gdy włączone, Zoo automatycznie utworzy punkty kontrolne podczas wykonywania zadań, ułatwiając przeglądanie zmian lub powrót do wcześniejszych stanów. <0>Dowiedz się więcej</0>"
+			"description": "Gdy włączone, Dory Code automatycznie utworzy punkty kontrolne podczas wykonywania zadań, ułatwiając przeglądanie zmian lub powrót do wcześniejszych stanów. <0>Dowiedz się więcej</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Włącz efekty dźwiękowe",
-			"description": "Gdy włączone, Zoo będzie odtwarzać efekty dźwiękowe dla powiadomień i zdarzeń.",
+			"description": "Gdy włączone, Dory Code będzie odtwarzać efekty dźwiękowe dla powiadomień i zdarzeń.",
 			"volumeLabel": "Głośność"
 		},
 		"tts": {
 			"label": "Włącz syntezę mowy",
-			"description": "Gdy włączone, Zoo będzie czytać na głos swoje odpowiedzi za pomocą syntezy mowy.",
+			"description": "Gdy włączone, Dory Code będzie czytać na głos swoje odpowiedzi za pomocą syntezy mowy.",
 			"speedLabel": "Szybkość"
 		}
 	},
@@ -824,7 +824,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "Rozmiar podglądu wyjścia polecenia",
-			"description": "Kontroluje, ile wyjścia polecenia Zoo widzi bezpośrednio. Pełne wyjście jest zawsze zapisywane i dostępne w razie potrzeby.",
+			"description": "Kontroluje, ile wyjścia polecenia Dory Code widzi bezpośrednio. Pełne wyjście jest zawsze zapisywane i dostępne w razie potrzeby.",
 			"options": {
 				"small": "Mały (5KB)",
 				"medium": "Średni (10KB)",
@@ -837,7 +837,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Użyj terminala wbudowanego (zalecane)",
-			"description": "Uruchamiaj polecenia w terminalu wbudowanym (czat), aby ominąć profile/integrację powłoki dla szybszych, bardziej niezawodnych uruchomień. Gdy wyłączony, Zoo używa terminala VS Code z twoim profilem powłoki, monitami i wtyczkami. <0>Dowiedz się więcej</0>"
+			"description": "Uruchamiaj polecenia w terminalu wbudowanym (czat), aby ominąć profile/integrację powłoki dla szybszych, bardziej niezawodnych uruchomień. Gdy wyłączony, Dory Code używa terminala VS Code z twoim profilem powłoki, monitami i wtyczkami. <0>Dowiedz się więcej</0>"
 		},
 		"commandDelay": {
 			"label": "Opóźnienie polecenia terminala",
@@ -868,9 +868,9 @@
 			"description": "Włącz, aby dziedziczyć zmienne środowiskowe z procesu nadrzędnego VS Code. <0>Dowiedz się więcej</0>"
 		},
 		"profile": {
-			"label": "Profil terminala Zoo Code",
+			"label": "Profil terminala Dory Code",
 			"followVscode": "Podążanie za profilem VS Code (zalecane)",
-			"description": "Domyślnie Zoo Code używa powłoki skonfigurowanej w VS Code. Wybierz profil powłoki z listy, aby użyć profilu ze ścieżką udostępnionego przez VS Code. Profile tylko ze źródłem (np. wbudowany wpis PowerShell) nie mogą być tutaj wyświetlone. <0>Dowiedz się więcej</0>",
+			"description": "Domyślnie Dory Code używa powłoki skonfigurowanej w VS Code. Wybierz profil powłoki z listy, aby użyć profilu ze ścieżką udostępnionego przez VS Code. Profile tylko ze źródłem (np. wbudowany wpis PowerShell) nie mogą być tutaj wyświetlone. <0>Dowiedz się więcej</0>",
 			"configureButton": "Wybierz domyślny profil w VS Code",
 			"noProfiles": "(brak profili ze ścieżką w terminal.integrated.profiles)"
 		}
@@ -881,7 +881,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "Włącz narzędzie listy zadań",
-			"description": "Po włączeniu Zoo może tworzyć i zarządzać listami zadań do śledzenia postępu zadań. Pomaga to organizować złożone zadania w łatwe do zarządzania kroki."
+			"description": "Po włączeniu Dory Code może tworzyć i zarządzać listami zadań do śledzenia postępu zadań. Pomaga to organizować złożone zadania w łatwe do zarządzania kroki."
 		}
 	},
 	"experimental": {
@@ -891,15 +891,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Użyj eksperymentalnego narzędzia do wstawiania treści",
-			"description": "Włącz eksperymentalne narzędzie do wstawiania treści, umożliwiając Zoo wstawianie treści w określonych numerach linii bez konieczności tworzenia diff."
+			"description": "Włącz eksperymentalne narzędzie do wstawiania treści, umożliwiając Dory Code wstawianie treści w określonych numerach linii bez konieczności tworzenia diff."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Użyj eksperymentalnego narzędzia diff wieloblokowego",
-			"description": "Po włączeniu, Zoo użyje narzędzia diff wieloblokowego. Spróbuje to zaktualizować wiele bloków kodu w pliku w jednym żądaniu."
+			"description": "Po włączeniu, Dory Code użyje narzędzia diff wieloblokowego. Spróbuje to zaktualizować wiele bloków kodu w pliku w jednym żądaniu."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Włącz jednoczesne odczytywanie plików",
-			"description": "Po włączeniu Zoo może odczytać wiele plików w jednym żądaniu. Po wyłączeniu Zoo musi odczytywać pliki pojedynczo. Wyłączenie może pomóc podczas pracy z mniej wydajnymi modelami lub gdy chcesz mieć większą kontrolę nad dostępem do plików."
+			"description": "Po włączeniu Dory Code może odczytać wiele plików w jednym żądaniu. Po wyłączeniu Dory Code musi odczytywać pliki pojedynczo. Wyłączenie może pomóc podczas pracy z mniej wydajnymi modelami lub gdy chcesz mieć większą kontrolę nad dostępem do plików."
 		},
 		"MARKETPLACE": {
 			"name": "Włącz Marketplace",
@@ -907,7 +907,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Edycja w tle",
-			"description": "Zapobiega zakłócaniu fokusa edytora gdy włączone. Edycje plików odbywają się w tle bez otwierania widoków różnic lub kradzieży fokusa. Możesz kontynuować pracę bez przeszkód podczas gdy Zoo wprowadza zmiany. Pliki mogą być otwierane bez fokusa aby przechwycić diagnostykę lub pozostać całkowicie zamknięte."
+			"description": "Zapobiega zakłócaniu fokusa edytora gdy włączone. Edycje plików odbywają się w tle bez otwierania widoków różnic lub kradzieży fokusa. Możesz kontynuować pracę bez przeszkód podczas gdy Dory Code wprowadza zmiany. Pliki mogą być otwierane bez fokusa aby przechwycić diagnostykę lub pozostać całkowicie zamknięte."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Użyj nowego parsera wiadomości",
@@ -921,7 +921,7 @@
 			"providerLabel": "Dostawca",
 			"providerDescription": "Wybierz dostawcę do generowania obrazów.",
 			"name": "Włącz generowanie obrazów AI",
-			"description": "Gdy włączone, Zoo może generować obrazy z promptów tekstowych używając modeli generowania obrazów OpenRouter. Wymaga skonfigurowanego klucza API OpenRouter.",
+			"description": "Gdy włączone, Dory Code może generować obrazy z promptów tekstowych używając modeli generowania obrazów OpenRouter. Wymaga skonfigurowanego klucza API OpenRouter.",
 			"openRouterApiKeyLabel": "Klucz API OpenRouter",
 			"openRouterApiKeyPlaceholder": "Wprowadź swój klucz API OpenRouter",
 			"getApiKeyText": "Uzyskaj swój klucz API od",
@@ -932,11 +932,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Włącz polecenia slash inicjowane przez model",
-			"description": "Gdy włączone, Zoo może uruchamiać twoje polecenia slash w celu wykonywania przepływów pracy."
+			"description": "Gdy włączone, Dory Code może uruchamiać twoje polecenia slash w celu wykonywania przepływów pracy."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Włącz niestandardowe narzędzia",
-			"description": "Gdy włączone, Zoo może ładować i używać niestandardowych narzędzi TypeScript/JavaScript z katalogu .roo/tools Twojego projektu lub ~/.roo/tools dla narzędzi globalnych. Uwaga: te narzędzia będą automatycznie zatwierdzane.",
+			"description": "Gdy włączone, Dory Code może ładować i używać niestandardowych narzędzi TypeScript/JavaScript z katalogu .roo/tools Twojego projektu lub ~/.roo/tools dla narzędzi globalnych. Uwaga: te narzędzia będą automatycznie zatwierdzane.",
 			"toolsHeader": "Dostępne niestandardowe narzędzia",
 			"noTools": "Nie załadowano niestandardowych narzędzi. Dodaj pliki .ts lub .js do katalogu .roo/tools swojego projektu lub ~/.roo/tools dla narzędzi globalnych.",
 			"refreshButton": "Odśwież",
@@ -960,7 +960,7 @@
 		"imageSupportUnknown": "Obsługa obrazów nie została zgłoszona",
 		"toolSupportUnknown": "Obsługa narzędzi nie została zgłoszona",
 		"promptCacheManagedByCopilot": "Buforowaniem promptów zarządza GitHub Copilot",
-		"promptCacheCopilotDetails": "Buforowanie zależy od modelu i zaplecza GitHub Copilot. Zoo Code nie może skonfigurować czasu przechowywania pamięci podręcznej ani obserwować trafień w pamięci podręcznej przez API VS Code.",
+		"promptCacheCopilotDetails": "Buforowanie zależy od modelu i zaplecza GitHub Copilot. Dory Code nie może skonfigurować czasu przechowywania pamięci podręcznej ani obserwować trafień w pamięci podręcznej przez API VS Code.",
 		"supportsImages": "Obsługuje obrazy",
 		"noImages": "Nie obsługuje obrazów",
 		"supportsTools": "Obsługuje narzędzia",
@@ -995,7 +995,7 @@
 		"showLess": "Mniej"
 	},
 	"modelPicker": {
-		"automaticFetch": "Rozszerzenie automatycznie pobiera najnowszą listę modeli dostępnych w <serviceLink>{{serviceName}}</serviceLink>. Jeśli nie jesteś pewien, który model wybrać, Zoo Code działa najlepiej z <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Możesz również wyszukać \"free\", aby znaleźć obecnie dostępne opcje bezpłatne.",
+		"automaticFetch": "Rozszerzenie automatycznie pobiera najnowszą listę modeli dostępnych w <serviceLink>{{serviceName}}</serviceLink>. Jeśli nie jesteś pewien, który model wybrać, Dory Code działa najlepiej z <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Możesz również wyszukać \"free\", aby znaleźć obecnie dostępne opcje bezpłatne.",
 		"label": "Model",
 		"searchPlaceholder": "Wyszukaj",
 		"noMatchFound": "Nie znaleziono dopasowań",
@@ -1027,7 +1027,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "Dodatkowa treść musi zawierać prawidłowy kod JSON.",
 			"objectRequired": "Dodatkowa treść musi być obiektem JSON.",
-			"reservedKeys": "Dodatkowa treść nie może nadpisywać pól zarządzanych przez Zoo Code: {{keys}}."
+			"reservedKeys": "Dodatkowa treść nie może nadpisywać pól zarządzanych przez Dory Code: {{keys}}."
 		},
 		"arn": {
 			"regionMismatch": "Ostrzeżenie: Region w Twoim ARN ({{arnRegion}}) nie zgadza się z wybranym regionem ({{region}}). Może to powodować problemy z dostępem. Dostawca użyje regionu z ARN."
@@ -1102,20 +1102,20 @@
 		},
 		"chatFontSize": {
 			"label": "Rozmiar czcionki czatu",
-			"description": "Ustaw rozmiar czcionki (w pikselach) dla czatu Zoo Code. Pozostaw wartość domyślną, aby dopasować ją do rozmiaru czcionki VS Code.",
+			"description": "Ustaw rozmiar czcionki (w pikselach) dla czatu Dory Code. Pozostaw wartość domyślną, aby dopasować ją do rozmiaru czcionki VS Code.",
 			"reset": "Użyj wartości domyślnej VS Code"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Automatycznie zamykaj pliki otwarte przez Zoo",
-			"description": "Gdy wlaczone, karty edytora, ktore Zoo otworzylo tymczasowo dla diffa, sa automatycznie zamykane po zaakceptowaniu lub odrzuceniu zmiany. Karty, ktore uzytkownik mial juz otwarte przed edycja, nigdy nie sa automatycznie zamykane."
+			"label": "Automatycznie zamykaj pliki otwarte przez Dory Code",
+			"description": "Gdy wlaczone, karty edytora, ktore Dory Code otworzylo tymczasowo dla diffa, sa automatycznie zamykane po zaakceptowaniu lub odrzuceniu zmiany. Karty, ktore uzytkownik mial juz otwarte przed edycja, nigdy nie sa automatycznie zamykane."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Automatycznie zamykaj rowniez po interakcji uzytkownika",
-			"description": "Gdy wlaczone, karty otwarte przez Zoo sa zamykane nawet jesli uzytkownik kliknal lub pisal w pliku lub diffie podczas sesji edycji. Nie ma efektu, jesli 'Automatycznie zamykaj pliki otwarte przez Zoo' jest wylaczone."
+			"description": "Gdy wlaczone, karty otwarte przez Dory Code sa zamykane nawet jesli uzytkownik kliknal lub pisal w pliku lub diffie podczas sesji edycji. Nie ma efektu, jesli 'Automatycznie zamykaj pliki otwarte przez Dory Code' jest wylaczone."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Automatycznie zamykaj nowo utworzone pliki",
-			"description": "Gdy wlaczone, karty plikow, ktore Zoo utworzylo (zamiast zmodyfikowalo), sa rowniez automatycznie zamykane po zaakceptowaniu zmiany."
+			"description": "Gdy wlaczone, karty plikow, ktore Dory Code utworzylo (zamiast zmodyfikowalo), sa rowniez automatycznie zamykane po zaakceptowaniu zmiany."
 		}
 	},
 	"skills": {
@@ -1168,7 +1168,7 @@
 		"description": "Język oraz wyświetlanie daty i godziny.",
 		"languageTitle": "Język",
 		"displayLanguage": "Język wyświetlania",
-		"displayLanguageDescription": "Język interfejsu Zoo Code.",
+		"displayLanguageDescription": "Język interfejsu Dory Code.",
 		"dateTimeTitle": "Data i godzina",
 		"timeFormat": {
 			"label": "Format godziny",

@@ -1,12 +1,12 @@
 {
 	"landing": {
-		"greeting": "Welcome to Zoo Code!",
-		"introduction": "With a range of built-in and extensible Modes, Zoo Code lets you plan, architect, code, debug and boost your productivity like never before.",
-		"logoAlt": "Roo logo"
+		"greeting": "Welcome to Dory Code!",
+		"introduction": "With a range of built-in and extensible Modes, Dory Code lets you plan, architect, code, debug and boost your productivity like never before.",
+		"logoAlt": "Dory Code logo"
 	},
 	"providerSignup": {
 		"heading": "Choose your provider",
-		"chooseProvider": "Zoo Code needs an LLM provider to work. Choose one to get started, you can add more later.",
+		"chooseProvider": "Dory Code needs an LLM provider to work. Choose one to get started, you can add more later.",
 		"goBack": "Back",
 		"finish": "Finish"
 	},

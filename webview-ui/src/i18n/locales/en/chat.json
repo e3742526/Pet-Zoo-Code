@@ -121,7 +121,7 @@
 	},
 	"scrollToBottom": "Scroll to bottom of chat",
 	"scrollToLatestCheckpoint": "Scroll to previous checkpoint",
-	"about": "Zoo is a whole AI dev team in your editor",
+	"about": "Dory Code is a whole AI dev team in your editor",
 	"docs": "Check our <DocsLink>docs</DocsLink> to get started",
 	"rooTips": {
 		"customizableModes": {
@@ -130,7 +130,7 @@
 		},
 		"modelAgnostic": {
 			"title": "Bring your own model, no markup or lock-in",
-			"description": "Use your own provider key or even run local inference — Zoo doesn't charge for it"
+			"description": "Use your own provider key or even run local inference — Dory Code doesn't charge for it"
 		}
 	},
 	"selectMode": "Select mode for interaction",
@@ -143,7 +143,7 @@
 		"title": "Modes",
 		"marketplace": "Mode Marketplace",
 		"settings": "Mode Settings",
-		"description": "Specialized personas that tailor Zoo's behavior.",
+		"description": "Specialized personas that tailor Dory Code's behavior.",
 		"searchPlaceholder": "Search modes...",
 		"noResults": "No results found"
 	},
@@ -225,43 +225,43 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo wants to load a skill",
-		"didLoad": "Zoo loaded a skill"
+		"wantsToLoad": "Dory Code wants to load a skill",
+		"didLoad": "Dory Code loaded a skill"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo wants to read this file",
-		"wantsToReadMultiple": "Zoo wants to read multiple files",
-		"wantsToReadAndXMore": "Zoo wants to read this file and {{count}} more",
-		"wantsToReadOutsideWorkspace": "Zoo wants to read this file outside of the workspace",
-		"didRead": "Zoo read this file",
-		"wantsToEdit": "Zoo wants to edit this file",
-		"wantsToEditOutsideWorkspace": "Zoo wants to edit this file outside of the workspace",
-		"wantsToEditProtected": "Zoo wants to edit a protected configuration file",
-		"wantsToApplyBatchChanges": "Zoo wants to apply changes to multiple files",
-		"wantsToGenerateImage": "Zoo wants to generate an image",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo wants to generate an image outside of the workspace",
-		"wantsToGenerateImageProtected": "Zoo wants to generate an image in a protected location",
-		"didGenerateImage": "Zoo generated an image",
-		"wantsToInsertWithLineNumber": "Zoo wants to insert content into this file at line {{lineNumber}}",
-		"wantsToInsertAtEnd": "Zoo wants to append content to the end of this file"
+		"wantsToRead": "Dory Code wants to read this file",
+		"wantsToReadMultiple": "Dory Code wants to read multiple files",
+		"wantsToReadAndXMore": "Dory Code wants to read this file and {{count}} more",
+		"wantsToReadOutsideWorkspace": "Dory Code wants to read this file outside of the workspace",
+		"didRead": "Dory Code read this file",
+		"wantsToEdit": "Dory Code wants to edit this file",
+		"wantsToEditOutsideWorkspace": "Dory Code wants to edit this file outside of the workspace",
+		"wantsToEditProtected": "Dory Code wants to edit a protected configuration file",
+		"wantsToApplyBatchChanges": "Dory Code wants to apply changes to multiple files",
+		"wantsToGenerateImage": "Dory Code wants to generate an image",
+		"wantsToGenerateImageOutsideWorkspace": "Dory Code wants to generate an image outside of the workspace",
+		"wantsToGenerateImageProtected": "Dory Code wants to generate an image in a protected location",
+		"didGenerateImage": "Dory Code generated an image",
+		"wantsToInsertWithLineNumber": "Dory Code wants to insert content into this file at line {{lineNumber}}",
+		"wantsToInsertAtEnd": "Dory Code wants to append content to the end of this file"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo wants to view the top level files in this directory",
-		"didViewTopLevel": "Zoo viewed the top level files in this directory",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo wants to view the top level files in this directory (outside workspace)",
-		"didViewTopLevelOutsideWorkspace": "Zoo viewed the top level files in this directory (outside workspace)",
-		"wantsToViewRecursive": "Zoo wants to recursively view all files in this directory",
-		"didViewRecursive": "Zoo recursively viewed all files in this directory",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo wants to recursively view all files in this directory (outside workspace)",
-		"didViewRecursiveOutsideWorkspace": "Zoo recursively viewed all files in this directory (outside workspace)",
-		"wantsToSearch": "Zoo wants to search this directory for <code>{{regex}}</code>",
-		"didSearch": "Zoo searched this directory for <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo wants to search this directory (outside workspace) for <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo searched this directory (outside workspace) for <code>{{regex}}</code>"
+		"wantsToViewTopLevel": "Dory Code wants to view the top level files in this directory",
+		"didViewTopLevel": "Dory Code viewed the top level files in this directory",
+		"wantsToViewTopLevelOutsideWorkspace": "Dory Code wants to view the top level files in this directory (outside workspace)",
+		"didViewTopLevelOutsideWorkspace": "Dory Code viewed the top level files in this directory (outside workspace)",
+		"wantsToViewRecursive": "Dory Code wants to recursively view all files in this directory",
+		"didViewRecursive": "Dory Code recursively viewed all files in this directory",
+		"wantsToViewRecursiveOutsideWorkspace": "Dory Code wants to recursively view all files in this directory (outside workspace)",
+		"didViewRecursiveOutsideWorkspace": "Dory Code recursively viewed all files in this directory (outside workspace)",
+		"wantsToSearch": "Dory Code wants to search this directory for <code>{{regex}}</code>",
+		"didSearch": "Dory Code searched this directory for <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Dory Code wants to search this directory (outside workspace) for <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Dory Code searched this directory (outside workspace) for <code>{{regex}}</code>"
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo wants to search the codebase for <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo wants to search the codebase for <code>{{query}}</code> in <code>{{path}}</code>",
+		"wantsToSearch": "Dory Code wants to search the codebase for <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Dory Code wants to search the codebase for <code>{{query}}</code> in <code>{{path}}</code>",
 		"didSearch_one": "Found {{count}} result",
 		"didSearch_other": "Found {{count}} results",
 		"resultTooltip": "Similarity score: {{score}} (click to open file)",
@@ -282,30 +282,30 @@
 		"clickToEditPattern": "Click to edit pattern"
 	},
 	"text": {
-		"rooSaid": "Zoo said"
+		"rooSaid": "Dory Code said"
 	},
 	"feedback": {
 		"youSaid": "You said"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo wants to use a tool on the {{serverName}} MCP server",
-		"wantsToAccessResource": "Zoo wants to access a resource on the {{serverName}} MCP server"
+		"wantsToUseTool": "Dory Code wants to use a tool on the {{serverName}} MCP server",
+		"wantsToAccessResource": "Dory Code wants to access a resource on the {{serverName}} MCP server"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo wants to switch to {{mode}} mode",
-		"wantsToSwitchWithReason": "Zoo wants to switch to {{mode}} mode because: {{reason}}",
-		"didSwitch": "Zoo switched to {{mode}} mode",
-		"didSwitchWithReason": "Zoo switched to {{mode}} mode because: {{reason}}"
+		"wantsToSwitch": "Dory Code wants to switch to {{mode}} mode",
+		"wantsToSwitchWithReason": "Dory Code wants to switch to {{mode}} mode because: {{reason}}",
+		"didSwitch": "Dory Code switched to {{mode}} mode",
+		"didSwitchWithReason": "Dory Code switched to {{mode}} mode because: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo wants to create a new subtask in {{mode}} mode",
-		"wantsToFinish": "Zoo wants to mark this as completed",
+		"wantsToCreate": "Dory Code wants to create a new subtask in {{mode}} mode",
+		"wantsToFinish": "Dory Code wants to mark this as completed",
 		"resultContent": "Subtask completed",
 		"completionInstructions": "You can review the results and suggest any corrections or next steps. If everything looks good, confirm to return the result to the parent task.",
 		"goToSubtask": "View task"
 	},
 	"questions": {
-		"hasQuestion": "Zoo has a question"
+		"hasQuestion": "Dory Code has a question"
 	},
 	"taskCompleted": "Task Completed",
 	"error": "Error",
@@ -322,12 +322,12 @@
 		"copyToClipboard": "Copy basic error info",
 		"copied": "Copied!",
 		"diagnostics": "Get detailed error info",
-		"proxyProvider": "You seem to be using a proxy-based provider. Make sure to check its logs and to ensure it's not rewriting Zoo's requests."
+		"proxyProvider": "You seem to be using a proxy-based provider. Make sure to check its logs and to ensure it's not rewriting Dory Code's requests."
 	},
 	"diffError": {
 		"title": "Edit Unsuccessful"
 	},
-	"troubleMessage": "Zoo is having trouble...",
+	"troubleMessage": "Dory Code is having trouble...",
 	"autoApprove": {
 		"tooltipManage": "Manage auto-approval settings",
 		"tooltipStatus": "Auto-approval enabled for: {{toggles}}",
@@ -377,19 +377,19 @@
 	"profileViolationWarning": "The current profile isn't compatible with your organization's settings",
 	"shellIntegration": {
 		"title": "Command Execution Warning",
-		"description": "Your command is being executed without VSCode terminal shell integration. To suppress this warning you can disable shell integration in the <strong>Terminal</strong> section of the <settingsLink>Zoo Code settings</settingsLink> or troubleshoot VSCode terminal integration using the link below.",
+		"description": "Your command is being executed without VSCode terminal shell integration. To suppress this warning you can disable shell integration in the <strong>Terminal</strong> section of the <settingsLink>Dory Code settings</settingsLink> or troubleshoot VSCode terminal integration using the link below.",
 		"troubleshooting": "Click here for shell integration documentation."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Auto-Approved Request Limit Reached",
-			"description_one": "Zoo has reached the auto-approved limit of {{count}} API request. Would you like to reset the count and proceed with the task?",
-			"description_other": "Zoo has reached the auto-approved limit of {{count}} API requests. Would you like to reset the count and proceed with the task?",
+			"description_one": "Dory Code has reached the auto-approved limit of {{count}} API request. Would you like to reset the count and proceed with the task?",
+			"description_other": "Dory Code has reached the auto-approved limit of {{count}} API requests. Would you like to reset the count and proceed with the task?",
 			"button": "Reset and Continue"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "Auto-Approved Cost Limit Reached",
-			"description": "Zoo has reached the auto-approved cost limit of ${{count}}. Would you like to reset the cost and proceed with the task?",
+			"description": "Dory Code has reached the auto-approved cost limit of ${{count}}. Would you like to reset the cost and proceed with the task?",
 			"button": "Reset and Continue"
 		}
 	},
@@ -408,8 +408,8 @@
 		"manageCommands": "Manage slash commands in settings"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo wants to run a slash command",
-		"didRun": "Zoo ran a slash command"
+		"wantsToRun": "Dory Code wants to run a slash command",
+		"didRun": "Dory Code ran a slash command"
 	},
 	"queuedMessages": {
 		"title": "Queued Messages",
@@ -471,7 +471,7 @@
 		"messageTemplate": "The following tools cannot be disabled, so their disabledTools entries were ignored: {{tools}}."
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Dory Code read command output"
 	},
 	"retiredProvider": {
 		"title": "Provider no longer supported",

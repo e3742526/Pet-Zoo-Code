@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "Deneysel",
 		"language": "Dil",
-		"about": "Zoo Code Hakkında",
+		"about": "Dory Code Hakkında",
 		"skills": "Skills",
 		"rules": "Kurallar"
 	},
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Roo Code'dan geçmişi içe aktar",
 			"cardTitle": "Roo Code geçmişi",
-			"cardDescription": "Kayıtlı Roo Code konuşmalarını Zoo Code'a kopyala.",
+			"cardDescription": "Kayıtlı Roo Code konuşmalarını Dory Code'a kopyala.",
 			"statusImporting": "Geçmiş içe aktarılıyor",
 			"statusFailed": "İçe aktarma başarısız",
 			"statusComplete": "İçe aktarma tamamlandı",
@@ -121,7 +121,7 @@
 		"footer": "Sık kullanılan komutlara ve iş akışlarına hızlı erişim için eğik çizgi komutlarını kullanın."
 	},
 	"rules": {
-		"description": "Genel ve workspace .roo/rules dizinlerinden Zoo Code kural dosyalarını yönet. Yapılandırma klasörlerinde manuel gezinmeden genel kurallar veya moda özel kurallar oluştur.",
+		"description": "Genel ve workspace .roo/rules dizinlerinden Dory Code kural dosyalarını yönet. Yapılandırma klasörlerinde manuel gezinmeden genel kurallar veya moda özel kurallar oluştur.",
 		"workspaceRules": "Workspace Kuralları",
 		"globalRules": "Genel Kurallar",
 		"noWorkspaceRules": "Bu projede henüz kural yok.",
@@ -167,7 +167,7 @@
 		"footer": "Kurallar, genel rehberlikten önce moda özel rehberliği yükler. Genel kurallar workspace kurallarından önce yüklenir."
 	},
 	"prompts": {
-		"description": "Prompt geliştirme, kod açıklama ve sorun çözme gibi hızlı eylemler için kullanılan destek promptlarını yapılandırın. Bu promptlar, Zoo'nun yaygın geliştirme görevleri için daha iyi destek sağlamasına yardımcı olur."
+		"description": "Prompt geliştirme, kod açıklama ve sorun çözme gibi hızlı eylemler için kullanılan destek promptlarını yapılandırın. Bu promptlar, Dory Code'nun yaygın geliştirme görevleri için daha iyi destek sağlamasına yardımcı olur."
 	},
 	"codeIndex": {
 		"title": "Kod Tabanı İndeksleme",
@@ -269,15 +269,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "<SettingsLink>IDE tercihlerinizde</SettingsLink> bu ayar için genel bir kısayol yapılandırabilirsiniz.",
-		"description": "Zoo'nun onay gerektirmeden otomatik olarak işlemler gerçekleştirmesine izin verin. Bu ayarları yalnızca yapay zekaya tamamen güveniyorsanız ve ilgili güvenlik risklerini anlıyorsanız etkinleştirin.",
+		"description": "Dory Code'nun onay gerektirmeden otomatik olarak işlemler gerçekleştirmesine izin verin. Bu ayarları yalnızca yapay zekaya tamamen güveniyorsanız ve ilgili güvenlik risklerini anlıyorsanız etkinleştirin.",
 		"enabled": "Oto-onay etkinleştirildi",
 		"toggleAriaLabel": "Otomatik onayı değiştir",
 		"readOnly": {
 			"label": "Okuma",
-			"description": "Etkinleştirildiğinde, Zoo otomatik olarak dizin içeriğini görüntüleyecek ve Onayla düğmesine tıklamanıza gerek kalmadan dosyaları okuyacaktır.",
+			"description": "Etkinleştirildiğinde, Dory Code otomatik olarak dizin içeriğini görüntüleyecek ve Onayla düğmesine tıklamanıza gerek kalmadan dosyaları okuyacaktır.",
 			"outsideWorkspace": {
 				"label": "Çalışma alanı dışındaki dosyaları dahil et",
-				"description": "Zoo'nun onay gerektirmeden mevcut çalışma alanı dışındaki dosyaları okumasına izin ver."
+				"description": "Dory Code'nun onay gerektirmeden mevcut çalışma alanı dışındaki dosyaları okumasına izin ver."
 			}
 		},
 		"write": {
@@ -285,11 +285,11 @@
 			"description": "Onay gerektirmeden otomatik olarak dosya oluştur ve düzenle",
 			"outsideWorkspace": {
 				"label": "Çalışma alanı dışındaki dosyaları dahil et",
-				"description": "Zoo'nun onay gerektirmeden mevcut çalışma alanı dışında dosya oluşturmasına ve düzenlemesine izin ver."
+				"description": "Dory Code'nun onay gerektirmeden mevcut çalışma alanı dışında dosya oluşturmasına ve düzenlemesine izin ver."
 			},
 			"protected": {
 				"label": "Korumalı dosyaları dahil et",
-				"description": "Zoo'nun korumalı dosyaları (.rooignore ve .roo/ yapılandırma dosyaları gibi) onay gerektirmeden oluşturmasına ve düzenlemesine izin ver."
+				"description": "Dory Code'nun korumalı dosyaları (.rooignore ve .roo/ yapılandırma dosyaları gibi) onay gerektirmeden oluşturmasına ve düzenlemesine izin ver."
 			}
 		},
 		"allowlists": {
@@ -297,12 +297,12 @@
 			"description": "Bütün bir işlem kategorisini otomatik onaylamadan, tek tek dosyalara erişim ver. Her satıra bir desen, .gitignore'dan esinlenen sözdizimiyle: \"notes.md\" çalışma alanındaki herhangi bir dizinde o dosyayla eşleşir, \"docs/scratch/**\" o dizinin altındaki her şeyle ve \"*.md\" herhangi bir Markdown dosyasıyla eşleşir. Bir desen her zaman dosyaları adlandırır, dizinleri asla: \"docs\" yalnızca \"docs\" adlı bir dosyaya izin verir; bir dizinin içeriği için \"docs/**\" yaz. Baştaki \"./\" çalışma alanı kökünü, baştaki \"/\" ise dosya sisteminin kökünü belirtir; böylece \"/tmp/notes.md\" çalışma alanının dışına uzanır; \"~/notes.md\" de öyle, burada baştaki \"~/\" ev dizinini belirtir. Bir desenin önüne \"!\" koyarak önceki bir satırın eşleştirdiğini dışarıda bırak; .gitignore'da olduğu gibi eşleşen son satır kazanır, yani sıra önemlidir. Hiçbir klasör açık değilken çalışma alanına göreli desenler yok sayılır. Büyük ve küçük harf ayırt edilir, Windows dışında. Yukarıdaki \"Otomatik Onay\" kapalıyken hiçbir şey otomatik onaylanmaz.",
 			"readFiles": {
 				"label": "Okuma izin listesi desenleri",
-				"description": "Yukarıdaki \"Okuma\" kapalı olsa bile Zoo'nun onay almadan okuyabileceği dosyalar. Aşağıdaki yazma izin listesindeki dosyalar her zaman okunabilir de, bu yüzden iki kez eklenmeleri gerekmez. Dizin listelemeleri ve aramalar her zaman \"Okuma\" ayarını izler. .rooignore ile dışlanan dosyalar yine de okunamaz.",
+				"description": "Yukarıdaki \"Okuma\" kapalı olsa bile Dory Code'nun onay almadan okuyabileceği dosyalar. Aşağıdaki yazma izin listesindeki dosyalar her zaman okunabilir de, bu yüzden iki kez eklenmeleri gerekmez. Dizin listelemeleri ve aramalar her zaman \"Okuma\" ayarını izler. .rooignore ile dışlanan dosyalar yine de okunamaz.",
 				"placeholder": "Her satıra bir desen, örn. notes.md"
 			},
 			"writeFiles": {
 				"label": "Yazma izin listesi desenleri",
-				"description": "Yukarıdaki \"Yazma\" kapalı olsa bile Zoo'nun onay almadan oluşturup düzenleyebileceği dosyalar. \"Korumalı dosyaları dahil et\" etkinleştirilmediği sürece (\"Yazma\" otomatik onayının ayarlarında) korumalı dosyalar yine onay gerektirir. .rooignore ile dışlanan dosyalar yine de yazılamaz.",
+				"description": "Yukarıdaki \"Yazma\" kapalı olsa bile Dory Code'nun onay almadan oluşturup düzenleyebileceği dosyalar. \"Korumalı dosyaları dahil et\" etkinleştirilmediği sürece (\"Yazma\" otomatik onayının ayarlarında) korumalı dosyalar yine onay gerektirir. .rooignore ile dışlanan dosyalar yine de yazılamaz.",
 				"placeholder": "Her satıra bir desen, örn. notes.md"
 			}
 		},
@@ -328,7 +328,7 @@
 			"description": "Onay gerektirmeden otomatik olarak izin verilen terminal komutlarını yürüt",
 			"destructiveCommandGuard": {
 				"label": "Yıkıcı komut korumasını etkinleştir",
-				"description": "Bu platform için Destructive Command Guard'ı (DCG) indirir ve kullanır. DCG'nin izin verdiği komutlar otomatik olarak çalıştırılır. DCG tarafından engellenen komutlar onayını gerektirir. Bu seçenek etkinken Zoo'nun komut listeleri devre dışı bırakılır. Seçeneği kapatsan da indirilen çalıştırılabilir dosya korunur."
+				"description": "Bu platform için Destructive Command Guard'ı (DCG) indirir ve kullanır. DCG'nin izin verdiği komutlar otomatik olarak çalıştırılır. DCG tarafından engellenen komutlar onayını gerektirir. Bu seçenek etkinken Dory Code'nun komut listeleri devre dışı bırakılır. Seçeneği kapatsan da indirilen çalıştırılabilir dosya korunur."
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -380,7 +380,7 @@
 		"awsCustomArnDesc": "ARN içindeki bölgenin yukarıda seçilen AWS Bölgesiyle eşleştiğinden emin olun.",
 		"awsCustomArnBaseModel": "Temel model",
 		"awsCustomArnBaseModelOther": "Diğer (listede yok)",
-		"awsCustomArnBaseModelDesc": "Bu ARN'nin işaret ettiği model. Zoo Code bunu düşünme, sıcaklık, bağlam penceresi, maksimum çıktı ve fiyatlandırma için kullanır. ARN model adını içerdiğinde otomatik olarak algılanır.",
+		"awsCustomArnBaseModelDesc": "Bu ARN'nin işaret ettiği model. Dory Code bunu düşünme, sıcaklık, bağlam penceresi, maksimum çıktı ve fiyatlandırma için kullanır. ARN model adını içerdiğinde otomatik olarak algılanır.",
 		"awsCustomArnContextWindow": "Bağlam penceresi (token)",
 		"awsCustomArnMaxTokens": "Maksimum çıktı tokenı",
 		"openRouterApiKey": "OpenRouter API Anahtarı",
@@ -449,7 +449,7 @@
 		"headerValue": "Başlık değeri",
 		"noCustomHeaders": "Tanımlanmış özel başlık yok. Eklemek için + düğmesine tıklayın.",
 		"extraBody": "Ek Gövde",
-		"extraBodyDescription": "API istek gövdeleriyle birleştirilen isteğe bağlı JSON nesnesi. model, messages, tools ve stream gibi Zoo Code tarafından yönetilen alanlar geçersiz kılınamaz. Gizli bilgiler eklemeyin.",
+		"extraBodyDescription": "API istek gövdeleriyle birleştirilen isteğe bağlı JSON nesnesi. model, messages, tools ve stream gibi Dory Code tarafından yönetilen alanlar geçersiz kılınamaz. Gizli bilgiler eklemeyin.",
 		"unboundApiKey": "Unbound API Anahtarı",
 		"getUnboundApiKey": "Unbound API Anahtarı Al",
 		"requestyApiKey": "Requesty API Anahtarı",
@@ -595,18 +595,18 @@
 			"speculativeDecoding": "Spekülatif Kod Çözmeyi Etkinleştir",
 			"draftModelId": "Taslak Model Kimliği",
 			"draftModelDesc": "Spekülatif kod çözmenin doğru çalışması için taslak model aynı model ailesinden olmalıdır.",
-			"description": "LM Studio, modelleri bilgisayarınızda yerel olarak çalıştırmanıza olanak tanır. Başlamak için <a>hızlı başlangıç kılavuzlarına</a> bakın. Bu uzantıyla kullanmak için LM Studio'nun <b>yerel sunucu</b> özelliğini de başlatmanız gerekecektir. <span>Not:</span> Zoo Code karmaşık istemler kullanır ve Claude modelleriyle en iyi şekilde çalışır. Daha az yetenekli modeller beklendiği gibi çalışmayabilir."
+			"description": "LM Studio, modelleri bilgisayarınızda yerel olarak çalıştırmanıza olanak tanır. Başlamak için <a>hızlı başlangıç kılavuzlarına</a> bakın. Bu uzantıyla kullanmak için LM Studio'nun <b>yerel sunucu</b> özelliğini de başlatmanız gerekecektir. <span>Not:</span> Dory Code karmaşık istemler kullanır ve Claude modelleriyle en iyi şekilde çalışır. Daha az yetenekli modeller beklendiği gibi çalışmayabilir."
 		},
 		"ollama": {
 			"baseUrl": "Temel URL (İsteğe bağlı)",
 			"apiKey": "Ollama API Anahtarı",
-			"apiKeyHelp": "Kimlik doğrulaması gereken Ollama örnekleri veya bulut hizmetleri için isteğe bağlı API anahtarı. Zoo Code anahtarı yalnızca HTTPS veya loopback uç noktalarına gönderir. Uzak bir HTTP uç noktası anahtar almaz, çünkü anahtar düz metin olarak gider. Anahtar gereken uzak bir örnek için HTTPS kullanın. Yerel kurulum için bu alanı boş bırakın.",
+			"apiKeyHelp": "Kimlik doğrulaması gereken Ollama örnekleri veya bulut hizmetleri için isteğe bağlı API anahtarı. Dory Code anahtarı yalnızca HTTPS veya loopback uç noktalarına gönderir. Uzak bir HTTP uç noktası anahtar almaz, çünkü anahtar düz metin olarak gider. Anahtar gereken uzak bir örnek için HTTPS kullanın. Yerel kurulum için bu alanı boş bırakın.",
 			"numCtx": "Bağlam Penceresi Boyutu (num_ctx)",
 			"numCtxHelp": "Modelin varsayılan bağlam penceresi boyutunu geçersiz kılar. Modelin Modelfile yapılandırmasını kullanmak için boş bırakın. Minimum değer 128'dir.",
 			"thinking": "Akıl yürütmeyi etkinleştir",
 			"thinkingHelp": "Akıl yürütme modelleri (örn. qwen3, deepseek-r1) için Ollama'nın yerel akıl yürütmesini etkinleştirir. Etkinleştirildiğinde, modelin akıl yürütmesi ayrı olarak akışla aktarılır ve görüntülenir. Desteklenmeyen modeller bu ayarı yok sayar.",
 			"description": "Ollama, modelleri bilgisayarınızda yerel olarak çalıştırmanıza olanak tanır. Başlamak için hızlı başlangıç kılavuzlarına bakın.",
-			"warning": "Not: Zoo Code karmaşık istemler kullanır ve Claude modelleriyle en iyi şekilde çalışır. Daha az yetenekli modeller beklendiği gibi çalışmayabilir."
+			"warning": "Not: Dory Code karmaşık istemler kullanır ve Claude modelleriyle en iyi şekilde çalışır. Daha az yetenekli modeller beklendiği gibi çalışmayabilir."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -616,7 +616,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Özel OpenAI uyumlu modelinizin yeteneklerini ve fiyatlandırmasını yapılandırın. Model yeteneklerini belirtirken dikkatli olun, çünkü bunlar Zoo Code'un performansını etkileyebilir.",
+			"capabilities": "Özel OpenAI uyumlu modelinizin yeteneklerini ve fiyatlandırmasını yapılandırın. Model yeteneklerini belirtirken dikkatli olun, çünkü bunlar Dory Code'un performansını etkileyebilir.",
 			"maxTokens": {
 				"label": "Maksimum Çıktı Token'ları",
 				"description": "Modelin bir yanıtta üretebileceği maksimum token sayısı. (Sunucunun maksimum token'ları ayarlamasına izin vermek için -1 belirtin.)"
@@ -659,7 +659,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Hata ve Tekrar Limiti",
-			"description": "'Zoo sorun yaşıyor' iletişim kutusunu göstermeden önceki ardışık hata veya tekrarlanan eylem sayısı. Bu güvenlik mekanizmasını devre dışı bırakmak için 0 olarak ayarlayın (asla tetiklenmez).",
+			"description": "'Dory Code sorun yaşıyor' iletişim kutusunu göstermeden önceki ardışık hata veya tekrarlanan eylem sayısı. Bu güvenlik mekanizmasını devre dışı bırakmak için 0 olarak ayarlayın (asla tetiklenmez).",
 			"unlimitedDescription": "Sınırsız yeniden deneme etkin (otomatik devam et). Diyalog asla görünmeyecek.",
 			"warning": "⚠️ 0'a ayarlamak, önemli API kullanımına neden olabilecek sınırsız yeniden denemeye izin verir"
 		},
@@ -706,7 +706,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "CLI çalıştırılabilir dosya yolu",
 			"executablePathDescription": "PATH içinde ve yaygın kurulum klasörlerinde \"{{defaultExecutable}}\" aramak için boş bırakın.",
-			"howItWorks": "Zoo Code bu bilgisayarda kurulu {{name}} CLI'yi çalıştırır ve onun oturumunu kullanır, bu nedenle istekleri aboneliğiniz öder. CLI'nin kendi araçları kapalıdır. Zoo Code tüm araçları çalıştırır, onayınızı ister ve her zamanki gibi kontrol noktaları oluşturur.",
+			"howItWorks": "Dory Code bu bilgisayarda kurulu {{name}} CLI'yi çalıştırır ve onun oturumunu kullanır, bu nedenle istekleri aboneliğiniz öder. CLI'nin kendi araçları kapalıdır. Dory Code tüm araçları çalıştırır, onayınızı ister ve her zamanki gibi kontrol noktaları oluşturur.",
 			"setup": "Başlamadan önce CLI'yi kurun ve bir terminalde \"{{loginCommand}}\" ile oturum açın.",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -719,18 +719,18 @@
 		},
 		"enable": {
 			"label": "Otomatik kontrol noktalarını etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo görev yürütme sırasında otomatik olarak kontrol noktaları oluşturarak değişiklikleri gözden geçirmeyi veya önceki durumlara dönmeyi kolaylaştırır. <0>Daha fazla bilgi</0>"
+			"description": "Etkinleştirildiğinde, Dory Code görev yürütme sırasında otomatik olarak kontrol noktaları oluşturarak değişiklikleri gözden geçirmeyi veya önceki durumlara dönmeyi kolaylaştırır. <0>Daha fazla bilgi</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Ses efektlerini etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo bildirimler ve olaylar için ses efektleri çalacaktır.",
+			"description": "Etkinleştirildiğinde, Dory Code bildirimler ve olaylar için ses efektleri çalacaktır.",
 			"volumeLabel": "Ses Düzeyi"
 		},
 		"tts": {
 			"label": "Metinden sese özelliğini etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo yanıtlarını metinden sese teknolojisi kullanarak sesli okuyacaktır.",
+			"description": "Etkinleştirildiğinde, Dory Code yanıtlarını metinden sese teknolojisi kullanarak sesli okuyacaktır.",
 			"speedLabel": "Hız"
 		}
 	},
@@ -822,7 +822,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "Komut çıktısı önizleme boyutu",
-			"description": "Zoo'nun doğrudan gördüğü komut çıktısı miktarını kontrol eder. Tam çıktı her zaman kaydedilir ve gerektiğinde erişilebilir.",
+			"description": "Dory Code'nun doğrudan gördüğü komut çıktısı miktarını kontrol eder. Tam çıktı her zaman kaydedilir ve gerektiğinde erişilebilir.",
 			"options": {
 				"small": "Küçük (5KB)",
 				"medium": "Orta (10KB)",
@@ -835,7 +835,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Satır İçi Terminal Kullan (önerilir)",
-			"description": "Daha hızlı, daha güvenilir çalıştırmalar için kabuk profillerini/entegrasyonunu atlamak için Satır İçi Terminal'de (sohbet) komutları çalıştırın. Devre dışı bırakıldığında Zoo, kabuk profiliniz, istemleriniz ve eklentilerinizle VS Code terminalini kullanır. <0>Daha fazla bilgi edinin</0>"
+			"description": "Daha hızlı, daha güvenilir çalıştırmalar için kabuk profillerini/entegrasyonunu atlamak için Satır İçi Terminal'de (sohbet) komutları çalıştırın. Devre dışı bırakıldığında Dory Code, kabuk profiliniz, istemleriniz ve eklentilerinizle VS Code terminalini kullanır. <0>Daha fazla bilgi edinin</0>"
 		},
 		"commandDelay": {
 			"label": "Terminal komut delay",
@@ -866,9 +866,9 @@
 			"description": "Ana VS Code işleminden ortam değişkenlerini devralmak için bunu açın. <0>Daha fazla bilgi edinin</0>"
 		},
 		"profile": {
-			"label": "Zoo Code terminal profili",
+			"label": "Dory Code terminal profili",
 			"followVscode": "VS Code profili takip ediliyor (önerilir)",
-			"description": "Varsayılan olarak Zoo Code, VS Code'da yapılandırılmış kabuğu kullanır. VS Code'un sunduğu yol tabanlı bir kabuk profili seçmek için listeden bir kabuk profili seçin. Yalnızca kaynak profiller (örn. yerleşik PowerShell girişi) burada listelenemez. <0>Daha fazla bilgi</0>",
+			"description": "Varsayılan olarak Dory Code, VS Code'da yapılandırılmış kabuğu kullanır. VS Code'un sunduğu yol tabanlı bir kabuk profili seçmek için listeden bir kabuk profili seçin. Yalnızca kaynak profiller (örn. yerleşik PowerShell girişi) burada listelenemez. <0>Daha fazla bilgi</0>",
 			"configureButton": "VS Code'da varsayılan profili seç",
 			"noProfiles": "(terminal.integrated.profiles'da yol tabanlı profil bulunamadı)"
 		}
@@ -879,7 +879,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "Yapılacaklar listesi aracını etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo görev ilerlemesini takip etmek için yapılacaklar listeleri oluşturabilir ve yönetebilir. Bu, karmaşık görevleri yönetilebilir adımlara organize etmeye yardımcı olur."
+			"description": "Etkinleştirildiğinde, Dory Code görev ilerlemesini takip etmek için yapılacaklar listeleri oluşturabilir ve yönetebilir. Bu, karmaşık görevleri yönetilebilir adımlara organize etmeye yardımcı olur."
 		}
 	},
 	"experimental": {
@@ -889,15 +889,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Deneysel içerik ekleme aracını kullan",
-			"description": "Deneysel içerik ekleme aracını etkinleştir, Zoo'nun bir diff oluşturma gereği duymadan belirli satır numaralarına içerik eklemesine olanak tanır."
+			"description": "Deneysel içerik ekleme aracını etkinleştir, Dory Code'nun bir diff oluşturma gereği duymadan belirli satır numaralarına içerik eklemesine olanak tanır."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Deneysel çoklu blok diff aracını kullan",
-			"description": "Etkinleştirildiğinde, Zoo çoklu blok diff aracını kullanacaktır. Bu, tek bir istekte dosyadaki birden fazla kod bloğunu güncellemeye çalışacaktır."
+			"description": "Etkinleştirildiğinde, Dory Code çoklu blok diff aracını kullanacaktır. Bu, tek bir istekte dosyadaki birden fazla kod bloğunu güncellemeye çalışacaktır."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Eşzamanlı dosya okumayı etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo tek bir istekte birden fazla dosya okuyabilir. Devre dışı bırakıldığında, Zoo dosyaları birer birer okumalıdır. Daha az yetenekli modellerle çalışırken veya dosya erişimi üzerinde daha fazla kontrol istediğinizde devre dışı bırakmak yardımcı olabilir."
+			"description": "Etkinleştirildiğinde, Dory Code tek bir istekte birden fazla dosya okuyabilir. Devre dışı bırakıldığında, Dory Code dosyaları birer birer okumalıdır. Daha az yetenekli modellerle çalışırken veya dosya erişimi üzerinde daha fazla kontrol istediğinizde devre dışı bırakmak yardımcı olabilir."
 		},
 		"MARKETPLACE": {
 			"name": "Marketplace'i Etkinleştir",
@@ -905,7 +905,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Arka plan düzenleme",
-			"description": "Etkinleştirildiğinde editör odak kesintisini önler. Dosya düzenlemeleri diff görünümlerini açmadan veya odağı çalmadan arka planda gerçekleşir. Zoo değişiklikler yaparken kesintisiz çalışmaya devam edebilirsiniz. Dosyalar tanılamayı yakalamak için odaksız açılabilir veya tamamen kapalı kalabilir."
+			"description": "Etkinleştirildiğinde editör odak kesintisini önler. Dosya düzenlemeleri diff görünümlerini açmadan veya odağı çalmadan arka planda gerçekleşir. Dory Code değişiklikler yaparken kesintisiz çalışmaya devam edebilirsiniz. Dosyalar tanılamayı yakalamak için odaksız açılabilir veya tamamen kapalı kalabilir."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Yeni mesaj ayrıştırıcıyı kullan",
@@ -919,7 +919,7 @@
 			"providerLabel": "Sağlayıcı",
 			"providerDescription": "Görüntü oluşturma için kullanılacak sağlayıcıyı seçin.",
 			"name": "AI görüntü üretimini etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo OpenRouter'ın görüntü üretim modellerini kullanarak metin istemlerinden görüntüler üretebilir. Yapılandırılmış bir OpenRouter API anahtarı gerektirir.",
+			"description": "Etkinleştirildiğinde, Dory Code OpenRouter'ın görüntü üretim modellerini kullanarak metin istemlerinden görüntüler üretebilir. Yapılandırılmış bir OpenRouter API anahtarı gerektirir.",
 			"openRouterApiKeyLabel": "OpenRouter API Anahtarı",
 			"openRouterApiKeyPlaceholder": "OpenRouter API anahtarınızı girin",
 			"getApiKeyText": "API anahtarınızı alın",
@@ -930,11 +930,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Model tarafından başlatılan slash komutlarını etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo iş akışlarını yürütmek için slash komutlarınızı çalıştırabilir."
+			"description": "Etkinleştirildiğinde, Dory Code iş akışlarını yürütmek için slash komutlarınızı çalıştırabilir."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Özel araçları etkinleştir",
-			"description": "Etkinleştirildiğinde, Zoo projenizin .roo/tools dizininden veya global araçlar için ~/.roo/tools dizininden özel TypeScript/JavaScript araçlarını yükleyebilir ve kullanabilir. Not: Bu araçlar otomatik olarak onaylanacaktır.",
+			"description": "Etkinleştirildiğinde, Dory Code projenizin .roo/tools dizininden veya global araçlar için ~/.roo/tools dizininden özel TypeScript/JavaScript araçlarını yükleyebilir ve kullanabilir. Not: Bu araçlar otomatik olarak onaylanacaktır.",
 			"toolsHeader": "Kullanılabilir Özel Araçlar",
 			"noTools": "Özel araç yüklenmedi. Projenizin .roo/tools dizinine veya global araçlar için ~/.roo/tools dizinine .ts veya .js dosyaları ekleyin.",
 			"refreshButton": "Yenile",
@@ -958,7 +958,7 @@
 		"imageSupportUnknown": "Görsel desteği bildirilmedi",
 		"toolSupportUnknown": "Araç desteği bildirilmedi",
 		"promptCacheManagedByCopilot": "İstem önbelleğini GitHub Copilot yönetir",
-		"promptCacheCopilotDetails": "Önbellekleme modele ve GitHub Copilot arka ucuna bağlıdır. Zoo Code, VS Code API'si üzerinden önbellek saklama süresini yapılandıramaz veya önbellek isabetlerini gözlemleyemez.",
+		"promptCacheCopilotDetails": "Önbellekleme modele ve GitHub Copilot arka ucuna bağlıdır. Dory Code, VS Code API'si üzerinden önbellek saklama süresini yapılandıramaz veya önbellek isabetlerini gözlemleyemez.",
 		"supportsImages": "Görüntüleri destekler",
 		"noImages": "Görüntüleri desteklemez",
 		"supportsTools": "Araçları destekler",
@@ -989,7 +989,7 @@
 		"showLess": "Daha az"
 	},
 	"modelPicker": {
-		"automaticFetch": "Uzantı <serviceLink>{{serviceName}}</serviceLink> üzerinde bulunan mevcut modellerin en güncel listesini otomatik olarak alır. Hangi modeli seçeceğinizden emin değilseniz, Zoo Code <defaultModelLink>{{defaultModelId}}</defaultModelLink> ile en iyi şekilde çalışır. Şu anda mevcut olan ücretsiz seçenekleri bulmak için \"free\" araması da yapabilirsiniz.",
+		"automaticFetch": "Uzantı <serviceLink>{{serviceName}}</serviceLink> üzerinde bulunan mevcut modellerin en güncel listesini otomatik olarak alır. Hangi modeli seçeceğinizden emin değilseniz, Dory Code <defaultModelLink>{{defaultModelId}}</defaultModelLink> ile en iyi şekilde çalışır. Şu anda mevcut olan ücretsiz seçenekleri bulmak için \"free\" araması da yapabilirsiniz.",
 		"label": "Model",
 		"searchPlaceholder": "Ara",
 		"noMatchFound": "Eşleşme bulunamadı",
@@ -1021,7 +1021,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "Ek Gövde geçerli JSON içermelidir.",
 			"objectRequired": "Ek Gövde bir JSON nesnesi olmalıdır.",
-			"reservedKeys": "Ek Gövde, Zoo Code tarafından yönetilen alanları geçersiz kılamaz: {{keys}}."
+			"reservedKeys": "Ek Gövde, Dory Code tarafından yönetilen alanları geçersiz kılamaz: {{keys}}."
 		},
 		"arn": {
 			"regionMismatch": "Uyarı: ARN'nizdeki bölge ({{arnRegion}}) seçtiğiniz bölge ({{region}}) ile eşleşmiyor. Bu erişim sorunlarına neden olabilir. Sağlayıcı, ARN'deki bölgeyi kullanacak."
@@ -1096,20 +1096,20 @@
 		},
 		"chatFontSize": {
 			"label": "Sohbet yazı tipi boyutu",
-			"description": "Zoo Code sohbeti için yazı tipi boyutunu (piksel cinsinden) ayarlayın. VS Code yazı tipi boyutuyla eşleşmesi için varsayılan değerde bırakın.",
+			"description": "Dory Code sohbeti için yazı tipi boyutunu (piksel cinsinden) ayarlayın. VS Code yazı tipi boyutuyla eşleşmesi için varsayılan değerde bırakın.",
 			"reset": "VS Code varsayılanını kullan"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Zoo tarafindan acilan dosyalari otomatik kapat",
-			"description": "Etkinlestirildiginde, Zoo'nun bir diff icin gecici olarak actigi duzenleyici sekmeleri, degisiklik kabul edildikten veya reddedildikten sonra otomatik olarak kapatilir. Kullanicinin duzenleme oncesinde zaten acik oldugu sekmeler hicbir zaman otomatik olarak kapatilmaz."
+			"label": "Dory Code tarafindan acilan dosyalari otomatik kapat",
+			"description": "Etkinlestirildiginde, Dory Code'nun bir diff icin gecici olarak actigi duzenleyici sekmeleri, degisiklik kabul edildikten veya reddedildikten sonra otomatik olarak kapatilir. Kullanicinin duzenleme oncesinde zaten acik oldugu sekmeler hicbir zaman otomatik olarak kapatilmaz."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Kullanici etkilesiminden sonra da otomatik kapat",
-			"description": "Etkinlestirildiginde, kullanici duzenleme oturumu sirasinda dosyaya veya diff'e tiklasa ya da yazsa bile Zoo tarafindan acilan sekmeler kapatilir. 'Zoo tarafindan acilan dosyalari otomatik kapat' devre disi ise etkisi yoktur."
+			"description": "Etkinlestirildiginde, kullanici duzenleme oturumu sirasinda dosyaya veya diff'e tiklasa ya da yazsa bile Dory Code tarafindan acilan sekmeler kapatilir. 'Dory Code tarafindan acilan dosyalari otomatik kapat' devre disi ise etkisi yoktur."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Yeni olusturulan dosyalari otomatik kapat",
-			"description": "Etkinlestirildiginde, Zoo'nun olusturdugu (degistirmedigi) dosyalarin sekmeleri de degisiklik kabul edildikten sonra otomatik olarak kapatilir."
+			"description": "Etkinlestirildiginde, Dory Code'nun olusturdugu (degistirmedigi) dosyalarin sekmeleri de degisiklik kabul edildikten sonra otomatik olarak kapatilir."
 		}
 	},
 	"skills": {
@@ -1162,7 +1162,7 @@
 		"description": "Dil ile tarih/saat gösterimi.",
 		"languageTitle": "Dil",
 		"displayLanguage": "Görüntüleme dili",
-		"displayLanguageDescription": "Zoo Code arayüzünün dili.",
+		"displayLanguageDescription": "Dory Code arayüzünün dili.",
 		"dateTimeTitle": "Tarih ve saat",
 		"timeFormat": {
 			"label": "Saat biçimi",

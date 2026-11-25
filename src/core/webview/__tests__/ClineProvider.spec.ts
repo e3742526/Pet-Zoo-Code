@@ -1164,7 +1164,7 @@ describe("ClineProvider", () => {
 		})
 
 		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
-		expect(mockWebviewView.webview.html).toContain("<title>Zoo Code</title>")
+		expect(mockWebviewView.webview.html).toContain("<title>Dory Code</title>")
 	})
 
 	describe("logWebviewHiddenDiagnostics", () => {
@@ -1274,7 +1274,7 @@ describe("ClineProvider", () => {
 
 			// Reassigning webview.html with a fresh nonce is what forces the reload.
 			expect(mockWebviewView.webview.html).not.toBe(htmlAfterResolve)
-			expect(mockWebviewView.webview.html).toContain("<title>Zoo Code</title>")
+			expect(mockWebviewView.webview.html).toContain("<title>Dory Code</title>")
 		})
 
 		test.each([
@@ -1861,18 +1861,18 @@ describe("ClineProvider", () => {
 					provider["reportWebviewRecoveryFailure"]("Initialization failed; retry pending", false)
 					expect(provider["webviewRecoveryAttempts"]).toBe(0)
 					expect(log).toHaveBeenCalledWith(
-						"[Zoo Code] Webview recovery will retry: Initialization failed; retry pending",
+						"[Dory Code] Webview recovery will retry: Initialization failed; retry pending",
 					)
 				}
 
 				provider["reportWebviewRecoveryFailure"]("Recovery is unavailable")
-				expect(log).toHaveBeenCalledWith("[Zoo Code] Webview recovery stopped: Recovery is unavailable")
+				expect(log).toHaveBeenCalledWith("[Dory Code] Webview recovery stopped: Recovery is unavailable")
 				await vi.advanceTimersByTimeAsync(300_000)
 
 				expect(provider["webviewRecoveryAttempts"]).toBe(3)
 				expect(mockWebviewView.webview.html).toBe(html)
 				expect(log.mock.calls.filter(([line]) => line.includes("Webview recovery stopped:"))).toEqual([
-					["[Zoo Code] Webview recovery stopped: Recovery is unavailable"],
+					["[Dory Code] Webview recovery stopped: Recovery is unavailable"],
 				])
 				expect(vscode.window.showWarningMessage).toHaveBeenCalledTimes(1)
 			},
@@ -1898,8 +1898,8 @@ describe("ClineProvider", () => {
 				await vi.advanceTimersByTimeAsync(300_000)
 
 				expect(log.mock.calls.filter(([line]) => line.includes("Webview recovery stopped:"))).toEqual([
-					["[Zoo Code] Webview recovery stopped: First incident"],
-					["[Zoo Code] Webview recovery stopped: Second incident"],
+					["[Dory Code] Webview recovery stopped: First incident"],
+					["[Dory Code] Webview recovery stopped: Second incident"],
 				])
 				expect(vscode.window.showWarningMessage).toHaveBeenCalledTimes(2)
 			},
@@ -2230,7 +2230,7 @@ describe("ClineProvider", () => {
 
 			expect(generateHtml).toHaveBeenCalledTimes(1)
 			expect(replacementView.webview.html).not.toBe(htmlAfterResolve)
-			expect(replacementView.webview.html).toContain("<title>Zoo Code</title>")
+			expect(replacementView.webview.html).toContain("<title>Dory Code</title>")
 		})
 
 		test("does not reload while the view is hidden even when the heartbeat is stale", async () => {
@@ -2351,7 +2351,7 @@ describe("ClineProvider", () => {
 			await vi.advanceTimersByTimeAsync(120_000)
 
 			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-				expect.stringContaining("[Zoo Code] Failed to reload webview: regen boom"),
+				expect.stringContaining("[Dory Code] Failed to reload webview: regen boom"),
 			)
 		})
 
@@ -2366,7 +2366,7 @@ describe("ClineProvider", () => {
 			await vi.advanceTimersByTimeAsync(120_000)
 
 			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-				expect.stringContaining("[Zoo Code] Failed to reload webview: reload boom"),
+				expect.stringContaining("[Dory Code] Failed to reload webview: reload boom"),
 			)
 			expect(mockWebviewView.webview.html).toBe(htmlAfterResolve)
 		})
@@ -3089,7 +3089,7 @@ describe("ClineProvider", () => {
 				await vi.advanceTimersByTimeAsync(120_000)
 
 				expect(mockWebviewPanel.webview.html).not.toBe(htmlAfterResolve)
-				expect(mockWebviewPanel.webview.html).toContain("<title>Zoo Code</title>")
+				expect(mockWebviewPanel.webview.html).toContain("<title>Dory Code</title>")
 			})
 
 			test("does not reload a hidden tab even when the heartbeat is stale", async () => {

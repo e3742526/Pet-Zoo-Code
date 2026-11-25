@@ -94,7 +94,7 @@ export async function run(): Promise<void> {
 	)
 	await log(`theme-ready=${themeFixture.themeId}`)
 
-	let landmark = "Welcome to Zoo Code!"
+	let landmark = "Welcome to Dory Code!"
 	if (scene === "chat") {
 		if (!aimockUrl) throw new Error("AIMOCK_URL is required for the populated chat scene")
 		const prompt = process.env.ROO_CODE_VISUAL_CHAT_PROMPT

@@ -1912,7 +1912,7 @@ export class ClineProvider
 						window.AUDIO_BASE_URI = "${audioUri}"
 						window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
 					</script>
-					<title>Zoo Code</title>
+					<title>Dory Code</title>
 				</head>
 				<body>
 					<div id="root"></div>
@@ -1985,7 +1985,7 @@ export class ClineProvider
 				window.AUDIO_BASE_URI = "${audioUri}"
 				window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
 			</script>
-            <title>Zoo Code</title>
+            <title>Dory Code</title>
           </head>
           <body>
             <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -3693,7 +3693,7 @@ export class ClineProvider
 			return
 		}
 		this.log(
-			`[Zoo Code] Webview hidden during active task.\n` +
+			`[Dory Code] Webview hidden during active task.\n` +
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
 				`  stackDepth:   ${this.taskRegistry.length}\n` +
@@ -3720,11 +3720,11 @@ export class ClineProvider
 		this.webviewRecoveryFailureReported = false
 		this.webviewRecoveryStopLogged = false
 		if (this.webviewRecoveryConfirmation) {
-			this.log("[Zoo Code] Webview heartbeat returned after recovery")
+			this.log("[Dory Code] Webview heartbeat returned after recovery")
 		}
 		this.resetWebviewHeartbeatGrace()
 		if (health.attempts === 0 && this.webviewRecoveryAttempts > 0) {
-			this.log("[Zoo Code] Webview recovery confirmed by sustained heartbeats")
+			this.log("[Dory Code] Webview recovery confirmed by sustained heartbeats")
 		}
 		this.webviewRecoveryAttempts = health.attempts
 	}
@@ -3769,7 +3769,7 @@ export class ClineProvider
 				}
 				return
 			}
-			this.log("[Zoo Code] Webview heartbeat stale while visible; attempting recovery")
+			this.log("[Dory Code] Webview heartbeat stale while visible; attempting recovery")
 			void this.reloadWebviewForRecovery()
 		}, ClineProvider.WEBVIEW_WATCHDOG_TICK_MS)
 	}
@@ -3854,7 +3854,7 @@ export class ClineProvider
 				})
 			}, ClineProvider.WEBVIEW_RECOVERY_CONFIRM_MS)
 		} catch (error) {
-			this.log(`[Zoo Code] Failed to reload webview: ${error instanceof Error ? error.message : String(error)}`)
+			this.log(`[Dory Code] Failed to reload webview: ${error instanceof Error ? error.message : String(error)}`)
 		} finally {
 			// Clear ownership only while this completion still holds it; a
 			// stale recovery must not release the replacement's in-flight state.
@@ -3899,7 +3899,7 @@ export class ClineProvider
 			}
 			this.webviewHostRecoveryInProgress = true
 			started = true
-			this.log("[Zoo Code] No heartbeat after HTML reload; recreating this webview host")
+			this.log("[Dory Code] No heartbeat after HTML reload; recreating this webview host")
 			if ("onDidChangeViewState" in view) {
 				const replacement = vscode.window.createWebviewPanel(
 					ClineProvider.tabPanelId,
@@ -4051,13 +4051,13 @@ export class ClineProvider
 		this.webviewRecoveryAttempts = failure.attempts
 		this.webviewRecoveryFailureReported = failure.reported
 		this.webviewRecoveryStopLogged = failure.stopLogged
-		if (failure.log) this.log(`[Zoo Code] Webview recovery ${stopRecovery ? "stopped" : "will retry"}: ${reason}`)
+		if (failure.log) this.log(`[Dory Code] Webview recovery ${stopRecovery ? "stopped" : "will retry"}: ${reason}`)
 		if (!failure.notify) return
 		const heartbeatCount = this.webviewHeartbeatCount
 		const generation = this.webviewRecoveryRequestGeneration
 		void Promise.resolve(
 			vscode.window.showWarningMessage(
-				"Zoo Code's interface is not responding. Retry interface recovery without restarting running tasks. Reloading the VS Code window will restart extensions and may interrupt running tasks.",
+				"Dory Code's interface is not responding. Retry interface recovery without restarting running tasks. Reloading the VS Code window will restart extensions and may interrupt running tasks.",
 				"Retry Interface Recovery",
 				"Reload Window",
 				"Show Logs",
@@ -4077,7 +4077,7 @@ export class ClineProvider
 				if (action === "logs") this.outputChannel.show()
 			})
 			.then(undefined, (error: unknown) => {
-				this.log(`[Zoo Code] Recovery notification failed: ${String(error)}`)
+				this.log(`[Dory Code] Recovery notification failed: ${String(error)}`)
 			})
 	}
 

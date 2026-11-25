@@ -107,7 +107,7 @@ export async function getLatestCliVersion(fetchImpl: typeof fetch = fetch): Prom
 		return latestVersion
 	}
 
-	throw new Error("No CLI release is available for Pet-Zoo-Code.")
+	throw new Error("No CLI release is available for Dory Code.")
 }
 
 type SpawnInstaller = (command: string, args: readonly string[], options: SpawnOptions) => ChildProcess
@@ -144,11 +144,11 @@ export async function upgrade(options: UpgradeOptions = {}): Promise<void> {
 	console.log(`Latest version: ${latestVersion}`)
 
 	if (compareVersions(latestVersion, currentVersion) <= 0) {
-		console.log("Roo CLI is already up to date.")
+		console.log("Dory Code CLI is already up to date.")
 		return
 	}
 
-	console.log(`Upgrading Roo CLI from ${currentVersion} to ${latestVersion}...`)
+	console.log(`Upgrading Dory Code CLI from ${currentVersion} to ${latestVersion}...`)
 	if (runInstaller) {
 		await runInstaller()
 	} else {

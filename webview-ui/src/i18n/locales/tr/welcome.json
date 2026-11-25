@@ -1,12 +1,12 @@
 {
 	"landing": {
-		"greeting": "Zoo Code'a Hoş Geldin!",
-		"introduction": "Yerleşik ve genişletilebilir Modlar yelpazesiyle Zoo Code, daha önce hiç olmadığı gibi planlama, mimari tasarım, kodlama, hata ayıklama ve üretkenliğini artırmanı sağlar.",
-		"logoAlt": "Roo logosu"
+		"greeting": "Dory Code'a Hoş Geldin!",
+		"introduction": "Yerleşik ve genişletilebilir Modlar yelpazesiyle Dory Code, daha önce hiç olmadığı gibi planlama, mimari tasarım, kodlama, hata ayıklama ve üretkenliğini artırmanı sağlar.",
+		"logoAlt": "Dory Code logosu"
 	},
 	"providerSignup": {
 		"heading": "Sağlayıcınızı seçin",
-		"chooseProvider": "Zoo Code'un çalışması için bir LLM sağlayıcısına ihtiyacı var. Başlamak için bir tane seç, sonra daha fazlasını ekleyebilirsin.",
+		"chooseProvider": "Dory Code'un çalışması için bir LLM sağlayıcısına ihtiyacı var. Başlamak için bir tane seç, sonra daha fazlasını ekleyebilirsin.",
 		"goBack": "Geri",
 		"finish": "Bitir"
 	},

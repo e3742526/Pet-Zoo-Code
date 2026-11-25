@@ -14,7 +14,7 @@ export async function requestOpenRouterAuthorization(): Promise<{ code: string; 
 	const url = new URL("/auth", OPENROUTER_API_BASE_URL)
 	url.searchParams.set("code_challenge", challenge)
 	url.searchParams.set("code_challenge_method", "S256")
-	url.searchParams.set("key_label", "Pet Zoo Code")
+	url.searchParams.set("key_label", "Dory Code")
 	if (!(await vscode.env.openExternal(vscode.Uri.parse(url.href)))) {
 		throw new Error("Cannot open OpenRouter sign-in.")
 	}

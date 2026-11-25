@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "Eksperimental",
 		"language": "Bahasa",
-		"about": "Tentang Zoo Code",
+		"about": "Tentang Dory Code",
 		"skills": "Skills",
 		"rules": "Aturan"
 	},
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Impor riwayat dari Roo Code",
 			"cardTitle": "Riwayat Roo Code",
-			"cardDescription": "Salin percakapan Roo Code yang tersimpan ke Zoo Code.",
+			"cardDescription": "Salin percakapan Roo Code yang tersimpan ke Dory Code.",
 			"statusImporting": "Mengimpor riwayat",
 			"statusFailed": "Impor gagal",
 			"statusComplete": "Impor selesai",
@@ -120,7 +120,7 @@
 		"footer": "Gunakan perintah slash untuk akses cepat ke prompt dan alur kerja yang sering digunakan."
 	},
 	"rules": {
-		"description": "Kelola file aturan Zoo Code dari direktori .roo/rules global dan workspace. Buat aturan umum atau aturan khusus mode tanpa menelusuri folder konfigurasi secara manual.",
+		"description": "Kelola file aturan Dory Code dari direktori .roo/rules global dan workspace. Buat aturan umum atau aturan khusus mode tanpa menelusuri folder konfigurasi secara manual.",
 		"workspaceRules": "Aturan Workspace",
 		"globalRules": "Aturan Global",
 		"noWorkspaceRules": "Belum ada aturan di proyek ini.",
@@ -166,7 +166,7 @@
 		"footer": "Aturan memuat panduan khusus mode sebelum panduan umum. Aturan global dimuat sebelum aturan workspace."
 	},
 	"prompts": {
-		"description": "Konfigurasi support prompt yang digunakan untuk aksi cepat seperti meningkatkan prompt, menjelaskan kode, dan memperbaiki masalah. Prompt ini membantu Zoo memberikan bantuan yang lebih baik untuk tugas pengembangan umum."
+		"description": "Konfigurasi support prompt yang digunakan untuk aksi cepat seperti meningkatkan prompt, menjelaskan kode, dan memperbaiki masalah. Prompt ini membantu Dory Code memberikan bantuan yang lebih baik untuk tugas pengembangan umum."
 	},
 	"codeIndex": {
 		"title": "Pengindeksan Codebase",
@@ -268,15 +268,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "Anda dapat mengonfigurasi pintasan global untuk pengaturan ini <SettingsLink>di preferensi IDE Anda</SettingsLink>.",
-		"description": "Izinkan Zoo untuk secara otomatis melakukan operasi tanpa memerlukan persetujuan. Aktifkan pengaturan ini hanya jika kamu sepenuhnya mempercayai AI dan memahami risiko keamanan yang terkait.",
+		"description": "Izinkan Dory Code untuk secara otomatis melakukan operasi tanpa memerlukan persetujuan. Aktifkan pengaturan ini hanya jika kamu sepenuhnya mempercayai AI dan memahami risiko keamanan yang terkait.",
 		"enabled": "Auto-Approve Diaktifkan",
 		"toggleAriaLabel": "Beralih persetujuan otomatis",
 		"readOnly": {
 			"label": "Baca",
-			"description": "Ketika diaktifkan, Zoo akan secara otomatis melihat konten direktori dan membaca file tanpa memerlukan kamu mengklik tombol Setujui.",
+			"description": "Ketika diaktifkan, Dory Code akan secara otomatis melihat konten direktori dan membaca file tanpa memerlukan kamu mengklik tombol Setujui.",
 			"outsideWorkspace": {
 				"label": "Sertakan file di luar workspace",
-				"description": "Izinkan Zoo membaca file di luar workspace saat ini tanpa memerlukan persetujuan."
+				"description": "Izinkan Dory Code membaca file di luar workspace saat ini tanpa memerlukan persetujuan."
 			}
 		},
 		"write": {
@@ -284,11 +284,11 @@
 			"description": "Secara otomatis membuat dan mengedit file tanpa memerlukan persetujuan",
 			"outsideWorkspace": {
 				"label": "Sertakan file di luar workspace",
-				"description": "Izinkan Zoo membuat dan mengedit file di luar workspace saat ini tanpa memerlukan persetujuan."
+				"description": "Izinkan Dory Code membuat dan mengedit file di luar workspace saat ini tanpa memerlukan persetujuan."
 			},
 			"protected": {
 				"label": "Sertakan file yang dilindungi",
-				"description": "Izinkan Zoo membuat dan mengedit file yang dilindungi (seperti .rooignore dan file konfigurasi .roo/) tanpa memerlukan persetujuan."
+				"description": "Izinkan Dory Code membuat dan mengedit file yang dilindungi (seperti .rooignore dan file konfigurasi .roo/) tanpa memerlukan persetujuan."
 			}
 		},
 		"allowlists": {
@@ -296,12 +296,12 @@
 			"description": "Berikan akses ke file tertentu, tanpa menyetujui otomatis seluruh kategori tindakan. Satu pola per baris, dengan sintaks yang diilhami .gitignore: \"notes.md\" cocok dengan file itu di direktori mana pun dalam workspace, \"docs/scratch/**\" semua yang ada di bawah direktori itu, dan \"*.md\" file Markdown apa pun. Pola selalu menamai file, bukan direktori: \"docs\" hanya memberi akses ke file bernama \"docs\"; tulis \"docs/**\" untuk isi sebuah direktori. Awalan \"./\" berarti root workspace, sedangkan awalan \"/\" berarti root sistem file, sehingga \"/tmp/notes.md\" menjangkau di luar workspace, begitu pula \"~/notes.md\", di mana awalan \"~/\" berarti direktori home kamu. Beri awalan \"!\" pada pola untuk mengecualikan apa yang dicocokkan baris sebelumnya; seperti pada .gitignore, baris terakhir yang cocok menang, jadi urutan penting. Pola relatif terhadap workspace diabaikan selama tidak ada folder yang terbuka. Huruf besar dan kecil dibedakan, kecuali di Windows. Tidak ada yang disetujui otomatis selama \"Persetujuan Otomatis\" di atas nonaktif.",
 			"readFiles": {
 				"label": "Pola daftar izin baca",
-				"description": "File yang boleh dibaca Zoo tanpa persetujuan, bahkan ketika \"Baca\" di atas nonaktif. File pada daftar izin tulis di bawah selalu boleh dibaca juga, jadi tidak perlu ditambahkan dua kali. Daftar direktori dan pencarian selalu mengikuti pengaturan \"Baca\". File yang dikecualikan oleh .rooignore tetap tidak bisa dibaca.",
+				"description": "File yang boleh dibaca Dory Code tanpa persetujuan, bahkan ketika \"Baca\" di atas nonaktif. File pada daftar izin tulis di bawah selalu boleh dibaca juga, jadi tidak perlu ditambahkan dua kali. Daftar direktori dan pencarian selalu mengikuti pengaturan \"Baca\". File yang dikecualikan oleh .rooignore tetap tidak bisa dibaca.",
 				"placeholder": "Satu pola per baris, misalnya notes.md"
 			},
 			"writeFiles": {
 				"label": "Pola daftar izin tulis",
-				"description": "File yang boleh dibuat dan diedit Zoo tanpa persetujuan, bahkan ketika \"Tulis\" di atas nonaktif. File yang dilindungi tetap memerlukan persetujuan kecuali \"Sertakan file yang dilindungi\" diaktifkan (di pengaturan persetujuan otomatis \"Tulis\"). File yang dikecualikan oleh .rooignore tetap tidak bisa ditulis.",
+				"description": "File yang boleh dibuat dan diedit Dory Code tanpa persetujuan, bahkan ketika \"Tulis\" di atas nonaktif. File yang dilindungi tetap memerlukan persetujuan kecuali \"Sertakan file yang dilindungi\" diaktifkan (di pengaturan persetujuan otomatis \"Tulis\"). File yang dikecualikan oleh .rooignore tetap tidak bisa ditulis.",
 				"placeholder": "Satu pola per baris, misalnya notes.md"
 			}
 		},
@@ -327,7 +327,7 @@
 			"description": "Secara otomatis mengeksekusi perintah terminal yang diizinkan tanpa memerlukan persetujuan",
 			"destructiveCommandGuard": {
 				"label": "Aktifkan perlindungan perintah destruktif",
-				"description": "Unduh dan gunakan Destructive Command Guard (DCG) untuk platform ini. Perintah yang diizinkan DCG dijalankan secara otomatis. Perintah yang diblokir DCG memerlukan persetujuanmu. Daftar perintah Zoo dinonaktifkan selama opsi ini aktif. File executable yang diunduh tetap disimpan jika kamu menonaktifkannya."
+				"description": "Unduh dan gunakan Destructive Command Guard (DCG) untuk platform ini. Perintah yang diizinkan DCG dijalankan secara otomatis. Perintah yang diblokir DCG memerlukan persetujuanmu. Daftar perintah Dory Code dinonaktifkan selama opsi ini aktif. File executable yang diunduh tetap disimpan jika kamu menonaktifkannya."
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -379,7 +379,7 @@
 		"awsCustomArnDesc": "Pastikan region di ARN cocok dengan AWS Region yang kamu pilih di atas.",
 		"awsCustomArnBaseModel": "Model dasar",
 		"awsCustomArnBaseModelOther": "Lainnya (tidak tercantum)",
-		"awsCustomArnBaseModelDesc": "Model yang dituju ARN ini. Zoo Code menggunakannya untuk pemikiran, temperature, jendela konteks, output maksimum, dan harga. Terdeteksi otomatis jika ARN menyebutkan modelnya.",
+		"awsCustomArnBaseModelDesc": "Model yang dituju ARN ini. Dory Code menggunakannya untuk pemikiran, temperature, jendela konteks, output maksimum, dan harga. Terdeteksi otomatis jika ARN menyebutkan modelnya.",
 		"awsCustomArnContextWindow": "Jendela konteks (token)",
 		"awsCustomArnMaxTokens": "Token output maksimum",
 		"openRouterApiKey": "OpenRouter API Key",
@@ -448,7 +448,7 @@
 		"headerValue": "Nilai header",
 		"noCustomHeaders": "Tidak ada header kustom yang didefinisikan. Klik tombol + untuk menambahkan satu.",
 		"extraBody": "Body Tambahan",
-		"extraBodyDescription": "Objek JSON opsional yang digabungkan ke body permintaan API. Field yang dikelola Zoo Code seperti model, messages, tools, dan stream tidak dapat ditimpa. Jangan sertakan rahasia.",
+		"extraBodyDescription": "Objek JSON opsional yang digabungkan ke body permintaan API. Field yang dikelola Dory Code seperti model, messages, tools, dan stream tidak dapat ditimpa. Jangan sertakan rahasia.",
 		"unboundApiKey": "Unbound API Key",
 		"getUnboundApiKey": "Dapatkan Unbound API Key",
 		"requestyApiKey": "Requesty API Key",
@@ -594,18 +594,18 @@
 			"speculativeDecoding": "Aktifkan Speculative Decoding",
 			"draftModelId": "Draft Model ID",
 			"draftModelDesc": "Draft model harus dari keluarga model yang sama agar speculative decoding bekerja dengan benar.",
-			"description": "LM Studio memungkinkan kamu menjalankan model secara lokal di komputer. Untuk instruksi cara memulai, lihat <a>panduan quickstart</a> mereka. Kamu juga perlu memulai fitur <b>local server</b> LM Studio untuk menggunakannya dengan ekstensi ini. <span>Catatan:</span> Zoo Code menggunakan prompt kompleks dan bekerja terbaik dengan model Claude. Model yang kurang mampu mungkin tidak bekerja seperti yang diharapkan."
+			"description": "LM Studio memungkinkan kamu menjalankan model secara lokal di komputer. Untuk instruksi cara memulai, lihat <a>panduan quickstart</a> mereka. Kamu juga perlu memulai fitur <b>local server</b> LM Studio untuk menggunakannya dengan ekstensi ini. <span>Catatan:</span> Dory Code menggunakan prompt kompleks dan bekerja terbaik dengan model Claude. Model yang kurang mampu mungkin tidak bekerja seperti yang diharapkan."
 		},
 		"ollama": {
 			"baseUrl": "Base URL (opsional)",
 			"apiKey": "Ollama API Key",
-			"apiKeyHelp": "API key opsional untuk instance Ollama yang memerlukan autentikasi, atau untuk layanan cloud. Zoo Code mengirim key hanya ke endpoint HTTPS atau loopback. Endpoint HTTP jarak jauh tidak mendapat key, karena key akan dikirim sebagai teks biasa. Gunakan HTTPS untuk instance jarak jauh yang memerlukan key. Biarkan kosong untuk instalasi lokal.",
+			"apiKeyHelp": "API key opsional untuk instance Ollama yang memerlukan autentikasi, atau untuk layanan cloud. Dory Code mengirim key hanya ke endpoint HTTPS atau loopback. Endpoint HTTP jarak jauh tidak mendapat key, karena key akan dikirim sebagai teks biasa. Gunakan HTTPS untuk instance jarak jauh yang memerlukan key. Biarkan kosong untuk instalasi lokal.",
 			"numCtx": "Ukuran Jendela Konteks (num_ctx)",
 			"numCtxHelp": "Ganti ukuran jendela konteks default model. Biarkan kosong untuk menggunakan konfigurasi Modelfile model. Nilai minimum adalah 128.",
 			"thinking": "Aktifkan Thinking",
 			"thinkingHelp": "Aktifkan thinking native Ollama untuk model reasoning (mis. qwen3, deepseek-r1). Saat diaktifkan, reasoning model dialirkan dan ditampilkan secara terpisah. Model yang tidak didukung akan mengabaikan pengaturan ini.",
 			"description": "Ollama memungkinkan kamu menjalankan model secara lokal di komputer. Untuk instruksi cara memulai, lihat panduan quickstart mereka.",
-			"warning": "Catatan: Zoo Code menggunakan prompt kompleks dan bekerja terbaik dengan model Claude. Model yang kurang mampu mungkin tidak bekerja seperti yang diharapkan."
+			"warning": "Catatan: Dory Code menggunakan prompt kompleks dan bekerja terbaik dengan model Claude. Model yang kurang mampu mungkin tidak bekerja seperti yang diharapkan."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -615,7 +615,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Konfigurasi kemampuan dan harga untuk model kustom yang kompatibel dengan OpenAI. Hati-hati saat menentukan kemampuan model, karena dapat mempengaruhi performa Zoo Code.",
+			"capabilities": "Konfigurasi kemampuan dan harga untuk model kustom yang kompatibel dengan OpenAI. Hati-hati saat menentukan kemampuan model, karena dapat mempengaruhi performa Dory Code.",
 			"maxTokens": {
 				"label": "Token Output Maksimum",
 				"description": "Jumlah maksimum token yang dapat dihasilkan model dalam respons. (Tentukan -1 untuk membiarkan server mengatur token maksimum.)"
@@ -658,7 +658,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Batas Kesalahan & Pengulangan",
-			"description": "Jumlah kesalahan berturut-turut atau tindakan berulang sebelum menampilkan dialog 'Zoo mengalami masalah'. Atur ke 0 untuk menonaktifkan mekanisme keamanan ini (tidak akan pernah terpicu).",
+			"description": "Jumlah kesalahan berturut-turut atau tindakan berulang sebelum menampilkan dialog 'Dory Code mengalami masalah'. Atur ke 0 untuk menonaktifkan mekanisme keamanan ini (tidak akan pernah terpicu).",
 			"unlimitedDescription": "Percobaan ulang tak terbatas diaktifkan (lanjut otomatis). Dialog tidak akan pernah muncul.",
 			"warning": "⚠️ Mengatur ke 0 memungkinkan percobaan ulang tak terbatas yang dapat menghabiskan penggunaan API yang signifikan"
 		},
@@ -705,7 +705,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "Path executable CLI",
 			"executablePathDescription": "Biarkan kosong untuk mencari \"{{defaultExecutable}}\" di PATH dan di folder instalasi umum.",
-			"howItWorks": "Zoo Code menjalankan CLI {{name}} yang terpasang di komputer ini dan memakai login-nya, sehingga langganan Anda membayar permintaan. Alat bawaan CLI dimatikan. Zoo Code menjalankan semua alat, meminta persetujuan Anda, dan membuat checkpoint seperti biasa.",
+			"howItWorks": "Dory Code menjalankan CLI {{name}} yang terpasang di komputer ini dan memakai login-nya, sehingga langganan Anda membayar permintaan. Alat bawaan CLI dimatikan. Dory Code menjalankan semua alat, meminta persetujuan Anda, dan membuat checkpoint seperti biasa.",
 			"setup": "Sebelum mulai, pasang CLI dan masuk dengan \"{{loginCommand}}\" di terminal.",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -718,18 +718,18 @@
 		},
 		"enable": {
 			"label": "Aktifkan checkpoint otomatis",
-			"description": "Ketika diaktifkan, Zoo akan secara otomatis membuat checkpoint selama eksekusi tugas, memudahkan untuk meninjau perubahan atau kembali ke state sebelumnya. <0>Pelajari lebih lanjut</0>"
+			"description": "Ketika diaktifkan, Dory Code akan secara otomatis membuat checkpoint selama eksekusi tugas, memudahkan untuk meninjau perubahan atau kembali ke state sebelumnya. <0>Pelajari lebih lanjut</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Aktifkan efek suara",
-			"description": "Ketika diaktifkan, Zoo akan memutar efek suara untuk notifikasi dan event.",
+			"description": "Ketika diaktifkan, Dory Code akan memutar efek suara untuk notifikasi dan event.",
 			"volumeLabel": "Volume"
 		},
 		"tts": {
 			"label": "Aktifkan text-to-speech",
-			"description": "Ketika diaktifkan, Zoo akan membacakan responnya menggunakan text-to-speech.",
+			"description": "Ketika diaktifkan, Dory Code akan membacakan responnya menggunakan text-to-speech.",
 			"speedLabel": "Kecepatan"
 		}
 	},
@@ -821,7 +821,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "Ukuran pratinjau keluaran perintah",
-			"description": "Mengontrol seberapa banyak keluaran perintah yang dilihat Zoo secara langsung. Keluaran lengkap selalu disimpan dan dapat diakses saat diperlukan.",
+			"description": "Mengontrol seberapa banyak keluaran perintah yang dilihat Dory Code secara langsung. Keluaran lengkap selalu disimpan dan dapat diakses saat diperlukan.",
 			"options": {
 				"small": "Kecil (5KB)",
 				"medium": "Sedang (10KB)",
@@ -834,7 +834,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Gunakan Terminal Inline (disarankan)",
-			"description": "Jalankan perintah di Terminal Inline (obrolan) untuk melewati profil/integrasi shell untuk proses lebih cepat dan andal. Saat dinonaktifkan, Zoo menggunakan terminal VS Code dengan profil shell, prompt, dan plugin Anda. <0>Pelajari lebih lanjut</0>"
+			"description": "Jalankan perintah di Terminal Inline (obrolan) untuk melewati profil/integrasi shell untuk proses lebih cepat dan andal. Saat dinonaktifkan, Dory Code menggunakan terminal VS Code dengan profil shell, prompt, dan plugin Anda. <0>Pelajari lebih lanjut</0>"
 		},
 		"commandDelay": {
 			"label": "Delay perintah terminal",
@@ -865,9 +865,9 @@
 			"description": "Aktifkan untuk mewarisi variabel lingkungan dari proses induk VS Code. <0>Pelajari lebih lanjut</0>"
 		},
 		"profile": {
-			"label": "Profil terminal Zoo Code",
+			"label": "Profil terminal Dory Code",
 			"followVscode": "Mengikuti profil VS Code (disarankan)",
-			"description": "Secara default Zoo Code menggunakan shell yang dikonfigurasi VS Code. Pilih profil shell dari daftar untuk memilih profil shell berbasis jalur yang diekspos oleh VS Code. Profil hanya sumber (mis., entri PowerShell bawaan) tidak dapat tercantum di sini. <0>Pelajari lebih lanjut</0>",
+			"description": "Secara default Dory Code menggunakan shell yang dikonfigurasi VS Code. Pilih profil shell dari daftar untuk memilih profil shell berbasis jalur yang diekspos oleh VS Code. Profil hanya sumber (mis., entri PowerShell bawaan) tidak dapat tercantum di sini. <0>Pelajari lebih lanjut</0>",
 			"configureButton": "Pilih profil default di VS Code",
 			"noProfiles": "(tidak ada profil berbasis jalur di terminal.integrated.profiles)"
 		}
@@ -878,7 +878,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "Aktifkan alat daftar tugas",
-			"description": "Saat diaktifkan, Zoo dapat membuat dan mengelola daftar tugas untuk melacak kemajuan tugas. Ini membantu mengatur tugas kompleks menjadi langkah-langkah yang dapat dikelola."
+			"description": "Saat diaktifkan, Dory Code dapat membuat dan mengelola daftar tugas untuk melacak kemajuan tugas. Ini membantu mengatur tugas kompleks menjadi langkah-langkah yang dapat dikelola."
 		}
 	},
 	"experimental": {
@@ -888,15 +888,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Gunakan tool insert content eksperimental",
-			"description": "Aktifkan tool insert content eksperimental, memungkinkan Zoo menyisipkan konten pada nomor baris spesifik tanpa perlu membuat diff."
+			"description": "Aktifkan tool insert content eksperimental, memungkinkan Dory Code menyisipkan konten pada nomor baris spesifik tanpa perlu membuat diff."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Aktifkan pembacaan file bersamaan",
-			"description": "Ketika diaktifkan, Zoo dapat membaca beberapa file dalam satu permintaan. Ketika dinonaktifkan, Zoo harus membaca file satu per satu. Menonaktifkan ini dapat membantu saat bekerja dengan model yang kurang mampu atau ketika kamu ingin kontrol lebih terhadap akses file."
+			"description": "Ketika diaktifkan, Dory Code dapat membaca beberapa file dalam satu permintaan. Ketika dinonaktifkan, Dory Code harus membaca file satu per satu. Menonaktifkan ini dapat membantu saat bekerja dengan model yang kurang mampu atau ketika kamu ingin kontrol lebih terhadap akses file."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Gunakan tool multi block diff eksperimental",
-			"description": "Ketika diaktifkan, Zoo akan menggunakan tool multi block diff. Ini akan mencoba memperbarui beberapa blok kode dalam file dalam satu permintaan."
+			"description": "Ketika diaktifkan, Dory Code akan menggunakan tool multi block diff. Ini akan mencoba memperbarui beberapa blok kode dalam file dalam satu permintaan."
 		},
 		"MARKETPLACE": {
 			"name": "Aktifkan Marketplace",
@@ -904,7 +904,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Pengeditan Latar Belakang",
-			"description": "Ketika diaktifkan, mencegah gangguan fokus editor. Pengeditan file terjadi di latar belakang tanpa membuka tampilan diff atau mencuri fokus. Anda dapat terus bekerja tanpa gangguan saat Zoo melakukan perubahan. File mungkin dibuka tanpa fokus untuk menangkap diagnostik atau tetap tertutup sepenuhnya."
+			"description": "Ketika diaktifkan, mencegah gangguan fokus editor. Pengeditan file terjadi di latar belakang tanpa membuka tampilan diff atau mencuri fokus. Anda dapat terus bekerja tanpa gangguan saat Dory Code melakukan perubahan. File mungkin dibuka tanpa fokus untuk menangkap diagnostik atau tetap tertutup sepenuhnya."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Gunakan parser pesan baru",
@@ -916,7 +916,7 @@
 		},
 		"IMAGE_GENERATION": {
 			"name": "Aktifkan pembuatan gambar AI",
-			"description": "Ketika diaktifkan, Zoo dapat menghasilkan gambar dari prompt teks menggunakan model pembuatan gambar.",
+			"description": "Ketika diaktifkan, Dory Code dapat menghasilkan gambar dari prompt teks menggunakan model pembuatan gambar.",
 			"providerLabel": "Penyedia",
 			"providerDescription": "Pilih penyedia untuk menghasilkan gambar.",
 			"openRouterApiKeyLabel": "Kunci API OpenRouter",
@@ -929,11 +929,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Aktifkan perintah slash yang dimulai model",
-			"description": "Ketika diaktifkan, Zoo dapat menjalankan perintah slash Anda untuk mengeksekusi alur kerja."
+			"description": "Ketika diaktifkan, Dory Code dapat menjalankan perintah slash Anda untuk mengeksekusi alur kerja."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Aktifkan tool kustom",
-			"description": "Ketika diaktifkan, Zoo dapat memuat dan menggunakan tool TypeScript/JavaScript kustom dari direktori .roo/tools proyek Anda atau ~/.roo/tools untuk tool global. Catatan: tool ini akan disetujui otomatis.",
+			"description": "Ketika diaktifkan, Dory Code dapat memuat dan menggunakan tool TypeScript/JavaScript kustom dari direktori .roo/tools proyek Anda atau ~/.roo/tools untuk tool global. Catatan: tool ini akan disetujui otomatis.",
 			"toolsHeader": "Tool Kustom yang Tersedia",
 			"noTools": "Tidak ada tool kustom yang dimuat. Tambahkan file .ts atau .js ke direktori .roo/tools proyek Anda atau ~/.roo/tools untuk tool global.",
 			"refreshButton": "Refresh",
@@ -957,7 +957,7 @@
 		"imageSupportUnknown": "Dukungan gambar tidak dilaporkan",
 		"toolSupportUnknown": "Dukungan alat tidak dilaporkan",
 		"promptCacheManagedByCopilot": "Prompt caching dikelola oleh GitHub Copilot",
-		"promptCacheCopilotDetails": "Caching bergantung pada model dan backend GitHub Copilot. Zoo Code tidak dapat mengonfigurasi retensi cache atau mengamati cache hit melalui API VS Code.",
+		"promptCacheCopilotDetails": "Caching bergantung pada model dan backend GitHub Copilot. Dory Code tidak dapat mengonfigurasi retensi cache atau mengamati cache hit melalui API VS Code.",
 		"supportsImages": "Mendukung gambar",
 		"noImages": "Tidak mendukung gambar",
 		"supportsTools": "Mendukung alat",
@@ -986,7 +986,7 @@
 		"showLess": "Lebih sedikit"
 	},
 	"modelPicker": {
-		"automaticFetch": "Ekstensi secara otomatis mengambil daftar model terbaru yang tersedia di <serviceLink>{{serviceName}}</serviceLink>. Jika kamu tidak yakin model mana yang harus dipilih, Zoo Code bekerja terbaik dengan <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Kamu juga dapat mencoba mencari \"free\" untuk opsi tanpa biaya yang saat ini tersedia.",
+		"automaticFetch": "Ekstensi secara otomatis mengambil daftar model terbaru yang tersedia di <serviceLink>{{serviceName}}</serviceLink>. Jika kamu tidak yakin model mana yang harus dipilih, Dory Code bekerja terbaik dengan <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Kamu juga dapat mencoba mencari \"free\" untuk opsi tanpa biaya yang saat ini tersedia.",
 		"label": "Model",
 		"searchPlaceholder": "Cari",
 		"noMatchFound": "Tidak ada yang cocok ditemukan",
@@ -1018,7 +1018,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "Body Tambahan harus berisi JSON yang valid.",
 			"objectRequired": "Body Tambahan harus berupa objek JSON.",
-			"reservedKeys": "Body Tambahan tidak dapat menimpa field yang dikelola Zoo Code: {{keys}}."
+			"reservedKeys": "Body Tambahan tidak dapat menimpa field yang dikelola Dory Code: {{keys}}."
 		},
 		"arn": {
 			"regionMismatch": "Peringatan: Region di ARN kamu ({{arnRegion}}) tidak cocok dengan region yang kamu pilih ({{region}}). Ini dapat menyebabkan masalah akses. Provider akan menggunakan region dari ARN."
@@ -1093,20 +1093,20 @@
 		},
 		"chatFontSize": {
 			"label": "Ukuran font obrolan",
-			"description": "Atur ukuran font (dalam piksel) untuk obrolan Zoo Code. Biarkan pada nilai default agar sesuai dengan ukuran font VS Code.",
+			"description": "Atur ukuran font (dalam piksel) untuk obrolan Dory Code. Biarkan pada nilai default agar sesuai dengan ukuran font VS Code.",
 			"reset": "Gunakan default VS Code"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Tutup otomatis file yang dibuka Zoo",
-			"description": "Saat diaktifkan, tab editor yang dibuka Zoo untuk sementara waktu untuk diff akan ditutup secara otomatis setelah perubahan diterima atau ditolak. Tab yang sudah dibuka pengguna sebelum pengeditan tidak pernah ditutup secara otomatis."
+			"label": "Tutup otomatis file yang dibuka Dory Code",
+			"description": "Saat diaktifkan, tab editor yang dibuka Dory Code untuk sementara waktu untuk diff akan ditutup secara otomatis setelah perubahan diterima atau ditolak. Tab yang sudah dibuka pengguna sebelum pengeditan tidak pernah ditutup secara otomatis."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Tutup otomatis meski setelah interaksi pengguna",
-			"description": "Saat diaktifkan, tab yang dibuka Zoo tetap ditutup meski pengguna mengklik atau mengetik di file atau diff selama sesi pengeditan. Tidak berpengaruh jika 'Tutup otomatis file yang dibuka Zoo' dinonaktifkan."
+			"description": "Saat diaktifkan, tab yang dibuka Dory Code tetap ditutup meski pengguna mengklik atau mengetik di file atau diff selama sesi pengeditan. Tidak berpengaruh jika 'Tutup otomatis file yang dibuka Dory Code' dinonaktifkan."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Tutup otomatis file baru yang dibuat",
-			"description": "Saat diaktifkan, tab untuk file yang dibuat Zoo (bukan dimodifikasi) juga ditutup secara otomatis setelah perubahan diterima."
+			"description": "Saat diaktifkan, tab untuk file yang dibuat Dory Code (bukan dimodifikasi) juga ditutup secara otomatis setelah perubahan diterima."
 		}
 	},
 	"skills": {
@@ -1159,7 +1159,7 @@
 		"description": "Bahasa dan tampilan tanggal/waktu.",
 		"languageTitle": "Bahasa",
 		"displayLanguage": "Bahasa tampilan",
-		"displayLanguageDescription": "Bahasa untuk antarmuka Zoo Code.",
+		"displayLanguageDescription": "Bahasa untuk antarmuka Dory Code.",
 		"dateTimeTitle": "Tanggal & waktu",
 		"timeFormat": {
 			"label": "Format waktu",

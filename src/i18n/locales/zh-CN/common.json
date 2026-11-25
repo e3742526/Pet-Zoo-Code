@@ -129,10 +129,10 @@
 	},
 	"warnings": {
 		"no_terminal_content": "没有选择终端内容",
-		"auto_import_failed": "自动导入 ZooCode 设置失败：{{error}}",
+		"auto_import_failed": "自动导入 Dory Code 设置失败：{{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "未找到可从 {{domain}} 导入的 Roo Code 任务历史记录。",
-			"alreadyImported_other": "全部 {{count}} 条 Roo Code 任务历史记录已导入 Zoo Code。"
+			"alreadyImported_other": "全部 {{count}} 条 Roo Code 任务历史记录已导入 Dory Code。"
 		}
 	},
 	"info": {
@@ -140,7 +140,7 @@
 		"custom_storage_path_set": "自定义存储路径已设置：{{path}}",
 		"default_storage_path": "已恢复使用默认存储路径",
 		"settings_imported": "设置已成功导入。",
-		"auto_import_success": "已自动导入 ZooCode 设置：{{filename}}",
+		"auto_import_success": "已自动导入 Dory Code 设置：{{filename}}",
 		"image_copied_to_clipboard": "图片数据 URI 已复制到剪贴板",
 		"image_saved": "图片已保存到 {{path}}",
 		"mode_exported": "模式 '{{mode}}' 已成功导出",
@@ -149,7 +149,7 @@
 			"signInUnavailable": "Roo Code Cloud 登录当前不可用。请配置其他提供商以继续。"
 		},
 		"rooHistoryImport": {
-			"success_other": "已将 {{count}} 条 Roo Code 任务历史记录导入 Zoo Code。"
+			"success_other": "已将 {{count}} 条 Roo Code 任务历史记录导入 Dory Code。"
 		}
 	},
 	"openRouterSignIn": {
@@ -184,7 +184,7 @@
 		"enter_valid_path": "请输入有效的路径"
 	},
 	"input": {
-		"task_prompt": "让Zoo做什么？",
+		"task_prompt": "让Dory Code做什么？",
 		"task_placeholder": "在这里输入任务"
 	},
 	"customModes": {
@@ -245,9 +245,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "使用 Zoo Code 解释",
-		"fix": "使用 Zoo Code 修复",
-		"improve": "使用 Zoo Code 改进",
-		"addToContext": "添加到 Zoo Code"
+		"explain": "使用 Dory Code 解释",
+		"fix": "使用 Dory Code 修复",
+		"improve": "使用 Dory Code 改进",
+		"addToContext": "添加到 Dory Code"
 	}
 }

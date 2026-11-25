@@ -20,7 +20,7 @@ const scenario: VisualScenario = {
 	name: "heartbeat",
 	scene: "welcome",
 	themeId: "Default Dark Modern",
-	landmark: "Welcome to Zoo Code!",
+	landmark: "Welcome to Dory Code!",
 }
 
 function contentFrame(page: Page) {
@@ -171,7 +171,7 @@ for (const explicitRetry of [false, true])
 					await running.page.keyboard.press("F1")
 					const input = running.page.locator(".quick-input-widget input")
 					await expect(input).toBeVisible({ timeout: 10_000 })
-					await input.fill(">Zoo Code: Retry Interface Recovery", { timeout: 10_000 })
+					await input.fill(">Dory Code: Retry Interface Recovery", { timeout: 10_000 })
 					await running.page
 						.locator(".quick-input-list .monaco-list-row")
 						.filter({ hasText: "Retry Interface Recovery" })
@@ -244,7 +244,7 @@ test("keeps the same document when the sidebar is hidden past the stale threshol
 		await expect
 			.poll(() => performance.now(), { timeout: 135_000, intervals: [1_000] })
 			.toBeGreaterThanOrEqual(deadline)
-		const logs = await glob("logs/**/*Pet-Zoo-Code.log", { cwd: running.userDataPath })
+		const logs = await glob("logs/**/*Dory Code.log", { cwd: running.userDataPath })
 		expect(logs.length).toBeGreaterThan(0)
 		for (const logPath of logs) {
 			const output = await fs.readFile(path.join(running.userDataPath, logPath), "utf8")

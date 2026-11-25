@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "Experimenteel",
 		"language": "Taal",
-		"about": "Over Zoo Code",
+		"about": "Over Dory Code",
 		"skills": "Skills",
 		"rules": "Regels"
 	},
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Geschiedenis importeren van Roo Code",
 			"cardTitle": "Roo Code-geschiedenis",
-			"cardDescription": "Opgeslagen Roo Code-gesprekken naar Zoo Code kopiëren.",
+			"cardDescription": "Opgeslagen Roo Code-gesprekken naar Dory Code kopiëren.",
 			"statusImporting": "Geschiedenis importeren",
 			"statusFailed": "Importeren mislukt",
 			"statusComplete": "Importeren voltooid",
@@ -121,7 +121,7 @@
 		"footer": "Gebruik slash-commando's voor snelle toegang tot veelgebruikte prompts en workflows."
 	},
 	"rules": {
-		"description": "Beheer Zoo Code-regelbestanden vanuit globale en workspace .roo/rules-mappen. Maak algemene regels of modusspecifieke regels zonder handmatig door configuratiemappen te bladeren.",
+		"description": "Beheer Dory Code-regelbestanden vanuit globale en workspace .roo/rules-mappen. Maak algemene regels of modusspecifieke regels zonder handmatig door configuratiemappen te bladeren.",
 		"workspaceRules": "Workspace-regels",
 		"globalRules": "Globale regels",
 		"noWorkspaceRules": "Nog geen regels in dit project.",
@@ -167,7 +167,7 @@
 		"footer": "Regels laden modusspecifieke richtlijnen vóór algemene richtlijnen. Globale regels worden vóór workspace-regels geladen."
 	},
 	"prompts": {
-		"description": "Configureer ondersteuningsprompts die worden gebruikt voor snelle acties zoals het verbeteren van prompts, het uitleggen van code en het oplossen van problemen. Deze prompts helpen Zoo om betere ondersteuning te bieden voor veelvoorkomende ontwikkelingstaken."
+		"description": "Configureer ondersteuningsprompts die worden gebruikt voor snelle acties zoals het verbeteren van prompts, het uitleggen van code en het oplossen van problemen. Deze prompts helpen Dory Code om betere ondersteuning te bieden voor veelvoorkomende ontwikkelingstaken."
 	},
 	"codeIndex": {
 		"title": "Codebase indexering",
@@ -269,15 +269,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "U kunt een globale sneltoets voor deze instelling configureren <SettingsLink>in de voorkeuren van uw IDE</SettingsLink>.",
-		"description": "Sta Zoo toe om automatisch handelingen uit te voeren zonder goedkeuring. Schakel deze instellingen alleen in als je de AI volledig vertrouwt en de bijbehorende beveiligingsrisico's begrijpt.",
+		"description": "Sta Dory Code toe om automatisch handelingen uit te voeren zonder goedkeuring. Schakel deze instellingen alleen in als je de AI volledig vertrouwt en de bijbehorende beveiligingsrisico's begrijpt.",
 		"enabled": "Auto-goedkeuren ingeschakeld",
 		"toggleAriaLabel": "Automatisch goedkeuren in-/uitschakelen",
 		"readOnly": {
 			"label": "Lezen",
-			"description": "Indien ingeschakeld, bekijkt Zoo automatisch de inhoud van mappen en leest bestanden zonder dat je op de Goedkeuren-knop hoeft te klikken.",
+			"description": "Indien ingeschakeld, bekijkt Dory Code automatisch de inhoud van mappen en leest bestanden zonder dat je op de Goedkeuren-knop hoeft te klikken.",
 			"outsideWorkspace": {
 				"label": "Inclusief bestanden buiten werkruimte",
-				"description": "Sta Zoo toe om bestanden buiten de huidige werkruimte te lezen zonder goedkeuring."
+				"description": "Sta Dory Code toe om bestanden buiten de huidige werkruimte te lezen zonder goedkeuring."
 			}
 		},
 		"write": {
@@ -285,11 +285,11 @@
 			"description": "Automatisch bestanden aanmaken en bewerken zonder goedkeuring",
 			"outsideWorkspace": {
 				"label": "Inclusief bestanden buiten werkruimte",
-				"description": "Sta Zoo toe om bestanden buiten de huidige werkruimte aan te maken en te bewerken zonder goedkeuring."
+				"description": "Sta Dory Code toe om bestanden buiten de huidige werkruimte aan te maken en te bewerken zonder goedkeuring."
 			},
 			"protected": {
 				"label": "Inclusief beschermde bestanden",
-				"description": "Sta Zoo toe om beschermde bestanden (zoals .rooignore en .roo/ configuratiebestanden) aan te maken en te bewerken zonder goedkeuring."
+				"description": "Sta Dory Code toe om beschermde bestanden (zoals .rooignore en .roo/ configuratiebestanden) aan te maken en te bewerken zonder goedkeuring."
 			}
 		},
 		"allowlists": {
@@ -297,12 +297,12 @@
 			"description": "Geef toegang tot afzonderlijke bestanden, zonder een hele categorie acties automatisch goed te keuren. Eén patroon per regel, in door .gitignore geïnspireerde syntaxis: \"notes.md\" komt overeen met dat bestand in elke map van de workspace, \"docs/scratch/**\" met alles onder die map en \"*.md\" met elk Markdown-bestand. Een patroon benoemt altijd bestanden, nooit mappen: \"docs\" geeft alleen toegang tot een bestand met de naam \"docs\"; schrijf \"docs/**\" voor de inhoud van een map. Een \"./\" aan het begin betekent de root van de workspace, terwijl een \"/\" aan het begin de root van het bestandssysteem betekent, zodat \"/tmp/notes.md\" tot buiten de workspace reikt, net als \"~/notes.md\", waarbij een \"~/\" aan het begin je home-map betekent. Zet \"!\" voor een patroon om uit te sluiten wat een eerdere regel heeft gevonden; net als in .gitignore wint de laatste regel die overeenkomt, dus de volgorde telt. Patronen die relatief zijn aan de workspace worden genegeerd zolang er geen map is geopend. Hoofd- en kleine letters worden onderscheiden, behalve op Windows. Er wordt niets automatisch goedgekeurd zolang \"Automatisch goedkeuren\" hierboven uit staat.",
 			"readFiles": {
 				"label": "Patronen van de lees-toelatingslijst",
-				"description": "Bestanden die Zoo zonder goedkeuring mag lezen, ook als \"Lezen\" hierboven uit staat. Bestanden uit de schrijf-toelatingslijst hieronder mogen altijd ook gelezen worden, dus die hoef je niet twee keer toe te voegen. Mapoverzichten en zoekopdrachten volgen altijd de \"Lezen\"-instelling. Bestanden die .rooignore uitsluit, blijven hoe dan ook onleesbaar.",
+				"description": "Bestanden die Dory Code zonder goedkeuring mag lezen, ook als \"Lezen\" hierboven uit staat. Bestanden uit de schrijf-toelatingslijst hieronder mogen altijd ook gelezen worden, dus die hoef je niet twee keer toe te voegen. Mapoverzichten en zoekopdrachten volgen altijd de \"Lezen\"-instelling. Bestanden die .rooignore uitsluit, blijven hoe dan ook onleesbaar.",
 				"placeholder": "Eén patroon per regel, bijv. notes.md"
 			},
 			"writeFiles": {
 				"label": "Patronen van de schrijf-toelatingslijst",
-				"description": "Bestanden die Zoo zonder goedkeuring mag aanmaken en bewerken, ook als \"Schrijven\" hierboven uit staat. Beschermde bestanden vereisen nog steeds goedkeuring, tenzij \"Inclusief beschermde bestanden\" is ingeschakeld (in de instellingen van de \"Schrijven\"-autogoedkeuring). Bestanden die .rooignore uitsluit, blijven hoe dan ook niet beschrijfbaar.",
+				"description": "Bestanden die Dory Code zonder goedkeuring mag aanmaken en bewerken, ook als \"Schrijven\" hierboven uit staat. Beschermde bestanden vereisen nog steeds goedkeuring, tenzij \"Inclusief beschermde bestanden\" is ingeschakeld (in de instellingen van de \"Schrijven\"-autogoedkeuring). Bestanden die .rooignore uitsluit, blijven hoe dan ook niet beschrijfbaar.",
 				"placeholder": "Eén patroon per regel, bijv. notes.md"
 			}
 		},
@@ -328,7 +328,7 @@
 			"description": "Automatisch toegestane terminalcommando's uitvoeren zonder goedkeuring",
 			"destructiveCommandGuard": {
 				"label": "Beveiliging tegen destructieve opdrachten inschakelen",
-				"description": "Download en gebruik Destructive Command Guard (DCG) voor dit platform. Opdrachten die DCG toestaat, worden automatisch uitgevoerd. Voor opdrachten die DCG blokkeert, is jouw goedkeuring nodig. De opdrachtenlijsten van Zoo zijn uitgeschakeld zolang deze optie actief is. Het gedownloade uitvoerbare bestand blijft bewaard als je de optie uitschakelt."
+				"description": "Download en gebruik Destructive Command Guard (DCG) voor dit platform. Opdrachten die DCG toestaat, worden automatisch uitgevoerd. Voor opdrachten die DCG blokkeert, is jouw goedkeuring nodig. De opdrachtenlijsten van Dory Code zijn uitgeschakeld zolang deze optie actief is. Het gedownloade uitvoerbare bestand blijft bewaard als je de optie uitschakelt."
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -380,7 +380,7 @@
 		"awsCustomArnDesc": "Zorg ervoor dat de regio in de ARN overeenkomt met je geselecteerde AWS-regio hierboven.",
 		"awsCustomArnBaseModel": "Onderliggend model",
 		"awsCustomArnBaseModelOther": "Anders (niet vermeld)",
-		"awsCustomArnBaseModelDesc": "Het model waarnaar deze ARN verwijst. Zoo Code gebruikt het voor denken, temperatuur, contextvenster, maximale uitvoer en prijzen. Wordt automatisch gedetecteerd als de ARN het model noemt.",
+		"awsCustomArnBaseModelDesc": "Het model waarnaar deze ARN verwijst. Dory Code gebruikt het voor denken, temperatuur, contextvenster, maximale uitvoer en prijzen. Wordt automatisch gedetecteerd als de ARN het model noemt.",
 		"awsCustomArnContextWindow": "Contextvenster (tokens)",
 		"awsCustomArnMaxTokens": "Maximale uitvoertokens",
 		"openRouterApiKey": "OpenRouter API-sleutel",
@@ -449,7 +449,7 @@
 		"headerValue": "Headerwaarde",
 		"noCustomHeaders": "Geen aangepaste headers gedefinieerd. Klik op de + knop om er een toe te voegen.",
 		"extraBody": "Extra body",
-		"extraBodyDescription": "Optioneel JSON-object dat wordt samengevoegd met API-aanvraagbody's. Door Zoo Code beheerde velden zoals model, messages, tools en stream kunnen niet worden overschreven. Voeg geen geheimen toe.",
+		"extraBodyDescription": "Optioneel JSON-object dat wordt samengevoegd met API-aanvraagbody's. Door Dory Code beheerde velden zoals model, messages, tools en stream kunnen niet worden overschreven. Voeg geen geheimen toe.",
 		"unboundApiKey": "Unbound API sleutel",
 		"getUnboundApiKey": "Unbound API-sleutel ophalen",
 		"requestyApiKey": "Requesty API-sleutel",
@@ -595,18 +595,18 @@
 			"speculativeDecoding": "Speculatieve decodering inschakelen",
 			"draftModelId": "Draft Model-ID",
 			"draftModelDesc": "Draft-model moet uit dezelfde modelfamilie komen voor correcte speculatieve decodering.",
-			"description": "LM Studio laat je modellen lokaal op je computer draaien. Zie hun <a>quickstart-gids</a> voor instructies. Je moet ook de <b>lokale server</b>-functie van LM Studio starten om het met deze extensie te gebruiken. <span>Let op:</span> Zoo Code gebruikt complexe prompts en werkt het beste met Claude-modellen. Minder krachtige modellen werken mogelijk niet zoals verwacht."
+			"description": "LM Studio laat je modellen lokaal op je computer draaien. Zie hun <a>quickstart-gids</a> voor instructies. Je moet ook de <b>lokale server</b>-functie van LM Studio starten om het met deze extensie te gebruiken. <span>Let op:</span> Dory Code gebruikt complexe prompts en werkt het beste met Claude-modellen. Minder krachtige modellen werken mogelijk niet zoals verwacht."
 		},
 		"ollama": {
 			"baseUrl": "Basis-URL (optioneel)",
 			"apiKey": "Ollama API-sleutel",
-			"apiKeyHelp": "Optionele API-sleutel voor Ollama-instanties die authenticatie nodig hebben, of voor cloudservices. Zoo Code stuurt de sleutel alleen naar HTTPS- of loopback-eindpunten. Een extern HTTP-eindpunt krijgt geen sleutel, omdat de sleutel als leesbare tekst zou reizen. Gebruik HTTPS voor een externe instantie die een sleutel nodig heeft. Laat dit leeg voor een lokale installatie.",
+			"apiKeyHelp": "Optionele API-sleutel voor Ollama-instanties die authenticatie nodig hebben, of voor cloudservices. Dory Code stuurt de sleutel alleen naar HTTPS- of loopback-eindpunten. Een extern HTTP-eindpunt krijgt geen sleutel, omdat de sleutel als leesbare tekst zou reizen. Gebruik HTTPS voor een externe instantie die een sleutel nodig heeft. Laat dit leeg voor een lokale installatie.",
 			"numCtx": "Contextvenstergrootte (num_ctx)",
 			"numCtxHelp": "Overschrijft de standaard contextvenstergrootte van het model. Laat leeg om de Modelfile-configuratie van het model te gebruiken. De minimumwaarde is 128.",
 			"thinking": "Redeneren inschakelen",
 			"thinkingHelp": "Schakel Ollama's native redeneren in voor redeneringsmodellen (bijv. qwen3, deepseek-r1). Indien ingeschakeld, wordt de redenering van het model apart gestreamd en weergegeven. Niet-ondersteunde modellen negeren deze instelling.",
 			"description": "Ollama laat je modellen lokaal op je computer draaien. Zie hun quickstart-gids voor instructies.",
-			"warning": "Let op: Zoo Code gebruikt complexe prompts en werkt het beste met Claude-modellen. Minder krachtige modellen werken mogelijk niet zoals verwacht."
+			"warning": "Let op: Dory Code gebruikt complexe prompts en werkt het beste met Claude-modellen. Minder krachtige modellen werken mogelijk niet zoals verwacht."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -616,7 +616,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Stel de mogelijkheden en prijzen in voor je aangepaste OpenAI-compatibele model. Wees voorzichtig met het opgeven van de modelmogelijkheden, want deze kunnen de prestaties van Zoo Code beïnvloeden.",
+			"capabilities": "Stel de mogelijkheden en prijzen in voor je aangepaste OpenAI-compatibele model. Wees voorzichtig met het opgeven van de modelmogelijkheden, want deze kunnen de prestaties van Dory Code beïnvloeden.",
 			"maxTokens": {
 				"label": "Maximaal aantal outputtokens",
 				"description": "Maximaal aantal tokens dat het model in een antwoord kan genereren. (Geef -1 op om de server het maximum te laten bepalen.)"
@@ -659,7 +659,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Fout- & Herhalingslimiet",
-			"description": "Aantal opeenvolgende fouten of herhaalde acties voordat het dialoogvenster 'Zoo ondervindt problemen' wordt weergegeven. Zet op 0 om dit veiligheidsmechanisme uit te schakelen (wordt nooit geactiveerd).",
+			"description": "Aantal opeenvolgende fouten of herhaalde acties voordat het dialoogvenster 'Dory Code ondervindt problemen' wordt weergegeven. Zet op 0 om dit veiligheidsmechanisme uit te schakelen (wordt nooit geactiveerd).",
 			"unlimitedDescription": "Onbeperkt aantal nieuwe pogingen ingeschakeld (automatisch doorgaan). Het dialoogvenster zal nooit verschijnen.",
 			"warning": "⚠️ Instellen op 0 staat onbeperkte nieuwe pogingen toe, wat aanzienlijk API-gebruik kan verbruiken"
 		},
@@ -706,7 +706,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "Pad naar CLI-programma",
 			"executablePathDescription": "Laat leeg om \"{{defaultExecutable}}\" te zoeken in PATH en in gangbare installatiemappen.",
-			"howItWorks": "Zoo Code voert de {{name}}-CLI uit die op deze computer is geïnstalleerd en gebruikt de aanmelding daarvan, zodat je abonnement de verzoeken betaalt. De eigen tools van de CLI staan uit. Zoo Code voert alle tools uit, vraagt om je goedkeuring en maakt zoals gewoonlijk checkpoints.",
+			"howItWorks": "Dory Code voert de {{name}}-CLI uit die op deze computer is geïnstalleerd en gebruikt de aanmelding daarvan, zodat je abonnement de verzoeken betaalt. De eigen tools van de CLI staan uit. Dory Code voert alle tools uit, vraagt om je goedkeuring en maakt zoals gewoonlijk checkpoints.",
 			"setup": "Installeer voordat je begint de CLI en meld je aan met \"{{loginCommand}}\" in een terminal.",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -719,18 +719,18 @@
 		},
 		"enable": {
 			"label": "Automatische checkpoints inschakelen",
-			"description": "Indien ingeschakeld, maakt Zoo automatisch checkpoints tijdens het uitvoeren van taken, zodat je eenvoudig wijzigingen kunt bekijken of terugzetten. <0>Meer informatie</0>"
+			"description": "Indien ingeschakeld, maakt Dory Code automatisch checkpoints tijdens het uitvoeren van taken, zodat je eenvoudig wijzigingen kunt bekijken of terugzetten. <0>Meer informatie</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Geluidseffecten inschakelen",
-			"description": "Indien ingeschakeld, speelt Zoo geluidseffecten af voor meldingen en gebeurtenissen.",
+			"description": "Indien ingeschakeld, speelt Dory Code geluidseffecten af voor meldingen en gebeurtenissen.",
 			"volumeLabel": "Volume"
 		},
 		"tts": {
 			"label": "Tekst-naar-spraak inschakelen",
-			"description": "Indien ingeschakeld, leest Zoo zijn antwoorden hardop voor via tekst-naar-spraak.",
+			"description": "Indien ingeschakeld, leest Dory Code zijn antwoorden hardop voor via tekst-naar-spraak.",
 			"speedLabel": "Snelheid"
 		}
 	},
@@ -822,7 +822,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "Grootte opdrachtuitvoer voorvertoning",
-			"description": "Bepaalt hoeveel opdrachtuitvoer Zoo direct ziet. Volledige uitvoer wordt altijd opgeslagen en is toegankelijk wanneer nodig.",
+			"description": "Bepaalt hoeveel opdrachtuitvoer Dory Code direct ziet. Volledige uitvoer wordt altijd opgeslagen en is toegankelijk wanneer nodig.",
 			"options": {
 				"small": "Klein (5KB)",
 				"medium": "Gemiddeld (10KB)",
@@ -835,7 +835,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Inline Terminal gebruiken (aanbevolen)",
-			"description": "Voer commando's uit in de Inline Terminal (chat) om shell-profielen/integratie te omzeilen voor snellere, betrouwbaardere runs. Wanneer uitgeschakeld gebruikt Zoo de VS Code-terminal met je shell-profiel, prompts en plugins. <0>Meer informatie</0>"
+			"description": "Voer commando's uit in de Inline Terminal (chat) om shell-profielen/integratie te omzeilen voor snellere, betrouwbaardere runs. Wanneer uitgeschakeld gebruikt Dory Code de VS Code-terminal met je shell-profiel, prompts en plugins. <0>Meer informatie</0>"
 		},
 		"commandDelay": {
 			"label": "Terminal-commandovertraging",
@@ -866,9 +866,9 @@
 			"description": "Schakel in om omgevingsvariabelen over te nemen van het bovenliggende VS Code-proces. <0>Meer informatie</0>"
 		},
 		"profile": {
-			"label": "Zoo Code terminalprofiel",
+			"label": "Dory Code terminalprofiel",
 			"followVscode": "VS Code-profiel volgen (aanbevolen)",
-			"description": "Standaard gebruikt Zoo Code de shell die in VS Code is geconfigureerd. Selecteer een shell-profiel uit de lijst om een pad-gebaseerd shell-profiel te gebruiken dat VS Code beschikbaar stelt. Uitsluitend op bron gebaseerde profielen (bijv. de ingebouwde PowerShell-vermelding) kunnen hier niet worden vermeld. <0>Meer informatie</0>",
+			"description": "Standaard gebruikt Dory Code de shell die in VS Code is geconfigureerd. Selecteer een shell-profiel uit de lijst om een pad-gebaseerd shell-profiel te gebruiken dat VS Code beschikbaar stelt. Uitsluitend op bron gebaseerde profielen (bijv. de ingebouwde PowerShell-vermelding) kunnen hier niet worden vermeld. <0>Meer informatie</0>",
 			"configureButton": "Standaardprofiel kiezen in VS Code",
 			"noProfiles": "(geen profielen met pad gevonden in terminal.integrated.profiles)"
 		}
@@ -879,7 +879,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "Takenlijst-tool inschakelen",
-			"description": "Wanneer ingeschakeld, kan Zoo takenlijsten maken en beheren om de voortgang van taken bij te houden. Dit helpt complexe taken te organiseren in beheersbare stappen."
+			"description": "Wanneer ingeschakeld, kan Dory Code takenlijsten maken en beheren om de voortgang van taken bij te houden. Dit helpt complexe taken te organiseren in beheersbare stappen."
 		}
 	},
 	"experimental": {
@@ -889,15 +889,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Experimentele inhoud-invoeg-tool gebruiken",
-			"description": "Schakel de experimentele inhoud-invoeg-tool in, waarmee Zoo inhoud op specifieke regelnummers kan invoegen zonder een diff te maken."
+			"description": "Schakel de experimentele inhoud-invoeg-tool in, waarmee Dory Code inhoud op specifieke regelnummers kan invoegen zonder een diff te maken."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Experimentele multi-block diff-tool gebruiken",
-			"description": "Indien ingeschakeld, gebruikt Zoo de multi-block diff-tool. Hiermee wordt geprobeerd meerdere codeblokken in het bestand in één verzoek bij te werken."
+			"description": "Indien ingeschakeld, gebruikt Dory Code de multi-block diff-tool. Hiermee wordt geprobeerd meerdere codeblokken in het bestand in één verzoek bij te werken."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Gelijktijdig lezen van bestanden inschakelen",
-			"description": "Wanneer ingeschakeld, kan Zoo meerdere bestanden in één verzoek lezen. Wanneer uitgeschakeld, moet Zoo bestanden één voor één lezen. Uitschakelen kan helpen bij het werken met minder capabele modellen of wanneer u meer controle over bestandstoegang wilt."
+			"description": "Wanneer ingeschakeld, kan Dory Code meerdere bestanden in één verzoek lezen. Wanneer uitgeschakeld, moet Dory Code bestanden één voor één lezen. Uitschakelen kan helpen bij het werken met minder capabele modellen of wanneer u meer controle over bestandstoegang wilt."
 		},
 		"MARKETPLACE": {
 			"name": "Marketplace inschakelen",
@@ -905,7 +905,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Achtergrondbewerking",
-			"description": "Voorkomt editor focus verstoring wanneer ingeschakeld. Bestandsbewerkingen gebeuren op de achtergrond zonder diff-weergaven te openen of focus te stelen. Je kunt ononderbroken doorwerken terwijl Zoo wijzigingen aanbrengt. Bestanden kunnen zonder focus worden geopend om diagnostiek vast te leggen of volledig gesloten blijven."
+			"description": "Voorkomt editor focus verstoring wanneer ingeschakeld. Bestandsbewerkingen gebeuren op de achtergrond zonder diff-weergaven te openen of focus te stelen. Je kunt ononderbroken doorwerken terwijl Dory Code wijzigingen aanbrengt. Bestanden kunnen zonder focus worden geopend om diagnostiek vast te leggen of volledig gesloten blijven."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Nieuwe berichtparser gebruiken",
@@ -919,7 +919,7 @@
 			"providerLabel": "Provider",
 			"providerDescription": "Selecteer de provider voor het genereren van afbeeldingen.",
 			"name": "AI-afbeeldingsgeneratie inschakelen",
-			"description": "Wanneer ingeschakeld, kan Zoo afbeeldingen genereren van tekstprompts met behulp van OpenRouter's afbeeldingsgeneratiemodellen. Vereist een geconfigureerde OpenRouter API-sleutel.",
+			"description": "Wanneer ingeschakeld, kan Dory Code afbeeldingen genereren van tekstprompts met behulp van OpenRouter's afbeeldingsgeneratiemodellen. Vereist een geconfigureerde OpenRouter API-sleutel.",
 			"openRouterApiKeyLabel": "OpenRouter API-sleutel",
 			"openRouterApiKeyPlaceholder": "Voer je OpenRouter API-sleutel in",
 			"getApiKeyText": "Haal je API-sleutel op van",
@@ -930,11 +930,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Model-geïnitieerde slash-commando's inschakelen",
-			"description": "Wanneer ingeschakeld, kan Zoo je slash-commando's uitvoeren om workflows uit te voeren."
+			"description": "Wanneer ingeschakeld, kan Dory Code je slash-commando's uitvoeren om workflows uit te voeren."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Aangepaste tools inschakelen",
-			"description": "Indien ingeschakeld kan Zoo aangepaste TypeScript/JavaScript-tools laden en gebruiken uit de map .roo/tools van je project of ~/.roo/tools voor globale tools. Opmerking: deze tools worden automatisch goedgekeurd.",
+			"description": "Indien ingeschakeld kan Dory Code aangepaste TypeScript/JavaScript-tools laden en gebruiken uit de map .roo/tools van je project of ~/.roo/tools voor globale tools. Opmerking: deze tools worden automatisch goedgekeurd.",
 			"toolsHeader": "Beschikbare aangepaste tools",
 			"noTools": "Geen aangepaste tools geladen. Voeg .ts- of .js-bestanden toe aan de map .roo/tools van je project of ~/.roo/tools voor globale tools.",
 			"refreshButton": "Vernieuwen",
@@ -958,7 +958,7 @@
 		"imageSupportUnknown": "Ondersteuning voor afbeeldingen niet gemeld",
 		"toolSupportUnknown": "Ondersteuning voor tools niet gemeld",
 		"promptCacheManagedByCopilot": "Prompt-caching wordt beheerd door GitHub Copilot",
-		"promptCacheCopilotDetails": "Caching hangt af van het model en de GitHub Copilot-backend. Zoo Code kan de cachebewaartermijn niet instellen en cachetreffers niet waarnemen via de VS Code API.",
+		"promptCacheCopilotDetails": "Caching hangt af van het model en de GitHub Copilot-backend. Dory Code kan de cachebewaartermijn niet instellen en cachetreffers niet waarnemen via de VS Code API.",
 		"supportsImages": "Ondersteunt afbeeldingen",
 		"noImages": "Ondersteunt geen afbeeldingen",
 		"supportsTools": "Ondersteunt tools",
@@ -989,7 +989,7 @@
 		"showLess": "Minder"
 	},
 	"modelPicker": {
-		"automaticFetch": "De extensie haalt automatisch de nieuwste lijst met modellen op van <serviceLink>{{serviceName}}</serviceLink>. Weet je niet welk model je moet kiezen? Zoo Code werkt het beste met <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Je kunt ook zoeken op 'free' voor gratis opties die nu beschikbaar zijn.",
+		"automaticFetch": "De extensie haalt automatisch de nieuwste lijst met modellen op van <serviceLink>{{serviceName}}</serviceLink>. Weet je niet welk model je moet kiezen? Dory Code werkt het beste met <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Je kunt ook zoeken op 'free' voor gratis opties die nu beschikbaar zijn.",
 		"label": "Model",
 		"searchPlaceholder": "Zoeken",
 		"noMatchFound": "Geen overeenkomsten gevonden",
@@ -1021,7 +1021,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "De extra body moet geldige JSON bevatten.",
 			"objectRequired": "De extra body moet een JSON-object zijn.",
-			"reservedKeys": "De extra body kan door Zoo Code beheerde velden niet overschrijven: {{keys}}."
+			"reservedKeys": "De extra body kan door Dory Code beheerde velden niet overschrijven: {{keys}}."
 		},
 		"arn": {
 			"regionMismatch": "Waarschuwing: De regio in je ARN ({{arnRegion}}) komt niet overeen met je geselecteerde regio ({{region}}). Dit kan toegangsfouten veroorzaken. De provider gebruikt de regio uit de ARN."
@@ -1096,20 +1096,20 @@
 		},
 		"chatFontSize": {
 			"label": "Lettergrootte van chat",
-			"description": "Stel de lettergrootte (in pixels) in voor de Zoo Code-chat. Laat op de standaardwaarde staan om overeen te komen met de lettergrootte van VS Code.",
+			"description": "Stel de lettergrootte (in pixels) in voor de Dory Code-chat. Laat op de standaardwaarde staan om overeen te komen met de lettergrootte van VS Code.",
 			"reset": "VS Code-standaard gebruiken"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Automatisch sluiten van door Zoo geopende bestanden",
-			"description": "Wanneer ingeschakeld, worden editor-tabbladen die Zoo tijdelijk heeft geopend voor een diff automatisch gesloten nadat de wijziging is geaccepteerd of geweigerd. Tabbladen die de gebruiker al had geopend voor de bewerking worden nooit automatisch gesloten."
+			"label": "Automatisch sluiten van door Dory Code geopende bestanden",
+			"description": "Wanneer ingeschakeld, worden editor-tabbladen die Dory Code tijdelijk heeft geopend voor een diff automatisch gesloten nadat de wijziging is geaccepteerd of geweigerd. Tabbladen die de gebruiker al had geopend voor de bewerking worden nooit automatisch gesloten."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Automatisch sluiten ook na gebruikersinteractie",
-			"description": "Wanneer ingeschakeld, worden door Zoo geopende tabbladen gesloten, zelfs als de gebruiker tijdens de bewerkingssessie in het bestand of de diff heeft geklikt of getypt. Heeft geen effect als 'Automatisch sluiten van door Zoo geopende bestanden' is uitgeschakeld."
+			"description": "Wanneer ingeschakeld, worden door Dory Code geopende tabbladen gesloten, zelfs als de gebruiker tijdens de bewerkingssessie in het bestand of de diff heeft geklikt of getypt. Heeft geen effect als 'Automatisch sluiten van door Dory Code geopende bestanden' is uitgeschakeld."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Automatisch sluiten van nieuw gemaakte bestanden",
-			"description": "Wanneer ingeschakeld, worden tabbladen van bestanden die Zoo heeft aangemaakt (in plaats van gewijzigd) ook automatisch gesloten nadat de wijziging is geaccepteerd."
+			"description": "Wanneer ingeschakeld, worden tabbladen van bestanden die Dory Code heeft aangemaakt (in plaats van gewijzigd) ook automatisch gesloten nadat de wijziging is geaccepteerd."
 		}
 	},
 	"skills": {
@@ -1162,7 +1162,7 @@
 		"description": "Taal en weergave van datum en tijd.",
 		"languageTitle": "Taal",
 		"displayLanguage": "Weergavetaal",
-		"displayLanguageDescription": "Taal van de Zoo Code-interface.",
+		"displayLanguageDescription": "Taal van de Dory Code-interface.",
 		"dateTimeTitle": "Datum en tijd",
 		"timeFormat": {
 			"label": "Tijdnotatie",

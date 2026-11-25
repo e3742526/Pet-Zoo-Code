@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="256" viewBox="0 0 400 256" role="img" aria-label="Dory logo">
+<defs>
+  <linearGradient id="doryBlue" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#2D7CF0"/>
+    <stop offset="100%" stop-color="#0B3C91"/>
+  </linearGradient>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#071D3A" flood-opacity="0.18"/>
+  </filter>
+</defs>
+
+
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M88 127 C124 74 207 72 256 127 C207 182 124 180 88 127 Z" stroke="#071D3A" stroke-width="14"/>
+  <path d="M256 127 L318 80 C299 112 299 142 318 174 Z" stroke="#071D3A" stroke-width="14"/>
+  <path d="M89 127 C74 110 74 99 88 88" stroke="#071D3A" stroke-width="8" opacity="0.9"/>
+  <path d="M101 92 C144 42 243 43 287 91" stroke="#071D3A" stroke-width="8" opacity="0.95"/>
+  <path d="M101 162 C144 212 243 211 287 163" stroke="#071D3A" stroke-width="8" opacity="0.95"/>
+  <circle cx="123" cy="117" r="9" fill="#071D3A" stroke="none"/>
+  <g stroke="#071D3A" stroke-width="9">
+    <path d="M164 137 L183 91 L222 111 L204 153 L246 136"/>
+    <path d="M183 91 L204 153 L177 166"/>
+  </g>
+  <g fill="#FFFFFF" stroke="#071D3A" stroke-width="7">
+    <circle cx="164" cy="137" r="12"/>
+    <circle cx="183" cy="91" r="12"/>
+    <circle cx="222" cy="111" r="12"/>
+    <circle cx="204" cy="153" r="12"/>
+    <circle cx="246" cy="136" r="12"/>
+    <circle cx="177" cy="166" r="12"/>
+  </g>
+  <circle cx="205" cy="153" r="6" fill="#071D3A" stroke="none"/>
+</g>
+
+</svg>

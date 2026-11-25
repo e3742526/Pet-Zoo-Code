@@ -96,7 +96,7 @@
 	"enqueueMessage": "Добавить сообщение в очередь (будет отправлено после завершения текущей задачи)",
 	"scrollToBottom": "Прокрутить чат вниз",
 	"scrollToLatestCheckpoint": "Прокрутить к предыдущему чекпоинту",
-	"about": "Zoo Code — это целая команда разработчиков ИИ в вашем редакторе.",
+	"about": "Dory Code — это целая команда разработчиков ИИ в вашем редакторе.",
 	"docs": "Ознакомьтесь с нашей <DocsLink>документацией</DocsLink>, чтобы узнать больше.",
 	"rooTips": {
 		"customizableModes": {
@@ -127,7 +127,7 @@
 		"title": "Режимы",
 		"marketplace": "Маркетплейс режимов",
 		"settings": "Настройки режимов",
-		"description": "Специализированные персоны, которые настраивают поведение Zoo.",
+		"description": "Специализированные персоны, которые настраивают поведение Dory Code.",
 		"searchPlaceholder": "Поиск режимов...",
 		"noResults": "Ничего не найдено"
 	},
@@ -185,40 +185,40 @@
 		"current": "Текущая"
 	},
 	"instructions": {
-		"wantsToFetch": "Zoo хочет получить подробные инструкции для помощи с текущей задачей"
+		"wantsToFetch": "Dory Code хочет получить подробные инструкции для помощи с текущей задачей"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo хочет прочитать этот файл",
-		"wantsToReadOutsideWorkspace": "Zoo хочет прочитать этот файл вне рабочей области",
-		"didRead": "Zoo прочитал этот файл",
-		"wantsToEdit": "Zoo хочет отредактировать этот файл",
-		"wantsToEditOutsideWorkspace": "Zoo хочет отредактировать этот файл вне рабочей области",
-		"wantsToEditProtected": "Zoo хочет отредактировать защищённый файл конфигурации",
-		"wantsToSearchReplace": "Zoo хочет выполнить поиск и замену в этом файле",
-		"didSearchReplace": "Zoo выполнил поиск и замену в этом файле",
-		"wantsToInsertWithLineNumber": "Zoo хочет вставить содержимое в этот файл на строку {{lineNumber}}",
-		"wantsToInsertAtEnd": "Zoo хочет добавить содержимое в конец этого файла",
-		"wantsToReadAndXMore": "Zoo хочет прочитать этот файл и еще {{count}}",
-		"wantsToReadMultiple": "Zoo хочет прочитать несколько файлов",
-		"wantsToApplyBatchChanges": "Zoo хочет применить изменения к нескольким файлам",
-		"wantsToGenerateImage": "Zoo хочет сгенерировать изображение",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo хочет сгенерировать изображение вне рабочего пространства",
-		"wantsToGenerateImageProtected": "Zoo хочет сгенерировать изображение в защищённом месте",
-		"didGenerateImage": "Zoo сгенерировал изображение"
+		"wantsToRead": "Dory Code хочет прочитать этот файл",
+		"wantsToReadOutsideWorkspace": "Dory Code хочет прочитать этот файл вне рабочей области",
+		"didRead": "Dory Code прочитал этот файл",
+		"wantsToEdit": "Dory Code хочет отредактировать этот файл",
+		"wantsToEditOutsideWorkspace": "Dory Code хочет отредактировать этот файл вне рабочей области",
+		"wantsToEditProtected": "Dory Code хочет отредактировать защищённый файл конфигурации",
+		"wantsToSearchReplace": "Dory Code хочет выполнить поиск и замену в этом файле",
+		"didSearchReplace": "Dory Code выполнил поиск и замену в этом файле",
+		"wantsToInsertWithLineNumber": "Dory Code хочет вставить содержимое в этот файл на строку {{lineNumber}}",
+		"wantsToInsertAtEnd": "Dory Code хочет добавить содержимое в конец этого файла",
+		"wantsToReadAndXMore": "Dory Code хочет прочитать этот файл и еще {{count}}",
+		"wantsToReadMultiple": "Dory Code хочет прочитать несколько файлов",
+		"wantsToApplyBatchChanges": "Dory Code хочет применить изменения к нескольким файлам",
+		"wantsToGenerateImage": "Dory Code хочет сгенерировать изображение",
+		"wantsToGenerateImageOutsideWorkspace": "Dory Code хочет сгенерировать изображение вне рабочего пространства",
+		"wantsToGenerateImageProtected": "Dory Code хочет сгенерировать изображение в защищённом месте",
+		"didGenerateImage": "Dory Code сгенерировал изображение"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo хочет просмотреть файлы верхнего уровня в этой директории",
-		"didViewTopLevel": "Zoo просмотрел файлы верхнего уровня в этой директории",
-		"wantsToViewRecursive": "Zoo хочет рекурсивно просмотреть все файлы в этой директории",
-		"didViewRecursive": "Zoo рекурсивно просмотрел все файлы в этой директории",
-		"wantsToSearch": "Zoo хочет выполнить поиск в этой директории по <code>{{regex}}</code>",
-		"didSearch": "Zoo выполнил поиск в этой директории по <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo хочет выполнить поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo выполнил поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo хочет просмотреть файлы верхнего уровня в этой директории (вне рабочего пространства)",
-		"didViewTopLevelOutsideWorkspace": "Zoo просмотрел файлы верхнего уровня в этой директории (вне рабочего пространства)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo хочет рекурсивно просмотреть все файлы в этой директории (вне рабочего пространства)",
-		"didViewRecursiveOutsideWorkspace": "Zoo рекурсивно просмотрел все файлы в этой директории (вне рабочего пространства)"
+		"wantsToViewTopLevel": "Dory Code хочет просмотреть файлы верхнего уровня в этой директории",
+		"didViewTopLevel": "Dory Code просмотрел файлы верхнего уровня в этой директории",
+		"wantsToViewRecursive": "Dory Code хочет рекурсивно просмотреть все файлы в этой директории",
+		"didViewRecursive": "Dory Code рекурсивно просмотрел все файлы в этой директории",
+		"wantsToSearch": "Dory Code хочет выполнить поиск в этой директории по <code>{{regex}}</code>",
+		"didSearch": "Dory Code выполнил поиск в этой директории по <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Dory Code хочет выполнить поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Dory Code выполнил поиск в этой директории (вне рабочего пространства) по <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Dory Code хочет просмотреть файлы верхнего уровня в этой директории (вне рабочего пространства)",
+		"didViewTopLevelOutsideWorkspace": "Dory Code просмотрел файлы верхнего уровня в этой директории (вне рабочего пространства)",
+		"wantsToViewRecursiveOutsideWorkspace": "Dory Code хочет рекурсивно просмотреть все файлы в этой директории (вне рабочего пространства)",
+		"didViewRecursiveOutsideWorkspace": "Dory Code рекурсивно просмотрел все файлы в этой директории (вне рабочего пространства)"
 	},
 	"commandExecution": {
 		"running": "Выполняется",
@@ -236,31 +236,31 @@
 		"clickToEditPattern": "Нажмите, чтобы изменить шаблон"
 	},
 	"text": {
-		"rooSaid": "Zoo сказал"
+		"rooSaid": "Dory Code сказал"
 	},
 	"feedback": {
 		"youSaid": "Вы сказали"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo хочет использовать инструмент на сервере MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo хочет получить доступ к ресурсу на сервере MCP {{serverName}}"
+		"wantsToUseTool": "Dory Code хочет использовать инструмент на сервере MCP {{serverName}}",
+		"wantsToAccessResource": "Dory Code хочет получить доступ к ресурсу на сервере MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo хочет переключиться в режим {{mode}}",
-		"wantsToSwitchWithReason": "Zoo хочет переключиться в режим {{mode}}, потому что: {{reason}}",
-		"didSwitch": "Zoo переключился в режим {{mode}}",
-		"didSwitchWithReason": "Zoo переключился в режим {{mode}}, потому что: {{reason}}"
+		"wantsToSwitch": "Dory Code хочет переключиться в режим {{mode}}",
+		"wantsToSwitchWithReason": "Dory Code хочет переключиться в режим {{mode}}, потому что: {{reason}}",
+		"didSwitch": "Dory Code переключился в режим {{mode}}",
+		"didSwitchWithReason": "Dory Code переключился в режим {{mode}}, потому что: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo хочет создать новую подзадачу в режиме {{mode}}",
-		"wantsToFinish": "Zoo хочет завершить эту подзадачу",
+		"wantsToCreate": "Dory Code хочет создать новую подзадачу в режиме {{mode}}",
+		"wantsToFinish": "Dory Code хочет завершить эту подзадачу",
 		"completionContent": "Подзадача завершена",
 		"resultContent": "Результаты подзадачи",
 		"completionInstructions": "Подзадача завершена! Вы можете просмотреть результаты и предложить исправления или следующие шаги. Если всё в порядке, подтвердите для возврата результата в родительскую задачу.",
 		"goToSubtask": "Просмотреть задачу"
 	},
 	"questions": {
-		"hasQuestion": "У Zoo есть вопрос"
+		"hasQuestion": "У Dory Code есть вопрос"
 	},
 	"taskCompleted": "Задача завершена",
 	"error": "Ошибка",
@@ -274,14 +274,14 @@
 	"diffError": {
 		"title": "Не удалось выполнить редактирование"
 	},
-	"troubleMessage": "У Zoo возникли проблемы...",
+	"troubleMessage": "У Dory Code возникли проблемы...",
 	"errorDetails": {
 		"link": "Подробности",
 		"title": "Детали ошибки",
 		"copyToClipboard": "Скопировать в буфер обмена",
 		"copied": "Скопировано!",
 		"diagnostics": "Получить подробную информацию об ошибке",
-		"proxyProvider": "Похоже, ты используешь провайдера на основе прокси. Убедись, что ты проверил его логи и что он не переписывает запросы Zoo."
+		"proxyProvider": "Похоже, ты используешь провайдера на основе прокси. Убедись, что ты проверил его логи и что он не переписывает запросы Dory Code."
 	},
 	"autoApprove": {
 		"tooltipManage": "Управление настройками автоматического одобрения",
@@ -334,8 +334,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo хочет загрузить навык",
-		"didLoad": "Zoo загрузил навык"
+		"wantsToLoad": "Dory Code хочет загрузить навык",
+		"didLoad": "Dory Code загрузил навык"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Скопировать во ввод (то же, что shift + клик)",
@@ -356,27 +356,27 @@
 	"profileViolationWarning": "Текущий профиль несовместим с настройками вашей организации",
 	"shellIntegration": {
 		"title": "Предупреждение о выполнении команды",
-		"description": "Ваша команда выполняется без интеграции оболочки терминала VSCode. Чтобы скрыть это предупреждение, вы можете отключить интеграцию оболочки в разделе <strong>Terminal</strong> в <settingsLink>настройках Zoo Code</settingsLink> или устранить проблемы с интеграцией терминала VSCode, используя ссылку ниже.",
+		"description": "Ваша команда выполняется без интеграции оболочки терминала VSCode. Чтобы скрыть это предупреждение, вы можете отключить интеграцию оболочки в разделе <strong>Terminal</strong> в <settingsLink>настройках Dory Code</settingsLink> или устранить проблемы с интеграцией терминала VSCode, используя ссылку ниже.",
 		"troubleshooting": "Нажмите здесь для просмотра документации по интеграции оболочки."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Достигнут лимит автоматически одобренных запросов",
-			"description_one": "Zoo достиг автоматически одобренного лимита в {{count}} API-запрос. Хотите сбросить счетчик и продолжить задачу?",
-			"description_few": "Zoo достиг автоматически одобренного лимита в {{count}} API-запроса. Хотите сбросить счетчик и продолжить задачу?",
-			"description_many": "Zoo достиг автоматически одобренного лимита в {{count}} API-запросов. Хотите сбросить счетчик и продолжить задачу?",
-			"description_other": "Zoo достиг автоматически одобренного лимита в {{count}} API-запроса. Хотите сбросить счетчик и продолжить задачу?",
+			"description_one": "Dory Code достиг автоматически одобренного лимита в {{count}} API-запрос. Хотите сбросить счетчик и продолжить задачу?",
+			"description_few": "Dory Code достиг автоматически одобренного лимита в {{count}} API-запроса. Хотите сбросить счетчик и продолжить задачу?",
+			"description_many": "Dory Code достиг автоматически одобренного лимита в {{count}} API-запросов. Хотите сбросить счетчик и продолжить задачу?",
+			"description_other": "Dory Code достиг автоматически одобренного лимита в {{count}} API-запроса. Хотите сбросить счетчик и продолжить задачу?",
 			"button": "Сбросить и продолжить"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "Достигнут лимит автоматически одобряемых расходов",
 			"button": "Сбросить и продолжить",
-			"description": "Zoo достиг автоматически утвержденного лимита расходов в размере ${{count}}. Хотите сбросить расходы и продолжить выполнение задачи?"
+			"description": "Dory Code достиг автоматически утвержденного лимита расходов в размере ${{count}}. Хотите сбросить расходы и продолжить выполнение задачи?"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo хочет выполнить поиск в кодовой базе по <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo хочет выполнить поиск в кодовой базе по <code>{{query}}</code> в <code>{{path}}</code>",
+		"wantsToSearch": "Dory Code хочет выполнить поиск в кодовой базе по <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Dory Code хочет выполнить поиск в кодовой базе по <code>{{query}}</code> в <code>{{path}}</code>",
 		"didSearch_one": "Найден {{count}} результат",
 		"didSearch_few": "Найдено {{count}} результата",
 		"didSearch_many": "Найдено {{count}} результатов",
@@ -451,8 +451,8 @@
 		"clickToEdit": "Нажмите, чтобы редактировать сообщение"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo хочет выполнить слеш-команду",
-		"didRun": "Zoo выполнил слеш-команду"
+		"wantsToRun": "Dory Code хочет выполнить слеш-команду",
+		"didRun": "Dory Code выполнил слеш-команду"
 	},
 	"todo": {
 		"partial": "{{completed}} из {{total}} задач выполнено",
@@ -498,7 +498,7 @@
 		"messageTemplate": "Следующие инструменты нельзя отключить, поэтому их записи в disabledTools были проигнорированы: {{tools}}."
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Dory Code read command output"
 	},
 	"retiredProvider": {
 		"title": "Провайдер больше не поддерживается",

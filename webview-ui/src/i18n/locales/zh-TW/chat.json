@@ -120,7 +120,7 @@
 	},
 	"scrollToBottom": "捲動至對話底部",
 	"scrollToLatestCheckpoint": "捲動至上一個檢查點",
-	"about": "Zoo 是編輯器中的完整 AI 開發團隊。",
+	"about": "Dory Code 是編輯器中的完整 AI 開發團隊。",
 	"docs": "請參閱 <DocsLink>說明文件</DocsLink> 開始使用。",
 	"rooTips": {
 		"customizableModes": {
@@ -129,7 +129,7 @@
 		},
 		"modelAgnostic": {
 			"title": "自備模型，無加價無鎖定",
-			"description": "使用自己的供應商金鑰，甚至可執行本機推論 - Zoo 不額外收費"
+			"description": "使用自己的供應商金鑰，甚至可執行本機推論 - Dory Code 不額外收費"
 		}
 	},
 	"selectMode": "選擇互動模式",
@@ -150,7 +150,7 @@
 		"title": "模式",
 		"marketplace": "模式市集",
 		"settings": "模式設定",
-		"description": "專門量身打造 Zoo 行為的角色。",
+		"description": "專門量身打造 Dory Code 行為的角色。",
 		"searchPlaceholder": "搜尋模式...",
 		"noResults": "找不到結果"
 	},
@@ -223,46 +223,46 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo 想要載入技能",
-		"didLoad": "Zoo 載入了技能"
+		"wantsToLoad": "Dory Code 想要載入技能",
+		"didLoad": "Dory Code 載入了技能"
 	},
 	"instructions": {
-		"wantsToFetch": "Zoo 想要取得詳細指示以協助目前工作"
+		"wantsToFetch": "Dory Code 想要取得詳細指示以協助目前工作"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo 想要讀取此檔案",
-		"wantsToReadMultiple": "Zoo 想要讀取多個檔案",
-		"wantsToReadAndXMore": "Zoo 想要讀取此檔案以及另外 {{count}} 個檔案",
-		"wantsToReadOutsideWorkspace": "Zoo 想要讀取此工作區外的檔案",
-		"didRead": "Zoo 已讀取此檔案",
-		"wantsToEdit": "Zoo 想要編輯此檔案",
-		"wantsToEditOutsideWorkspace": "Zoo 想要編輯此工作區外的檔案",
-		"wantsToEditProtected": "Zoo 想要編輯受保護的設定檔案",
-		"wantsToApplyBatchChanges": "Zoo 想要對多個檔案套用變更",
-		"wantsToGenerateImage": "Zoo 想要產生圖片",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo 想要在工作區外產生圖片",
-		"wantsToGenerateImageProtected": "Zoo 想要在受保護位置產生圖片",
-		"didGenerateImage": "Zoo 已產生圖片",
-		"wantsToInsertWithLineNumber": "Zoo 想要在此檔案第 {{lineNumber}} 行插入內容",
-		"wantsToInsertAtEnd": "Zoo 想要在此檔案尾端新增內容"
+		"wantsToRead": "Dory Code 想要讀取此檔案",
+		"wantsToReadMultiple": "Dory Code 想要讀取多個檔案",
+		"wantsToReadAndXMore": "Dory Code 想要讀取此檔案以及另外 {{count}} 個檔案",
+		"wantsToReadOutsideWorkspace": "Dory Code 想要讀取此工作區外的檔案",
+		"didRead": "Dory Code 已讀取此檔案",
+		"wantsToEdit": "Dory Code 想要編輯此檔案",
+		"wantsToEditOutsideWorkspace": "Dory Code 想要編輯此工作區外的檔案",
+		"wantsToEditProtected": "Dory Code 想要編輯受保護的設定檔案",
+		"wantsToApplyBatchChanges": "Dory Code 想要對多個檔案套用變更",
+		"wantsToGenerateImage": "Dory Code 想要產生圖片",
+		"wantsToGenerateImageOutsideWorkspace": "Dory Code 想要在工作區外產生圖片",
+		"wantsToGenerateImageProtected": "Dory Code 想要在受保護位置產生圖片",
+		"didGenerateImage": "Dory Code 已產生圖片",
+		"wantsToInsertWithLineNumber": "Dory Code 想要在此檔案第 {{lineNumber}} 行插入內容",
+		"wantsToInsertAtEnd": "Dory Code 想要在此檔案尾端新增內容"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo 想要檢視此目錄中最上層的檔案",
-		"didViewTopLevel": "Zoo 已檢視此目錄中最上層的檔案",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo 想要檢視此目錄（工作區外）中最上層的檔案",
-		"didViewTopLevelOutsideWorkspace": "Zoo 已檢視此目錄（工作區外）中最上層的檔案",
-		"wantsToViewRecursive": "Zoo 想要遞迴檢視此目錄中的所有檔案",
-		"didViewRecursive": "Zoo 已遞迴檢視此目錄中的所有檔案",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo 想要遞迴檢視此目錄（工作區外）中的所有檔案",
-		"didViewRecursiveOutsideWorkspace": "Zoo 已遞迴檢視此目錄（工作區外）中的所有檔案",
-		"wantsToSearch": "Zoo 想要在此目錄中搜尋 <code>{{regex}}</code>",
-		"didSearch": "Zoo 已在此目錄中搜尋 <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo 想要在此目錄（工作區外）中搜尋 <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo 已在此目錄（工作區外）中搜尋 <code>{{regex}}</code>"
+		"wantsToViewTopLevel": "Dory Code 想要檢視此目錄中最上層的檔案",
+		"didViewTopLevel": "Dory Code 已檢視此目錄中最上層的檔案",
+		"wantsToViewTopLevelOutsideWorkspace": "Dory Code 想要檢視此目錄（工作區外）中最上層的檔案",
+		"didViewTopLevelOutsideWorkspace": "Dory Code 已檢視此目錄（工作區外）中最上層的檔案",
+		"wantsToViewRecursive": "Dory Code 想要遞迴檢視此目錄中的所有檔案",
+		"didViewRecursive": "Dory Code 已遞迴檢視此目錄中的所有檔案",
+		"wantsToViewRecursiveOutsideWorkspace": "Dory Code 想要遞迴檢視此目錄（工作區外）中的所有檔案",
+		"didViewRecursiveOutsideWorkspace": "Dory Code 已遞迴檢視此目錄（工作區外）中的所有檔案",
+		"wantsToSearch": "Dory Code 想要在此目錄中搜尋 <code>{{regex}}</code>",
+		"didSearch": "Dory Code 已在此目錄中搜尋 <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Dory Code 想要在此目錄（工作區外）中搜尋 <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Dory Code 已在此目錄（工作區外）中搜尋 <code>{{regex}}</code>"
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo 想要在程式碼庫中搜尋 <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo 想要在 <code>{{path}}</code> 中搜尋程式碼庫 <code>{{query}}</code>",
+		"wantsToSearch": "Dory Code 想要在程式碼庫中搜尋 <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Dory Code 想要在 <code>{{path}}</code> 中搜尋程式碼庫 <code>{{query}}</code>",
 		"didSearch_other": "找到 {{count}} 個結果",
 		"resultTooltip": "相似度評分：{{score}}（點選以開啟檔案）",
 		"displayError": "顯示搜尋結果時發生錯誤。"
@@ -282,30 +282,30 @@
 		"clickToEditPattern": "點擊以編輯模式"
 	},
 	"text": {
-		"rooSaid": "Zoo 說"
+		"rooSaid": "Dory Code 說"
 	},
 	"feedback": {
 		"youSaid": "您說"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo 想要在 {{serverName}} MCP 伺服器上使用工具",
-		"wantsToAccessResource": "Zoo 想要存取 {{serverName}} MCP 伺服器上的資源"
+		"wantsToUseTool": "Dory Code 想要在 {{serverName}} MCP 伺服器上使用工具",
+		"wantsToAccessResource": "Dory Code 想要存取 {{serverName}} MCP 伺服器上的資源"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo 想要切換至 {{mode}} 模式",
-		"wantsToSwitchWithReason": "Zoo 想要切換至 {{mode}} 模式，原因：{{reason}}",
-		"didSwitch": "Zoo 已切換至 {{mode}} 模式",
-		"didSwitchWithReason": "Zoo 已切換至 {{mode}} 模式，原因：{{reason}}"
+		"wantsToSwitch": "Dory Code 想要切換至 {{mode}} 模式",
+		"wantsToSwitchWithReason": "Dory Code 想要切換至 {{mode}} 模式，原因：{{reason}}",
+		"didSwitch": "Dory Code 已切換至 {{mode}} 模式",
+		"didSwitchWithReason": "Dory Code 已切換至 {{mode}} 模式，原因：{{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo 想要在 {{mode}} 模式下建立新的子任務",
-		"wantsToFinish": "Zoo 想要完成此子任務",
+		"wantsToCreate": "Dory Code 想要在 {{mode}} 模式下建立新的子任務",
+		"wantsToFinish": "Dory Code 想要完成此子任務",
 		"resultContent": "子任務結果",
 		"completionInstructions": "子任務已完成！您可以檢閱結果並提出修正或後續步驟。如果一切順利，請確認以將結果回傳給主任務。",
 		"goToSubtask": "查看工作"
 	},
 	"questions": {
-		"hasQuestion": "Zoo 有一個問題"
+		"hasQuestion": "Dory Code 有一個問題"
 	},
 	"taskCompleted": "工作完成",
 	"error": "錯誤",
@@ -322,12 +322,12 @@
 		"copyToClipboard": "複製基本錯誤資訊",
 		"copied": "已複製！",
 		"diagnostics": "取得詳細錯誤資訊",
-		"proxyProvider": "似乎正在使用代理型供應商。請檢查記錄，並確保不會重寫 Zoo 的請求。"
+		"proxyProvider": "似乎正在使用代理型供應商。請檢查記錄，並確保不會重寫 Dory Code 的請求。"
 	},
 	"diffError": {
 		"title": "編輯失敗"
 	},
-	"troubleMessage": "Zoo 遇到問題...",
+	"troubleMessage": "Dory Code 遇到問題...",
 	"autoApprove": {
 		"tooltipManage": "管理自動核准設定",
 		"tooltipStatus": "自動核准已啟用：{{toggles}}",
@@ -376,18 +376,18 @@
 	"profileViolationWarning": "目前設定檔與您的組織設定不相容",
 	"shellIntegration": {
 		"title": "命令執行警告",
-		"description": "命令正在沒有 VS Code 終端機 Shell 整合的情況下執行。若要隱藏此警告，可在 <settingsLink>Zoo Code 設定</settingsLink> 的 <strong>終端機</strong> 區塊中停用 Shell 整合，或使用下方連結排解 VS Code 終端機整合問題。",
+		"description": "命令正在沒有 VS Code 終端機 Shell 整合的情況下執行。若要隱藏此警告，可在 <settingsLink>Dory Code 設定</settingsLink> 的 <strong>終端機</strong> 區塊中停用 Shell 整合，或使用下方連結排解 VS Code 終端機整合問題。",
 		"troubleshooting": "點選此處查看 Shell 整合說明文件。"
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "已達自動核准請求上限",
-			"description_other": "Zoo 已達到 {{count}} 次 API 請求的自動核准上限。您想重設計數並繼續工作嗎？",
+			"description_other": "Dory Code 已達到 {{count}} 次 API 請求的自動核准上限。您想重設計數並繼續工作嗎？",
 			"button": "重設並繼續"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "已達自動核准費用上限",
-			"description": "Zoo 已達到 ${{count}} 的自動核准費用上限。您想重設費用並繼續工作嗎？",
+			"description": "Dory Code 已達到 ${{count}} 的自動核准費用上限。您想重設費用並繼續工作嗎？",
 			"button": "重設並繼續"
 		}
 	},
@@ -406,8 +406,8 @@
 		"manageCommands": "在設定中管理斜線命令"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo 想要執行斜線指令",
-		"didRun": "Zoo 執行了斜線指令"
+		"wantsToRun": "Dory Code 想要執行斜線指令",
+		"didRun": "Dory Code 執行了斜線指令"
 	},
 	"queuedMessages": {
 		"title": "佇列中的訊息",
@@ -467,7 +467,7 @@
 		"messageTemplate": "以下工具無法被停用，因此它在 disabledTools 中的條目已被忽略：{{tools}}。"
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Dory Code read command output"
 	},
 	"retiredProvider": {
 		"title": "供應商不再受支援",

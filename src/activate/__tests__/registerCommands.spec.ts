@@ -127,7 +127,7 @@ describe("getVisibleProviderOrLog", () => {
 		const result = getVisibleProviderOrLog(mockOutputChannel)
 
 		expect(result).toBeUndefined()
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Cannot find any visible Roo Code instances.")
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Cannot find any visible Dory Code instances.")
 	})
 })
 
@@ -225,7 +225,7 @@ describe("registerCommands handlers", () => {
 		async (command) => {
 			const panel: vscode.WebviewPanel = {
 				viewType: "pet-zoo-code.TabPanelProvider",
-				title: "Zoo Code",
+				title: "Dory Code",
 				webview: {
 					options: {},
 					html: "",
@@ -513,7 +513,7 @@ describe("openClineInNewTab", () => {
 		},
 	)
 
-	it("creates a webview panel with title 'Zoo Code'", async () => {
+	it("creates a webview panel with title 'Dory Code'", async () => {
 		const webviewFocusTracker = new WebviewFocusTracker()
 		await openClineInNewTab({ context: mockContext, outputChannel: mockOutputChannel, webviewFocusTracker })
 		expect(ClineProvider).toHaveBeenCalledWith(
@@ -526,7 +526,7 @@ describe("openClineInNewTab", () => {
 
 		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
 			"pet-zoo-code.TabPanelProvider",
-			"Zoo Code",
+			"Dory Code",
 			expect.any(Number),
 			expect.objectContaining({
 				enableScripts: true,

@@ -1,7 +1,7 @@
 {
 	"name": "@roo-code/cli",
 	"version": "0.1.17",
-	"description": "Roo Code CLI - Run the Roo Code agent from the command line",
+	"description": "Run the Dory Code agent from the command line.",
 	"private": true,
 	"type": "module",
 	"main": "dist/index.js",

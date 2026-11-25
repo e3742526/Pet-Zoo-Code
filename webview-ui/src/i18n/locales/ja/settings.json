@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "実験的",
 		"language": "言語",
-		"about": "Zoo Codeについて",
+		"about": "Dory Codeについて",
 		"skills": "Skills",
 		"rules": "ルール"
 	},
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Roo Code から履歴をインポート",
 			"cardTitle": "Roo Code の履歴",
-			"cardDescription": "保存済みの Roo Code の会話を Zoo Code にコピーします。",
+			"cardDescription": "保存済みの Roo Code の会話を Dory Code にコピーします。",
 			"statusImporting": "履歴をインポート中",
 			"statusFailed": "インポート失敗",
 			"statusComplete": "インポート完了",
@@ -120,7 +120,7 @@
 		"footer": "スラッシュコマンドを使用して、頻繁に使用するプロンプトとワークフローにすばやくアクセスします。"
 	},
 	"rules": {
-		"description": "グローバルおよびワークスペースの .roo/rules ディレクトリから Zoo Code ルールファイルを管理します。設定フォルダーを手動で探さずに、一般ルールまたはモード固有ルールを作成できます。",
+		"description": "グローバルおよびワークスペースの .roo/rules ディレクトリから Dory Code ルールファイルを管理します。設定フォルダーを手動で探さずに、一般ルールまたはモード固有ルールを作成できます。",
 		"workspaceRules": "ワークスペースルール",
 		"globalRules": "グローバルルール",
 		"noWorkspaceRules": "このプロジェクトにはまだルールがありません。",
@@ -166,7 +166,7 @@
 		"footer": "ルールは一般ガイダンスの前にモード固有ガイダンスを読み込みます。グローバルルールはワークスペースルールより先に読み込まれます。"
 	},
 	"prompts": {
-		"description": "プロンプトの強化、コードの説明、問題の修正などの迅速なアクションに使用されるサポートプロンプトを設定します。これらのプロンプトは、Zooが一般的な開発タスクでより良いサポートを提供するのに役立ちます。"
+		"description": "プロンプトの強化、コードの説明、問題の修正などの迅速なアクションに使用されるサポートプロンプトを設定します。これらのプロンプトは、Dory Codeが一般的な開発タスクでより良いサポートを提供するのに役立ちます。"
 	},
 	"codeIndex": {
 		"title": "コードベースのインデックス作成",
@@ -268,15 +268,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "<SettingsLink>IDEの環境設定</SettingsLink>で、この設定のグローバルショートカットを設定できます。",
-		"description": "Zooが承認なしで自動的に操作を実行できるようにします。AIを完全に信頼し、関連するセキュリティリスクを理解している場合にのみ、これらの設定を有効にしてください。",
+		"description": "Dory Codeが承認なしで自動的に操作を実行できるようにします。AIを完全に信頼し、関連するセキュリティリスクを理解している場合にのみ、これらの設定を有効にしてください。",
 		"enabled": "自動承認が有効",
 		"toggleAriaLabel": "自動承認の切り替え",
 		"readOnly": {
 			"label": "読み取り",
-			"description": "有効にすると、Zooは承認ボタンをクリックすることなく、自動的にディレクトリの内容を表示してファイルを読み取ります。",
+			"description": "有効にすると、Dory Codeは承認ボタンをクリックすることなく、自動的にディレクトリの内容を表示してファイルを読み取ります。",
 			"outsideWorkspace": {
 				"label": "ワークスペース外のファイルを含める",
-				"description": "Zooが承認なしで現在のワークスペース外のファイルを読み取ることを許可します。"
+				"description": "Dory Codeが承認なしで現在のワークスペース外のファイルを読み取ることを許可します。"
 			}
 		},
 		"write": {
@@ -284,11 +284,11 @@
 			"description": "承認なしで自動的にファイルを作成・編集",
 			"outsideWorkspace": {
 				"label": "ワークスペース外のファイルを含める",
-				"description": "Zooが承認なしで現在のワークスペース外のファイルを作成・編集することを許可します。"
+				"description": "Dory Codeが承認なしで現在のワークスペース外のファイルを作成・編集することを許可します。"
 			},
 			"protected": {
 				"label": "保護されたファイルを含める",
-				"description": "Zooが保護されたファイル（.rooignoreや.roo/設定ファイルなど）を承認なしで作成・編集することを許可します。"
+				"description": "Dory Codeが保護されたファイル（.rooignoreや.roo/設定ファイルなど）を承認なしで作成・編集することを許可します。"
 			}
 		},
 		"allowlists": {
@@ -296,12 +296,12 @@
 			"description": "操作のカテゴリ全体を自動承認せずに、個々のファイルへのアクセスを許可します。1行に1つのパターンを、.gitignore を参考にした構文で記述します。\"notes.md\" はワークスペース内の任意のディレクトリにあるそのファイルに一致し、\"docs/scratch/**\" はそのディレクトリ配下のすべて、\"*.md\" は任意の Markdown ファイルに一致します。パターンが指すのは常にファイルで、ディレクトリではありません。\"docs\" は \"docs\" という名前のファイルだけを許可します。ディレクトリの中身には \"docs/**\" と書きます。先頭の \"./\" はワークスペースのルートを意味し、先頭の \"/\" はファイルシステムのルートを意味するため、\"/tmp/notes.md\" はワークスペースの外に届きます。\"~/notes.md\" も同様で、先頭の \"~/\" はあなたのホームディレクトリを表します。パターンの先頭に \"!\" を付けると、前の行で一致したものを除外します。.gitignore と同様に最後に一致した行が優先されるため、順序が重要です。フォルダーを開いていない間は、ワークスペース相対のパターンは無視されます。大文字と小文字は区別されます（Windows を除く）。上の「自動承認」がオフの間は、何も自動承認されません。",
 			"readFiles": {
 				"label": "読み取り許可リストのパターン",
-				"description": "上の「読み取り」がオフでも、Zooが承認なしで読み取れるファイルです。下の書き込み許可リストのファイルは常に読み取りもできるため、二重に追加する必要はありません。ディレクトリの一覧表示と検索は常に「読み取り」設定に従います。.rooignore で除外されたファイルは、いずれにせよ読み取れません。",
+				"description": "上の「読み取り」がオフでも、Dory Codeが承認なしで読み取れるファイルです。下の書き込み許可リストのファイルは常に読み取りもできるため、二重に追加する必要はありません。ディレクトリの一覧表示と検索は常に「読み取り」設定に従います。.rooignore で除外されたファイルは、いずれにせよ読み取れません。",
 				"placeholder": "1行に1つのパターン（例：notes.md）"
 			},
 			"writeFiles": {
 				"label": "書き込み許可リストのパターン",
-				"description": "上の「書き込み」がオフでも、Zooが承認なしで作成・編集できるファイルです。保護されたファイルは、「保護されたファイルを含める」を有効にしない限り（「書き込み」自動承認の設定内）、引き続き承認が必要です。.rooignore で除外されたファイルは、いずれにせよ書き込めません。",
+				"description": "上の「書き込み」がオフでも、Dory Codeが承認なしで作成・編集できるファイルです。保護されたファイルは、「保護されたファイルを含める」を有効にしない限り（「書き込み」自動承認の設定内）、引き続き承認が必要です。.rooignore で除外されたファイルは、いずれにせよ書き込めません。",
 				"placeholder": "1行に1つのパターン（例：notes.md）"
 			}
 		},
@@ -327,7 +327,7 @@
 			"description": "承認なしで自動的に許可されたターミナルコマンドを実行",
 			"destructiveCommandGuard": {
 				"label": "破壊的コマンドガードを有効にする",
-				"description": "このプラットフォーム用の Destructive Command Guard（DCG）をダウンロードして使用します。DCG が許可したコマンドは自動的に実行されます。DCG がブロックしたコマンドの実行には承認が必要です。有効な間は Zoo のコマンドリストが無効になります。無効にしても、ダウンロードした実行ファイルは保持されます。"
+				"description": "このプラットフォーム用の Destructive Command Guard（DCG）をダウンロードして使用します。DCG が許可したコマンドは自動的に実行されます。DCG がブロックしたコマンドの実行には承認が必要です。有効な間は Dory Code のコマンドリストが無効になります。無効にしても、ダウンロードした実行ファイルは保持されます。"
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -379,7 +379,7 @@
 		"awsCustomArnDesc": "ARN内のリージョンが上で選択したAWSリージョンと一致していることを確認してください。",
 		"awsCustomArnBaseModel": "基盤モデル",
 		"awsCustomArnBaseModelOther": "その他（一覧にない）",
-		"awsCustomArnBaseModelDesc": "この ARN が指すモデルです。Zoo Code は思考、temperature、コンテキストウィンドウ、最大出力、料金にこれを使用します。ARN にモデル名が含まれる場合は自動検出されます。",
+		"awsCustomArnBaseModelDesc": "この ARN が指すモデルです。Dory Code は思考、temperature、コンテキストウィンドウ、最大出力、料金にこれを使用します。ARN にモデル名が含まれる場合は自動検出されます。",
 		"awsCustomArnContextWindow": "コンテキストウィンドウ（トークン）",
 		"awsCustomArnMaxTokens": "最大出力トークン",
 		"openRouterApiKey": "OpenRouter APIキー",
@@ -448,7 +448,7 @@
 		"headerValue": "ヘッダー値",
 		"noCustomHeaders": "カスタムヘッダーが定義されていません。+ ボタンをクリックして追加してください。",
 		"extraBody": "追加ボディ",
-		"extraBodyDescription": "APIリクエストボディにマージされる任意のJSONオブジェクトです。model、messages、tools、streamなど、Zoo Codeが管理するフィールドは上書きできません。機密情報を含めないでください。",
+		"extraBodyDescription": "APIリクエストボディにマージされる任意のJSONオブジェクトです。model、messages、tools、streamなど、Dory Codeが管理するフィールドは上書きできません。機密情報を含めないでください。",
 		"unboundApiKey": "Unbound API キー",
 		"getUnboundApiKey": "Unbound APIキーを取得",
 		"requestyApiKey": "Requesty APIキー",
@@ -594,18 +594,18 @@
 			"speculativeDecoding": "推論デコーディングを有効化",
 			"draftModelId": "ドラフトモデルID",
 			"draftModelDesc": "推論デコーディングが正しく機能するには、ドラフトモデルは同じモデルファミリーから選択する必要があります。",
-			"description": "LM Studioを使用すると、ローカルコンピューターでモデルを実行できます。始め方については、<a>クイックスタートガイド</a>をご覧ください。また、この拡張機能で使用するには、LM Studioの<b>ローカルサーバー</b>機能を起動する必要があります。<span>注意：</span>Zoo Codeは複雑なプロンプトを使用し、Claudeモデルで最適に動作します。能力の低いモデルは期待通りに動作しない場合があります。"
+			"description": "LM Studioを使用すると、ローカルコンピューターでモデルを実行できます。始め方については、<a>クイックスタートガイド</a>をご覧ください。また、この拡張機能で使用するには、LM Studioの<b>ローカルサーバー</b>機能を起動する必要があります。<span>注意：</span>Dory Codeは複雑なプロンプトを使用し、Claudeモデルで最適に動作します。能力の低いモデルは期待通りに動作しない場合があります。"
 		},
 		"ollama": {
 			"baseUrl": "ベースURL（オプション）",
 			"apiKey": "Ollama APIキー",
-			"apiKeyHelp": "認証が必要なOllamaインスタンス、またはクラウドサービス用のオプションAPIキー。Zoo CodeはキーをHTTPSまたはループバックのエンドポイントにのみ送信します。リモートのHTTPエンドポイントにはキーを送信しません。キーが平文で送られるためです。キーが必要なリモートインスタンスにはHTTPSを使用してください。ローカルインストールの場合は空のままにしてください。",
+			"apiKeyHelp": "認証が必要なOllamaインスタンス、またはクラウドサービス用のオプションAPIキー。Dory CodeはキーをHTTPSまたはループバックのエンドポイントにのみ送信します。リモートのHTTPエンドポイントにはキーを送信しません。キーが平文で送られるためです。キーが必要なリモートインスタンスにはHTTPSを使用してください。ローカルインストールの場合は空のままにしてください。",
 			"numCtx": "コンテキストウィンドウサイズ (num_ctx)",
 			"numCtxHelp": "モデルのデフォルトのコンテキストウィンドウサイズを上書きします。モデルのModelfile構成を使用するには、空のままにします。最小値は128です。",
 			"thinking": "思考を有効化",
 			"thinkingHelp": "推論モデル（例: qwen3、deepseek-r1）に対してOllamaのネイティブな思考を有効にします。有効にすると、モデルの推論が個別にストリーミングおよび表示されます。サポートされていないモデルはこの設定を無視します。",
 			"description": "Ollamaを使用すると、ローカルコンピューターでモデルを実行できます。始め方については、クイックスタートガイドをご覧ください。",
-			"warning": "注意：Zoo Codeは複雑なプロンプトを使用し、Claudeモデルで最適に動作します。能力の低いモデルは期待通りに動作しない場合があります。"
+			"warning": "注意：Dory Codeは複雑なプロンプトを使用し、Claudeモデルで最適に動作します。能力の低いモデルは期待通りに動作しない場合があります。"
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -615,7 +615,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "カスタムOpenAI互換モデルの機能と価格を設定します。モデルの機能はZoo Codeのパフォーマンスに影響を与える可能性があるため、慎重に指定してください。",
+			"capabilities": "カスタムOpenAI互換モデルの機能と価格を設定します。モデルの機能はDory Codeのパフォーマンスに影響を与える可能性があるため、慎重に指定してください。",
 			"maxTokens": {
 				"label": "最大出力トークン",
 				"description": "モデルが生成できる応答の最大トークン数。（サーバーが最大トークンを設定できるようにするには-1を指定します。）"
@@ -658,7 +658,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "エラーと繰り返しの制限",
-			"description": "「Zooが問題を抱えています」ダイアログを表示するまでの連続エラーまたは繰り返しアクションの数。この安全機構を無効にするには0に設定します（トリガーされません）。",
+			"description": "「Dory Codeが問題を抱えています」ダイアログを表示するまでの連続エラーまたは繰り返しアクションの数。この安全機構を無効にするには0に設定します（トリガーされません）。",
 			"unlimitedDescription": "無制限のリトライが有効です（自動進行）。ダイアログは表示されません。",
 			"warning": "⚠️ 0に設定すると無制限のリトライが可能になり、API使用量が大幅に増加する可能性があります"
 		},
@@ -705,7 +705,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "CLI 実行ファイルのパス",
 			"executablePathDescription": "空のままにすると、PATH と一般的なインストールフォルダーで \"{{defaultExecutable}}\" を探します。",
-			"howItWorks": "Zoo Code はこのコンピューターにインストールされた {{name}} CLI を実行し、そのサインインを使用します。リクエストはサブスクリプションで支払われます。CLI 自身のツールは無効になります。Zoo Code がすべてのツールを実行し、承認を求め、通常どおりチェックポイントを作成します。",
+			"howItWorks": "Dory Code はこのコンピューターにインストールされた {{name}} CLI を実行し、そのサインインを使用します。リクエストはサブスクリプションで支払われます。CLI 自身のツールは無効になります。Dory Code がすべてのツールを実行し、承認を求め、通常どおりチェックポイントを作成します。",
 			"setup": "始める前に CLI をインストールし、ターミナルで \"{{loginCommand}}\" を実行してサインインしてください。",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -718,18 +718,18 @@
 		},
 		"enable": {
 			"label": "自動チェックポイントを有効化",
-			"description": "有効にすると、Zooはタスク実行中に自動的にチェックポイントを作成し、変更の確認や以前の状態への復帰を容易にします。 <0>詳細情報</0>"
+			"description": "有効にすると、Dory Codeはタスク実行中に自動的にチェックポイントを作成し、変更の確認や以前の状態への復帰を容易にします。 <0>詳細情報</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "サウンドエフェクトを有効化",
-			"description": "有効にすると、Zooは通知やイベントのためにサウンドエフェクトを再生します。",
+			"description": "有効にすると、Dory Codeは通知やイベントのためにサウンドエフェクトを再生します。",
 			"volumeLabel": "音量"
 		},
 		"tts": {
 			"label": "音声合成を有効化",
-			"description": "有効にすると、Zooは音声合成を使用して応答を音声で読み上げます。",
+			"description": "有効にすると、Dory Codeは音声合成を使用して応答を音声で読み上げます。",
 			"speedLabel": "速度"
 		}
 	},
@@ -821,7 +821,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "コマンド出力プレビューサイズ",
-			"description": "Zooが直接確認できるコマンド出力の量を制御します。完全な出力は常に保存され、必要に応じてアクセス可能です。",
+			"description": "Dory Codeが直接確認できるコマンド出力の量を制御します。完全な出力は常に保存され、必要に応じてアクセス可能です。",
 			"options": {
 				"small": "小 (5KB)",
 				"medium": "中 (10KB)",
@@ -834,7 +834,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "インラインターミナルを使用（推奨）",
-			"description": "より高速で信頼性の高い実行のため、シェルプロファイル/統合をバイパスしてインラインターミナル（チャット）でコマンドを実行します。無効にすると、Zoo はシェルプロファイル、プロンプト、プラグインと共に VS Code ターミナルを使用します。<0>詳細情報</0>"
+			"description": "より高速で信頼性の高い実行のため、シェルプロファイル/統合をバイパスしてインラインターミナル（チャット）でコマンドを実行します。無効にすると、Dory Code はシェルプロファイル、プロンプト、プラグインと共に VS Code ターミナルを使用します。<0>詳細情報</0>"
 		},
 		"commandDelay": {
 			"label": "ターミナルコマンド遅延",
@@ -865,9 +865,9 @@
 			"description": "親VS Codeプロセスから環境変数を継承するには、これをオンにします。<0>詳細情報</0>"
 		},
 		"profile": {
-			"label": "Zoo Code シェルプロファイル",
+			"label": "Dory Code シェルプロファイル",
 			"followVscode": "VS Code プロファイルに従う（推奨）",
-			"description": "デフォルトでは Zoo Code は VS Code に設定されたシェルを使用します。VS Code が公開するパスベースのシェルプロファイルを選択するには一覧からシェルプロファイルを選択してください。ソースのみのプロファイル（例：組み込みの PowerShell エントリ）はここに表示できません。 <0>詳細を見る</0>",
+			"description": "デフォルトでは Dory Code は VS Code に設定されたシェルを使用します。VS Code が公開するパスベースのシェルプロファイルを選択するには一覧からシェルプロファイルを選択してください。ソースのみのプロファイル（例：組み込みの PowerShell エントリ）はここに表示できません。 <0>詳細を見る</0>",
 			"configureButton": "VS Code でデフォルトプロファイルを選択",
 			"noProfiles": "(terminal.integrated.profiles にパスベースのプロファイルが見つかりません)"
 		}
@@ -878,7 +878,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "ToDoリストツールを有効にする",
-			"description": "有効にすると、Zooはタスクの進捗を追跡するためのToDoリストを作成・管理できます。これにより、複雑なタスクを管理しやすいステップに整理できます。"
+			"description": "有効にすると、Dory Codeはタスクの進捗を追跡するためのToDoリストを作成・管理できます。これにより、複雑なタスクを管理しやすいステップに整理できます。"
 		}
 	},
 	"experimental": {
@@ -888,15 +888,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "実験的なコンテンツ挿入ツールを使用する",
-			"description": "実験的なコンテンツ挿入ツールを有効にし、Zooがdiffを作成せずに特定の行番号にコンテンツを挿入できるようにします。"
+			"description": "実験的なコンテンツ挿入ツールを有効にし、Dory Codeがdiffを作成せずに特定の行番号にコンテンツを挿入できるようにします。"
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "実験的なマルチブロックdiffツールを使用する",
-			"description": "有効にすると、Zooはマルチブロックdiffツールを使用します。これにより、1つのリクエストでファイル内の複数のコードブロックを更新しようとします。"
+			"description": "有効にすると、Dory Codeはマルチブロックdiffツールを使用します。これにより、1つのリクエストでファイル内の複数のコードブロックを更新しようとします。"
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "並行ファイル読み取りを有効にする",
-			"description": "有効にすると、Zooは1回のリクエストで複数のファイル を読み取ることができます。無効にすると、Zooはファイルを1つずつ読み取る必要があります。能力の低いモデルで作業する場合や、ファイルアクセスをより細かく制御したい場合は、無効にすると役立ちます。"
+			"description": "有効にすると、Dory Codeは1回のリクエストで複数のファイル を読み取ることができます。無効にすると、Dory Codeはファイルを1つずつ読み取る必要があります。能力の低いモデルで作業する場合や、ファイルアクセスをより細かく制御したい場合は、無効にすると役立ちます。"
 		},
 		"MARKETPLACE": {
 			"name": "Marketplaceを有効にする",
@@ -904,7 +904,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "バックグラウンド編集",
-			"description": "有効にすると、エディターのフォーカス中断を防ぎます。ファイル編集は差分ビューを開いたりフォーカスを奪ったりすることなく、バックグラウンドで行われます。Zooが変更を行っている間も中断されることなく作業を続けることができます。ファイルは診断をキャプチャするためにフォーカスなしで開くか、完全に閉じたままにできます。"
+			"description": "有効にすると、エディターのフォーカス中断を防ぎます。ファイル編集は差分ビューを開いたりフォーカスを奪ったりすることなく、バックグラウンドで行われます。Dory Codeが変更を行っている間も中断されることなく作業を続けることができます。ファイルは診断をキャプチャするためにフォーカスなしで開くか、完全に閉じたままにできます。"
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "新しいメッセージパーサーを使う",
@@ -918,7 +918,7 @@
 			"providerLabel": "プロバイダー",
 			"providerDescription": "画像生成に使用するプロバイダーを選択",
 			"name": "AI画像生成を有効にする",
-			"description": "有効にすると、ZooはOpenRouterの画像生成モデルを使用してテキストプロンプトから画像を生成できます。OpenRouter APIキーの設定が必要です。",
+			"description": "有効にすると、Dory CodeはOpenRouterの画像生成モデルを使用してテキストプロンプトから画像を生成できます。OpenRouter APIキーの設定が必要です。",
 			"openRouterApiKeyLabel": "OpenRouter APIキー",
 			"openRouterApiKeyPlaceholder": "OpenRouter APIキーを入力してください",
 			"getApiKeyText": "APIキーを取得する場所",
@@ -929,11 +929,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "モデル開始スラッシュコマンドを有効にする",
-			"description": "有効にすると、Zooがワークフローを実行するためにあなたのスラッシュコマンドを実行できます。"
+			"description": "有効にすると、Dory Codeがワークフローを実行するためにあなたのスラッシュコマンドを実行できます。"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "カスタムツールを有効化",
-			"description": "有効にすると、Zooはプロジェクトの.roo/toolsディレクトリまたはグローバルツール用の~/.roo/toolsからカスタムTypeScript/JavaScriptツールを読み込んで使用できます。注意：これらのツールは自動的に承認されます。",
+			"description": "有効にすると、Dory Codeはプロジェクトの.roo/toolsディレクトリまたはグローバルツール用の~/.roo/toolsからカスタムTypeScript/JavaScriptツールを読み込んで使用できます。注意：これらのツールは自動的に承認されます。",
 			"toolsHeader": "利用可能なカスタムツール",
 			"noTools": "カスタムツールが読み込まれていません。プロジェクトの.roo/toolsディレクトリまたはグローバルツール用の~/.roo/toolsに.tsまたは.jsファイルを追加してください。",
 			"refreshButton": "更新",
@@ -957,7 +957,7 @@
 		"imageSupportUnknown": "画像サポートが報告されていません",
 		"toolSupportUnknown": "ツールサポートが報告されていません",
 		"promptCacheManagedByCopilot": "プロンプトキャッシュは GitHub Copilot が管理します",
-		"promptCacheCopilotDetails": "キャッシュの動作はモデルと GitHub Copilot のバックエンドに依存します。Zoo Code は VS Code API を通じて、キャッシュの保持期間を設定したりキャッシュヒットを確認したりすることはできません。",
+		"promptCacheCopilotDetails": "キャッシュの動作はモデルと GitHub Copilot のバックエンドに依存します。Dory Code は VS Code API を通じて、キャッシュの保持期間を設定したりキャッシュヒットを確認したりすることはできません。",
 		"supportsImages": "画像をサポート",
 		"noImages": "画像をサポートしていません",
 		"supportsTools": "ツールをサポート",
@@ -986,7 +986,7 @@
 		"showLess": "閉じる"
 	},
 	"modelPicker": {
-		"automaticFetch": "拡張機能は<serviceLink>{{serviceName}}</serviceLink>で利用可能な最新のモデルリストを自動的に取得します。どのモデルを選ぶべきか迷っている場合、Zoo Codeは<defaultModelLink>{{defaultModelId}}</defaultModelLink>で最適に動作します。また、「free」で検索すると、現在利用可能な無料オプションを見つけることができます。",
+		"automaticFetch": "拡張機能は<serviceLink>{{serviceName}}</serviceLink>で利用可能な最新のモデルリストを自動的に取得します。どのモデルを選ぶべきか迷っている場合、Dory Codeは<defaultModelLink>{{defaultModelId}}</defaultModelLink>で最適に動作します。また、「free」で検索すると、現在利用可能な無料オプションを見つけることができます。",
 		"label": "モデル",
 		"searchPlaceholder": "検索",
 		"noMatchFound": "一致するものが見つかりません",
@@ -1018,7 +1018,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "追加ボディには有効なJSONを指定してください。",
 			"objectRequired": "追加ボディはJSONオブジェクトである必要があります。",
-			"reservedKeys": "追加ボディではZoo Codeが管理するフィールドを上書きできません：{{keys}}。"
+			"reservedKeys": "追加ボディではDory Codeが管理するフィールドを上書きできません：{{keys}}。"
 		},
 		"arn": {
 			"regionMismatch": "警告：ARN内のリージョン（{{arnRegion}}）が選択したリージョン（{{region}}）と一致しません。これによりアクセスの問題が発生する可能性があります。プロバイダーはARNのリージョンを使用します。"
@@ -1093,20 +1093,20 @@
 		},
 		"chatFontSize": {
 			"label": "チャットのフォントサイズ",
-			"description": "Zoo Code チャットのフォントサイズ（ピクセル単位）を設定します。VS Code のフォントサイズに合わせるには既定値のままにしてください。",
+			"description": "Dory Code チャットのフォントサイズ（ピクセル単位）を設定します。VS Code のフォントサイズに合わせるには既定値のままにしてください。",
 			"reset": "VS Code の既定値を使用"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Zooが開いたファイルを自動的に閉じる",
-			"description": "有効にすると、Zooがdiffのために一時的に開いたエディタタブが、変更を承認または拒否した後に自動的に閉じられます。編集前にユーザーがすでに開いていたタブは、自動的に閉じられることはありません。"
+			"label": "Dory Codeが開いたファイルを自動的に閉じる",
+			"description": "有効にすると、Dory Codeがdiffのために一時的に開いたエディタタブが、変更を承認または拒否した後に自動的に閉じられます。編集前にユーザーがすでに開いていたタブは、自動的に閉じられることはありません。"
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "ユーザー操作後も自動的に閉じる",
-			"description": "有効にすると、ユーザーが編集セッション中にファイルまたはdiffをクリックまたは入力した場合でも、Zooが開いたタブが閉じられます。「Zooが開いたファイルを自動的に閉じる」が無効の場合は効果がありません。"
+			"description": "有効にすると、ユーザーが編集セッション中にファイルまたはdiffをクリックまたは入力した場合でも、Dory Codeが開いたタブが閉じられます。「Dory Codeが開いたファイルを自動的に閉じる」が無効の場合は効果がありません。"
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "新しく作成されたファイルを自動的に閉じる",
-			"description": "有効にすると、Zooが作成した（変更ではなく）ファイルのタブも、変更を承認した後に自動的に閉じられます。"
+			"description": "有効にすると、Dory Codeが作成した（変更ではなく）ファイルのタブも、変更を承認した後に自動的に閉じられます。"
 		}
 	},
 	"skills": {
@@ -1159,7 +1159,7 @@
 		"description": "言語と日付/時刻の表示。",
 		"languageTitle": "言語",
 		"displayLanguage": "表示言語",
-		"displayLanguageDescription": "Zoo Code のインターフェースの言語。",
+		"displayLanguageDescription": "Dory Code のインターフェースの言語。",
 		"dateTimeTitle": "日付と時刻",
 		"timeFormat": {
 			"label": "時刻形式",

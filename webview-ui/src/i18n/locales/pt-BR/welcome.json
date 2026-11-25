@@ -1,12 +1,12 @@
 {
 	"landing": {
-		"greeting": "Bem-vindo ao Zoo Code!",
-		"introduction": "Com uma variedade de Modos integrados e extensíveis, o Zoo Code permite que você planeje, arquitete, codifique, depure e aumente sua produtividade como nunca antes.",
-		"logoAlt": "Logotipo do Roo"
+		"greeting": "Bem-vindo ao Dory Code!",
+		"introduction": "Com uma variedade de Modos integrados e extensíveis, o Dory Code permite que você planeje, arquitete, codifique, depure e aumente sua produtividade como nunca antes.",
+		"logoAlt": "Logotipo do Dory Code"
 	},
 	"providerSignup": {
 		"heading": "Escolha seu provedor",
-		"chooseProvider": "Zoo Code precisa de um provedor LLM para funcionar. Escolha um para começar, você pode adicionar mais depois.",
+		"chooseProvider": "Dory Code precisa de um provedor LLM para funcionar. Escolha um para começar, você pode adicionar mais depois.",
 		"goBack": "Voltar",
 		"finish": "Concluir"
 	},

@@ -40,7 +40,7 @@
 		"ui": "UI",
 		"experimental": "Experimental",
 		"language": "Idioma",
-		"about": "Sobre Zoo Code",
+		"about": "Sobre Dory Code",
 		"skills": "Skills",
 		"rules": "Regles"
 	},
@@ -67,7 +67,7 @@
 		"rooHistoryImport": {
 			"settingLabel": "Importa l'historial des de Roo Code",
 			"cardTitle": "Historial de Roo Code",
-			"cardDescription": "Copia les converses desades de Roo Code a Zoo Code.",
+			"cardDescription": "Copia les converses desades de Roo Code a Dory Code.",
 			"statusImporting": "Important l'historial",
 			"statusFailed": "La importació ha fallat",
 			"statusComplete": "Importació completada",
@@ -122,7 +122,7 @@
 		"footer": "Utilitza comandes de barra per accedir ràpidament a indicacions i fluxos de treball utilitzats freqüentment."
 	},
 	"rules": {
-		"description": "Gestiona els fitxers de regles de Zoo Code des dels directoris .roo/rules globals i de l’espai de treball. Crea regles generals o específiques de mode sense haver de navegar manualment per carpetes de configuració.",
+		"description": "Gestiona els fitxers de regles de Dory Code des dels directoris .roo/rules globals i de l’espai de treball. Crea regles generals o específiques de mode sense haver de navegar manualment per carpetes de configuració.",
 		"workspaceRules": "Regles de l’espai de treball",
 		"globalRules": "Regles globals",
 		"noWorkspaceRules": "Encara no hi ha regles en aquest projecte.",
@@ -168,7 +168,7 @@
 		"footer": "Les regles carreguen la guia específica de mode abans de la guia general. Les regles globals es carreguen abans que les regles de l’espai de treball."
 	},
 	"prompts": {
-		"description": "Configura les indicacions de suport utilitzades per a accions ràpides com millorar indicacions, explicar codi i solucionar problemes. Aquestes indicacions ajuden Zoo a proporcionar millor assistència per a tasques comunes de desenvolupament."
+		"description": "Configura les indicacions de suport utilitzades per a accions ràpides com millorar indicacions, explicar codi i solucionar problemes. Aquestes indicacions ajuden Dory Code a proporcionar millor assistència per a tasques comunes de desenvolupament."
 	},
 	"codeIndex": {
 		"title": "Indexació de codi",
@@ -270,15 +270,15 @@
 	},
 	"autoApprove": {
 		"toggleShortcut": "Pots configurar una drecera global per a aquesta configuració <SettingsLink>a les preferències del teu IDE</SettingsLink>.",
-		"description": "Permet que Zoo realitzi operacions automàticament sense requerir aprovació. Activeu aquesta configuració només si confieu plenament en la IA i enteneu els riscos de seguretat associats.",
+		"description": "Permet que Dory Code realitzi operacions automàticament sense requerir aprovació. Activeu aquesta configuració només si confieu plenament en la IA i enteneu els riscos de seguretat associats.",
 		"enabled": "Auto-aprovació activada",
 		"toggleAriaLabel": "Commuta l'aprovació automàtica",
 		"readOnly": {
 			"label": "Llegir",
-			"description": "Quan està activat, Zoo veurà automàticament el contingut del directori i llegirà fitxers sense que calgui fer clic al botó Aprovar.",
+			"description": "Quan està activat, Dory Code veurà automàticament el contingut del directori i llegirà fitxers sense que calgui fer clic al botó Aprovar.",
 			"outsideWorkspace": {
 				"label": "Incloure fitxers fora de l'espai de treball",
-				"description": "Permetre a Zoo llegir fitxers fora de l'espai de treball actual sense requerir aprovació."
+				"description": "Permetre a Dory Code llegir fitxers fora de l'espai de treball actual sense requerir aprovació."
 			}
 		},
 		"write": {
@@ -286,11 +286,11 @@
 			"description": "Crear i editar fitxers automàticament sense requerir aprovació",
 			"outsideWorkspace": {
 				"label": "Incloure fitxers fora de l'espai de treball",
-				"description": "Permetre a Zoo crear i editar fitxers fora de l'espai de treball actual sense requerir aprovació."
+				"description": "Permetre a Dory Code crear i editar fitxers fora de l'espai de treball actual sense requerir aprovació."
 			},
 			"protected": {
 				"label": "Incloure fitxers protegits",
-				"description": "Permetre a Zoo crear i editar fitxers protegits (com .rooignore i fitxers de configuració .roo/) sense requerir aprovació."
+				"description": "Permetre a Dory Code crear i editar fitxers protegits (com .rooignore i fitxers de configuració .roo/) sense requerir aprovació."
 			}
 		},
 		"allowlists": {
@@ -298,12 +298,12 @@
 			"description": "Concedeix accés a fitxers concrets, sense aprovar automàticament tota una categoria d'accions. Un patró per línia, amb sintaxi inspirada en .gitignore: \"notes.md\" coincideix amb aquest fitxer en qualsevol directori de l'espai de treball, \"docs/scratch/**\" amb tot el que hi ha sota aquell directori i \"*.md\" amb qualsevol fitxer Markdown. Un patró sempre anomena fitxers, mai directoris: \"docs\" només concedeix un fitxer anomenat \"docs\"; escriu \"docs/**\" per al contingut d'un directori. Un \"./\" inicial indica l'arrel de l'espai de treball, mentre que un \"/\" inicial indica l'arrel del sistema de fitxers, de manera que \"/tmp/notes.md\" arriba fora de l'espai de treball, igual que \"~/notes.md\", on un \"~/\" inicial indica el teu directori personal. Posa \"!\" davant d'un patró per excloure el que ha coincidit en una línia anterior; com a .gitignore, guanya l'última línia que coincideix, així que l'ordre compta. Els patrons relatius a l'espai de treball s'ignoren mentre no hi hagi cap carpeta oberta. Es distingeixen majúscules i minúscules, excepte a Windows. No s'aprova res automàticament si \"Auto-aprovació\" de dalt està desactivada.",
 			"readFiles": {
 				"label": "Patrons de la llista de permisos de lectura",
-				"description": "Fitxers que Zoo pot llegir sense aprovació, encara que \"Llegir\" estigui desactivat a dalt. Els fitxers de la llista de permisos d'escriptura de sota sempre es poden llegir també, així que no cal afegir-los dues vegades. Els llistats de directoris i les cerques sempre segueixen la configuració de \"Llegir\". Els fitxers exclosos per .rooignore continuen sense poder-se llegir.",
+				"description": "Fitxers que Dory Code pot llegir sense aprovació, encara que \"Llegir\" estigui desactivat a dalt. Els fitxers de la llista de permisos d'escriptura de sota sempre es poden llegir també, així que no cal afegir-los dues vegades. Els llistats de directoris i les cerques sempre segueixen la configuració de \"Llegir\". Els fitxers exclosos per .rooignore continuen sense poder-se llegir.",
 				"placeholder": "Un patró per línia, ex. notes.md"
 			},
 			"writeFiles": {
 				"label": "Patrons de la llista de permisos d'escriptura",
-				"description": "Fitxers que Zoo pot crear i editar sense aprovació, encara que \"Escriure\" estigui desactivat a dalt. Els fitxers protegits continuen requerint aprovació tret que activis \"Incloure fitxers protegits\" (a la configuració de l'auto-aprovació d'\"Escriure\"). Els fitxers exclosos per .rooignore continuen sense poder-se escriure.",
+				"description": "Fitxers que Dory Code pot crear i editar sense aprovació, encara que \"Escriure\" estigui desactivat a dalt. Els fitxers protegits continuen requerint aprovació tret que activis \"Incloure fitxers protegits\" (a la configuració de l'auto-aprovació d'\"Escriure\"). Els fitxers exclosos per .rooignore continuen sense poder-se escriure.",
 				"placeholder": "Un patró per línia, ex. notes.md"
 			}
 		},
@@ -329,7 +329,7 @@
 			"description": "Executar automàticament comandes de terminal permeses sense requerir aprovació",
 			"destructiveCommandGuard": {
 				"label": "Activa la protecció contra ordres destructives",
-				"description": "Baixa i utilitza Destructive Command Guard (DCG) per a aquesta plataforma. Les ordres permeses per DCG s'executen automàticament. Les ordres bloquejades per DCG requereixen la teva aprovació. Les llistes d'ordres de Zoo es desactiven mentre aquesta opció està activa. L'executable baixat es conserva si la desactives."
+				"description": "Baixa i utilitza Destructive Command Guard (DCG) per a aquesta plataforma. Les ordres permeses per DCG s'executen automàticament. Les ordres bloquejades per DCG requereixen la teva aprovació. Les llistes d'ordres de Dory Code es desactiven mentre aquesta opció està activa. L'executable baixat es conserva si la desactives."
 			},
 			"autoDeny": {
 				"label": "Auto-deny unapproved commands (never ask)",
@@ -381,7 +381,7 @@
 		"awsCustomArnDesc": "Assegureu-vos que la regió a l'ARN coincideix amb la regió d'AWS seleccionada anteriorment.",
 		"awsCustomArnBaseModel": "Model subjacent",
 		"awsCustomArnBaseModelOther": "Altre (no és a la llista)",
-		"awsCustomArnBaseModelDesc": "El model al qual apunta aquest ARN. Zoo Code l'utilitza per al raonament, la temperatura, la finestra de context, la sortida màxima i els preus. Es detecta automàticament quan l'ARN indica el model.",
+		"awsCustomArnBaseModelDesc": "El model al qual apunta aquest ARN. Dory Code l'utilitza per al raonament, la temperatura, la finestra de context, la sortida màxima i els preus. Es detecta automàticament quan l'ARN indica el model.",
 		"awsCustomArnContextWindow": "Finestra de context (tokens)",
 		"awsCustomArnMaxTokens": "Tokens de sortida màxims",
 		"openRouterApiKey": "Clau API d'OpenRouter",
@@ -450,7 +450,7 @@
 		"headerValue": "Valor de la capçalera",
 		"noCustomHeaders": "No hi ha capçaleres personalitzades definides. Feu clic al botó + per afegir-ne una.",
 		"extraBody": "Cos addicional",
-		"extraBodyDescription": "Objecte JSON opcional que es combina amb els cossos de les sol·licituds API. Els camps gestionats per Zoo Code, com ara model, messages, tools i stream, no es poden sobreescriure. No inclogueu secrets.",
+		"extraBodyDescription": "Objecte JSON opcional que es combina amb els cossos de les sol·licituds API. Els camps gestionats per Dory Code, com ara model, messages, tools i stream, no es poden sobreescriure. No inclogueu secrets.",
 		"unboundApiKey": "Clau API de Unbound",
 		"getUnboundApiKey": "Obtenir clau API de Unbound",
 		"requestyApiKey": "Clau API de Requesty",
@@ -596,18 +596,18 @@
 			"speculativeDecoding": "Habilitar descodificació especulativa",
 			"draftModelId": "ID del model d'esborrany",
 			"draftModelDesc": "El model d'esborrany ha de ser de la mateixa família de models perquè la descodificació especulativa funcioni correctament.",
-			"description": "LM Studio permet executar models localment al vostre ordinador. Per a instruccions sobre com començar, consulteu la seva <a>Guia d'inici ràpid</a>. També necessitareu iniciar la funció de <b>Servidor Local</b> de LM Studio per utilitzar-la amb aquesta extensió. <span>Nota:</span> Zoo Code utilitza prompts complexos i funciona millor amb models Claude. Els models menys capaços poden no funcionar com s'espera."
+			"description": "LM Studio permet executar models localment al vostre ordinador. Per a instruccions sobre com començar, consulteu la seva <a>Guia d'inici ràpid</a>. També necessitareu iniciar la funció de <b>Servidor Local</b> de LM Studio per utilitzar-la amb aquesta extensió. <span>Nota:</span> Dory Code utilitza prompts complexos i funciona millor amb models Claude. Els models menys capaços poden no funcionar com s'espera."
 		},
 		"ollama": {
 			"baseUrl": "URL base (opcional)",
 			"apiKey": "Clau API d'Ollama",
-			"apiKeyHelp": "Clau API opcional per a instàncies d'Ollama que necessiten autenticació o per a serveis al núvol. Zoo Code envia la clau només a punts finals HTTPS o de loopback. Un punt final HTTP remot no rep la clau, perquè la clau viatjaria en text pla. Utilitza HTTPS per a una instància remota que necessita una clau. Deixa això buit per a una instal·lació local.",
+			"apiKeyHelp": "Clau API opcional per a instàncies d'Ollama que necessiten autenticació o per a serveis al núvol. Dory Code envia la clau només a punts finals HTTPS o de loopback. Un punt final HTTP remot no rep la clau, perquè la clau viatjaria en text pla. Utilitza HTTPS per a una instància remota que necessita una clau. Deixa això buit per a una instal·lació local.",
 			"numCtx": "Mida de la finestra de context (num_ctx)",
 			"numCtxHelp": "Sobreescriu la mida de la finestra de context per defecte del model. Deixeu-ho en blanc per utilitzar la configuració del Modelfile del model. El valor mínim és 128.",
 			"thinking": "Activa el raonament",
 			"thinkingHelp": "Activa el raonament natiu d'Ollama per a models de raonament (p. ex. qwen3, deepseek-r1). Quan està activat, el raonament del model es transmet i es mostra per separat. Els models no compatibles ignoraran aquesta configuració.",
 			"description": "Ollama permet executar models localment al vostre ordinador. Per a instruccions sobre com començar, consulteu la Guia d'inici ràpid.",
-			"warning": "Nota: Zoo Code utilitza prompts complexos i funciona millor amb models Claude. Els models menys capaços poden no funcionar com s'espera."
+			"warning": "Nota: Dory Code utilitza prompts complexos i funciona millor amb models Claude. Els models menys capaços poden no funcionar com s'espera."
 		},
 		"openRouter": {
 			"providerRouting": {
@@ -617,7 +617,7 @@
 			}
 		},
 		"customModel": {
-			"capabilities": "Configureu les capacitats i preus per al vostre model personalitzat compatible amb OpenAI. Tingueu cura en especificar les capacitats del model, ja que poden afectar com funciona Zoo Code.",
+			"capabilities": "Configureu les capacitats i preus per al vostre model personalitzat compatible amb OpenAI. Tingueu cura en especificar les capacitats del model, ja que poden afectar com funciona Dory Code.",
 			"maxTokens": {
 				"label": "Màxim de tokens de sortida",
 				"description": "El nombre màxim de tokens que el model pot generar en una resposta. (Establiu -1 per permetre que el servidor estableixi el màxim de tokens.)"
@@ -660,7 +660,7 @@
 		},
 		"consecutiveMistakeLimit": {
 			"label": "Límit d'errors i repeticions",
-			"description": "Nombre d'errors consecutius o accions repetides abans de mostrar el diàleg 'En Zoo està tenint problemes'. Estableix a 0 per desactivar aquest mecanisme de seguretat (no s'activarà mai).",
+			"description": "Nombre d'errors consecutius o accions repetides abans de mostrar el diàleg 'En Dory Code està tenint problemes'. Estableix a 0 per desactivar aquest mecanisme de seguretat (no s'activarà mai).",
 			"unlimitedDescription": "Reintents il·limitats habilitats (procediment automàtic). El diàleg no apareixerà mai.",
 			"warning": "⚠️ Establir a 0 permet reintents il·limitats que poden consumir un ús significatiu de l'API"
 		},
@@ -707,7 +707,7 @@
 		"cliSubscription": {
 			"executablePathLabel": "Ruta de l'executable de la CLI",
 			"executablePathDescription": "Deixa-ho buit per cercar \"{{defaultExecutable}}\" al PATH i a les carpetes d'instal·lació habituals.",
-			"howItWorks": "Zoo Code executa la CLI de {{name}} instal·lada en aquest ordinador i fa servir la seva sessió, de manera que la teva subscripció paga les sol·licituds. Les eines pròpies de la CLI estan desactivades. Zoo Code executa totes les eines, demana la teva aprovació i crea punts de control com sempre.",
+			"howItWorks": "Dory Code executa la CLI de {{name}} instal·lada en aquest ordinador i fa servir la seva sessió, de manera que la teva subscripció paga les sol·licituds. Les eines pròpies de la CLI estan desactivades. Dory Code executa totes les eines, demana la teva aprovació i crea punts de control com sempre.",
 			"setup": "Abans de començar, instal·la la CLI i inicia sessió amb \"{{loginCommand}}\" en un terminal.",
 			"museCode": "Meta Muse Code",
 			"antigravity": "Google Antigravity"
@@ -720,18 +720,18 @@
 		},
 		"enable": {
 			"label": "Habilitar punts de control automàtics",
-			"description": "Quan està habilitat, Zoo crearà automàticament punts de control durant l'execució de tasques, facilitant la revisió de canvis o la reversió a estats anteriors. <0>Més informació</0>"
+			"description": "Quan està habilitat, Dory Code crearà automàticament punts de control durant l'execució de tasques, facilitant la revisió de canvis o la reversió a estats anteriors. <0>Més informació</0>"
 		}
 	},
 	"notifications": {
 		"sound": {
 			"label": "Habilitar efectes de so",
-			"description": "Quan està habilitat, Zoo reproduirà efectes de so per a notificacions i esdeveniments.",
+			"description": "Quan està habilitat, Dory Code reproduirà efectes de so per a notificacions i esdeveniments.",
 			"volumeLabel": "Volum"
 		},
 		"tts": {
 			"label": "Habilitar text a veu",
-			"description": "Quan està habilitat, Zoo llegirà en veu alta les seves respostes utilitzant text a veu.",
+			"description": "Quan està habilitat, Dory Code llegirà en veu alta les seves respostes utilitzant text a veu.",
 			"speedLabel": "Velocitat"
 		}
 	},
@@ -823,7 +823,7 @@
 		},
 		"outputPreviewSize": {
 			"label": "Mida de la previsualització de la sortida d'ordres",
-			"description": "Controla quanta sortida d'ordres veu Zoo directament. La sortida completa sempre es desa i és accessible quan calgui.",
+			"description": "Controla quanta sortida d'ordres veu Dory Code directament. La sortida completa sempre es desa i és accessible quan calgui.",
 			"options": {
 				"small": "Petita (5KB)",
 				"medium": "Mitjana (10KB)",
@@ -836,7 +836,7 @@
 		},
 		"shellIntegrationDisabled": {
 			"label": "Utilitza terminal en línia (recomanat)",
-			"description": "Executa comandes al terminal en línia (xat) per evitar perfils/integració del shell per a execucions més ràpides i fiables. Quan està desactivat, Zoo usa el terminal de VS Code amb el teu perfil de shell, prompts i connectors. <0>Aprèn-ne més</0>"
+			"description": "Executa comandes al terminal en línia (xat) per evitar perfils/integració del shell per a execucions més ràpides i fiables. Quan està desactivat, Dory Code usa el terminal de VS Code amb el teu perfil de shell, prompts i connectors. <0>Aprèn-ne més</0>"
 		},
 		"commandDelay": {
 			"label": "Retard de comanda del terminal",
@@ -867,9 +867,9 @@
 			"description": "Activa per heretar variables d'entorn del procés pare de VS Code. <0>Aprèn-ne més</0>"
 		},
 		"profile": {
-			"label": "Perfil de terminal de Zoo Code",
+			"label": "Perfil de terminal de Dory Code",
 			"followVscode": "Seguint el perfil de VS Code (recomanat)",
-			"description": "Per defecte, Zoo Code utilitza la shell que VS Code té configurada. Seleccioneu un perfil de la llista per triar un perfil de shell amb ruta explícita exposat per VS Code. Els perfils de només font (p. ex., l'entrada integrada de PowerShell) no es poden llistar aquí. <0>Més informació</0>",
+			"description": "Per defecte, Dory Code utilitza la shell que VS Code té configurada. Seleccioneu un perfil de la llista per triar un perfil de shell amb ruta explícita exposat per VS Code. Els perfils de només font (p. ex., l'entrada integrada de PowerShell) no es poden llistar aquí. <0>Més informació</0>",
 			"configureButton": "Trieu el perfil predeterminat a VS Code",
 			"noProfiles": "(no s'han trobat perfils amb ruta a terminal.integrated.profiles)"
 		}
@@ -880,7 +880,7 @@
 	"advanced": {
 		"todoList": {
 			"label": "Habilitar eina de llista de tasques",
-			"description": "Quan està habilitat, Zoo pot crear i gestionar llistes de tasques per fer el seguiment del progrés de les tasques. Això ajuda a organitzar tasques complexes en passos manejables."
+			"description": "Quan està habilitat, Dory Code pot crear i gestionar llistes de tasques per fer el seguiment del progrés de les tasques. Això ajuda a organitzar tasques complexes en passos manejables."
 		}
 	},
 	"experimental": {
@@ -890,15 +890,15 @@
 		},
 		"INSERT_BLOCK": {
 			"name": "Utilitzar eina d'inserció de contingut experimental",
-			"description": "Activar l'eina d'inserció de contingut experimental, permetent a Zoo inserir contingut a números de línia específics sense necessitat de crear un diff."
+			"description": "Activar l'eina d'inserció de contingut experimental, permetent a Dory Code inserir contingut a números de línia específics sense necessitat de crear un diff."
 		},
 		"MULTI_SEARCH_AND_REPLACE": {
 			"name": "Utilitzar eina diff de blocs múltiples experimental",
-			"description": "Quan està activat, Zoo utilitzarà l'eina diff de blocs múltiples. Això intentarà actualitzar múltiples blocs de codi a l'arxiu en una sola petició."
+			"description": "Quan està activat, Dory Code utilitzarà l'eina diff de blocs múltiples. Això intentarà actualitzar múltiples blocs de codi a l'arxiu en una sola petició."
 		},
 		"CONCURRENT_FILE_READS": {
 			"name": "Habilitar lectura concurrent de fitxers",
-			"description": "Quan està habilitat, Zoo pot llegir múltiples fitxers en una sola sol·licitud. Quan està deshabilitat, Zoo ha de llegir fitxers un per un. Deshabilitar-ho pot ajudar quan es treballa amb models menys capaços o quan voleu més control sobre l'accés als fitxers."
+			"description": "Quan està habilitat, Dory Code pot llegir múltiples fitxers en una sola sol·licitud. Quan està deshabilitat, Dory Code ha de llegir fitxers un per un. Deshabilitar-ho pot ajudar quan es treballa amb models menys capaços o quan voleu més control sobre l'accés als fitxers."
 		},
 		"MARKETPLACE": {
 			"name": "Habilitar Marketplace",
@@ -906,7 +906,7 @@
 		},
 		"PREVENT_FOCUS_DISRUPTION": {
 			"name": "Edició en segon pla",
-			"description": "Quan s'activa, evita la interrupció del focus de l'editor. Les edicions de fitxers es produeixen en segon pla sense obrir la vista diff o robar el focus. Pots continuar treballant sense interrupcions mentre Zoo fa canvis. Els fitxers poden obrir-se sense focus per capturar diagnòstics o romandre completament tancats."
+			"description": "Quan s'activa, evita la interrupció del focus de l'editor. Les edicions de fitxers es produeixen en segon pla sense obrir la vista diff o robar el focus. Pots continuar treballant sense interrupcions mentre Dory Code fa canvis. Els fitxers poden obrir-se sense focus per capturar diagnòstics o romandre completament tancats."
 		},
 		"ASSISTANT_MESSAGE_PARSER": {
 			"name": "Utilitza el nou analitzador de missatges",
@@ -920,7 +920,7 @@
 			"name": "Habilitar generació d'imatges amb IA",
 			"providerLabel": "Proveïdor",
 			"providerDescription": "Selecciona el proveïdor per a la generació d'imatges.",
-			"description": "Quan estigui habilitat, Zoo pot generar imatges a partir de prompts de text utilitzant els models de generació d'imatges d'OpenRouter. Requereix que es configuri una clau d'API d'OpenRouter.",
+			"description": "Quan estigui habilitat, Dory Code pot generar imatges a partir de prompts de text utilitzant els models de generació d'imatges d'OpenRouter. Requereix que es configuri una clau d'API d'OpenRouter.",
 			"openRouterApiKeyLabel": "Clau API d'OpenRouter",
 			"openRouterApiKeyPlaceholder": "Introdueix la teva clau API d'OpenRouter",
 			"getApiKeyText": "Obté la teva clau API de",
@@ -931,11 +931,11 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"name": "Habilitar comandes de barra diagonal iniciades pel model",
-			"description": "Quan està habilitat, Zoo pot executar les vostres comandes de barra diagonal per executar fluxos de treball."
+			"description": "Quan està habilitat, Dory Code pot executar les vostres comandes de barra diagonal per executar fluxos de treball."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Habilitar eines personalitzades",
-			"description": "Quan està habilitat, Zoo pot carregar i utilitzar eines TypeScript/JavaScript personalitzades des del directori .roo/tools del vostre projecte o ~/.roo/tools per a eines globals. Nota: aquestes eines s'aprovaran automàticament.",
+			"description": "Quan està habilitat, Dory Code pot carregar i utilitzar eines TypeScript/JavaScript personalitzades des del directori .roo/tools del vostre projecte o ~/.roo/tools per a eines globals. Nota: aquestes eines s'aprovaran automàticament.",
 			"toolsHeader": "Eines personalitzades disponibles",
 			"noTools": "No s'han carregat eines personalitzades. Afegiu fitxers .ts o .js al directori .roo/tools del vostre projecte o ~/.roo/tools per a eines globals.",
 			"refreshButton": "Actualitzar",
@@ -959,7 +959,7 @@
 		"imageSupportUnknown": "Compatibilitat amb imatges no informada",
 		"toolSupportUnknown": "Compatibilitat amb eines no informada",
 		"promptCacheManagedByCopilot": "La memòria cau de prompts la gestiona GitHub Copilot",
-		"promptCacheCopilotDetails": "La memòria cau depèn del model i del backend de GitHub Copilot. Zoo Code no pot configurar la retenció de la memòria cau ni observar-ne els encerts a través de l'API de VS Code.",
+		"promptCacheCopilotDetails": "La memòria cau depèn del model i del backend de GitHub Copilot. Dory Code no pot configurar la retenció de la memòria cau ni observar-ne els encerts a través de l'API de VS Code.",
 		"supportsImages": "Suporta imatges",
 		"noImages": "No suporta imatges",
 		"supportsTools": "Suporta eines",
@@ -992,7 +992,7 @@
 		"showLess": "Menys"
 	},
 	"modelPicker": {
-		"automaticFetch": "L'extensió obté automàticament la llista més recent de models disponibles a <serviceLink>{{serviceName}}</serviceLink>. Si no esteu segur de quin model triar, Zoo Code funciona millor amb <defaultModelLink>{{defaultModelId}}</defaultModelLink>. També podeu cercar \"free\" per a opcions gratuïtes actualment disponibles.",
+		"automaticFetch": "L'extensió obté automàticament la llista més recent de models disponibles a <serviceLink>{{serviceName}}</serviceLink>. Si no esteu segur de quin model triar, Dory Code funciona millor amb <defaultModelLink>{{defaultModelId}}</defaultModelLink>. També podeu cercar \"free\" per a opcions gratuïtes actualment disponibles.",
 		"label": "Model",
 		"searchPlaceholder": "Cerca",
 		"noMatchFound": "No s'ha trobat cap coincidència",
@@ -1024,7 +1024,7 @@
 		"openAiExtraBody": {
 			"invalidJson": "El cos addicional ha de contenir JSON vàlid.",
 			"objectRequired": "El cos addicional ha de ser un objecte JSON.",
-			"reservedKeys": "El cos addicional no pot sobreescriure els camps gestionats per Zoo Code: {{keys}}."
+			"reservedKeys": "El cos addicional no pot sobreescriure els camps gestionats per Dory Code: {{keys}}."
 		},
 		"arn": {
 			"regionMismatch": "Avís: La regió del vostre ARN ({{arnRegion}}) no coincideix amb la regió seleccionada ({{region}}). Això pot causar problemes d'accés. El proveïdor utilitzarà la regió de l'ARN."
@@ -1099,20 +1099,20 @@
 		},
 		"chatFontSize": {
 			"label": "Mida de lletra del xat",
-			"description": "Defineix la mida de la lletra (en píxels) del xat de Zoo Code. Deixa-ho al valor per defecte per coincidir amb la mida de lletra del VS Code.",
+			"description": "Defineix la mida de la lletra (en píxels) del xat de Dory Code. Deixa-ho al valor per defecte per coincidir amb la mida de lletra del VS Code.",
 			"reset": "Utilitza el valor per defecte del VS Code"
 		},
 		"autoCloseZooOpenedFiles": {
-			"label": "Tanca automaticament els fitxers oberts per Zoo",
-			"description": "Quan esta activat, les pestanyes de l'editor que Zoo ha obert temporalment per a un diff es tanquen automaticament despres d'acceptar o rebutjar el canvi. Les pestanyes que l'usuari ja tenia obertes abans de l'edicio mai no es tanquen automaticament."
+			"label": "Tanca automaticament els fitxers oberts per Dory Code",
+			"description": "Quan esta activat, les pestanyes de l'editor que Dory Code ha obert temporalment per a un diff es tanquen automaticament despres d'acceptar o rebutjar el canvi. Les pestanyes que l'usuari ja tenia obertes abans de l'edicio mai no es tanquen automaticament."
 		},
 		"autoCloseZooOpenedFilesAfterUserEdited": {
 			"label": "Tanca automaticament fins i tot despres de la interaccio de l'usuari",
-			"description": "Quan esta activat, les pestanyes obertes per Zoo es tanquen fins i tot si l'usuari ha fet clic o ha escrit al fitxer o al diff durant la sessio d'edicio. No te cap efecte si 'Tanca automaticament els fitxers oberts per Zoo' esta desactivat."
+			"description": "Quan esta activat, les pestanyes obertes per Dory Code es tanquen fins i tot si l'usuari ha fet clic o ha escrit al fitxer o al diff durant la sessio d'edicio. No te cap efecte si 'Tanca automaticament els fitxers oberts per Dory Code' esta desactivat."
 		},
 		"autoCloseZooOpenedNewFiles": {
 			"label": "Tanca automaticament els fitxers nous creats",
-			"description": "Quan esta activat, les pestanyes dels fitxers que Zoo ha creat (en lloc de modificar) tambe es tanquen automaticament despres d'acceptar el canvi."
+			"description": "Quan esta activat, les pestanyes dels fitxers que Dory Code ha creat (en lloc de modificar) tambe es tanquen automaticament despres d'acceptar el canvi."
 		}
 	},
 	"skills": {
@@ -1165,7 +1165,7 @@
 		"description": "Idioma i visualització de data i hora.",
 		"languageTitle": "Idioma",
 		"displayLanguage": "Idioma de visualització",
-		"displayLanguageDescription": "Idioma de la interfície de Zoo Code.",
+		"displayLanguageDescription": "Idioma de la interfície de Dory Code.",
 		"dateTimeTitle": "Data i hora",
 		"timeFormat": {
 			"label": "Format de l'hora",

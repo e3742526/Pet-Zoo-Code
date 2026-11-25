@@ -123,7 +123,7 @@
 	"enqueueMessage": "Tambahkan pesan ke antrean (akan dikirim setelah tugas saat ini selesai)",
 	"scrollToBottom": "Gulir ke bawah chat",
 	"scrollToLatestCheckpoint": "Gulir ke checkpoint sebelumnya",
-	"about": "Zoo Code adalah seluruh tim pengembang AI di editor Anda.",
+	"about": "Dory Code adalah seluruh tim pengembang AI di editor Anda.",
 	"docs": "Lihat <DocsLink>dokumentasi</DocsLink> kami untuk mempelajari lebih lanjut.",
 	"rooTips": {
 		"customizableModes": {
@@ -154,7 +154,7 @@
 		"title": "Mode",
 		"marketplace": "Marketplace Mode",
 		"settings": "Pengaturan Mode",
-		"description": "Persona khusus yang menyesuaikan perilaku Zoo.",
+		"description": "Persona khusus yang menyesuaikan perilaku Dory Code.",
 		"searchPlaceholder": "Cari mode...",
 		"noResults": "Tidak ada hasil yang ditemukan"
 	},
@@ -226,48 +226,48 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo ingin memuat keterampilan",
-		"didLoad": "Zoo telah memuat keterampilan"
+		"wantsToLoad": "Dory Code ingin memuat keterampilan",
+		"didLoad": "Dory Code telah memuat keterampilan"
 	},
 	"instructions": {
-		"wantsToFetch": "Zoo ingin mengambil instruksi detail untuk membantu tugas saat ini"
+		"wantsToFetch": "Dory Code ingin mengambil instruksi detail untuk membantu tugas saat ini"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo ingin membaca file ini",
-		"wantsToReadMultiple": "Zoo ingin membaca beberapa file",
-		"wantsToReadAndXMore": "Zoo ingin membaca file ini dan {{count}} lainnya",
-		"wantsToReadOutsideWorkspace": "Zoo ingin membaca file ini di luar workspace",
-		"didRead": "Zoo membaca file ini",
-		"wantsToEdit": "Zoo ingin mengedit file ini",
-		"wantsToEditOutsideWorkspace": "Zoo ingin mengedit file ini di luar workspace",
-		"wantsToEditProtected": "Zoo ingin mengedit file konfigurasi yang dilindungi",
-		"wantsToApplyBatchChanges": "Zoo ingin menerapkan perubahan ke beberapa file",
-		"wantsToGenerateImage": "Zoo ingin menghasilkan gambar",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo ingin menghasilkan gambar di luar workspace",
-		"wantsToGenerateImageProtected": "Zoo ingin menghasilkan gambar di lokasi yang dilindungi",
-		"didGenerateImage": "Zoo telah menghasilkan gambar",
-		"wantsToSearchReplace": "Zoo ingin mencari dan mengganti di file ini",
-		"didSearchReplace": "Zoo melakukan pencarian dan penggantian pada file ini",
-		"wantsToInsertWithLineNumber": "Zoo ingin menyisipkan konten ke file ini di baris {{lineNumber}}",
-		"wantsToInsertAtEnd": "Zoo ingin menambahkan konten ke akhir file ini"
+		"wantsToRead": "Dory Code ingin membaca file ini",
+		"wantsToReadMultiple": "Dory Code ingin membaca beberapa file",
+		"wantsToReadAndXMore": "Dory Code ingin membaca file ini dan {{count}} lainnya",
+		"wantsToReadOutsideWorkspace": "Dory Code ingin membaca file ini di luar workspace",
+		"didRead": "Dory Code membaca file ini",
+		"wantsToEdit": "Dory Code ingin mengedit file ini",
+		"wantsToEditOutsideWorkspace": "Dory Code ingin mengedit file ini di luar workspace",
+		"wantsToEditProtected": "Dory Code ingin mengedit file konfigurasi yang dilindungi",
+		"wantsToApplyBatchChanges": "Dory Code ingin menerapkan perubahan ke beberapa file",
+		"wantsToGenerateImage": "Dory Code ingin menghasilkan gambar",
+		"wantsToGenerateImageOutsideWorkspace": "Dory Code ingin menghasilkan gambar di luar workspace",
+		"wantsToGenerateImageProtected": "Dory Code ingin menghasilkan gambar di lokasi yang dilindungi",
+		"didGenerateImage": "Dory Code telah menghasilkan gambar",
+		"wantsToSearchReplace": "Dory Code ingin mencari dan mengganti di file ini",
+		"didSearchReplace": "Dory Code melakukan pencarian dan penggantian pada file ini",
+		"wantsToInsertWithLineNumber": "Dory Code ingin menyisipkan konten ke file ini di baris {{lineNumber}}",
+		"wantsToInsertAtEnd": "Dory Code ingin menambahkan konten ke akhir file ini"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo ingin melihat file tingkat atas di direktori ini",
-		"didViewTopLevel": "Zoo melihat file tingkat atas di direktori ini",
-		"wantsToViewRecursive": "Zoo ingin melihat semua file secara rekursif di direktori ini",
-		"didViewRecursive": "Zoo melihat semua file secara rekursif di direktori ini",
-		"wantsToSearch": "Zoo ingin mencari direktori ini untuk <code>{{regex}}</code>",
-		"didSearch": "Zoo mencari direktori ini untuk <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo ingin mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo ingin melihat file tingkat atas di direktori ini (di luar workspace)",
-		"didViewTopLevelOutsideWorkspace": "Zoo melihat file tingkat atas di direktori ini (di luar workspace)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo ingin melihat semua file secara rekursif di direktori ini (di luar workspace)",
-		"didViewRecursiveOutsideWorkspace": "Zoo melihat semua file secara rekursif di direktori ini (di luar workspace)"
+		"wantsToViewTopLevel": "Dory Code ingin melihat file tingkat atas di direktori ini",
+		"didViewTopLevel": "Dory Code melihat file tingkat atas di direktori ini",
+		"wantsToViewRecursive": "Dory Code ingin melihat semua file secara rekursif di direktori ini",
+		"didViewRecursive": "Dory Code melihat semua file secara rekursif di direktori ini",
+		"wantsToSearch": "Dory Code ingin mencari direktori ini untuk <code>{{regex}}</code>",
+		"didSearch": "Dory Code mencari direktori ini untuk <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Dory Code ingin mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Dory Code mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Dory Code ingin melihat file tingkat atas di direktori ini (di luar workspace)",
+		"didViewTopLevelOutsideWorkspace": "Dory Code melihat file tingkat atas di direktori ini (di luar workspace)",
+		"wantsToViewRecursiveOutsideWorkspace": "Dory Code ingin melihat semua file secara rekursif di direktori ini (di luar workspace)",
+		"didViewRecursiveOutsideWorkspace": "Dory Code melihat semua file secara rekursif di direktori ini (di luar workspace)"
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo ingin mencari codebase untuk <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo ingin mencari codebase untuk <code>{{query}}</code> di <code>{{path}}</code>",
+		"wantsToSearch": "Dory Code ingin mencari codebase untuk <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Dory Code ingin mencari codebase untuk <code>{{query}}</code> di <code>{{path}}</code>",
 		"didSearch_other": "Ditemukan {{count}} hasil",
 		"resultTooltip": "Skor kemiripan: {{score}} (klik untuk membuka file)",
 		"displayError": "Gagal menampilkan hasil pencarian."
@@ -287,31 +287,31 @@
 		"clickToEditPattern": "Klik untuk menyunting pola"
 	},
 	"text": {
-		"rooSaid": "Zoo berkata"
+		"rooSaid": "Dory Code berkata"
 	},
 	"feedback": {
 		"youSaid": "Anda bilang"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo ingin menggunakan tool di server MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo ingin mengakses resource di server MCP {{serverName}}"
+		"wantsToUseTool": "Dory Code ingin menggunakan tool di server MCP {{serverName}}",
+		"wantsToAccessResource": "Dory Code ingin mengakses resource di server MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo ingin beralih ke mode {{mode}}",
-		"wantsToSwitchWithReason": "Zoo ingin beralih ke mode {{mode}} karena: {{reason}}",
-		"didSwitch": "Zoo beralih ke mode {{mode}}",
-		"didSwitchWithReason": "Zoo beralih ke mode {{mode}} karena: {{reason}}"
+		"wantsToSwitch": "Dory Code ingin beralih ke mode {{mode}}",
+		"wantsToSwitchWithReason": "Dory Code ingin beralih ke mode {{mode}} karena: {{reason}}",
+		"didSwitch": "Dory Code beralih ke mode {{mode}}",
+		"didSwitchWithReason": "Dory Code beralih ke mode {{mode}} karena: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo ingin membuat subtugas baru dalam mode {{mode}}",
-		"wantsToFinish": "Zoo ingin menyelesaikan subtugas ini",
+		"wantsToCreate": "Dory Code ingin membuat subtugas baru dalam mode {{mode}}",
+		"wantsToFinish": "Dory Code ingin menyelesaikan subtugas ini",
 		"completionContent": "Subtugas Selesai",
 		"resultContent": "Hasil Subtugas",
 		"completionInstructions": "Subtugas selesai! Kamu bisa meninjau hasilnya dan menyarankan koreksi atau langkah selanjutnya. Jika semuanya terlihat baik, konfirmasi untuk mengembalikan hasil ke tugas induk.",
 		"goToSubtask": "Lihat tugas"
 	},
 	"questions": {
-		"hasQuestion": "Zoo punya pertanyaan"
+		"hasQuestion": "Dory Code punya pertanyaan"
 	},
 	"taskCompleted": "Tugas Selesai",
 	"error": "Error",
@@ -325,14 +325,14 @@
 	"diffError": {
 		"title": "Edit Tidak Berhasil"
 	},
-	"troubleMessage": "Zoo mengalami masalah...",
+	"troubleMessage": "Dory Code mengalami masalah...",
 	"errorDetails": {
 		"link": "Details",
 		"title": "Detail Kesalahan",
 		"copyToClipboard": "Salin ke Clipboard",
 		"copied": "Disalin!",
 		"diagnostics": "Dapatkan informasi kesalahan terperinci",
-		"proxyProvider": "Tampaknya kamu menggunakan penyedia berbasis proxy. Pastikan untuk memeriksa log-nya dan memastikan tidak menulis ulang permintaan Zoo."
+		"proxyProvider": "Tampaknya kamu menggunakan penyedia berbasis proxy. Pastikan untuk memeriksa log-nya dan memastikan tidak menulis ulang permintaan Dory Code."
 	},
 	"autoApprove": {
 		"tooltipManage": "Kelola pengaturan persetujuan otomatis",
@@ -383,18 +383,18 @@
 	"profileViolationWarning": "Profil saat ini tidak kompatibel dengan pengaturan organisasi kamu",
 	"shellIntegration": {
 		"title": "Peringatan Eksekusi Perintah",
-		"description": "Perintah kamu dijalankan tanpa integrasi shell terminal VSCode. Untuk menekan peringatan ini kamu bisa menonaktifkan integrasi shell di bagian <strong>Terminal</strong> dari <settingsLink>pengaturan Zoo Code</settingsLink> atau troubleshoot integrasi terminal VSCode menggunakan link di bawah.",
+		"description": "Perintah kamu dijalankan tanpa integrasi shell terminal VSCode. Untuk menekan peringatan ini kamu bisa menonaktifkan integrasi shell di bagian <strong>Terminal</strong> dari <settingsLink>pengaturan Dory Code</settingsLink> atau troubleshoot integrasi terminal VSCode menggunakan link di bawah.",
 		"troubleshooting": "Klik di sini untuk dokumentasi integrasi shell."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Batas Permintaan yang Disetujui Otomatis Tercapai",
-			"description_other": "Zoo telah mencapai batas {{count}} permintaan API yang disetujui otomatis. Apakah Anda ingin mengatur ulang hitungan dan melanjutkan tugas?",
+			"description_other": "Dory Code telah mencapai batas {{count}} permintaan API yang disetujui otomatis. Apakah Anda ingin mengatur ulang hitungan dan melanjutkan tugas?",
 			"button": "Setel Ulang dan Lanjutkan"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "Batas Biaya yang Disetujui Otomatis Tercapai",
-			"description": "Zoo telah mencapai batas biaya yang disetujui otomatis sebesar ${{count}}. Apakah Anda ingin mengatur ulang biaya dan melanjutkan tugas?",
+			"description": "Dory Code telah mencapai batas biaya yang disetujui otomatis sebesar ${{count}}. Apakah Anda ingin mengatur ulang biaya dan melanjutkan tugas?",
 			"button": "Setel Ulang dan Lanjutkan"
 		}
 	},
@@ -441,8 +441,8 @@
 		"clickToEdit": "Klik untuk mengedit pesan"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo ingin menjalankan perintah slash",
-		"didRun": "Zoo telah menjalankan perintah slash"
+		"wantsToRun": "Dory Code ingin menjalankan perintah slash",
+		"didRun": "Dory Code telah menjalankan perintah slash"
 	},
 	"todo": {
 		"partial": "{{completed}} dari {{total}} to-do selesai",
@@ -482,7 +482,7 @@
 		"messageTemplate": "Tool berikut tidak dapat dinonaktifkan, sehingga entri disabledTools-nya diabaikan: {{tools}}."
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Dory Code read command output"
 	},
 	"retiredProvider": {
 		"title": "Penyedia tidak lagi didukung",

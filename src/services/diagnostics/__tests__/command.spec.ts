@@ -78,7 +78,7 @@ describe("createDiagnosticsReport", () => {
 
 		expect(outputChannel.appendLine).toHaveBeenCalledWith("[createDiagnosticsReport] failed: Error")
 		expect(outputChannel.appendLine).not.toHaveBeenCalledWith(expect.stringContaining("/Users/person"))
-		expect(mocks.showErrorMessage).toHaveBeenCalledWith("Zoo Code could not create the diagnostics report.")
+		expect(mocks.showErrorMessage).toHaveBeenCalledWith("Dory Code could not create the diagnostics report.")
 	})
 
 	it("still copies the report when opening the document fails", async () => {

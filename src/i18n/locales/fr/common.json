@@ -124,12 +124,12 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Aucun contenu de terminal sélectionné",
-		"auto_import_failed": "Échec de l'importation automatique des paramètres ZooCode : {{error}}",
+		"auto_import_failed": "Échec de l'importation automatique des paramètres Dory Code : {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "Aucun historique de tâches Roo Code trouvé à importer depuis {{domain}}.",
-			"alreadyImported_one": "L'historique de {{count}} tâche Roo Code a déjà été importé dans Zoo Code.",
-			"alreadyImported_many": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Zoo Code.",
-			"alreadyImported_other": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Zoo Code."
+			"alreadyImported_one": "L'historique de {{count}} tâche Roo Code a déjà été importé dans Dory Code.",
+			"alreadyImported_many": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Dory Code.",
+			"alreadyImported_other": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Dory Code."
 		}
 	},
 	"info": {
@@ -137,7 +137,7 @@
 		"custom_storage_path_set": "Chemin de stockage personnalisé défini : {{path}}",
 		"default_storage_path": "Retour au chemin de stockage par défaut",
 		"settings_imported": "Paramètres importés avec succès.",
-		"auto_import_success": "Paramètres ZooCode importés automatiquement depuis {{filename}}",
+		"auto_import_success": "Paramètres Dory Code importés automatiquement depuis {{filename}}",
 		"image_copied_to_clipboard": "URI de données d'image copiée dans le presse-papiers",
 		"image_saved": "Image enregistrée dans {{path}}",
 		"mode_exported": "Mode '{{mode}}' exporté avec succès",
@@ -146,9 +146,9 @@
 			"signInUnavailable": "La connexion à Roo Code Cloud n'est pas disponible pour le moment. Configure un autre fournisseur pour continuer."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} historique de tâche Roo Code importé dans Zoo Code.",
-			"success_many": "{{count}} historiques de tâches Roo Code importés dans Zoo Code.",
-			"success_other": "{{count}} historiques de tâches Roo Code importés dans Zoo Code."
+			"success_one": "{{count}} historique de tâche Roo Code importé dans Dory Code.",
+			"success_many": "{{count}} historiques de tâches Roo Code importés dans Dory Code.",
+			"success_other": "{{count}} historiques de tâches Roo Code importés dans Dory Code."
 		}
 	},
 	"openRouterSignIn": {
@@ -183,7 +183,7 @@
 		"enter_valid_path": "Veuillez entrer un chemin valide"
 	},
 	"input": {
-		"task_prompt": "Que doit faire Zoo ?",
+		"task_prompt": "Que doit faire Dory Code ?",
 		"task_placeholder": "Écris ta tâche ici"
 	},
 	"customModes": {
@@ -244,9 +244,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Expliquer avec Zoo Code",
-		"fix": "Corriger avec Zoo Code",
-		"improve": "Améliorer avec Zoo Code",
-		"addToContext": "Ajouter à Zoo Code"
+		"explain": "Expliquer avec Dory Code",
+		"fix": "Corriger avec Dory Code",
+		"improve": "Améliorer avec Dory Code",
+		"addToContext": "Ajouter à Dory Code"
 	}
 }

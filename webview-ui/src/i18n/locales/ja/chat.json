@@ -93,7 +93,7 @@
 	"enqueueMessage": "メッセージをキューに追加（現在のタスク完了後に送信されます）",
 	"scrollToBottom": "チャットの最下部にスクロール",
 	"scrollToLatestCheckpoint": "前のチェックポイントまでスクロール",
-	"about": "Zoo Codeは、エディタに常駐するAI開発チームです。",
+	"about": "Dory Codeは、エディタに常駐するAI開発チームです。",
 	"docs": "詳細については、<DocsLink>ドキュメント</DocsLink>をご確認ください。",
 	"rooTips": {
 		"customizableModes": {
@@ -132,7 +132,7 @@
 		"title": "モード",
 		"marketplace": "モードマーケットプレイス",
 		"settings": "モード設定",
-		"description": "Zooの動作をカスタマイズする専門的なペルソナ。",
+		"description": "Dory Codeの動作をカスタマイズする専門的なペルソナ。",
 		"searchPlaceholder": "モードを検索...",
 		"noResults": "結果が見つかりません"
 	},
@@ -145,7 +145,7 @@
 	"diffError": {
 		"title": "編集に失敗しました"
 	},
-	"troubleMessage": "Zooに問題が発生しています...",
+	"troubleMessage": "Dory Codeに問題が発生しています...",
 	"apiRequest": {
 		"title": "APIリクエスト",
 		"failed": "APIリクエスト失敗",
@@ -187,40 +187,40 @@
 		"current": "現在"
 	},
 	"instructions": {
-		"wantsToFetch": "Zooは現在のタスクを支援するための詳細な指示を取得したい"
+		"wantsToFetch": "Dory Codeは現在のタスクを支援するための詳細な指示を取得したい"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zooはこのファイルを読みたい",
-		"wantsToReadOutsideWorkspace": "Zooはワークスペース外のこのファイルを読みたい",
-		"didRead": "Zooはこのファイルを読みました",
-		"wantsToEdit": "Zooはこのファイルを編集したい",
-		"wantsToEditOutsideWorkspace": "Zooはワークスペース外のこのファイルを編集したい",
-		"wantsToEditProtected": "Zooは保護された設定ファイルを編集したい",
-		"wantsToSearchReplace": "Zooはこのファイルで検索と置換を行う",
-		"didSearchReplace": "Zooはこのファイルで検索と置換を実行しました",
-		"wantsToInsertWithLineNumber": "Zooはこのファイルの{{lineNumber}}行目にコンテンツを挿入したい",
-		"wantsToInsertAtEnd": "Zooはこのファイルの末尾にコンテンツを追加したい",
-		"wantsToReadAndXMore": "Zoo はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
-		"wantsToReadMultiple": "Zooは複数のファイルを読み取ろうとしています",
-		"wantsToApplyBatchChanges": "Zooは複数のファイルに変更を適用したい",
-		"wantsToGenerateImage": "Zooは画像を生成したい",
-		"wantsToGenerateImageOutsideWorkspace": "Zooはワークスペース外で画像を生成したい",
-		"wantsToGenerateImageProtected": "Zooは保護された場所で画像を生成したい",
-		"didGenerateImage": "Zooは画像を生成しました"
+		"wantsToRead": "Dory Codeはこのファイルを読みたい",
+		"wantsToReadOutsideWorkspace": "Dory Codeはワークスペース外のこのファイルを読みたい",
+		"didRead": "Dory Codeはこのファイルを読みました",
+		"wantsToEdit": "Dory Codeはこのファイルを編集したい",
+		"wantsToEditOutsideWorkspace": "Dory Codeはワークスペース外のこのファイルを編集したい",
+		"wantsToEditProtected": "Dory Codeは保護された設定ファイルを編集したい",
+		"wantsToSearchReplace": "Dory Codeはこのファイルで検索と置換を行う",
+		"didSearchReplace": "Dory Codeはこのファイルで検索と置換を実行しました",
+		"wantsToInsertWithLineNumber": "Dory Codeはこのファイルの{{lineNumber}}行目にコンテンツを挿入したい",
+		"wantsToInsertAtEnd": "Dory Codeはこのファイルの末尾にコンテンツを追加したい",
+		"wantsToReadAndXMore": "Dory Code はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
+		"wantsToReadMultiple": "Dory Codeは複数のファイルを読み取ろうとしています",
+		"wantsToApplyBatchChanges": "Dory Codeは複数のファイルに変更を適用したい",
+		"wantsToGenerateImage": "Dory Codeは画像を生成したい",
+		"wantsToGenerateImageOutsideWorkspace": "Dory Codeはワークスペース外で画像を生成したい",
+		"wantsToGenerateImageProtected": "Dory Codeは保護された場所で画像を生成したい",
+		"didGenerateImage": "Dory Codeは画像を生成しました"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zooはこのディレクトリのトップレベルファイルを表示したい",
-		"didViewTopLevel": "Zooはこのディレクトリのトップレベルファイルを表示しました",
-		"wantsToViewRecursive": "Zooはこのディレクトリのすべてのファイルを再帰的に表示したい",
-		"didViewRecursive": "Zooはこのディレクトリのすべてのファイルを再帰的に表示しました",
-		"wantsToSearch": "Zooはこのディレクトリで <code>{{regex}}</code> を検索したい",
-		"didSearch": "Zooはこのディレクトリで <code>{{regex}}</code> を検索しました",
-		"wantsToSearchOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索したい",
-		"didSearchOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索しました",
-		"wantsToViewTopLevelOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示したい",
-		"didViewTopLevelOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示しました",
-		"wantsToViewRecursiveOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示したい",
-		"didViewRecursiveOutsideWorkspace": "Zooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示しました"
+		"wantsToViewTopLevel": "Dory Codeはこのディレクトリのトップレベルファイルを表示したい",
+		"didViewTopLevel": "Dory Codeはこのディレクトリのトップレベルファイルを表示しました",
+		"wantsToViewRecursive": "Dory Codeはこのディレクトリのすべてのファイルを再帰的に表示したい",
+		"didViewRecursive": "Dory Codeはこのディレクトリのすべてのファイルを再帰的に表示しました",
+		"wantsToSearch": "Dory Codeはこのディレクトリで <code>{{regex}}</code> を検索したい",
+		"didSearch": "Dory Codeはこのディレクトリで <code>{{regex}}</code> を検索しました",
+		"wantsToSearchOutsideWorkspace": "Dory Codeはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索したい",
+		"didSearchOutsideWorkspace": "Dory Codeはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索しました",
+		"wantsToViewTopLevelOutsideWorkspace": "Dory Codeはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示したい",
+		"didViewTopLevelOutsideWorkspace": "Dory Codeはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示しました",
+		"wantsToViewRecursiveOutsideWorkspace": "Dory Codeはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示したい",
+		"didViewRecursiveOutsideWorkspace": "Dory Codeはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示しました"
 	},
 	"commandExecution": {
 		"abort": "中止",
@@ -237,31 +237,31 @@
 		"clickToEditPattern": "クリックしてパターンを編集"
 	},
 	"text": {
-		"rooSaid": "Zooの発言"
+		"rooSaid": "Dory Codeの発言"
 	},
 	"feedback": {
 		"youSaid": "あなたの発言"
 	},
 	"mcp": {
-		"wantsToUseTool": "ZooはMCPサーバー{{serverName}}でツールを使用したい",
-		"wantsToAccessResource": "ZooはMCPサーバー{{serverName}}のリソースにアクセスしたい"
+		"wantsToUseTool": "Dory CodeはMCPサーバー{{serverName}}でツールを使用したい",
+		"wantsToAccessResource": "Dory CodeはMCPサーバー{{serverName}}のリソースにアクセスしたい"
 	},
 	"modes": {
-		"wantsToSwitch": "Zooは<code>{{mode}}</code>モードに切り替えたい",
-		"wantsToSwitchWithReason": "Zooは次の理由で<code>{{mode}}</code>モードに切り替えたい: {{reason}}",
-		"didSwitch": "Zooは<code>{{mode}}</code>モードに切り替えました",
-		"didSwitchWithReason": "Zooは次の理由で<code>{{mode}}</code>モードに切り替えました: {{reason}}"
+		"wantsToSwitch": "Dory Codeは<code>{{mode}}</code>モードに切り替えたい",
+		"wantsToSwitchWithReason": "Dory Codeは次の理由で<code>{{mode}}</code>モードに切り替えたい: {{reason}}",
+		"didSwitch": "Dory Codeは<code>{{mode}}</code>モードに切り替えました",
+		"didSwitchWithReason": "Dory Codeは次の理由で<code>{{mode}}</code>モードに切り替えました: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zooは<code>{{mode}}</code>モードで新しいサブタスクを作成したい",
-		"wantsToFinish": "Zooはこのサブタスクを終了したい",
+		"wantsToCreate": "Dory Codeは<code>{{mode}}</code>モードで新しいサブタスクを作成したい",
+		"wantsToFinish": "Dory Codeはこのサブタスクを終了したい",
 		"completionContent": "サブタスク完了",
 		"resultContent": "サブタスク結果",
 		"completionInstructions": "サブタスク完了！結果を確認し、修正や次のステップを提案できます。問題なければ、親タスクに結果を返すために確認してください。",
 		"goToSubtask": "タスクを表示"
 	},
 	"questions": {
-		"hasQuestion": "Zooは質問があります"
+		"hasQuestion": "Dory Codeは質問があります"
 	},
 	"taskCompleted": "タスク完了",
 	"modelResponseIncomplete": "モデルの応答が不完全",
@@ -277,7 +277,7 @@
 		"copyToClipboard": "クリップボードにコピー",
 		"copied": "コピーしました！",
 		"diagnostics": "詳細なエラー情報を取得",
-		"proxyProvider": "プロキシベースのプロバイダーを使用しているようです。ログを確認し、Zooのリクエストを書き換えていないことを確認してください。"
+		"proxyProvider": "プロキシベースのプロバイダーを使用しているようです。ログを確認し、Dory Codeのリクエストを書き換えていないことを確認してください。"
 	},
 	"autoApprove": {
 		"tooltipManage": "自動承認設定を管理する",
@@ -314,8 +314,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zooはスキルを読み込もうとしています",
-		"didLoad": "Zooはスキルを読み込みました"
+		"wantsToLoad": "Dory Codeはスキルを読み込もうとしています",
+		"didLoad": "Dory Codeはスキルを読み込みました"
 	},
 	"followUpSuggest": {
 		"copyToInput": "入力欄にコピー（またはShift + クリック）",
@@ -346,24 +346,24 @@
 	"profileViolationWarning": "現在のプロファイルは組織の設定と互換性がありません",
 	"shellIntegration": {
 		"title": "コマンド実行警告",
-		"description": "コマンドはVSCodeターミナルシェル統合なしで実行されています。この警告を非表示にするには、<settingsLink>Zoo Code 設定</settingsLink>の<strong>Terminal</strong>セクションでシェル統合を無効にするか、以下のリンクを使用してVSCodeターミナル統合のトラブルシューティングを行ってください。",
+		"description": "コマンドはVSCodeターミナルシェル統合なしで実行されています。この警告を非表示にするには、<settingsLink>Dory Code 設定</settingsLink>の<strong>Terminal</strong>セクションでシェル統合を無効にするか、以下のリンクを使用してVSCodeターミナル統合のトラブルシューティングを行ってください。",
 		"troubleshooting": "シェル統合のドキュメントはこちらをクリック"
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "自動承認リクエスト制限に達しました",
-			"description_other": "Zooは{{count}}件のAPI自動承認リクエスト制限に達しました。カウントをリセットしてタスクを続行しますか？",
+			"description_other": "Dory Codeは{{count}}件のAPI自動承認リクエスト制限に達しました。カウントをリセットしてタスクを続行しますか？",
 			"button": "リセットして続行"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "自動承認コスト制限に達しました",
-			"description": "Zooは自動承認されたコスト制限の${{count}}に達しました。コストをリセットしてタスクを続行しますか？",
+			"description": "Dory Codeは自動承認されたコスト制限の${{count}}に達しました。コストをリセットしてタスクを続行しますか？",
 			"button": "リセットして続ける"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zooはコードベースで <code>{{query}}</code> を検索したい",
-		"wantsToSearchWithPath": "Zooは <code>{{path}}</code> 内のコードベースで <code>{{query}}</code> を検索したい",
+		"wantsToSearch": "Dory Codeはコードベースで <code>{{query}}</code> を検索したい",
+		"wantsToSearchWithPath": "Dory Codeは <code>{{path}}</code> 内のコードベースで <code>{{query}}</code> を検索したい",
 		"didSearch_other": "{{count}}件の結果が見つかりました",
 		"resultTooltip": "類似度スコア: {{score}} (クリックしてファイルを開く)",
 		"displayError": "検索結果の表示中にエラーが発生しました。"
@@ -435,8 +435,8 @@
 		"clickToEdit": "クリックしてメッセージを編集"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zooはスラッシュコマンドを実行したい",
-		"didRun": "Zooはスラッシュコマンドを実行しました"
+		"wantsToRun": "Dory Codeはスラッシュコマンドを実行したい",
+		"didRun": "Dory Codeはスラッシュコマンドを実行しました"
 	},
 	"todo": {
 		"partial": "{{total}}件中{{completed}}件のTo-Doが完了",
@@ -476,7 +476,7 @@
 		"messageTemplate": "次のツールは無効化できないため、対応する disabledTools エントリは無視されました: {{tools}}。"
 	},
 	"readCommandOutput": {
-		"title": "Zooがコマンド出力を読み込みました"
+		"title": "Dory Codeがコマンド出力を読み込みました"
 	},
 	"retiredProvider": {
 		"title": "プロバイダーのサポート終了",

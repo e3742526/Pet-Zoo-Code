@@ -93,7 +93,7 @@
 	"enqueueMessage": "Thêm tin nhắn vào hàng đợi (sẽ gửi sau khi nhiệm vụ hiện tại hoàn tất)",
 	"scrollToBottom": "Cuộn xuống cuối cuộc trò chuyện",
 	"scrollToLatestCheckpoint": "Cuộn đến checkpoint trước đó",
-	"about": "Zoo Code là một đội ngũ phát triển AI đầy đủ trong trình chỉnh sửa của bạn.",
+	"about": "Dory Code là một đội ngũ phát triển AI đầy đủ trong trình chỉnh sửa của bạn.",
 	"docs": "Kiểm tra <DocsLink>tài liệu</DocsLink> của chúng tôi để tìm hiểu thêm.",
 	"rooTips": {
 		"customizableModes": {
@@ -132,7 +132,7 @@
 		"title": "Chế độ",
 		"marketplace": "Chợ Chế độ",
 		"settings": "Cài đặt Chế độ",
-		"description": "Các nhân cách chuyên biệt điều chỉnh hành vi của Zoo.",
+		"description": "Các nhân cách chuyên biệt điều chỉnh hành vi của Dory Code.",
 		"searchPlaceholder": "Tìm kiếm chế độ...",
 		"noResults": "Không tìm thấy kết quả nào"
 	},
@@ -145,7 +145,7 @@
 	"diffError": {
 		"title": "Chỉnh sửa không thành công"
 	},
-	"troubleMessage": "Zoo đang gặp sự cố...",
+	"troubleMessage": "Dory Code đang gặp sự cố...",
 	"apiRequest": {
 		"title": "Yêu cầu API",
 		"failed": "Yêu cầu API thất bại",
@@ -187,40 +187,40 @@
 		"current": "Hiện tại"
 	},
 	"instructions": {
-		"wantsToFetch": "Zoo muốn lấy hướng dẫn chi tiết để hỗ trợ nhiệm vụ hiện tại"
+		"wantsToFetch": "Dory Code muốn lấy hướng dẫn chi tiết để hỗ trợ nhiệm vụ hiện tại"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo muốn đọc tệp này",
-		"wantsToReadOutsideWorkspace": "Zoo muốn đọc tệp này bên ngoài không gian làm việc",
-		"didRead": "Zoo đã đọc tệp này",
-		"wantsToEdit": "Zoo muốn chỉnh sửa tệp này",
-		"wantsToEditOutsideWorkspace": "Zoo muốn chỉnh sửa tệp này bên ngoài không gian làm việc",
-		"wantsToEditProtected": "Zoo muốn chỉnh sửa tệp cấu hình được bảo vệ",
-		"wantsToSearchReplace": "Zoo muốn thực hiện tìm kiếm và thay thế trong tệp này",
-		"didSearchReplace": "Zoo đã thực hiện tìm kiếm và thay thế trong tệp này",
-		"wantsToInsertWithLineNumber": "Zoo muốn chèn nội dung vào dòng {{lineNumber}} của tệp này",
-		"wantsToInsertAtEnd": "Zoo muốn thêm nội dung vào cuối tệp này",
-		"wantsToReadAndXMore": "Zoo muốn đọc tệp này và {{count}} tệp khác",
-		"wantsToReadMultiple": "Zoo muốn đọc nhiều tệp",
-		"wantsToApplyBatchChanges": "Zoo muốn áp dụng thay đổi cho nhiều tệp",
-		"wantsToGenerateImage": "Zoo muốn tạo một hình ảnh",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo muốn tạo hình ảnh bên ngoài không gian làm việc",
-		"wantsToGenerateImageProtected": "Zoo muốn tạo hình ảnh ở vị trí được bảo vệ",
-		"didGenerateImage": "Zoo đã tạo một hình ảnh"
+		"wantsToRead": "Dory Code muốn đọc tệp này",
+		"wantsToReadOutsideWorkspace": "Dory Code muốn đọc tệp này bên ngoài không gian làm việc",
+		"didRead": "Dory Code đã đọc tệp này",
+		"wantsToEdit": "Dory Code muốn chỉnh sửa tệp này",
+		"wantsToEditOutsideWorkspace": "Dory Code muốn chỉnh sửa tệp này bên ngoài không gian làm việc",
+		"wantsToEditProtected": "Dory Code muốn chỉnh sửa tệp cấu hình được bảo vệ",
+		"wantsToSearchReplace": "Dory Code muốn thực hiện tìm kiếm và thay thế trong tệp này",
+		"didSearchReplace": "Dory Code đã thực hiện tìm kiếm và thay thế trong tệp này",
+		"wantsToInsertWithLineNumber": "Dory Code muốn chèn nội dung vào dòng {{lineNumber}} của tệp này",
+		"wantsToInsertAtEnd": "Dory Code muốn thêm nội dung vào cuối tệp này",
+		"wantsToReadAndXMore": "Dory Code muốn đọc tệp này và {{count}} tệp khác",
+		"wantsToReadMultiple": "Dory Code muốn đọc nhiều tệp",
+		"wantsToApplyBatchChanges": "Dory Code muốn áp dụng thay đổi cho nhiều tệp",
+		"wantsToGenerateImage": "Dory Code muốn tạo một hình ảnh",
+		"wantsToGenerateImageOutsideWorkspace": "Dory Code muốn tạo hình ảnh bên ngoài không gian làm việc",
+		"wantsToGenerateImageProtected": "Dory Code muốn tạo hình ảnh ở vị trí được bảo vệ",
+		"didGenerateImage": "Dory Code đã tạo một hình ảnh"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo muốn xem các tệp cấp cao nhất trong thư mục này",
-		"didViewTopLevel": "Zoo đã xem các tệp cấp cao nhất trong thư mục này",
-		"wantsToViewRecursive": "Zoo muốn xem đệ quy tất cả các tệp trong thư mục này",
-		"didViewRecursive": "Zoo đã xem đệ quy tất cả các tệp trong thư mục này",
-		"wantsToSearch": "Zoo muốn tìm kiếm trong thư mục này cho <code>{{regex}}</code>",
-		"didSearch": "Zoo đã tìm kiếm trong thư mục này cho <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo muốn tìm kiếm trong thư mục này (ngoài không gian làm việc) cho <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo đã tìm kiếm trong thư mục này (ngoài không gian làm việc) cho <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo muốn xem các tệp cấp cao nhất trong thư mục này (ngoài không gian làm việc)",
-		"didViewTopLevelOutsideWorkspace": "Zoo đã xem các tệp cấp cao nhất trong thư mục này (ngoài không gian làm việc)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo muốn xem đệ quy tất cả các tệp trong thư mục này (ngoài không gian làm việc)",
-		"didViewRecursiveOutsideWorkspace": "Zoo đã xem đệ quy tất cả các tệp trong thư mục này (ngoài không gian làm việc)"
+		"wantsToViewTopLevel": "Dory Code muốn xem các tệp cấp cao nhất trong thư mục này",
+		"didViewTopLevel": "Dory Code đã xem các tệp cấp cao nhất trong thư mục này",
+		"wantsToViewRecursive": "Dory Code muốn xem đệ quy tất cả các tệp trong thư mục này",
+		"didViewRecursive": "Dory Code đã xem đệ quy tất cả các tệp trong thư mục này",
+		"wantsToSearch": "Dory Code muốn tìm kiếm trong thư mục này cho <code>{{regex}}</code>",
+		"didSearch": "Dory Code đã tìm kiếm trong thư mục này cho <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Dory Code muốn tìm kiếm trong thư mục này (ngoài không gian làm việc) cho <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Dory Code đã tìm kiếm trong thư mục này (ngoài không gian làm việc) cho <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Dory Code muốn xem các tệp cấp cao nhất trong thư mục này (ngoài không gian làm việc)",
+		"didViewTopLevelOutsideWorkspace": "Dory Code đã xem các tệp cấp cao nhất trong thư mục này (ngoài không gian làm việc)",
+		"wantsToViewRecursiveOutsideWorkspace": "Dory Code muốn xem đệ quy tất cả các tệp trong thư mục này (ngoài không gian làm việc)",
+		"didViewRecursiveOutsideWorkspace": "Dory Code đã xem đệ quy tất cả các tệp trong thư mục này (ngoài không gian làm việc)"
 	},
 	"commandExecution": {
 		"running": "Đang chạy",
@@ -238,31 +238,31 @@
 		"clickToEditPattern": "Nhấp để sửa mẫu"
 	},
 	"text": {
-		"rooSaid": "Zoo đã nói"
+		"rooSaid": "Dory Code đã nói"
 	},
 	"feedback": {
 		"youSaid": "Bạn đã nói"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo muốn sử dụng một công cụ trên máy chủ MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo muốn truy cập một tài nguyên trên máy chủ MCP {{serverName}}"
+		"wantsToUseTool": "Dory Code muốn sử dụng một công cụ trên máy chủ MCP {{serverName}}",
+		"wantsToAccessResource": "Dory Code muốn truy cập một tài nguyên trên máy chủ MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo muốn chuyển sang chế độ <code>{{mode}}</code>",
-		"wantsToSwitchWithReason": "Zoo muốn chuyển sang chế độ <code>{{mode}}</code> vì: {{reason}}",
-		"didSwitch": "Zoo đã chuyển sang chế độ <code>{{mode}}</code>",
-		"didSwitchWithReason": "Zoo đã chuyển sang chế độ <code>{{mode}}</code> vì: {{reason}}"
+		"wantsToSwitch": "Dory Code muốn chuyển sang chế độ <code>{{mode}}</code>",
+		"wantsToSwitchWithReason": "Dory Code muốn chuyển sang chế độ <code>{{mode}}</code> vì: {{reason}}",
+		"didSwitch": "Dory Code đã chuyển sang chế độ <code>{{mode}}</code>",
+		"didSwitchWithReason": "Dory Code đã chuyển sang chế độ <code>{{mode}}</code> vì: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo muốn tạo một nhiệm vụ phụ mới trong chế độ <code>{{mode}}</code>",
-		"wantsToFinish": "Zoo muốn hoàn thành nhiệm vụ phụ này",
+		"wantsToCreate": "Dory Code muốn tạo một nhiệm vụ phụ mới trong chế độ <code>{{mode}}</code>",
+		"wantsToFinish": "Dory Code muốn hoàn thành nhiệm vụ phụ này",
 		"completionContent": "Nhiệm vụ phụ đã hoàn thành",
 		"resultContent": "Kết quả nhiệm vụ phụ",
 		"completionInstructions": "Nhiệm vụ phụ đã hoàn thành! Bạn có thể xem lại kết quả và đề xuất các sửa đổi hoặc bước tiếp theo. Nếu mọi thứ có vẻ tốt, hãy xác nhận để trả kết quả về nhiệm vụ chính.",
 		"goToSubtask": "Xem nhiệm vụ"
 	},
 	"questions": {
-		"hasQuestion": "Zoo có một câu hỏi"
+		"hasQuestion": "Dory Code có một câu hỏi"
 	},
 	"taskCompleted": "Nhiệm vụ hoàn thành",
 	"modelResponseIncomplete": "Phản hồi của mô hình không đầy đủ",
@@ -278,7 +278,7 @@
 		"copyToClipboard": "Sao chép vào clipboard",
 		"copied": "Đã sao chép!",
 		"diagnostics": "Nhận thông tin lỗi chi tiết",
-		"proxyProvider": "Có vẻ bạn đang sử dụng nhà cung cấp dựa trên proxy. Hãy chắc chắn kiểm tra các nhật ký của nó và đảm bảo nó không viết lại các yêu cầu của Zoo."
+		"proxyProvider": "Có vẻ bạn đang sử dụng nhà cung cấp dựa trên proxy. Hãy chắc chắn kiểm tra các nhật ký của nó và đảm bảo nó không viết lại các yêu cầu của Dory Code."
 	},
 	"autoApprove": {
 		"tooltipManage": "Quản lý cài đặt tự động phê duyệt",
@@ -315,8 +315,8 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo muốn tải một kỹ năng",
-		"didLoad": "Zoo đã tải một kỹ năng"
+		"wantsToLoad": "Dory Code muốn tải một kỹ năng",
+		"didLoad": "Dory Code đã tải một kỹ năng"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Sao chép vào ô nhập liệu (hoặc Shift + nhấp chuột)",
@@ -347,24 +347,24 @@
 	"profileViolationWarning": "Hồ sơ hiện tại không tương thích với cài đặt của tổ chức của bạn",
 	"shellIntegration": {
 		"title": "Cảnh báo thực thi lệnh",
-		"description": "Lệnh của bạn đang được thực thi mà không có tích hợp shell terminal VSCode. Để ẩn cảnh báo này, bạn có thể tắt tích hợp shell trong phần <strong>Terminal</strong> của <settingsLink>cài đặt Zoo Code</settingsLink> hoặc khắc phục sự cố tích hợp terminal VSCode bằng liên kết bên dưới.",
+		"description": "Lệnh của bạn đang được thực thi mà không có tích hợp shell terminal VSCode. Để ẩn cảnh báo này, bạn có thể tắt tích hợp shell trong phần <strong>Terminal</strong> của <settingsLink>cài đặt Dory Code</settingsLink> hoặc khắc phục sự cố tích hợp terminal VSCode bằng liên kết bên dưới.",
 		"troubleshooting": "Nhấp vào đây để xem tài liệu tích hợp shell."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Đã Đạt Giới Hạn Yêu Cầu Tự Động Phê Duyệt",
-			"description_other": "Zoo đã đạt đến giới hạn tự động phê duyệt là {{count}} yêu cầu API. Bạn có muốn đặt lại bộ đếm và tiếp tục nhiệm vụ không?",
+			"description_other": "Dory Code đã đạt đến giới hạn tự động phê duyệt là {{count}} yêu cầu API. Bạn có muốn đặt lại bộ đếm và tiếp tục nhiệm vụ không?",
 			"button": "Đặt lại và Tiếp tục"
 		},
 		"autoApprovedCostLimitReached": {
 			"button": "Đặt lại và Tiếp tục",
 			"title": "Đã Đạt Giới Hạn Chi Phí Tự Động Phê Duyệt",
-			"description": "Zoo đã đạt đến giới hạn chi phí tự động phê duyệt là ${{count}}. Bạn có muốn đặt lại chi phí và tiếp tục với nhiệm vụ không?"
+			"description": "Dory Code đã đạt đến giới hạn chi phí tự động phê duyệt là ${{count}}. Bạn có muốn đặt lại chi phí và tiếp tục với nhiệm vụ không?"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo muốn tìm kiếm trong cơ sở mã cho <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo muốn tìm kiếm trong cơ sở mã cho <code>{{query}}</code> trong <code>{{path}}</code>",
+		"wantsToSearch": "Dory Code muốn tìm kiếm trong cơ sở mã cho <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Dory Code muốn tìm kiếm trong cơ sở mã cho <code>{{query}}</code> trong <code>{{path}}</code>",
 		"didSearch_other": "Đã tìm thấy {{count}} kết quả",
 		"resultTooltip": "Điểm tương tự: {{score}} (nhấp để mở tệp)",
 		"displayError": "Lỗi khi hiển thị kết quả tìm kiếm."
@@ -436,8 +436,8 @@
 		"clickToEdit": "Nhấp để chỉnh sửa tin nhắn"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo muốn chạy lệnh slash",
-		"didRun": "Zoo đã chạy lệnh slash"
+		"wantsToRun": "Dory Code muốn chạy lệnh slash",
+		"didRun": "Dory Code đã chạy lệnh slash"
 	},
 	"todo": {
 		"partial": "{{completed}} trong tổng số {{total}} công việc đã hoàn thành",
@@ -477,7 +477,7 @@
 		"messageTemplate": "Các công cụ sau không thể bị tắt, nên các mục disabledTools tương ứng đã được bỏ qua: {{tools}}."
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Dory Code read command output"
 	},
 	"retiredProvider": {
 		"title": "Nhà cung cấp không còn được hỗ trợ",

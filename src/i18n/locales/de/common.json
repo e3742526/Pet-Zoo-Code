@@ -124,11 +124,11 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Kein Terminal-Inhalt ausgewählt",
-		"auto_import_failed": "Fehler beim automatischen Import der ZooCode-Einstellungen: {{error}}",
+		"auto_import_failed": "Fehler beim automatischen Import der Dory Code-Einstellungen: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "Es wurde kein Roo Code-Aufgabenverlauf zum Importieren von {{domain}} gefunden.",
-			"alreadyImported_one": "Der {{count}} Roo Code-Aufgabenverlauf wurde bereits in Zoo Code importiert.",
-			"alreadyImported_other": "Alle {{count}} Roo Code-Aufgabenverläufe wurden bereits in Zoo Code importiert."
+			"alreadyImported_one": "Der {{count}} Roo Code-Aufgabenverlauf wurde bereits in Dory Code importiert.",
+			"alreadyImported_other": "Alle {{count}} Roo Code-Aufgabenverläufe wurden bereits in Dory Code importiert."
 		}
 	},
 	"info": {
@@ -136,7 +136,7 @@
 		"custom_storage_path_set": "Benutzerdefinierter Speicherpfad festgelegt: {{path}}",
 		"default_storage_path": "Auf Standardspeicherpfad zurückgesetzt",
 		"settings_imported": "Einstellungen erfolgreich importiert.",
-		"auto_import_success": "ZooCode-Einstellungen automatisch importiert aus {{filename}}",
+		"auto_import_success": "Dory Code-Einstellungen automatisch importiert aus {{filename}}",
 		"image_copied_to_clipboard": "Bild-Daten-URI in die Zwischenablage kopiert",
 		"image_saved": "Bild gespeichert unter {{path}}",
 		"mode_exported": "Modus '{{mode}}' erfolgreich exportiert",
@@ -145,8 +145,8 @@
 			"signInUnavailable": "Die Anmeldung bei Roo Code Cloud ist derzeit nicht verfügbar. Konfiguriere einen anderen Anbieter, um fortzufahren."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} Roo Code-Aufgabenverlauf in Zoo Code importiert.",
-			"success_other": "{{count}} Roo Code-Aufgabenverläufe in Zoo Code importiert."
+			"success_one": "{{count}} Roo Code-Aufgabenverlauf in Dory Code importiert.",
+			"success_other": "{{count}} Roo Code-Aufgabenverläufe in Dory Code importiert."
 		}
 	},
 	"openRouterSignIn": {
@@ -181,7 +181,7 @@
 		"enter_valid_path": "Bitte gib einen gültigen Pfad ein"
 	},
 	"input": {
-		"task_prompt": "Was soll Zoo tun?",
+		"task_prompt": "Was soll Dory Code tun?",
 		"task_placeholder": "Gib deine Aufgabe hier ein"
 	},
 	"customModes": {
@@ -237,9 +237,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Mit Zoo Code erklären",
-		"fix": "Mit Zoo Code beheben",
-		"improve": "Mit Zoo Code verbessern",
-		"addToContext": "Zu Zoo Code hinzufügen"
+		"explain": "Mit Dory Code erklären",
+		"fix": "Mit Dory Code beheben",
+		"improve": "Mit Dory Code verbessern",
+		"addToContext": "Zu Dory Code hinzufügen"
 	}
 }

@@ -63,7 +63,7 @@ async function attachLogs(userDataPath: string, logPath: string, testInfo: TestI
 	const sceneLog = await fs.readFile(logPath, "utf8").catch(() => "")
 	if (sceneLog) await testInfo.attach("scene.log", { body: sceneLog, contentType: "text/plain" })
 
-	for (const pattern of ["logs/**/exthost.log", "logs/**/renderer.log", "logs/**/*Pet-Zoo-Code.log"]) {
+	for (const pattern of ["logs/**/exthost.log", "logs/**/renderer.log", "logs/**/*Dory Code.log"]) {
 		const logs = await glob(pattern, { cwd: userDataPath })
 		const latest = logs.at(-1)
 		if (!latest) continue

@@ -6,7 +6,7 @@
 	"version": "3.98.2",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
-		"color": "#617A91",
+		"color": "#071D3A",
 		"theme": "dark"
 	},
 	"engines": {
@@ -42,8 +42,8 @@
 		"sonnet",
 		"ai",
 		"llama",
-		"zoo code",
-		"zoocode"
+		"dory code",
+		"dory"
 	],
 	"activationEvents": [
 		"onLanguage",

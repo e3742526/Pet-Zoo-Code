@@ -1,12 +1,12 @@
 {
 	"landing": {
-		"greeting": "Zoo Codeへようこそ！",
-		"introduction": "組み込みおよび拡張可能なモードを備えたZoo Codeは、計画、アーキテクチャ設計、コーディング、デバッグ、そして今までにない生産性向上を可能にします。",
-		"logoAlt": "Roo のロゴ"
+		"greeting": "Dory Codeへようこそ！",
+		"introduction": "組み込みおよび拡張可能なモードを備えたDory Codeは、計画、アーキテクチャ設計、コーディング、デバッグ、そして今までにない生産性向上を可能にします。",
+		"logoAlt": "Dory Code のロゴ"
 	},
 	"providerSignup": {
 		"heading": "プロバイダーを選択",
-		"chooseProvider": "Zoo Codeが機能するにはLLMプロバイダーが必要です。始めるために1つを選択してください。後から追加することもできます。",
+		"chooseProvider": "Dory Codeが機能するにはLLMプロバイダーが必要です。始めるために1つを選択してください。後から追加することもできます。",
 		"goBack": "戻る",
 		"finish": "完了"
 	},

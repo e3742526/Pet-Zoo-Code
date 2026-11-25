@@ -124,11 +124,11 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Geen terminalinhoud geselecteerd",
-		"auto_import_failed": "Automatisch importeren van ZooCode-instellingen mislukt: {{error}}",
+		"auto_import_failed": "Automatisch importeren van Dory Code-instellingen mislukt: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "Geen Roo Code-taakgeschiedenis gevonden om te importeren van {{domain}}.",
-			"alreadyImported_one": "De {{count}} Roo Code-taakgeschiedenis is al geïmporteerd in Zoo Code.",
-			"alreadyImported_other": "Alle {{count}} Roo Code-taakgeschiedenissen zijn al geïmporteerd in Zoo Code."
+			"alreadyImported_one": "De {{count}} Roo Code-taakgeschiedenis is al geïmporteerd in Dory Code.",
+			"alreadyImported_other": "Alle {{count}} Roo Code-taakgeschiedenissen zijn al geïmporteerd in Dory Code."
 		}
 	},
 	"info": {
@@ -136,7 +136,7 @@
 		"custom_storage_path_set": "Aangepast opslagpad ingesteld: {{path}}",
 		"default_storage_path": "Terug naar standaard opslagpad",
 		"settings_imported": "Instellingen succesvol geïmporteerd.",
-		"auto_import_success": "ZooCode-instellingen automatisch geïmporteerd van {{filename}}",
+		"auto_import_success": "Dory Code-instellingen automatisch geïmporteerd van {{filename}}",
 		"image_copied_to_clipboard": "Afbeelding data-URI gekopieerd naar klembord",
 		"image_saved": "Afbeelding opgeslagen naar {{path}}",
 		"mode_exported": "Modus '{{mode}}' succesvol geëxporteerd",
@@ -145,8 +145,8 @@
 			"signInUnavailable": "Inloggen bij Roo Code Cloud is momenteel niet beschikbaar. Configureer een andere provider om door te gaan."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} Roo Code-taakgeschiedenis geïmporteerd in Zoo Code.",
-			"success_other": "{{count}} Roo Code-taakgeschiedenissen geïmporteerd in Zoo Code."
+			"success_one": "{{count}} Roo Code-taakgeschiedenis geïmporteerd in Dory Code.",
+			"success_other": "{{count}} Roo Code-taakgeschiedenissen geïmporteerd in Dory Code."
 		}
 	},
 	"openRouterSignIn": {
@@ -181,7 +181,7 @@
 		"enter_valid_path": "Voer een geldig pad in"
 	},
 	"input": {
-		"task_prompt": "Wat moet Zoo doen?",
+		"task_prompt": "Wat moet Dory Code doen?",
 		"task_placeholder": "Typ hier je taak"
 	},
 	"customModes": {
@@ -242,9 +242,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Uitleggen met Zoo Code",
-		"fix": "Repareren met Zoo Code",
-		"improve": "Verbeteren met Zoo Code",
-		"addToContext": "Toevoegen aan Zoo Code"
+		"explain": "Uitleggen met Dory Code",
+		"fix": "Repareren met Dory Code",
+		"improve": "Verbeteren met Dory Code",
+		"addToContext": "Toevoegen aan Dory Code"
 	}
 }

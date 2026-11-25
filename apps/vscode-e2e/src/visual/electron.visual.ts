@@ -16,14 +16,14 @@ const scenarios: VisualScenario[] = [
 		name: "welcome-dark",
 		scene: "welcome",
 		themeId: "Default Dark Modern",
-		landmark: "Welcome to Zoo Code!",
+		landmark: "Welcome to Dory Code!",
 		webviewSnapshot: "electron-welcome-dark-webview.png",
 	},
 	{
 		name: "welcome-high-contrast",
 		scene: "welcome",
 		themeId: "Default High Contrast",
-		landmark: "Welcome to Zoo Code!",
+		landmark: "Welcome to Dory Code!",
 	},
 	{
 		name: "chat-dark",

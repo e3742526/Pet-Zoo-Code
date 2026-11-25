@@ -124,10 +124,10 @@
 	},
 	"warnings": {
 		"no_terminal_content": "選択されたターミナルコンテンツがありません",
-		"auto_import_failed": "ZooCode設定の自動インポートに失敗しました：{{error}}",
+		"auto_import_failed": "Dory Code設定の自動インポートに失敗しました：{{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "{{domain}}からインポートするRoo Codeのタスク履歴が見つかりませんでした。",
-			"alreadyImported_other": "{{count}}件のRoo Codeタスク履歴はすでにZoo Codeにインポート済みです。"
+			"alreadyImported_other": "{{count}}件のRoo Codeタスク履歴はすでにDory Codeにインポート済みです。"
 		}
 	},
 	"info": {
@@ -135,7 +135,7 @@
 		"custom_storage_path_set": "カスタムストレージパスが設定されました：{{path}}",
 		"default_storage_path": "デフォルトのストレージパスに戻りました",
 		"settings_imported": "設定が正常にインポートされました。",
-		"auto_import_success": "ZooCode設定が{{filename}}から自動インポートされました",
+		"auto_import_success": "Dory Code設定が{{filename}}から自動インポートされました",
 		"image_copied_to_clipboard": "画像データURIがクリップボードにコピーされました",
 		"image_saved": "画像を{{path}}に保存しました",
 		"mode_exported": "モード「{{mode}}」が正常にエクスポートされました",
@@ -144,7 +144,7 @@
 			"signInUnavailable": "Roo Code Cloud へのサインインは現在利用できません。続行するには別のプロバイダーを設定してください。"
 		},
 		"rooHistoryImport": {
-			"success_other": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。"
+			"success_other": "{{count}}件のRoo CodeタスクをDory Codeにインポートしました。"
 		}
 	},
 	"openRouterSignIn": {
@@ -179,7 +179,7 @@
 		"enter_valid_path": "有効なパスを入力してください"
 	},
 	"input": {
-		"task_prompt": "Zooにどんなことをさせますか？",
+		"task_prompt": "Dory Codeにどんなことをさせますか？",
 		"task_placeholder": "タスクをここに入力してください"
 	},
 	"customModes": {
@@ -240,9 +240,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Codeで説明",
-		"fix": "Zoo Codeで修正",
-		"improve": "Zoo Codeで改善",
-		"addToContext": "Zoo Codeに追加"
+		"explain": "Dory Codeで説明",
+		"fix": "Dory Codeで修正",
+		"improve": "Dory Codeで改善",
+		"addToContext": "Dory Codeに追加"
 	}
 }

@@ -35,7 +35,7 @@ describe("TranslationProvider", () => {
 		renderTranslated(<MemoizedConsumer />)
 
 		expect(screen.getByTestId("label")).toHaveTextContent("Recent Tasks")
-		expect(screen.getByTestId("trans")).toHaveTextContent("Zoo is a whole AI dev team in your editor")
+		expect(screen.getByTestId("trans")).toHaveTextContent("Dory Code is a whole AI dev team in your editor")
 		expect(screen.getByTestId("interpolated")).toHaveTextContent("3 days ago")
 		expect(screen.getByTestId("language")).toHaveTextContent("en")
 	})

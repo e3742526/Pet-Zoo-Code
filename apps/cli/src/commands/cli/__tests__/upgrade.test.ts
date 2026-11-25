@@ -102,7 +102,7 @@ describe("upgrade", () => {
 		})
 
 		expect(runInstaller).not.toHaveBeenCalled()
-		expect(logSpy).toHaveBeenCalledWith("Roo CLI is already up to date.")
+		expect(logSpy).toHaveBeenCalledWith("Dory Code CLI is already up to date.")
 	})
 
 	it("runs installer when a newer version is available", async () => {
@@ -124,7 +124,7 @@ describe("upgrade", () => {
 		const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(createFetchResponse([{ tag_name: "v3.98.2" }]))
 
 		await expect(upgrade({ currentVersion: "0.1.4", fetchImpl, runInstaller })).rejects.toThrow(
-			"No CLI release is available for Pet-Zoo-Code.",
+			"No CLI release is available for Dory Code.",
 		)
 		expect(runInstaller).not.toHaveBeenCalled()
 	})

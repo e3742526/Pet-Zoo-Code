@@ -124,13 +124,13 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Не выбрано содержимое терминала",
-		"auto_import_failed": "Не удалось автоматически импортировать настройки ZooCode: {{error}}",
+		"auto_import_failed": "Не удалось автоматически импортировать настройки Dory Code: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "История задач Roo Code для импорта из {{domain}} не найдена.",
-			"alreadyImported_one": "{{count}} история задач Roo Code уже импортирована в Zoo Code.",
-			"alreadyImported_few": "Все {{count}} истории задач Roo Code уже импортированы в Zoo Code.",
-			"alreadyImported_many": "Все {{count}} историй задач Roo Code уже импортированы в Zoo Code.",
-			"alreadyImported_other": "Все {{count}} истории задач Roo Code уже импортированы в Zoo Code."
+			"alreadyImported_one": "{{count}} история задач Roo Code уже импортирована в Dory Code.",
+			"alreadyImported_few": "Все {{count}} истории задач Roo Code уже импортированы в Dory Code.",
+			"alreadyImported_many": "Все {{count}} историй задач Roo Code уже импортированы в Dory Code.",
+			"alreadyImported_other": "Все {{count}} истории задач Roo Code уже импортированы в Dory Code."
 		}
 	},
 	"info": {
@@ -138,7 +138,7 @@
 		"custom_storage_path_set": "Установлен пользовательский путь хранения: {{path}}",
 		"default_storage_path": "Возвращено использование пути хранения по умолчанию",
 		"settings_imported": "Настройки успешно импортированы.",
-		"auto_import_success": "Настройки ZooCode автоматически импортированы из {{filename}}",
+		"auto_import_success": "Настройки Dory Code автоматически импортированы из {{filename}}",
 		"image_copied_to_clipboard": "URI данных изображения скопирован в буфер обмена",
 		"image_saved": "Изображение сохранено в {{path}}",
 		"mode_exported": "Режим '{{mode}}' успешно экспортирован",
@@ -147,10 +147,10 @@
 			"signInUnavailable": "Вход в Roo Code Cloud сейчас недоступен. Настрой другого провайдера, чтобы продолжить."
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} история задач Roo Code импортирована в Zoo Code.",
-			"success_few": "{{count}} истории задач Roo Code импортированы в Zoo Code.",
-			"success_many": "{{count}} историй задач Roo Code импортировано в Zoo Code.",
-			"success_other": "{{count}} истории задач Roo Code импортировано в Zoo Code."
+			"success_one": "{{count}} история задач Roo Code импортирована в Dory Code.",
+			"success_few": "{{count}} истории задач Roo Code импортированы в Dory Code.",
+			"success_many": "{{count}} историй задач Roo Code импортировано в Dory Code.",
+			"success_other": "{{count}} истории задач Roo Code импортировано в Dory Code."
 		}
 	},
 	"openRouterSignIn": {
@@ -185,7 +185,7 @@
 		"enter_valid_path": "Пожалуйста, введите корректный путь"
 	},
 	"input": {
-		"task_prompt": "Что должен сделать Zoo?",
+		"task_prompt": "Что должен сделать Dory Code?",
 		"task_placeholder": "Введите вашу задачу здесь"
 	},
 	"customModes": {
@@ -246,9 +246,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Объяснить с Zoo Code",
-		"fix": "Исправить с Zoo Code",
-		"improve": "Улучшить с Zoo Code",
-		"addToContext": "Добавить в Zoo Code"
+		"explain": "Объяснить с Dory Code",
+		"fix": "Исправить с Dory Code",
+		"improve": "Улучшить с Dory Code",
+		"addToContext": "Добавить в Dory Code"
 	}
 }

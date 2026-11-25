@@ -124,11 +124,11 @@
 	},
 	"warnings": {
 		"no_terminal_content": "कोई टर्मिनल सामग्री चयनित नहीं",
-		"auto_import_failed": "ZooCode सेटिंग्स का स्वचालित आयात विफल: {{error}}",
+		"auto_import_failed": "Dory Code सेटिंग्स का स्वचालित आयात विफल: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "{{domain}} से आयात करने के लिए कोई Roo Code कार्य इतिहास नहीं मिला।",
-			"alreadyImported_one": "सभी {{count}} Roo Code कार्य इतिहास पहले से ही Zoo Code में आयात किया जा चुका है।",
-			"alreadyImported_other": "सभी {{count}} Roo Code कार्य इतिहास पहले से ही Zoo Code में आयात किए जा चुके हैं।"
+			"alreadyImported_one": "सभी {{count}} Roo Code कार्य इतिहास पहले से ही Dory Code में आयात किया जा चुका है।",
+			"alreadyImported_other": "सभी {{count}} Roo Code कार्य इतिहास पहले से ही Dory Code में आयात किए जा चुके हैं।"
 		}
 	},
 	"info": {
@@ -136,7 +136,7 @@
 		"custom_storage_path_set": "कस्टम स्टोरेज पाथ सेट किया गया: {{path}}",
 		"default_storage_path": "डिफ़ॉल्ट स्टोरेज पाथ का उपयोग पुनः शुरू किया गया",
 		"settings_imported": "सेटिंग्स सफलतापूर्वक इम्पोर्ट की गईं।",
-		"auto_import_success": "ZooCode सेटिंग्स {{filename}} से स्वचालित रूप से आयात की गईं",
+		"auto_import_success": "Dory Code सेटिंग्स {{filename}} से स्वचालित रूप से आयात की गईं",
 		"image_copied_to_clipboard": "छवि डेटा URI क्लिपबोर्ड में कॉपी की गई",
 		"image_saved": "छवि {{path}} में सहेजी गई",
 		"mode_exported": "मोड '{{mode}}' सफलतापूर्वक निर्यात किया गया",
@@ -145,8 +145,8 @@
 			"signInUnavailable": "Roo Code Cloud साइन-इन अभी उपलब्ध नहीं है। जारी रखने के लिए कोई दूसरा प्रदाता कॉन्फ़िगर करें।"
 		},
 		"rooHistoryImport": {
-			"success_one": "{{count}} Roo Code कार्य इतिहास Zoo Code में आयात किया।",
-			"success_other": "{{count}} Roo Code कार्य इतिहास Zoo Code में आयात किए।"
+			"success_one": "{{count}} Roo Code कार्य इतिहास Dory Code में आयात किया।",
+			"success_other": "{{count}} Roo Code कार्य इतिहास Dory Code में आयात किए।"
 		}
 	},
 	"openRouterSignIn": {
@@ -181,7 +181,7 @@
 		"enter_valid_path": "कृपया एक वैध पाथ दर्ज करें"
 	},
 	"input": {
-		"task_prompt": "Zoo को क्या करना है?",
+		"task_prompt": "Dory Code को क्या करना है?",
 		"task_placeholder": "अपना कार्य यहाँ लिखें"
 	},
 	"customModes": {
@@ -242,9 +242,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Code से समझाएँ",
-		"fix": "Zoo Code से ठीक करें",
-		"improve": "Zoo Code से सुधारें",
-		"addToContext": "Zoo Code में जोड़ें"
+		"explain": "Dory Code से समझाएँ",
+		"fix": "Dory Code से ठीक करें",
+		"improve": "Dory Code से सुधारें",
+		"addToContext": "Dory Code में जोड़ें"
 	}
 }

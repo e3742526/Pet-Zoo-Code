@@ -30,10 +30,10 @@ async function main() {
 		const vsixFileName = `./bin/${name}-${version}.vsix`
 		const extensionId = `${publisher}.${name}`
 
-		console.log("\nPet Zoo Code VSIX Installer")
+		console.log("\nDory Code VSIX Installer")
 		console.log("========================")
 		console.log("\nThis script will:")
-		console.log("1. Uninstall any existing version of Pet Zoo Code")
+		console.log("1. Uninstall any existing version of Dory Code")
 		console.log("2. Install the newly built VSIX package")
 		console.log(`\nExtension: ${extensionId}`)
 		console.log(`VSIX file: ${vsixFileName}`)

@@ -1,6 +1,10 @@
-# Pet-Zoo-Code
+# Dory Code
 
-Pet-Zoo-Code is an independently maintained fork of [Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code). It uses the Apache 2.0 license. Build and install the [local VSIX](#manual-vsix-installation) to use the fork.
+![Dory Code logo](src/assets/icons/icon.png)
+
+Dory Code is an independently maintained fork of [Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code). It uses the Apache 2.0 license. Build and install the [local VSIX](#manual-vsix-installation) to use the fork.
+
+The artwork comes from [Dory Memory](https://github.com/e3742526/dory-memory).
 
 ## About the upstream project
 
@@ -34,9 +38,9 @@ Zoo Code builds on the foundation created by Roo Code and continues to expand it
 - **More dependable terminal and editing workflows** — fixes for premature terminal completion, task-state races, context management, diff editing, and provider-specific tool use.
 - **More control over your workspace** — rules management, per-mode MCP restrictions, multi-root path controls, model reasoning options, and completion change review actions.
 
-## What Pet-Zoo-Code changes
+## What Dory Code changes
 
-Pet-Zoo-Code removes the upstream account, gateway, billing, and analytics services. It also adds fixes that the fork needs for local work:
+Dory Code removes the upstream account, gateway, billing, and analytics services. It also adds fixes that the fork needs for local work:
 
 - **Local-first runtime.** The fork starts no analytics client. Saved Zoo Gateway profiles and task history stay, and the retired provider asks you to select a different provider. See [standalone independence](docs/standalone-independence.md).
 - **OpenRouter.** Catalog and endpoint discovery use your configured base URL and copy only the selected model. Prompt caching uses catalog capabilities. A hashed `session_id` keeps cache routing stable within a task, and a canceled task stops its request.
@@ -75,7 +79,7 @@ Pet-Zoo-Code removes the upstream account, gateway, billing, and analytics servi
 
 ---
 
-## What Can Zoo Code Do For YOU?
+## What Dory Code can do
 
 - Generate Code from natural language descriptions and specs
 - Adapt with Modes: Code, Architect, Ask, Debug, and Custom Modes
@@ -87,7 +91,7 @@ Pet-Zoo-Code removes the upstream account, gateway, billing, and analytics servi
 
 ## Modes
 
-Zoo Code adapts to how you work:
+Dory Code includes these modes:
 
 - Code Mode: everyday coding, edits, and file ops
 - Architect Mode: plan systems, specs, and migrations
@@ -98,7 +102,7 @@ Zoo Code adapts to how you work:
 Learn more: [Using Modes](https://docs.zoocode.dev/basic-usage/using-modes) •
 [Custom Modes](https://docs.zoocode.dev/advanced-usage/custom-modes)
 
-## Resources
+## Upstream Zoo Code resources
 
 - **[Documentation](https://docs.zoocode.dev):** The official guide to
   installing, configuring, and mastering Zoo Code.
@@ -129,14 +133,14 @@ pnpm install
 
 3. **Run the extension**:
 
-There are several ways to run the Pet Zoo Code extension.
+There are several ways to run the Dory Code extension.
 
 ### Development Mode (F5)
 
 For active development, use VSCode's built-in debugging:
 
 Press `F5` (or go to **Run** → **Start Debugging**) in VSCode. This will open a
-new VS Code window with the Pet Zoo Code extension running.
+new VS Code window with the Dory Code extension running.
 
 - Changes to the webview will appear immediately.
 - Changes to the core extension will also hot reload automatically.
@@ -153,7 +157,7 @@ This command will:
 
 - Ask which editor command to use (code/cursor/code-insiders) - defaults to
   'code'
-- Replace an existing Pet Zoo Code installation.
+- Replace an existing Dory Code installation.
 - Build the latest VSIX package.
 - Install the newly built VSIX.
 - Prompt you to restart VS Code for changes to take effect.
@@ -181,9 +185,9 @@ If you prefer to install the VSIX package manually:
 
 ### Transfer from a Zoo Code installation
 
-1. In Zoo Code, complete or stop active tasks. Open **Settings → About** and select **Export** under **Manage Settings**. Import the file from the same screen in Pet Zoo Code. Treat the export as private because it can contain provider API keys.
+1. In Zoo Code, complete or stop active tasks. Open **Settings → About** and select **Export** under **Manage Settings**. Import the file from the same screen in Dory Code. Treat the export as private because it can contain provider API keys.
 2. Copy any VS Code settings you want to keep from `zoo-code.*` to `pet-zoo-code.*`. Use a different custom storage folder for each extension.
-3. Run **Pet Zoo Code: Import Zoo Code Task History** from the Command Palette. Pet Zoo Code copies saved task history and conversations into its own store and skips tasks already present. Checkpoint repositories stay in the original store.
+3. Run **Dory Code: Import Zoo Code Task History** from the Command Palette. Dory Code copies saved task history and conversations into its own store and skips tasks already present. Checkpoint repositories stay in the original store.
 4. Sign in again to any subscription providers that you use. For OpenRouter, use **Get OpenRouter API Key** and paste the authorization code from the browser. For a custom OpenRouter endpoint, enter the API key for that endpoint.
 
 For a managed installation, the administrator can supply the same provider allowlist through `ROO_CODE_CLOUD_ORG_SETTINGS` before launching VS Code. The variable takes a base64-encoded JSON object with `allowList` and an optional `version`. This also covers installations that only have a policy cached under the old extension ID.
@@ -195,7 +199,7 @@ publishing. Check our `CHANGELOG.md` for release notes.
 
 ---
 
-## Disclaimer
+## Upstream disclaimer
 
 **Please note** that Zoo Code does **not** make any representations or
 warranties regarding any code, models, or other tools provided or made available
@@ -220,11 +224,3 @@ We love community contributions! Get started by reading our
 ## License
 
 [Apache 2.0 © 2026 Zoo Code Org](./LICENSE)
-
----
-
-**Enjoy Zoo Code!** Whether you keep it on a short leash or let it roam
-autonomously, we can’t wait to see what you build. If you have questions or
-feature ideas, drop by our [Reddit community](https://www.reddit.com/r/ZooCode/)
-or [Discord](https://discord.gg/VxfP4Vx3gX), or open an
-[issue](https://github.com/Zoo-Code-Org/Zoo-Code/issues). Happy coding!

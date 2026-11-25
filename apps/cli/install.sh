@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pet-Zoo-Code CLI installer
+# Dory Code CLI installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | sh
 #
 # Environment variables:
@@ -160,7 +160,7 @@ if (latestVersion) {
 ')
     
     if [ -z "$VERSION" ]; then
-        error "No CLI release is available for Pet-Zoo-Code."
+        error "No CLI release is available for Dory Code."
     fi
     
     info "Latest version: $VERSION"
@@ -315,7 +315,7 @@ verify_install() {
 # Print success message
 print_success() {
     echo ""
-    printf "${GREEN}${BOLD}✓ Roo Code CLI installed successfully!${NC}\n"
+    printf "${GREEN}${BOLD}✓ Dory Code CLI installed successfully.${NC}\n"
     echo ""
     echo "  Installation: $INSTALL_DIR"
     echo "  Binary: $BIN_DIR/roo"
@@ -335,7 +335,7 @@ main() {
     echo ""
     printf "${BLUE}${BOLD}"
     echo "  ╭─────────────────────────────────╮"
-    echo "  │     Roo Code CLI Installer      │"
+    echo "  │     Dory Code CLI Installer     │"
     echo "  ╰─────────────────────────────────╯"
     printf "${NC}"
     echo ""

@@ -1,6 +1,6 @@
 {
 	"input": {
-		"task_prompt": "Què vols que faci Zoo?",
+		"task_prompt": "Què vols que faci Dory Code?",
 		"task_placeholder": "Escriu la teva tasca aquí"
 	},
 	"number_format": {
@@ -128,12 +128,12 @@
 	},
 	"warnings": {
 		"no_terminal_content": "No s'ha seleccionat contingut de terminal",
-		"auto_import_failed": "Ha fallat la importació automàtica de la configuració de ZooCode: {{error}}",
+		"auto_import_failed": "Ha fallat la importació automàtica de la configuració de Dory Code: {{error}}",
 		"rooHistoryImport": {
 			"nothingFound": "No s'ha trobat historial de tasques de Roo Code per importar de {{domain}}.",
-			"alreadyImported_one": "Tot l'historial de tasca de Roo Code ({{count}}) ja s'ha importat a Zoo Code.",
-			"alreadyImported_many": "Tots els {{count}} historials de tasques de Roo Code ja s'han importat a Zoo Code.",
-			"alreadyImported_other": "Tots els {{count}} historials de tasques de Roo Code ja s'han importat a Zoo Code."
+			"alreadyImported_one": "Tot l'historial de tasca de Roo Code ({{count}}) ja s'ha importat a Dory Code.",
+			"alreadyImported_many": "Tots els {{count}} historials de tasques de Roo Code ja s'han importat a Dory Code.",
+			"alreadyImported_other": "Tots els {{count}} historials de tasques de Roo Code ja s'han importat a Dory Code."
 		}
 	},
 	"info": {
@@ -141,7 +141,7 @@
 		"custom_storage_path_set": "Ruta d'emmagatzematge personalitzada establerta: {{path}}",
 		"default_storage_path": "S'ha reprès l'ús de la ruta d'emmagatzematge predeterminada",
 		"settings_imported": "Configuració importada correctament.",
-		"auto_import_success": "Configuració de ZooCode importada automàticament des de {{filename}}",
+		"auto_import_success": "Configuració de Dory Code importada automàticament des de {{filename}}",
 		"image_copied_to_clipboard": "URI de dades de la imatge copiada al portapapers",
 		"image_saved": "Imatge desada a {{path}}",
 		"mode_exported": "Mode '{{mode}}' exportat correctament",
@@ -150,9 +150,9 @@
 			"signInUnavailable": "L'inici de sessió de Roo Code Cloud no està disponible en aquest moment. Configura un altre proveïdor per continuar."
 		},
 		"rooHistoryImport": {
-			"success_one": "S'ha importat {{count}} historial de tasca de Roo Code a Zoo Code.",
-			"success_many": "S'han importat {{count}} historials de tasques de Roo Code a Zoo Code.",
-			"success_other": "S'han importat {{count}} historials de tasques de Roo Code a Zoo Code."
+			"success_one": "S'ha importat {{count}} historial de tasca de Roo Code a Dory Code.",
+			"success_many": "S'han importat {{count}} historials de tasques de Roo Code a Dory Code.",
+			"success_other": "S'han importat {{count}} historials de tasques de Roo Code a Dory Code."
 		}
 	},
 	"openRouterSignIn": {
@@ -244,9 +244,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Explica amb Zoo Code",
-		"fix": "Corregeix amb Zoo Code",
-		"improve": "Millora amb Zoo Code",
-		"addToContext": "Afegeix a Zoo Code"
+		"explain": "Explica amb Dory Code",
+		"fix": "Corregeix amb Dory Code",
+		"improve": "Millora amb Dory Code",
+		"addToContext": "Afegeix a Dory Code"
 	}
 }

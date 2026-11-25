@@ -60,7 +60,7 @@ export async function createDiagnosticsReport(options: {
 		])
 		if (openResult.status === "fulfilled" && copyResult.status === "fulfilled") {
 			await vscode.window.showInformationMessage(
-				"Zoo Code: redacted diagnostics copied and opened for review. No data was uploaded.",
+				"Dory Code: redacted diagnostics copied and opened for review. No data was uploaded.",
 			)
 		} else {
 			if (openResult.status === "rejected")
@@ -68,12 +68,12 @@ export async function createDiagnosticsReport(options: {
 			if (copyResult.status === "rejected")
 				options.outputChannel.appendLine("[createDiagnosticsReport] copy failed")
 			await vscode.window.showWarningMessage(
-				"Zoo Code created the diagnostics report, but could not open or copy every result. No data was uploaded.",
+				"Dory Code created the diagnostics report, but could not open or copy every result. No data was uploaded.",
 			)
 		}
 	} catch (error) {
 		const category = error instanceof Error ? error.name : "UnknownError"
 		options.outputChannel.appendLine(`[createDiagnosticsReport] failed: ${category}`)
-		await vscode.window.showErrorMessage("Zoo Code could not create the diagnostics report.")
+		await vscode.window.showErrorMessage("Dory Code could not create the diagnostics report.")
 	}
 }

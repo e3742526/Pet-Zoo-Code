@@ -1,12 +1,12 @@
 {
 	"landing": {
-		"greeting": "Witaj w Zoo Code!",
-		"introduction": "Dzięki szerokiej gamie wbudowanych i rozszerzalnych Trybów, Zoo Code pozwala planować, projektować architekturę, kodować, debugować i zwiększać produktywność jak nigdy dotąd.",
-		"logoAlt": "Logo Roo"
+		"greeting": "Witaj w Dory Code!",
+		"introduction": "Dzięki szerokiej gamie wbudowanych i rozszerzalnych Trybów, Dory Code pozwala planować, projektować architekturę, kodować, debugować i zwiększać produktywność jak nigdy dotąd.",
+		"logoAlt": "Logo Dory Code"
 	},
 	"providerSignup": {
 		"heading": "Wybierz swojego dostawcę",
-		"chooseProvider": "Zoo Code potrzebuje dostawcy LLM, aby działać. Wybierz jeden, aby zacząć, możesz dodać więcej później.",
+		"chooseProvider": "Dory Code potrzebuje dostawcy LLM, aby działać. Wybierz jeden, aby zacząć, możesz dodać więcej później.",
 		"goBack": "Wróć",
 		"finish": "Zakończ"
 	},

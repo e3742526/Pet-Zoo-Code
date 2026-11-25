@@ -1,16 +1,16 @@
 # @roo-code/cli
 
-Command Line Interface for Roo Code - Run the Roo Code agent from the terminal without VSCode.
+Run the Dory Code agent from a terminal.
 
 ## Overview
 
-This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Roo Code extension to run in a Node.js environment.
+This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the Dory Code extension to run in a Node.js environment.
 
 ## Installation
 
 ### Quick Install (Recommended)
 
-When Pet-Zoo-Code has a published CLI release, use this command to install it. See Development Installation to build from source.
+Use this command to install a published Dory Code CLI release. See Development Installation to build from source.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/e3742526/Pet-Zoo-Code/main/apps/cli/install.sh | sh

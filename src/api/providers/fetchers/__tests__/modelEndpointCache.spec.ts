@@ -23,6 +23,70 @@ describe("modelEndpointCache", () => {
 	})
 
 	describe("getModelEndpoints", () => {
+		it("shares discovery across simultaneous selections of endpoints for the same model", async () => {
+			const getEndpoints = vi.mocked(openrouter.getOpenRouterModelEndpoints)
+			let finish!: (models: ModelRecord) => void
+			getEndpoints.mockReturnValue(new Promise<ModelRecord>((resolve) => (finish = resolve)))
+			const baseUrl = "https://overlap.example.test/api/v1"
+			const selection = {
+				router: providerIdentifiers.openrouter,
+				modelId: "test/overlap",
+				endpoint: "pinned",
+				baseUrl,
+			} as const
+			const parent = Promise.resolve({ model: undefined, hasModels: true })
+			const pending = [
+				getModelEndpoints(selection, handler, parent),
+				getModelEndpoints({ ...selection, endpoint: "alternate", baseUrl: baseUrl + "/" }, handler, parent),
+			]
+			const endpoints = {
+				pinned: { contextWindow: 4096, supportsPromptCache: false },
+				alternate: { contextWindow: 8192, supportsPromptCache: false },
+			}
+			finish(endpoints)
+			const [first, second] = await Promise.all(pending)
+			expect(getEndpoints).toHaveBeenCalledOnce()
+			expect(first).toEqual(endpoints)
+			expect(second).toEqual(endpoints)
+			expect(first.pinned).not.toBe(second.pinned)
+		})
+
+		it("allows a new load after parent metadata fails", async () => {
+			const getCatalogModel = vi.mocked(modelCache.getCatalogModel)
+			const getEndpoints = vi.mocked(openrouter.getOpenRouterModelEndpoints)
+			const selection = {
+				router: providerIdentifiers.openrouter,
+				modelId: "test/retry",
+				endpoint: "pinned",
+			} as const
+			const endpoints = { pinned: { contextWindow: 4096, supportsPromptCache: false } }
+			getEndpoints.mockResolvedValue(endpoints)
+			getCatalogModel
+				.mockRejectedValueOnce(new Error("parent unavailable"))
+				.mockResolvedValueOnce({ model: undefined, hasModels: false })
+
+			await expect(getModelEndpoints(selection, handler)).rejects.toThrow("parent unavailable")
+			await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
+			expect(getEndpoints).toHaveBeenCalledTimes(2)
+		})
+
+		it("keeps live endpoint requests separate for model IDs that share a legacy filename", async () => {
+			const getEndpoints = vi.mocked(openrouter.getOpenRouterModelEndpoints)
+			getEndpoints
+				.mockResolvedValueOnce({ pinned: { contextWindow: 4096, supportsPromptCache: false } })
+				.mockResolvedValueOnce({ pinned: { contextWindow: 8192, supportsPromptCache: false } })
+			const selection = { router: providerIdentifiers.openrouter, endpoint: "pinned" } as const
+			const parent = Promise.resolve({ model: undefined, hasModels: true })
+
+			const [first, second] = await Promise.all([
+				getModelEndpoints({ ...selection, modelId: "test/filename" }, handler, parent),
+				getModelEndpoints({ ...selection, modelId: "testf/ilename" }, handler, parent),
+			])
+			expect(first.pinned.contextWindow).toBe(4096)
+			expect(second.pinned.contextWindow).toBe(8192)
+			expect(getEndpoints).toHaveBeenCalledTimes(2)
+		})
+
 		it("keeps model endpoint metadata and parent models separate for custom URLs", async () => {
 			const getCatalogModel = vi.mocked(modelCache.getCatalogModel).mockResolvedValue({
 				model: undefined,

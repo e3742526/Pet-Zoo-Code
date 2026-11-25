@@ -8,8 +8,8 @@ import sanitize from "sanitize-filename"
 import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
-import { RouterName } from "../../../shared/api"
-import { getCacheDirectoryPath } from "../../../utils/storage"
+import type { RouterName } from "../../../shared/api"
+import { getCacheDirectoryPath, getCustomStoragePath } from "../../../utils/storage"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 
@@ -18,25 +18,34 @@ import { getCatalogModel } from "./modelCache"
 import type { ApiHandler } from "../../index"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
+const ENDPOINT_FALLBACK_TTL_SECONDS = 30
+const pendingCatalogs = new Map<string, Promise<ModelRecord>>()
 
-function getCacheKey(router: RouterName, modelId: string, baseUrl?: string): string {
-	if (!baseUrl) return sanitize(`${router}_${modelId}`)
+function getDiskKey(router: RouterName, modelId: string, baseUrl?: string): string {
+	if (baseUrl === undefined) return sanitize(`${router}_${modelId}`)
 	const scope = createHash("sha256")
-		.update(JSON.stringify([baseUrl.replace(/\/+$/, ""), modelId]))
+		.update(JSON.stringify([baseUrl, modelId]))
 		.digest("hex")
 	return `${router}_${scope}`
 }
 
-async function writeModelEndpoints(key: string, data: ModelRecord) {
-	const filename = `${key}_endpoints.json`
-	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
-	await safeWriteJson(path.join(cacheDir, filename), data)
+type StorageScope = { globalPath: string; customPath: string }
+
+function getStorageScope(): StorageScope | undefined {
+	try {
+		return { globalPath: ContextProxy.instance.globalStorageUri.fsPath, customPath: getCustomStoragePath() }
+	} catch {
+		return undefined
+	}
 }
 
-async function readModelEndpoints(key: string): Promise<ModelRecord | undefined> {
-	const filename = `${key}_endpoints.json`
-	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
-	const filePath = path.join(cacheDir, filename)
+async function getEndpointCacheFile(diskKey: string, storage: StorageScope): Promise<string> {
+	const cacheDir = await getCacheDirectoryPath(storage.globalPath, storage.customPath)
+	return path.join(cacheDir, `${diskKey}_endpoints.json`)
+}
+
+async function readModelEndpoints(diskKey: string, storage: StorageScope): Promise<ModelRecord | undefined> {
+	const filePath = await getEndpointCacheFile(diskKey, storage)
 	const exists = await fileExistsAtPath(filePath)
 	return exists ? JSON.parse(await fs.readFile(filePath, "utf8")) : undefined
 }
@@ -62,57 +71,91 @@ export const getModelEndpoints = async (
 		return {}
 	}
 
-	const key = getCacheKey(router, modelId, baseUrl)
-	let modelProviders = memoryCache.get<ModelRecord>(key)
+	const normalizedUrl = baseUrl ? baseUrl.replace(/\/+$/, "") : undefined
+	const liveKey = JSON.stringify([router, modelId, normalizedUrl])
+	const live = memoryCache.get<ModelRecord>(liveKey)
+	if (live) return live
 
-	if (modelProviders) {
-		// console.log(`[getModelProviders] NodeCache hit for ${key} -> ${Object.keys(modelProviders).length}`)
-		return modelProviders
+	const storage = getStorageScope()
+	const fallbackKey = JSON.stringify([liveKey, storage?.globalPath, storage?.customPath])
+	const fallback = memoryCache.get<ModelRecord>(fallbackKey)
+	if (fallback) return fallback
+
+	let pending = pendingCatalogs.get(fallbackKey)
+	if (!pending) {
+		pending = loadModelEndpoints(
+			{ liveKey, fallbackKey, diskKey: getDiskKey(router, modelId, normalizedUrl), modelId, baseUrl, storage },
+			handler,
+			parentLoad,
+		).finally(() => {
+			pendingCatalogs.delete(fallbackKey)
+		})
+		pendingCatalogs.set(fallbackKey, pending)
 	}
+	return structuredClone(await pending)
+}
 
-	modelProviders = baseUrl
+async function loadModelEndpoints(
+	{
+		liveKey,
+		fallbackKey,
+		diskKey,
+		modelId,
+		baseUrl,
+		storage,
+	}: {
+		liveKey: string
+		fallbackKey: string
+		diskKey: string
+		modelId: string
+		baseUrl?: string
+		storage?: StorageScope
+	},
+	handler: ApiHandler,
+	parentLoad?: ReturnType<typeof getCatalogModel>,
+): Promise<ModelRecord> {
+	const modelProviders = baseUrl
 		? await getOpenRouterModelEndpoints(modelId, { openRouterBaseUrl: baseUrl }, { untrustedBaseUrl: true })
 		: await getOpenRouterModelEndpoints(modelId)
 
-	// Copy model-level capabilities from the parent model to each endpoint
-	// These are capabilities that don't vary by provider (tools, reasoning, etc.)
-	if (Object.keys(modelProviders).length > 0) {
-		const { model: parentModel } = await (parentLoad ??
-			getCatalogModel({ provider: providerIdentifiers.openrouter, baseUrl }, handler, modelId))
-
-		if (parentModel) {
-			// Copy model-level capabilities to all endpoints
-			// Clone arrays to avoid shared mutable references
-			const { supportsReasoningEffort, supportedParameters } = parentModel
-			for (const endpointInfo of Object.values(modelProviders)) {
-				endpointInfo.supportsReasoningEffort = Array.isArray(supportsReasoningEffort)
-					? [...supportsReasoningEffort]
-					: supportsReasoningEffort
-				endpointInfo.supportedParameters = supportedParameters?.slice()
-			}
-		}
-	}
-
-	if (Object.keys(modelProviders).length > 0) {
-		// console.log(`[getModelProviders] API fetch for ${key} -> ${Object.keys(modelProviders).length}`)
-		memoryCache.set(key, modelProviders)
+	const endpoints = Object.values(modelProviders)
+	if (endpoints.length === 0) {
+		if (!storage) return {}
 
 		try {
-			await writeModelEndpoints(key, modelProviders)
-			// console.log(`[getModelProviders] wrote ${key} endpoints to file cache`)
+			const fallback = await readModelEndpoints(diskKey, storage)
+			if (fallback && Object.keys(fallback).length > 0) {
+				memoryCache.set(fallbackKey, fallback, ENDPOINT_FALLBACK_TTL_SECONDS)
+				return fallback
+			}
 		} catch (error) {
-			console.error(`[getModelProviders] error writing ${key} endpoints to file cache`, error)
+			console.error(`[getModelProviders] error reading ${diskKey} endpoints from file cache`, error)
 		}
-
-		return modelProviders
+		return {}
 	}
 
-	try {
-		modelProviders = await readModelEndpoints(key)
-		// console.log(`[getModelProviders] read ${key} endpoints from file cache`)
-	} catch (error) {
-		console.error(`[getModelProviders] error reading ${key} endpoints from file cache`, error)
+	// These capabilities apply to every endpoint. Give each endpoint its own arrays.
+	const { model: parentModel } = await (parentLoad ??
+		getCatalogModel({ provider: providerIdentifiers.openrouter, baseUrl }, handler, modelId))
+	if (parentModel) {
+		const { supportsReasoningEffort, supportedParameters } = parentModel
+		for (const endpointInfo of endpoints) {
+			endpointInfo.supportsReasoningEffort = Array.isArray(supportsReasoningEffort)
+				? [...supportsReasoningEffort]
+				: supportsReasoningEffort
+			endpointInfo.supportedParameters = supportedParameters?.slice()
+		}
 	}
 
-	return modelProviders ?? {}
+	memoryCache.set(liveKey, modelProviders)
+	memoryCache.del(fallbackKey)
+	if (storage) {
+		try {
+			await safeWriteJson(await getEndpointCacheFile(diskKey, storage), modelProviders)
+		} catch (error) {
+			console.error(`[getModelProviders] error writing ${diskKey} endpoints to file cache`, error)
+		}
+	}
+
+	return modelProviders
 }

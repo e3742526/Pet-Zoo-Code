@@ -311,6 +311,22 @@ The regression tests observed one full copy for an unpinned request and two for 
 
 All 317 focused tests and 45 distribution checks passed. Host type and lint checks passed, and the endpoint test lost nine lint suppressions. All 560 packaged scripts matched the build. The installed VSIX ran with non-loopback traffic blocked, fetched the model catalog once, used the pinned endpoint's output cap, and completed and reopened a task. The build used Node 24.22.3.
 
+### Repeated OpenRouter endpoint discovery
+
+Concurrent task lookups for the same model, base URL, and storage configuration now share one HTTP request and one cache write. Each caller gets its own copy. If the provider returns no endpoints and a saved list is available, tasks reuse that list for 30 seconds. A different storage configuration reads its own saved list. An empty result with no saved list remains eligible for immediate retry.
+
+The loopback fixture used a 20 ms server delay, the real disk cache, and eight paired trials after two warm-up pairs. The median of 64 warm reads stayed within the 1 ms regression limit. Concurrent wall time includes the cache write and any wait for its file lock.
+
+| Workload                      | Requests before | Requests after | Median before (ms) | Median after (ms) | Range before (ms) | Range after (ms) |
+| ----------------------------- | --------------: | -------------: | -----------------: | ----------------: | ----------------: | ---------------: |
+| Three concurrent cold lookups |               3 |              1 |             337.38 |             29.57 |     334.00–345.03 |      27.99–31.33 |
+| Eight reads during an outage  |               8 |              1 |             194.75 |             24.61 |     189.42–202.29 |      21.40–25.95 |
+| 64 warm reads                 |               0 |              0 |               1.35 |             0.283 |         0.43–1.55 |      0.106–0.682 |
+
+The regression tests reproduced duplicate requests in concurrent and outage cases. The tests also check retry after failure, isolation between storage settings, and separate copies for concurrent callers. All 262 focused tests and 45 distribution checks passed. Host type and lint checks passed with no new suppressions. All 560 packaged scripts matched the build.
+
+With non-loopback traffic blocked and the sidebar closed, the installed VSIX ran two tasks using the saved pinned endpoint limit after one failed discovery request. The second task reopened with its saved result. The settings picker uses its own discovery path. The build used Node 24.22.3.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

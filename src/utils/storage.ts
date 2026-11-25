@@ -65,8 +65,8 @@ export async function getSettingsDirectoryPath(globalStoragePath: string): Promi
 /**
  * Gets the cache directory path
  */
-export async function getCacheDirectoryPath(globalStoragePath: string): Promise<string> {
-	const basePath = await getStorageBasePath(globalStoragePath)
+export async function getCacheDirectoryPath(globalStoragePath: string, customStoragePath?: string): Promise<string> {
+	const basePath = await getStorageBasePath(globalStoragePath, customStoragePath)
 	const cacheDir = path.join(basePath, "cache")
 	await fs.mkdir(cacheDir, { recursive: true })
 	return cacheDir

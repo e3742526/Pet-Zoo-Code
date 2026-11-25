@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm } from "fs/promises"
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 import * as vscode from "vscode"
@@ -220,22 +220,65 @@ it.each([true, false])("reports whether an unlisted selection has a populated ca
 
 it("reopens the saved endpoint list for the requested model when its live list is empty", async () => {
 	const { getModelEndpoints } = await import("../modelEndpointCache")
+	const getEndpoints = vi.mocked(getOpenRouterModelEndpoints).mockClear()
 	const endpointOptions = {
 		router: providerIdentifiers.openrouter,
 		modelId: "vendor/model",
 		endpoint: "test-endpoint",
 	}
-	vi.mocked(getOpenRouterModelEndpoints).mockResolvedValueOnce(endpoints)
+	getEndpoints.mockResolvedValueOnce(endpoints)
 	await expect(getModelEndpoints(endpointOptions, handler)).resolves.toEqual(endpoints)
 	expect(await readdir(join(customStoragePath, "cache"))).toContain("openrouter_vendormodel_endpoints.json")
 
 	vi.useFakeTimers({ toFake: ["Date"] })
 	try {
 		vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
-		vi.mocked(getOpenRouterModelEndpoints).mockResolvedValueOnce({})
+		getEndpoints.mockResolvedValue({})
+		const saved = await getModelEndpoints(endpointOptions, handler)
+		expect(saved).toEqual(endpoints)
+		saved["test-endpoint"].maxTokens = 12
 		await expect(getModelEndpoints(endpointOptions, handler)).resolves.toEqual(endpoints)
+		expect(getEndpoints).toHaveBeenCalledTimes(2)
+
+		vi.setSystemTime(Date.now() + 30_001)
+		const recovered = { "test-endpoint": { ...endpoints["test-endpoint"], maxTokens: 8192 } }
+		getEndpoints.mockResolvedValueOnce(recovered)
+		await expect(getModelEndpoints(endpointOptions, handler)).resolves.toEqual(recovered)
+		expect(getEndpoints).toHaveBeenCalledTimes(3)
 	} finally {
 		vi.useRealTimers()
+		getEndpoints.mockReset()
+	}
+})
+
+it("keeps retained endpoint lists scoped to the configured storage directory", async () => {
+	const { getModelEndpoints } = await import("../modelEndpointCache")
+	const getEndpoints = vi.mocked(getOpenRouterModelEndpoints).mockReset().mockResolvedValue({})
+	const customPath = customStoragePath
+	const diskFile = "openrouter_vendorfallback-storage_endpoints.json"
+	const selection = {
+		router: providerIdentifiers.openrouter,
+		modelId: "vendor/fallback-storage",
+		endpoint: "test-endpoint",
+	} as const
+	const defaults = { "test-endpoint": { ...endpoints["test-endpoint"], maxTokens: 8192 } }
+	try {
+		for (const [directory, catalog] of [
+			[customPath, endpoints],
+			[storage.global, defaults],
+		] as const) {
+			await mkdir(join(directory, "cache"), { recursive: true })
+			await writeFile(join(directory, "cache", diskFile), JSON.stringify(catalog))
+		}
+
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
+		customStoragePath = ""
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(defaults)
+		customStoragePath = customPath
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
+		expect(getEndpoints).toHaveBeenCalledTimes(2)
+	} finally {
+		getEndpoints.mockReset()
 	}
 })
 
@@ -275,7 +318,7 @@ it.each([undefined, "test-endpoint"])("copies one OpenRouter model with endpoint
 			expect(selected.info.contextWindow).toBe(pin ? 32768 : 65536)
 			expect(selected.info.supportedParameters).toEqual(model.supportedParameters)
 			expect(selected.info.supportsReasoningEffort).toEqual(model.supportsReasoningEffort)
-			expect(clone.mock.calls).toEqual([[model]])
+			expect(clone.mock.calls).toEqual(pin ? [[model], [{ [pin]: selected.info }]] : [[model]])
 			selected.info.supportedParameters?.push("max_tokens")
 		} finally {
 			clone.mockRestore()

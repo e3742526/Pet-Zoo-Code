@@ -1,3 +1,4 @@
+// Compatibility facade for skill discovery, watching, mutations, and mode resolution.
 import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
@@ -6,56 +7,31 @@ import { parseFrontmatter } from "../../utils/safeFrontmatter"
 
 import type { ClineProvider } from "../../core/webview/ClineProvider"
 import { getGlobalRooDirectory, getGlobalAgentsDirectory, getProjectAgentsDirectoryForCwd } from "../roo-config"
-import { directoryExists, fileExists } from "../roo-config"
+import { fileExists } from "../roo-config"
 import { SkillMetadata, SkillContent } from "../../shared/skills"
 import { modes, getAllModes } from "../../shared/modes"
-import {
-	validateSkillName as validateSkillNameShared,
-	SkillNameValidationError,
-	SKILL_NAME_MAX_LENGTH,
-} from "@roo-code/types"
+import { validateSkillName as validateSkillNameShared } from "@roo-code/types"
 import { t } from "../../i18n"
+
+import { SkillsWatchers } from "./SkillsWatchers"
+import { moveSkillDirectory } from "./skillDirectoryMove"
+import {
+	getSkillKey,
+	getSkillNameErrorMessage,
+	isNotFoundError,
+	isSymlink,
+	scanSkillsDirectory,
+	type DiscoveryPass,
+} from "./skillDiscovery"
 
 // Re-export for convenience
 export type { SkillMetadata, SkillContent }
-
-// Direct children (new skill folders or container symlinks) and their SKILL.md files.
-const SKILLS_WATCH_PATTERN = "{*,*/SKILL.md}"
-
-/** Mutable state shared by every scan in a single discovery pass. */
-interface DiscoveryPass {
-	/** Skills found in this pass. Published to the manager only when the pass ends. */
-	skills: Map<string, SkillMetadata>
-	/** SKILL.md paths of the skills found in this pass that come from a symlinked container. */
-	containerSkillPaths: Set<string>
-	/** Symlinked containers found in this pass: real path -> the root entry that links to it. */
-	containers: Map<string, string>
-	/**
-	 * Paths that an unexpected error (anything except ENOENT/ENOTDIR) hid. Previously
-	 * discovered skills and containers under them are kept, because they might only be
-	 * unreadable for a moment. Everything else is replaced by the results of the pass.
-	 */
-	failedPaths: string[]
-}
-
-function isNotFoundError(error: unknown): boolean {
-	const code = (error as NodeJS.ErrnoException | undefined)?.code
-	return code === "ENOENT" || code === "ENOTDIR"
-}
 
 function isUnderAny(filePath: string, dirs: Iterable<string>): boolean {
 	for (const dir of dirs) {
 		if (filePath === dir || filePath.startsWith(dir + path.sep)) return true
 	}
 	return false
-}
-
-/**
- * Dot-prefixed entries are never valid skill names. They are also used for the
- * hidden staging and trash dirs of a cross-filesystem move.
- */
-function isHiddenEntry(name: string): boolean {
-	return name.startsWith(".")
 }
 
 export class SkillsManager {
@@ -68,9 +44,10 @@ export class SkillsManager {
 	// resolve still covers the skills found under its target
 	private rootRealPaths: Map<string, string> = new Map()
 	private providerRef: WeakRef<ClineProvider>
-	private disposables: vscode.Disposable[] = []
-	// Keyed by container real path. VS Code watchers don't follow symlinks.
-	private containerWatchers: Map<string, vscode.Disposable> = new Map()
+	private readonly watchers = new SkillsWatchers(
+		() => this.isDisposed,
+		() => this.discoverSkills(),
+	)
 	// Runs discovery passes one at a time, so an older pass can't finish after a newer one
 	private discoveryQueue: Promise<void> = Promise.resolve()
 	private isDisposed = false
@@ -113,13 +90,13 @@ export class SkillsManager {
 		const skillsDirs = await this.getSkillsDirectories()
 
 		for (const { dir, source, mode } of skillsDirs) {
-			await this.scanSkillsDirectory(dir, source, mode, pass)
+			await scanSkillsDirectory(dir, source, mode, pass, this.rootRealPaths)
 		}
 
 		if (this.isDisposed) return
 
 		this.publishSkills(pass)
-		this.syncContainerWatchers()
+		this.watchers.syncContainers(this.containers)
 	}
 
 	/**
@@ -149,247 +126,6 @@ export class SkillsManager {
 		this.skills = pass.skills
 		this.containerSkillPaths = pass.containerSkillPaths
 		this.containers = pass.containers
-	}
-
-	/**
-	 * Scan a skills directory for skill subdirectories.
-	 * Handles symlink cases:
-	 * 1. The skills directory itself is a symlink (resolved by directoryExists using realpath)
-	 * 2. Individual skill subdirectories are symlinks
-	 * 3. Symlinked container of skills (e.g., .roo/skills/shared -> /repo/skills).
-	 *    Only symlinks are treated as containers, and only one level deep.
-	 *
-	 * On name collisions the last loaded skill wins. Containers are loaded first
-	 * in reverse order, so direct skills win over container skills, and the
-	 * alphabetically first container wins over the others.
-	 *
-	 * Errors are handled per entry, so one unreadable entry never hides the rest of the root.
-	 */
-	private async scanSkillsDirectory(
-		dirPath: string,
-		source: "global" | "project",
-		mode: string | undefined,
-		pass: DiscoveryPass,
-	): Promise<void> {
-		let realDirPath = dirPath
-		let entries: string[]
-		try {
-			if (!(await directoryExists(dirPath))) {
-				return
-			}
-			// Get the real path (resolves if dirPath is a symlink)
-			realDirPath = await fs.realpath(dirPath)
-			// Sorted so collision handling doesn't depend on filesystem order
-			entries = [...(await fs.readdir(realDirPath))].sort()
-		} catch (error) {
-			if (!isNotFoundError(error)) {
-				pass.failedPaths.push(dirPath, realDirPath, this.rootRealPaths.get(dirPath) ?? realDirPath)
-				console.error(`Failed to scan skills directory ${dirPath}:`, error)
-			}
-			return
-		}
-		this.rootRealPaths.set(dirPath, realDirPath)
-
-		const directSkills: string[] = []
-		const containerPaths: string[] = []
-
-		for (const entryName of entries) {
-			if (isHiddenEntry(entryName)) continue
-			const entryPath = path.join(realDirPath, entryName)
-
-			try {
-				// Check if this entry is a directory (follows symlinks automatically)
-				const stats = await fs.stat(entryPath)
-				if (!stats.isDirectory()) continue
-
-				if (await fileExists(path.join(entryPath, "SKILL.md"))) {
-					directSkills.push(entryName)
-				} else if (await this.isSymlink(entryPath, pass)) {
-					containerPaths.push(entryPath)
-				}
-			} catch (error) {
-				// A broken symlink (ENOENT) is simply not a skill
-				if (!isNotFoundError(error)) {
-					pass.failedPaths.push(entryPath)
-					console.error(`Failed to check skill entry ${entryPath}:`, error)
-				}
-			}
-		}
-
-		for (const containerPath of containerPaths.reverse()) {
-			await this.scanSkillContainer(containerPath, source, mode, pass)
-		}
-
-		for (const entryName of directSkills) {
-			// The skill name comes from the entry name (symlink name if symlinked)
-			await this.loadSkillMetadata(pass, path.join(realDirPath, entryName), source, mode, entryName)
-		}
-	}
-
-	private async scanSkillContainer(
-		containerPath: string,
-		source: "global" | "project",
-		mode: string | undefined,
-		pass: DiscoveryPass,
-	): Promise<void> {
-		let realContainerPath = containerPath
-		try {
-			realContainerPath = await fs.realpath(containerPath)
-			pass.containers.set(realContainerPath, containerPath)
-
-			const entries = [...(await fs.readdir(realContainerPath))].sort()
-			for (const entryName of entries) {
-				if (isHiddenEntry(entryName)) continue
-				const entryPath = path.join(realContainerPath, entryName)
-
-				let isDirectory = false
-				try {
-					isDirectory = (await fs.stat(entryPath)).isDirectory()
-				} catch (error) {
-					// A broken symlink (ENOENT) is simply not a skill
-					if (!isNotFoundError(error)) {
-						pass.failedPaths.push(entryPath)
-						console.error(`Failed to stat skill entry ${entryPath} in container ${containerPath}:`, error)
-					}
-				}
-				if (!isDirectory) continue
-
-				const skillMdPath = await this.loadSkillMetadata(pass, entryPath, source, mode, entryName)
-				if (skillMdPath) {
-					pass.containerSkillPaths.add(skillMdPath)
-				}
-			}
-		} catch (error) {
-			if (!isNotFoundError(error)) {
-				pass.failedPaths.push(containerPath, realContainerPath)
-				console.error(`Failed to scan skills container ${containerPath}:`, error)
-			}
-		}
-	}
-
-	/**
-	 * @param pass - When called during discovery, an unexpected error marks the entry
-	 * as failed, since it might be a container that is only unreadable for a moment.
-	 */
-	private async isSymlink(entryPath: string, pass?: DiscoveryPass): Promise<boolean> {
-		try {
-			return (await fs.lstat(entryPath)).isSymbolicLink()
-		} catch (error) {
-			if (!isNotFoundError(error)) {
-				pass?.failedPaths.push(entryPath)
-				console.error(`Failed to check whether ${entryPath} is a symlink:`, error)
-			}
-			return false
-		}
-	}
-
-	/**
-	 * Load skill metadata from a skill directory.
-	 * @param pass - The discovery pass that collects the loaded skill
-	 * @param skillDir - The resolved path to the skill directory (target of symlink if symlinked)
-	 * @param source - Whether this is a global or project skill
-	 * @param mode - The mode this skill is specific to (undefined for generic skills)
-	 * @param skillName - The skill name (from symlink name if symlinked, otherwise from directory name)
-	 * @returns The SKILL.md path if the skill was loaded, otherwise undefined
-	 */
-	private async loadSkillMetadata(
-		pass: DiscoveryPass,
-		skillDir: string,
-		source: "global" | "project",
-		mode?: string,
-		skillName?: string,
-	): Promise<string | undefined> {
-		const skillMdPath = path.join(skillDir, "SKILL.md")
-
-		let fileContent: string
-		try {
-			if (!(await fileExists(skillMdPath))) return undefined
-			fileContent = await fs.readFile(skillMdPath, "utf-8")
-		} catch (error) {
-			// An unreadable SKILL.md may only be unreadable for a moment, so keep the
-			// previously discovered skill. A file removed mid-scan is simply gone.
-			if (!isNotFoundError(error)) {
-				pass.failedPaths.push(skillDir)
-				console.error(`Failed to read skill at ${skillDir}:`, error)
-			}
-			return undefined
-		}
-
-		try {
-			// Use gray-matter to parse frontmatter
-			const { data: frontmatter } = parseFrontmatter(fileContent)
-
-			// Validate required fields (only name and description for now)
-			if (!frontmatter.name || typeof frontmatter.name !== "string") {
-				console.error(`Skill at ${skillDir} is missing required 'name' field`)
-				return
-			}
-			if (!frontmatter.description || typeof frontmatter.description !== "string") {
-				console.error(`Skill at ${skillDir} is missing required 'description' field`)
-				return
-			}
-
-			// Validate that frontmatter name matches the skill name (directory name or symlink name)
-			// Per the Agent Skills spec: "name field must match the parent directory name"
-			const effectiveSkillName = skillName || path.basename(skillDir)
-			if (frontmatter.name !== effectiveSkillName) {
-				console.error(`Skill name "${frontmatter.name}" doesn't match directory "${effectiveSkillName}"`)
-				return
-			}
-
-			// Validate skill name per agentskills.io spec using shared validation
-			const nameValidation = validateSkillNameShared(effectiveSkillName)
-			if (!nameValidation.valid) {
-				const errorMessage = this.getSkillNameErrorMessage(effectiveSkillName, nameValidation.error!)
-				console.error(`Skill name "${effectiveSkillName}" is invalid: ${errorMessage}`)
-				return
-			}
-
-			// Description constraints:
-			// - 1-1024 chars
-			// - non-empty (after trimming)
-			const description = frontmatter.description.trim()
-			if (description.length < 1 || description.length > 1024) {
-				console.error(
-					`Skill "${effectiveSkillName}" has an invalid description length: must be 1-1024 characters (got ${description.length})`,
-				)
-				return
-			}
-
-			// Parse modeSlugs from frontmatter (new format) or fall back to directory-based mode
-			// Priority: frontmatter.modeSlugs > frontmatter.mode > directory mode
-			let modeSlugs: string[] | undefined
-			if (Array.isArray(frontmatter.modeSlugs)) {
-				modeSlugs = frontmatter.modeSlugs.filter((s: unknown) => typeof s === "string" && s.length > 0)
-				if (modeSlugs.length === 0) {
-					modeSlugs = undefined // Empty array means "any mode"
-				}
-			} else if (typeof frontmatter.mode === "string" && frontmatter.mode.length > 0) {
-				// Legacy single mode in frontmatter
-				modeSlugs = [frontmatter.mode]
-			} else if (mode) {
-				// Fall back to directory-based mode (skills-{mode}/)
-				modeSlugs = [mode]
-			}
-
-			// Create unique key combining name, source, and modeSlugs for override resolution
-			// For backward compatibility, use first mode slug or undefined for the key
-			const primaryMode = modeSlugs?.[0]
-			const skillKey = this.getSkillKey(effectiveSkillName, source, primaryMode)
-
-			pass.skills.set(skillKey, {
-				name: effectiveSkillName,
-				description,
-				path: skillMdPath,
-				source,
-				mode: primaryMode, // Deprecated: kept for backward compatibility
-				modeSlugs, // New: array of mode slugs, undefined = any mode
-			})
-			return skillMdPath
-		} catch (error) {
-			console.error(`Failed to load skill at ${skillDir}:`, error)
-			return undefined
-		}
 	}
 
 	/**
@@ -511,7 +247,7 @@ export class SkillsManager {
 	 * Get a skill by name, source, and optionally mode
 	 */
 	getSkill(name: string, source: "global" | "project", mode?: string): SkillMetadata | undefined {
-		const skillKey = this.getSkillKey(name, source, mode)
+		const skillKey = getSkillKey(name, source, mode)
 		return this.skills.get(skillKey)
 	}
 
@@ -535,23 +271,9 @@ export class SkillsManager {
 	private validateSkillName(name: string): { valid: boolean; error?: string } {
 		const result = validateSkillNameShared(name)
 		if (!result.valid) {
-			return { valid: false, error: this.getSkillNameErrorMessage(name, result.error!) }
+			return { valid: false, error: getSkillNameErrorMessage(name, result.error!) }
 		}
 		return { valid: true }
-	}
-
-	/**
-	 * Convert skill name validation error code to a user-friendly error message.
-	 */
-	private getSkillNameErrorMessage(name: string, error: SkillNameValidationError): string {
-		switch (error) {
-			case SkillNameValidationError.Empty:
-				return t("skills:errors.name_length", { maxLength: SKILL_NAME_MAX_LENGTH, length: name.length })
-			case SkillNameValidationError.TooLong:
-				return t("skills:errors.name_length", { maxLength: SKILL_NAME_MAX_LENGTH, length: name.length })
-			case SkillNameValidationError.InvalidFormat:
-				return t("skills:errors.name_format")
-		}
 	}
 
 	/**
@@ -736,12 +458,12 @@ Add your skill instructions here.
 		await fs.mkdir(destSkillsDir, { recursive: true })
 
 		// Move the skill directory (falls back to copy+remove across filesystems)
-		await this.moveDirectory(sourceDir, destDir)
+		await moveSkillDirectory(sourceDir, destDir)
 
 		// Clean up empty source skills directory. Skip it if it's a symlink, so we
 		// never leave a dangling symlink.
 		try {
-			if (!(await this.isSymlink(sourceRoot))) {
+			if (!(await isSymlink(sourceRoot))) {
 				const entries = await fs.readdir(sourceRoot)
 				if (entries.length === 0) {
 					await fs.rmdir(sourceRoot)
@@ -764,162 +486,6 @@ Add your skill instructions here.
 		if (this.containerSkillPaths.has(skill.path)) {
 			throw new Error(t("skills:errors.container_skill_read_only", { name: skill.name, path: skill.path }))
 		}
-	}
-
-	/**
-	 * Rename a directory, falling back to copy + delete across filesystems
-	 * (a skills directory may be a symlink to another device).
-	 *
-	 * The fallback never leaves the skill at two discoverable locations:
-	 * 1. Copy the source into a hidden staging dir next to destDir (dest filesystem),
-	 *    and check that no relative symlink in the copy points outside it.
-	 * 2. Atomically rename the source aside to a hidden trash dir (source filesystem).
-	 * 3. Atomically promote staging to destDir. On failure, restore the source from trash.
-	 * 4. Best-effort delete of the trash dir. The move is already committed, so a
-	 *    failure here is logged instead of thrown and never leaves a duplicate skill.
-	 *
-	 * Between steps 2 and 3 the skill is briefly not discoverable at all. Discovery and
-	 * the watchers skip the dot-prefixed staging and trash dirs.
-	 */
-	private async moveDirectory(sourceDir: string, destDir: string): Promise<void> {
-		try {
-			await fs.rename(sourceDir, destDir)
-			return
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException)?.code !== "EXDEV") {
-				throw error
-			}
-		}
-
-		// A direct skill can itself be a symlink (e.g. .roo/skills/foo -> ../../shared/foo).
-		// The tree copy below would copy the link itself with verbatimSymlinks, and the copied
-		// link would resolve against a different parent and dangle. Move the link instead,
-		// keeping it pointed at the same target.
-		let sourceIsSymlink = false
-		try {
-			sourceIsSymlink = (await fs.lstat(sourceDir)).isSymbolicLink()
-		} catch {
-			// If the source can't be inspected, fall through to the copy path, which reports the error
-		}
-		if (sourceIsSymlink) {
-			const target = await fs.readlink(sourceDir)
-			// Resolve against the source's parent, since a relative target is relative to it
-			const absoluteTarget = path.resolve(path.dirname(sourceDir), target)
-			await fs.symlink(absoluteTarget, destDir, "dir")
-			try {
-				await fs.unlink(sourceDir)
-			} catch (unlinkError) {
-				// Never leave the skill linked at both locations
-				await fs.unlink(destDir).catch((rollbackError) => {
-					console.error(`Failed to remove ${destDir} after a failed symlink move:`, rollbackError)
-				})
-				throw unlinkError
-			}
-			return
-		}
-
-		const suffix = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-		const stagingDir = path.join(path.dirname(destDir), `.${path.basename(destDir)}.moving-${suffix}`)
-		const trashDir = path.join(path.dirname(sourceDir), `.${path.basename(sourceDir)}.removing-${suffix}`)
-		let sourceMovedAside = false
-
-		try {
-			// verbatimSymlinks: otherwise relative links get rewritten to point into the deleted source
-			await fs.cp(sourceDir, stagingDir, {
-				recursive: true,
-				errorOnExist: true,
-				force: false,
-				verbatimSymlinks: true,
-			})
-
-			// A relative link that points outside the skill would dangle at the new
-			// location. Fail now, while the source still exists.
-			const escapingLink = await this.findEscapingRelativeSymlink(stagingDir)
-			if (escapingLink) {
-				throw new Error(
-					t("skills:errors.symlink_escapes_skill", {
-						link: path.join(sourceDir, path.relative(stagingDir, escapingLink)),
-					}),
-				)
-			}
-
-			const destExists = await fs.lstat(destDir).then(
-				() => true,
-				(error: NodeJS.ErrnoException) => {
-					if (error?.code === "ENOENT") {
-						return false
-					}
-					throw error
-				},
-			)
-			if (destExists) {
-				throw Object.assign(new Error(`Destination already exists: ${destDir}`), { code: "EEXIST" })
-			}
-
-			// Same parent directory, so this is atomic and cannot fail with EXDEV
-			await fs.rename(sourceDir, trashDir)
-			sourceMovedAside = true
-
-			await fs.rename(stagingDir, destDir)
-		} catch (moveError) {
-			let restoreFailure: Error | undefined
-			if (sourceMovedAside) {
-				try {
-					await fs.rename(trashDir, sourceDir)
-				} catch (restoreError) {
-					// Keep the trash dir so the original content is never lost
-					console.error(
-						`Failed to restore skill directory ${sourceDir} from ${trashDir} after a failed move:`,
-						restoreError,
-					)
-					// The skill now only exists in the hidden trash dir, so tell the user where it is
-					restoreFailure = new Error(
-						t("skills:errors.move_restore_failed", {
-							path: sourceDir,
-							backupPath: trashDir,
-							error: moveError instanceof Error ? moveError.message : String(moveError),
-						}),
-						{ cause: moveError },
-					)
-				}
-			}
-			await fs.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
-			throw restoreFailure ?? moveError
-		}
-
-		// The move is committed and the source is no longer discoverable under its
-		// original name, so leftover trash must not turn a successful move into an error.
-		try {
-			await fs.rm(trashDir, { recursive: true, force: true })
-		} catch (cleanupError) {
-			console.error(`Failed to remove moved skill's old directory ${trashDir}:`, cleanupError)
-		}
-	}
-
-	/**
-	 * Find a relative symlink under rootDir whose target resolves outside rootDir.
-	 * Absolute links keep working after a move, so they are allowed.
-	 * @returns The path of the first such link, or undefined if there is none
-	 */
-	private async findEscapingRelativeSymlink(rootDir: string): Promise<string | undefined> {
-		const pending = [rootDir]
-		while (pending.length > 0) {
-			const dir = pending.pop()!
-			for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
-				const entryPath = path.join(dir, entry.name)
-				if (entry.isDirectory()) {
-					pending.push(entryPath)
-				} else if (entry.isSymbolicLink()) {
-					const target = await fs.readlink(entryPath)
-					if (path.isAbsolute(target)) continue
-					const relativeToRoot = path.relative(rootDir, path.resolve(dir, target))
-					if (relativeToRoot === ".." || relativeToRoot.startsWith(`..${path.sep}`)) {
-						return entryPath
-					}
-				}
-			}
-		}
-		return undefined
 	}
 
 	/**
@@ -1047,10 +613,6 @@ Add your skill instructions here.
 		}
 	}
 
-	private getSkillKey(name: string, source: string, mode?: string): string {
-		return `${source}:${mode || "generic"}:${name}`
-	}
-
 	private async setupFileWatchers(): Promise<void> {
 		// Skip if test environment is detected or VSCode APIs are not available
 		if (process.env.NODE_ENV === "test" || !vscode.workspace.createFileSystemWatcher) {
@@ -1067,85 +629,32 @@ Add your skill instructions here.
 		const projectAgentsDir = getProjectAgentsDirectoryForCwd(provider.cwd)
 
 		// Watch global .roo skills directory
-		this.watchDirectory(path.join(globalRooDir, "skills"))
+		this.watchers.watchDirectory(path.join(globalRooDir, "skills"))
 
 		// Watch global .agents skills directory
-		this.watchDirectory(path.join(globalAgentsDir, "skills"))
+		this.watchers.watchDirectory(path.join(globalAgentsDir, "skills"))
 
 		// Watch project .roo skills directory
-		this.watchDirectory(path.join(projectRooDir, "skills"))
+		this.watchers.watchDirectory(path.join(projectRooDir, "skills"))
 
 		// Watch project .agents skills directory
-		this.watchDirectory(path.join(projectAgentsDir, "skills"))
+		this.watchers.watchDirectory(path.join(projectAgentsDir, "skills"))
 
 		// Watch mode-specific directories for all available modes
 		const modesList = await this.getAvailableModes()
 		for (const mode of modesList) {
 			// .roo mode-specific
-			this.watchDirectory(path.join(globalRooDir, `skills-${mode}`))
-			this.watchDirectory(path.join(projectRooDir, `skills-${mode}`))
+			this.watchers.watchDirectory(path.join(globalRooDir, `skills-${mode}`))
+			this.watchers.watchDirectory(path.join(projectRooDir, `skills-${mode}`))
 			// .agents mode-specific
-			this.watchDirectory(path.join(globalAgentsDir, `skills-${mode}`))
-			this.watchDirectory(path.join(projectAgentsDir, `skills-${mode}`))
+			this.watchers.watchDirectory(path.join(globalAgentsDir, `skills-${mode}`))
+			this.watchers.watchDirectory(path.join(projectAgentsDir, `skills-${mode}`))
 		}
-	}
-
-	private watchDirectory(dirPath: string): void {
-		const watcher = this.createSkillsWatcher(dirPath)
-		if (watcher) {
-			this.disposables.push(watcher)
-		}
-	}
-
-	private syncContainerWatchers(): void {
-		const containers = this.containers
-		for (const [containerPath, watcher] of this.containerWatchers) {
-			if (this.isDisposed || !containers.has(containerPath)) {
-				watcher.dispose()
-				this.containerWatchers.delete(containerPath)
-			}
-		}
-
-		if (this.isDisposed) return
-
-		for (const containerPath of containers.keys()) {
-			if (this.containerWatchers.has(containerPath)) continue
-			const watcher = this.createSkillsWatcher(containerPath)
-			if (watcher) {
-				this.containerWatchers.set(containerPath, watcher)
-			}
-		}
-	}
-
-	private createSkillsWatcher(dirPath: string): vscode.Disposable | undefined {
-		if (process.env.NODE_ENV === "test" || !vscode.workspace.createFileSystemWatcher) {
-			return undefined
-		}
-
-		const pattern = new vscode.RelativePattern(dirPath, SKILLS_WATCH_PATTERN)
-		const watcher = vscode.workspace.createFileSystemWatcher(pattern)
-
-		const onEvent = async (uri: vscode.Uri) => {
-			if (this.isDisposed) return
-			// Skip hidden entries, such as the staging and trash dirs of a cross-filesystem move
-			const relativePath = path.relative(dirPath, uri.fsPath)
-			if (relativePath.split(path.sep).some(isHiddenEntry)) return
-			await this.discoverSkills()
-		}
-
-		watcher.onDidChange(onEvent)
-		watcher.onDidCreate(onEvent)
-		watcher.onDidDelete(onEvent)
-
-		return watcher
 	}
 
 	async dispose(): Promise<void> {
 		this.isDisposed = true
-		this.disposables.forEach((d) => d.dispose())
-		this.disposables = []
-		this.containerWatchers.forEach((w) => w.dispose())
-		this.containerWatchers.clear()
+		this.watchers.dispose()
 		this.skills.clear()
 		this.containerSkillPaths.clear()
 		this.containers.clear()

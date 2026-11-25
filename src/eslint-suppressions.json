@@ -459,11 +459,6 @@
 			"count": 8
 		}
 	},
-	"core/assistant-message/presentAssistantMessage.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 3
-		}
-	},
 	"core/auto-approval/__tests__/AutoApprovalHandler.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 2
@@ -1152,11 +1147,6 @@
 	"services/marketplace/__tests__/SimpleInstaller.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 17
-		}
-	},
-	"services/mcp/McpHub.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 7
 		}
 	},
 	"services/mcp/McpOAuthClientProvider.ts": {

@@ -47,14 +47,13 @@ export default [
 		},
 	},
 	{
-		files: ["src/components/chat/ChatRow.tsx", "src/components/settings/ModelInfoView.tsx"],
+		files: ["src/components/settings/ModelInfoView.tsx"],
 		rules: {
 			"react/jsx-key": "off",
 		},
 	},
 	{
 		files: [
-			"src/components/chat/ChatRow.tsx",
 			"src/components/chat/ChatView.tsx",
 			"src/components/chat/BrowserSessionRow.tsx",
 			"src/components/history/useTaskSearch.ts",

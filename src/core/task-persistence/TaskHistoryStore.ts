@@ -1,3 +1,4 @@
+// Compatibility facade for task history persistence. The store owns the write lock and repair order.
 import * as fs from "fs/promises"
 import * as fsSync from "fs"
 import * as path from "path"
@@ -14,6 +15,15 @@ import { getErrorCode, readFileWithMissingRetry } from "./readFileWithMissingRet
 import { getStorageBasePath } from "../../utils/storage"
 import { assertValidTransition, settleRejectedCreateSubtaskAction, type HistoryItemStatus } from "./taskLifecycle"
 import { computeHistoryDelta, DeltaRejectedError, mergeHistoryDelta } from "./taskStoreConcurrency"
+
+import {
+	DelegationRepairJournal,
+	matchesDelegationRepairChildPreconditions,
+	matchesDelegationRepairParentPreconditions,
+	type DelegationRepairIntent,
+} from "./delegationRepairJournal"
+import { readTaskFileForAutoTitle, writeAutoTitleIfAbsent, type AutoTitleDiskRead } from "./taskAutoTitleFile"
+import { migrateTaskFilesLocked } from "./taskHistoryMigration"
 
 export { assertValidTransition, type HistoryItemStatus } from "./taskLifecycle"
 export { DeltaRejectedError } from "./taskStoreConcurrency"
@@ -37,34 +47,6 @@ async function readHistoryItemFile(filePath: string): Promise<HistoryItem | null
 }
 
 /**
- * Durable intent for the one repair that spans an active delegated child and
- * its parent. Task files remain authoritative; this file only records the
- * guarded target transition that must be completed after a crash.
- */
-interface DelegationRepairIntent {
-	version: 1
-	operationId: string
-	parentTaskId: string
-	childTaskId: string
-	expected: {
-		parent: {
-			status: "delegated"
-			awaitingChildId: string
-			delegatedToId?: string
-		}
-		child: {
-			status: "active"
-			parentTaskId?: string
-			rootTaskId?: string
-		}
-	}
-	target: {
-		childStatus: "interrupted"
-		parentStatus: "active"
-	}
-}
-
-/**
  * TaskHistoryStore encapsulates all task history persistence logic.
  *
  * Each task's HistoryItem is stored as an individual JSON file in its
@@ -81,8 +63,6 @@ interface DelegationRepairIntent {
 /**
  * Options for TaskHistoryStore constructor.
  */
-type AutoTitleDiskRead = { kind: "found"; item: HistoryItem } | { kind: "missing" } | { kind: "unreadable" }
-
 export interface TaskHistoryStoreOptions {
 	/**
 	 * Optional callback invoked inside the write lock after each mutation
@@ -117,6 +97,8 @@ export class TaskHistoryStore {
 
 	/** Periodic reconciliation interval in milliseconds. */
 	private static readonly RECONCILE_INTERVAL_MS = 5 * 60 * 1000
+
+	private readonly delegationRepairJournal = new DelegationRepairJournal(() => this.getTasksDir())
 
 	constructor(globalStoragePath: string, options?: TaskHistoryStoreOptions) {
 		this.globalStoragePath = globalStoragePath
@@ -575,7 +557,7 @@ export class TaskHistoryStore {
 	 */
 	private async replayDelegationRepairIntent(): Promise<void> {
 		return this.withLock(async () => {
-			const intent = await this.readDelegationRepairIntent()
+			const intent = await this.delegationRepairJournal.read()
 			if (!intent) {
 				return
 			}
@@ -583,7 +565,7 @@ export class TaskHistoryStore {
 			const child = this.cache.get(intent.childTaskId)
 			const parent = this.cache.get(intent.parentTaskId)
 			if (!child || !parent) {
-				await this.quarantineDelegationRepairIntent(
+				await this.delegationRepairJournal.quarantine(
 					intent,
 					`missing ${!child ? "child" : "parent"} task record`,
 				)
@@ -595,11 +577,11 @@ export class TaskHistoryStore {
 				parent.status === intent.target.parentStatus &&
 				parent.awaitingChildId === undefined &&
 				parent.delegatedToId === undefined
-			const childMatchesExpected = this.matchesDelegationRepairChildPreconditions(intent, child)
-			const parentMatchesExpected = this.matchesDelegationRepairParentPreconditions(intent, parent)
+			const childMatchesExpected = matchesDelegationRepairChildPreconditions(intent, child)
+			const parentMatchesExpected = matchesDelegationRepairParentPreconditions(intent, parent)
 
 			if ((!childAtTarget && !childMatchesExpected) || (!parentMatchesTargetState && !parentMatchesExpected)) {
-				await this.quarantineDelegationRepairIntent(intent, "task state no longer matches its guards")
+				await this.delegationRepairJournal.quarantine(intent, "task state no longer matches its guards")
 				return
 			}
 
@@ -623,7 +605,7 @@ export class TaskHistoryStore {
 			if (this.onWrite) {
 				await this.onWrite(this.getAll())
 			}
-			await this.removeDelegationRepairIntent()
+			await this.delegationRepairJournal.remove()
 		})
 	}
 
@@ -652,7 +634,7 @@ export class TaskHistoryStore {
 			target: { childStatus: "interrupted", parentStatus: "active" },
 		}
 
-		await this.writeDelegationRepairIntent(intent)
+		await this.delegationRepairJournal.write(intent)
 		await this.applyDelegationRepairIntent(intent, child, parent)
 	}
 
@@ -678,129 +660,7 @@ export class TaskHistoryStore {
 		if (this.onWrite) {
 			await this.onWrite(this.getAll())
 		}
-		await this.removeDelegationRepairIntent()
-	}
-
-	private matchesDelegationRepairParentPreconditions(intent: DelegationRepairIntent, parent: HistoryItem): boolean {
-		return (
-			parent.status === intent.expected.parent.status &&
-			parent.awaitingChildId === intent.expected.parent.awaitingChildId &&
-			parent.delegatedToId === intent.expected.parent.delegatedToId
-		)
-	}
-
-	private matchesDelegationRepairChildPreconditions(intent: DelegationRepairIntent, child: HistoryItem): boolean {
-		return (
-			(child.status ?? "active") === intent.expected.child.status &&
-			child.parentTaskId === intent.expected.child.parentTaskId &&
-			child.rootTaskId === intent.expected.child.rootTaskId
-		)
-	}
-
-	private async readDelegationRepairIntent(): Promise<DelegationRepairIntent | null> {
-		const intentPath = await this.getDelegationRepairIntentPath()
-		let parsed: unknown
-		try {
-			parsed = JSON.parse(await readFileWithMissingRetry(intentPath)) as unknown
-		} catch (error) {
-			if (this.isFileNotFoundError(error)) {
-				return null
-			}
-			await this.quarantineDelegationRepairIntent(null, "malformed JSON")
-			return null
-		}
-
-		if (!this.isDelegationRepairIntent(parsed)) {
-			await this.quarantineDelegationRepairIntent(null, "malformed intent")
-			return null
-		}
-		return parsed
-	}
-
-	private isDelegationRepairIntent(value: unknown): value is DelegationRepairIntent {
-		if (!value || typeof value !== "object") {
-			return false
-		}
-		const candidate = value as Record<string, unknown>
-		const expected = candidate.expected
-		const expectedRecord = expected && typeof expected === "object" ? (expected as Record<string, unknown>) : null
-		const expectedParent =
-			expectedRecord?.parent && typeof expectedRecord.parent === "object"
-				? (expectedRecord.parent as Record<string, unknown>)
-				: null
-		const expectedChild =
-			expectedRecord?.child && typeof expectedRecord.child === "object"
-				? (expectedRecord.child as Record<string, unknown>)
-				: null
-		const target = candidate.target
-		const targetRecord = target && typeof target === "object" ? (target as Record<string, unknown>) : null
-		return (
-			candidate.version === 1 &&
-			typeof candidate.operationId === "string" &&
-			this.isSafeTaskId(candidate.parentTaskId) &&
-			this.isSafeTaskId(candidate.childTaskId) &&
-			candidate.parentTaskId !== candidate.childTaskId &&
-			!!expectedParent &&
-			expectedParent.status === "delegated" &&
-			typeof expectedParent.awaitingChildId === "string" &&
-			expectedParent.awaitingChildId === candidate.childTaskId &&
-			(expectedParent.delegatedToId === undefined || typeof expectedParent.delegatedToId === "string") &&
-			!!expectedChild &&
-			expectedChild.status === "active" &&
-			(expectedChild.parentTaskId === undefined || typeof expectedChild.parentTaskId === "string") &&
-			(expectedChild.rootTaskId === undefined || typeof expectedChild.rootTaskId === "string") &&
-			!!targetRecord &&
-			targetRecord.childStatus === "interrupted" &&
-			targetRecord.parentStatus === "active"
-		)
-	}
-
-	private async writeDelegationRepairIntent(intent: DelegationRepairIntent): Promise<void> {
-		await safeWriteJson(await this.getDelegationRepairIntentPath(), intent)
-	}
-
-	private async removeDelegationRepairIntent(): Promise<void> {
-		try {
-			await deleteJsonFile(await this.getDelegationRepairIntentPath())
-		} catch (error) {
-			console.warn("[TaskHistoryStore] Failed to remove completed delegation repair intent:", error)
-		}
-	}
-
-	private async quarantineDelegationRepairIntent(
-		intent: DelegationRepairIntent | null,
-		reason: string,
-	): Promise<void> {
-		const intentPath = await this.getDelegationRepairIntentPath()
-		const quarantinePath = `${intentPath}.quarantine-${Date.now()}-${Math.random().toString(36).slice(2)}`
-		try {
-			await fs.rename(intentPath, quarantinePath)
-		} catch (error) {
-			console.warn("[TaskHistoryStore] Failed to quarantine delegation repair intent:", error)
-		}
-		console.warn(
-			`[TaskHistoryStore] Ignored ${intent ? `stale delegation repair intent ${intent.operationId}` : "malformed delegation repair intent"}: ${reason}`,
-		)
-	}
-
-	private isSafeTaskId(value: unknown): value is string {
-		return (
-			typeof value === "string" &&
-			value.length > 0 &&
-			value !== "." &&
-			value !== ".." &&
-			!value.includes("/") &&
-			!value.includes("\\")
-		)
-	}
-
-	private isFileNotFoundError(error: unknown): boolean {
-		return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
-	}
-
-	private async getDelegationRepairIntentPath(): Promise<string> {
-		const tasksDir = await this.getTasksDir()
-		return path.join(tasksDir, GlobalFileNames.delegationRepairIntent)
+		await this.delegationRepairJournal.remove()
 	}
 
 	// ────────────────────────────── Cache invalidation ──────────────────────────────
@@ -847,45 +707,7 @@ export class TaskHistoryStore {
 		}
 
 		await this.withLock(async () => {
-			const tasksDir = await this.getTasksDir()
-
-			for (const item of taskHistoryEntries) {
-				if (!item.id) {
-					continue
-				}
-
-				// Check if task directory exists on disk
-				const taskDir = path.join(tasksDir, item.id)
-
-				try {
-					await fs.access(taskDir)
-				} catch {
-					// Task directory doesn't exist; skip this entry as it's orphaned in globalState
-					continue
-				}
-
-				// Write history_item.json if it doesn't exist yet
-				const filePath = path.join(taskDir, GlobalFileNames.historyItem)
-				try {
-					await fs.access(filePath)
-					// File already exists, skip (don't overwrite existing per-task files)
-				} catch (error) {
-					if (getErrorCode(error) !== "ENOENT") throw error
-					// Recovery or a peer may supply a committed record after the access check.
-					let persisted = item
-					await safeWriteJson(filePath, item, {
-						merge: (existing) => {
-							if (existing !== null) {
-								const recovered = historyItemSchema.parse(existing)
-								if (recovered.id !== item.id) throw new Error("Migration task ID mismatch")
-								persisted = recovered
-							}
-							return persisted
-						},
-					})
-					this.cache.set(item.id, persisted)
-				}
-			}
+			await migrateTaskFilesLocked(await this.getTasksDir(), taskHistoryEntries, this.cache)
 
 			// Repair any delegation inconsistencies introduced by the migrated entries.
 			// Run the lock-free core because migration already holds the store lock.
@@ -1060,31 +882,11 @@ export class TaskHistoryStore {
 				return this.settleSkippedAutoTitle(taskId, disk)
 			}
 
-			const skipped = Symbol("auto-title-skipped")
-			let persisted: HistoryItem | undefined
-			try {
-				const filePath = await this.getTaskFilePath(taskId)
-				await safeWriteJson(
-					filePath,
-					{ ...disk.item, autoTitle: title },
-					{
-						merge: (existing) => {
-							const current = existing as Partial<HistoryItem> | null
-							if (!current || current.id !== taskId || current.autoTitle) {
-								throw Object.assign(new Error("auto title skipped"), { [skipped]: true })
-							}
-							persisted = { ...(current as HistoryItem), autoTitle: title }
-							return persisted
-						},
-					},
-				)
-			} catch (error) {
-				if (!(error instanceof Error) || !(skipped in error)) {
-					throw error
-				}
-				// safeWriteJson reports both a missing and an unparsable file as `null`, so re-read to tell them apart.
+			const write = await writeAutoTitleIfAbsent(taskId, disk.item, title, () => this.getTaskFilePath(taskId))
+			if (write.kind === "skipped") {
 				return this.settleSkippedAutoTitle(taskId, await this.readTaskFileForAutoTitle(taskId))
 			}
+			const persisted = write.item
 
 			if (!persisted) {
 				return { applied: false }
@@ -1121,32 +923,8 @@ export class TaskHistoryStore {
 		}
 	}
 
-	private async readTaskFileForAutoTitle(taskId: string): Promise<AutoTitleDiskRead> {
-		let raw: string
-		try {
-			raw = await readFileWithMissingRetry(await this.getTaskFilePath(taskId))
-		} catch (error) {
-			if (getErrorCode(error) === "ENOENT") {
-				return { kind: "missing" }
-			}
-			return this.unreadableForAutoTitle(taskId, error)
-		}
-		try {
-			const item: unknown = JSON.parse(raw)
-			const id = typeof item === "object" && item !== null ? (item as { id?: unknown }).id : undefined
-			if (id !== taskId) {
-				return this.unreadableForAutoTitle(taskId, `task file has id ${JSON.stringify(id)}`)
-			}
-			return { kind: "found", item: item as HistoryItem }
-		} catch (error) {
-			return this.unreadableForAutoTitle(taskId, error)
-		}
-	}
-
-	/** The caller only sees `applied: false`, so the reason is logged here. */
-	private unreadableForAutoTitle(taskId: string, reason: unknown): AutoTitleDiskRead {
-		console.warn(`[TaskHistoryStore] Failed to read task ${taskId} for auto title:`, reason)
-		return { kind: "unreadable" }
+	private readTaskFileForAutoTitle(taskId: string): Promise<AutoTitleDiskRead> {
+		return readTaskFileForAutoTitle(taskId, () => this.getTaskFilePath(taskId))
 	}
 
 	/**

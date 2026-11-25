@@ -8,7 +8,7 @@ import {
 	createModelIdAccessor,
 	createProviderDefinition,
 } from "./common.js"
-import { openAiNativeDefaultModelId } from "./openai.js"
+import { openAiNativeDefaultModelId } from "./openai-native-models.js"
 
 export const openAiNativeProviderDefinition = createProviderDefinition({
 	apiProvider: providerIdentifiers.openaiNative,

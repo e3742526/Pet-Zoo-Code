@@ -1,24 +1,17 @@
+// Compatibility facade for MCP connections, transport lifecycle, and settings.
 import * as fs from "fs/promises"
 import * as path from "path"
 import { EventEmitter } from "node:events"
 
 import * as vscode from "vscode"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
-import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js"
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
+import type { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
+import type { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import ReconnectingEventSource from "reconnecting-eventsource"
-import {
-	CallToolResultSchema,
-	ListResourcesResultSchema,
-	ListResourceTemplatesResultSchema,
-	ListToolsResultSchema,
-	ReadResourceResultSchema,
-} from "@modelcontextprotocol/sdk/types.js"
+import { CallToolResultSchema, ReadResourceResultSchema } from "@modelcontextprotocol/sdk/types.js"
 import chokidar, { FSWatcher } from "chokidar"
 import delay from "delay"
 import deepEqual from "fast-deep-equal"
-import { z } from "zod"
 
 import type {
 	McpResource,
@@ -37,7 +30,6 @@ import { GlobalFileNames } from "../../shared/globalFileNames"
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { TOKEN_EXPIRY_BUFFER_MS, OAUTH_FLOW_TIMEOUT_MS } from "./constants"
 import { SecretStorageService } from "./SecretStorageService"
 import { McpOAuthClientProvider } from "./McpOAuthClientProvider"
 import { arePathsEqual, getWorkspacePath } from "../../utils/path"
@@ -46,126 +38,32 @@ import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
 import { ToolRouter } from "../tools/ToolRouter"
 
-// Discriminated union for connection states
-export type ConnectedMcpConnection = {
-	type: "connected"
-	server: McpServer
-	client: Client
-	transport: StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport
-	authProvider?: McpOAuthClientProvider
-}
+import { McpCapabilities } from "./McpCapabilities"
+import { McpOAuthFlow } from "./McpOAuthFlow"
+import { McpSettingsSchema, ServerConfigSchema, validateServerConfig, type ServerConfig } from "./mcpConfigSchema"
+import {
+	DisableReason,
+	type ConnectedMcpConnection,
+	type DisconnectedMcpConnection,
+	type McpConnection,
+} from "./mcpConnection"
+import { createSseTransport, createStdioTransport } from "./mcpTransports"
 
-export type DisconnectedMcpConnection = {
-	type: "disconnected"
-	server: McpServer
-	client: null
-	transport: null
-}
-
-export type McpConnection = ConnectedMcpConnection | DisconnectedMcpConnection
-
-// Enum for disable reasons
-export enum DisableReason {
-	MCP_DISABLED = "mcpDisabled",
-	SERVER_DISABLED = "serverDisabled",
-}
-
-// Base configuration schema for common settings
-const BaseConfigSchema = z.object({
-	disabled: z.boolean().optional(),
-	timeout: z.number().min(1).max(3600).optional().default(60),
-	alwaysAllow: z.array(z.string()).default([]),
-	watchPaths: z.array(z.string()).optional(), // paths to watch for changes and restart server
-	disabledTools: z.array(z.string()).default([]),
-})
-
-// Custom error messages for better user feedback
-const typeErrorMessage = "Server type must be 'stdio', 'sse', or 'streamable-http'"
-const stdioFieldsErrorMessage =
-	"For 'stdio' type servers, you must provide a 'command' field and can optionally include 'args' and 'env'"
-const sseFieldsErrorMessage =
-	"For 'sse' type servers, you must provide a 'url' field and can optionally include 'headers'"
-const streamableHttpFieldsErrorMessage =
-	"For 'streamable-http' type servers, you must provide a 'url' field and can optionally include 'headers' and 'oauth'"
-const mixedFieldsErrorMessage =
-	"Cannot mix 'stdio' and ('sse' or 'streamable-http') fields. For 'stdio' use 'command', 'args', and 'env'. For 'sse'/'streamable-http' use 'url' and 'headers'"
-const missingFieldsErrorMessage =
-	"Server configuration must include either 'command' (for stdio) or 'url' (for sse/streamable-http) and a corresponding 'type' if 'url' is used."
-
-// Helper function to create a refined schema with better error messages
-const createServerTypeSchema = () => {
-	return z.union([
-		// Stdio config (has command field)
-		BaseConfigSchema.extend({
-			type: z.enum(["stdio"]).optional(),
-			command: z.string().min(1, "Command cannot be empty"),
-			args: z.array(z.string()).optional(),
-			cwd: z.string().default(() => vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath ?? process.cwd()),
-			env: z.record(z.string(), z.string()).optional(),
-			// Ensure no SSE fields are present
-			url: z.undefined().optional(),
-			headers: z.undefined().optional(),
-			oauth: z.undefined().optional(),
-		})
-			.transform((data) => ({
-				...data,
-				type: "stdio" as const,
-			}))
-			.refine((data) => data.type === undefined || data.type === "stdio", { message: typeErrorMessage }),
-		// SSE config (has url field)
-		BaseConfigSchema.extend({
-			type: z.enum(["sse"]).optional(),
-			url: z.string().url("URL must be a valid URL format"),
-			headers: z.record(z.string(), z.string()).optional(),
-			oauth: z.undefined().optional(),
-			// Ensure no stdio fields are present
-			command: z.undefined().optional(),
-			args: z.undefined().optional(),
-			env: z.undefined().optional(),
-		})
-			.transform((data) => ({
-				...data,
-				type: "sse" as const,
-			}))
-			.refine((data) => data.type === undefined || data.type === "sse", { message: typeErrorMessage }),
-		// StreamableHTTP config (has url field)
-		BaseConfigSchema.extend({
-			type: z.enum(["streamable-http"]).optional(),
-			url: z.string().url("URL must be a valid URL format"),
-			headers: z.record(z.string(), z.string()).optional(),
-			oauth: z
-				.object({
-					clientId: z.string().min(1, "OAuth clientId cannot be empty"),
-					scope: z.string().optional(),
-					redirectUri: z.string().url("OAuth redirectUri must be a valid URL").optional(),
-					resource: z.union([z.literal("auto"), z.literal(false), z.string().url()]).optional(),
-				})
-				.optional(),
-			// Ensure no stdio fields are present
-			command: z.undefined().optional(),
-			args: z.undefined().optional(),
-			env: z.undefined().optional(),
-		})
-			.transform((data) => ({
-				...data,
-				type: "streamable-http" as const,
-			}))
-			.refine((data) => data.type === undefined || data.type === "streamable-http", {
-				message: typeErrorMessage,
-			}),
-	])
-}
-
-// Server configuration schema with automatic type inference and validation
-export const ServerConfigSchema = createServerTypeSchema()
-
-// Settings schema
-const McpSettingsSchema = z.object({
-	mcpServers: z.record(z.string(), ServerConfigSchema),
-})
+export { ServerConfigSchema } from "./mcpConfigSchema"
+export {
+	DisableReason,
+	type ConnectedMcpConnection,
+	type DisconnectedMcpConnection,
+	type McpConnection,
+} from "./mcpConnection"
 
 export class McpHub {
 	private readonly serverListEvents = new EventEmitter()
+	private readonly capabilities = new McpCapabilities(
+		(name, source) => this.findConnection(name, source),
+		() => this.getProjectMcpPath(),
+		() => this.getMcpSettingsFilePath(),
+	)
 	private serverListKey?: string
 
 	public onServerListChanged(listener: () => void): { dispose(): void } {
@@ -202,7 +100,18 @@ export class McpHub {
 	private initializationPromise: Promise<void>
 	private secretStorage?: SecretStorageService
 	private reauthPromises: Map<string, Promise<void>> = new Map()
-	private _oauthWatchers: Map<string, { unsubscribe: () => void; abortHandle: NodeJS.Timeout }> = new Map()
+	private readonly oauthFlow = new McpOAuthFlow({
+		getSecretStorage: () => this.secretStorage,
+		isDisposed: () => this.isDisposed,
+		findConnection: (name, source) => this.findConnection(name, source),
+		deleteConnection: (name, source) => this.deleteConnection(name, source),
+		connectToServer: (name, config, source) => this.connectToServer(name, config, source),
+		validateServerConfig: (config, name) => this.validateServerConfig(config, name),
+		appendErrorMessage: (connection, error) => this.appendErrorMessage(connection, error),
+		notifyWebviewOfServerChanges: () => this.notifyWebviewOfServerChanges(),
+		complete: (...args) => this._completeOAuthFlow(...args),
+	})
+	private readonly _oauthWatchers = this.oauthFlow.watchers
 
 	constructor(provider: ClineProvider, secretStorage?: SecretStorageService) {
 		this.providerRef = new WeakRef(provider)
@@ -257,66 +166,9 @@ export class McpHub {
 	 * @returns The validated configuration
 	 * @throws Error if the configuration is invalid
 	 */
-	private validateServerConfig(config: any, serverName?: string): z.infer<typeof ServerConfigSchema> {
-		// Detect configuration issues before validation
-		const hasStdioFields = config.command !== undefined
-		const hasUrlFields = config.url !== undefined // Covers sse and streamable-http
-
-		// Check for mixed fields (stdio vs url-based)
-		if (hasStdioFields && hasUrlFields) {
-			throw new Error(mixedFieldsErrorMessage)
-		}
-
-		// Infer type for stdio if not provided
-		if (!config.type && hasStdioFields) {
-			config.type = "stdio"
-		}
-
-		// For url-based configs, type must be provided by the user
-		if (hasUrlFields && !config.type) {
-			throw new Error("Configuration with 'url' must explicitly specify 'type' as 'sse' or 'streamable-http'.")
-		}
-
-		// Validate type if provided
-		if (config.type && !["stdio", "sse", "streamable-http"].includes(config.type)) {
-			throw new Error(typeErrorMessage)
-		}
-
-		// Check for type/field mismatch
-		if (config.type === "stdio" && !hasStdioFields) {
-			throw new Error(stdioFieldsErrorMessage)
-		}
-		if (config.type === "sse" && !hasUrlFields) {
-			throw new Error(sseFieldsErrorMessage)
-		}
-		if (config.type === "streamable-http" && !hasUrlFields) {
-			throw new Error(streamableHttpFieldsErrorMessage)
-		}
-
-		// If neither command nor url is present (type alone is not enough)
-		if (!hasStdioFields && !hasUrlFields) {
-			throw new Error(missingFieldsErrorMessage)
-		}
-
-		// Validate the config against the schema
-		try {
-			return ServerConfigSchema.parse(config)
-		} catch (validationError) {
-			if (validationError instanceof z.ZodError) {
-				// Extract and format validation errors
-				const errorMessages = validationError.issues
-					.map((err) => `${err.path.join(".")}: ${err.message}`)
-					.join("; ")
-				throw new Error(
-					serverName
-						? `Invalid configuration for server "${serverName}": ${errorMessages}`
-						: `Invalid server configuration: ${errorMessages}`,
-				)
-			}
-			throw validationError
-		}
+	private validateServerConfig(config: unknown, serverName?: string): ServerConfig {
+		return validateServerConfig(config, serverName)
 	}
-
 	/**
 	 * Formats and displays error messages to the user
 	 * @param message The error message prefix
@@ -369,7 +221,7 @@ export class McpHub {
 	private async handleConfigFileChange(filePath: string, source: "global" | "project"): Promise<void> {
 		try {
 			const content = await fs.readFile(filePath, "utf-8")
-			let config: any
+			let config: unknown
 
 			try {
 				config = JSON.parse(content)
@@ -455,7 +307,7 @@ export class McpHub {
 			if (!projectMcpPath) return
 
 			const content = await fs.readFile(projectMcpPath, "utf-8")
-			let config: any
+			let config: unknown
 
 			try {
 				config = JSON.parse(content)
@@ -682,7 +534,7 @@ export class McpHub {
 	 */
 	private createPlaceholderConnection(
 		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
+		config: ServerConfig,
 		source: "global" | "project",
 		reason: DisableReason,
 	): DisconnectedMcpConnection {
@@ -717,7 +569,7 @@ export class McpHub {
 
 	private async connectToServer(
 		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
+		config: ServerConfig,
 		source: "global" | "project" = "global",
 	): Promise<void> {
 		// Remove existing connection if it exists with the same source
@@ -769,32 +621,7 @@ export class McpHub {
 			})) as typeof config
 
 			if (configInjected.type === "stdio") {
-				// On Windows, wrap commands with cmd.exe to handle non-exe executables like npx.ps1
-				// This is necessary for node version managers (fnm, nvm-windows, volta) that implement
-				// commands as PowerShell scripts rather than executables.
-				// Note: This adds a small overhead as commands go through an additional shell layer.
-				const isWindows = process.platform === "win32"
-
-				// Check if command is already cmd.exe to avoid double-wrapping
-				const isAlreadyWrapped =
-					configInjected.command.toLowerCase() === "cmd.exe" || configInjected.command.toLowerCase() === "cmd"
-
-				const command = isWindows && !isAlreadyWrapped ? "cmd.exe" : configInjected.command
-				const args =
-					isWindows && !isAlreadyWrapped
-						? ["/c", configInjected.command, ...(configInjected.args || [])]
-						: configInjected.args
-
-				transport = new StdioClientTransport({
-					command,
-					args,
-					cwd: configInjected.cwd,
-					env: {
-						...getDefaultEnvironment(),
-						...(configInjected.env || {}),
-					},
-					stderr: "pipe",
-				})
+				transport = createStdioTransport(configInjected)
 
 				// Set up stdio specific error handling
 				transport.onerror = async (error) => {
@@ -952,29 +779,7 @@ export class McpHub {
 				// Keep a reference so the UnauthorizedError handler can use it.
 				streamableHttpAuthProvider = authProvider
 			} else if (configInjected.type === "sse") {
-				// SSE connection
-				const sseOptions = {
-					requestInit: {
-						headers: configInjected.headers,
-					},
-				}
-				// Configure ReconnectingEventSource options
-				const reconnectingEventSourceOptions = {
-					max_retry_time: 5000, // Maximum retry time in milliseconds
-					withCredentials: configInjected.headers?.["Authorization"] ? true : false, // Enable credentials if Authorization header exists
-					fetch: (url: string | URL, init: RequestInit) => {
-						const headers = new Headers({ ...(init?.headers || {}), ...(configInjected.headers || {}) })
-						return fetch(url, {
-							...init,
-							headers,
-						})
-					},
-				}
-				global.EventSource = ReconnectingEventSource
-				transport = new SSEClientTransport(new URL(configInjected.url), {
-					...sseOptions,
-					eventSourceInit: reconnectingEventSourceOptions,
-				})
+				transport = createSseTransport(configInjected)
 
 				// Set up SSE specific error handling
 				transport.onerror = async (error) => {
@@ -996,7 +801,7 @@ export class McpHub {
 				}
 			} else {
 				// Should not happen if validateServerConfig is correct
-				throw new Error(`Unsupported MCP server type: ${(configInjected as any).type}`)
+				throw new Error(`Unsupported MCP server type: ${(configInjected as { type: unknown }).type}`)
 			}
 
 			// Only override transport.start for stdio transports that have already been started
@@ -1087,336 +892,26 @@ export class McpHub {
 		}
 	}
 
-	/**
-	 * Background task: waits for the user to complete the OAuth browser flow,
-	 * exchanges the auth code for tokens, then reconnects from scratch.
-	 *
-	 * After the SDK throws UnauthorizedError the transport is left in a
-	 * "started" state (_abortController is set), so we cannot simply call
-	 * client.connect() on it again — the SDK would throw "already started".
-	 * The clean solution is to delete the broken connection and let
-	 * connectToServer() create fresh client/transport objects. The new
-	 * provider will find the token in SecretStorage and connect without
-	 * triggering another OAuth round-trip.
-	 *
-	 * This runs detached from the initialization path so `waitUntilReady()`
-	 * and the rest of the extension are not blocked by the user's browser session.
-	 */
-	private async _initiateOAuthFlow(
+	private _initiateOAuthFlow(
 		name: string,
 		source: "global" | "project",
-		config: z.infer<typeof ServerConfigSchema>,
+		config: ServerConfig,
 		authProvider: McpOAuthClientProvider,
 		transport: StreamableHTTPClientTransport,
 		connection: ConnectedMcpConnection,
 	): Promise<void> {
-		const serverUrl = "url" in config ? config.url : undefined
-		const oauthClientId = config.type === "streamable-http" ? config.oauth?.clientId : undefined
-		if (!serverUrl || !this.secretStorage) {
-			return
-		}
-
-		// Register the cross-window token watcher BEFORE the initial token read so we
-		// don't miss a write that lands in the gap between the read and the subscription.
-		// After the read we immediately unsubscribe; the watcher inside _runOAuthFlow
-		// will set up its own long-lived subscription for the duration of the flow.
-		// Note: onDidChange fires on both writes AND deletes — the re-read below is
-		// authoritative; we only reconnect if it returns a valid (non-expired) token.
-		let tokenChangedDuringRead = false
-		const unsubscribeCrossWindow = this.secretStorage.onDidChange(
-			serverUrl,
-			() => {
-				tokenChangedDuringRead = true
-			},
-			oauthClientId,
-		)
-
-		// Check if another window already saved valid tokens.
-		// Re-read after registering the watcher in case a write landed in the gap.
-		const existing = await this.secretStorage.getOAuthData(serverUrl, oauthClientId)
-		if (this.isDisposed) {
-			unsubscribeCrossWindow()
-			await authProvider.close()
-			return
-		}
-		// If the first read missed but the watcher fired during it, re-read — a write
-		// may have landed between subscription and read completion.
-		const tokenToUse =
-			existing ??
-			(tokenChangedDuringRead ? await this.secretStorage.getOAuthData(serverUrl, oauthClientId) : undefined)
-		unsubscribeCrossWindow()
-
-		if (!this.isDisposed && tokenToUse && Date.now() < tokenToUse.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
-			await authProvider.close()
-			await this.deleteConnection(name, source)
-			await this.connectToServer(name, config, source)
-			await this.notifyWebviewOfServerChanges()
-			return
-		}
-
-		// Persistent progress notification gives the user a visible Cancel button
-		// for the duration of the flow (even if they switch away from VS Code).
-		await vscode.window.withProgress(
-			{
-				location: vscode.ProgressLocation.Notification,
-				title: t("mcp:oauth.flow.authenticating", { name }),
-				cancellable: true,
-			},
-			(progress, cancellationToken) =>
-				this._runOAuthFlow(
-					name,
-					source,
-					config,
-					serverUrl,
-					authProvider,
-					transport,
-					connection,
-					progress,
-					cancellationToken,
-					oauthClientId,
-				),
-		)
+		return this.oauthFlow.initiate(name, source, config, authProvider, transport, connection)
 	}
 
-	private _runOAuthFlow(
-		name: string,
-		source: "global" | "project",
-		config: z.infer<typeof ServerConfigSchema>,
-		serverUrl: string,
+	private _completeOAuthFlow(
 		authProvider: McpOAuthClientProvider,
 		transport: StreamableHTTPClientTransport,
-		connection: ConnectedMcpConnection,
-		progress: vscode.Progress<{ message?: string; increment?: number }>,
-		cancellationToken: vscode.CancellationToken,
-		oauthClientId?: string,
-	): Promise<void> {
-		const watcherKey = `${name}:${source}`
-
-		// Cancel any existing watcher for this connection before starting a new one
-		const existing = this._oauthWatchers.get(watcherKey)
-		if (existing) {
-			existing.unsubscribe()
-			clearTimeout(existing.abortHandle)
-			this._oauthWatchers.delete(watcherKey)
-		}
-
-		return new Promise<void>((resolve) => {
-			let disposed = false
-
-			const cleanup = (disposable?: vscode.Disposable) => {
-				if (disposed) return
-				disposed = true
-				clearTimeout(timeoutHandle)
-				unsubscribe()
-				disposable?.dispose()
-				this._oauthWatchers.delete(watcherKey)
-			}
-
-			// --- Cross-window token watcher ---
-			const onTokensChanged = async () => {
-				if (disposed || this.isDisposed) return
-				// Don't reconnect if the server is already connected (e.g. a token refresh
-				// from another window fired after _completeOAuthFlow already succeeded).
-				const conn = this.findConnection(name, source)
-				if (!conn || conn.server.status === "connected") {
-					cleanup(cancellationDisposable)
-					return
-				}
-				try {
-					const data = await this.secretStorage?.getOAuthData(serverUrl, oauthClientId)
-					// Re-check after the async yield — cancellation or completion may have
-					// fired while getOAuthData was in flight.
-					if (disposed || this.isDisposed) return
-					if (data && Date.now() < data.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
-						cleanup(cancellationDisposable)
-						await authProvider.close()
-						await this.deleteConnection(name, source)
-						const validatedConfig = this.validateServerConfig(config, name)
-						await this.connectToServer(name, validatedConfig, source)
-						await this.notifyWebviewOfServerChanges()
-						resolve()
-					}
-				} catch (err) {
-					console.error(`[McpHub] OAuth token watcher failed for "${name}":`, err)
-				}
-			}
-
-			const unsubscribe = this.secretStorage!.onDidChange(
-				serverUrl,
-				() => {
-					void onTokensChanged()
-				},
-				oauthClientId,
-			)
-
-			// --- Timeout ---
-			const timeoutHandle = setTimeout(() => {
-				if (disposed) return
-				cleanup(cancellationDisposable)
-				void authProvider.close()
-				const conn = this.findConnection(name, source)
-				if (conn && conn.server.status === "connecting") {
-					conn.server.status = "disconnected"
-					this.appendErrorMessage(conn, t("mcp:oauth.flow.timedOut"))
-					void this.notifyWebviewOfServerChanges()
-				}
-				resolve()
-			}, OAUTH_FLOW_TIMEOUT_MS)
-
-			// Register in _oauthWatchers so deleteConnection() and dispose() can clean up.
-			// This must happen BEFORE installing the cancellation callback below: if the
-			// token is already cancelled at registration time, VS Code fires the callback
-			// synchronously inside onCancellationRequested(...), and cleanup() must find
-			// the watcher entry in the map in order to delete it. Registering after the
-			// callback would leave an orphan entry that survives disposal.
-			this._oauthWatchers.set(watcherKey, { unsubscribe, abortHandle: timeoutHandle })
-
-			// --- Cancellation (progress bar's Cancel button) ---
-			const cancellationDisposable = cancellationToken.onCancellationRequested(() => {
-				if (disposed) return
-				// Don't pass cancellationDisposable here: if the token was already
-				// cancelled at registration time, VS Code fires this callback
-				// synchronously inside onCancellationRequested(...) — before the
-				// `const cancellationDisposable = ...` assignment completes, so the
-				// binding is still in the TDZ. VS Code also disposes its own
-				// listener once the token transitions to cancelled, so explicit
-				// disposal from inside the callback would be redundant anyway.
-				cleanup()
-				void authProvider.close()
-				const conn = this.findConnection(name, source)
-				if (conn && conn.server.status !== "connected") {
-					conn.server.status = "disconnected"
-					this.appendErrorMessage(conn, t("mcp:oauth.flow.cancelled"))
-					void this.notifyWebviewOfServerChanges()
-				}
-				resolve()
-			})
-
-			// In test mode, skip user interaction and proceed directly to complete the OAuth flow.
-			if (process.env.MCP_OAUTH_TEST_MODE === "true") {
-				void (async () => {
-					cleanup(cancellationDisposable)
-					try {
-						await this._completeOAuthFlow(
-							authProvider,
-							transport,
-							connection,
-							name,
-							source,
-							cancellationToken,
-						)
-					} catch {
-						// _completeOAuthFlow handles its own error state
-					}
-					resolve()
-				})()
-				return
-			}
-
-			// Non-modal toast — fires once. If dismissed without clicking Authenticate,
-			// the flow stays alive via the persistent progress bar (Cancel to abort).
-			const authenticateLabel = t("mcp:oauth.flow.authenticateButton")
-			void (async () => {
-				const choice = await vscode.window.showInformationMessage(
-					t("mcp:oauth.flow.clickAuthenticate", { name }),
-					authenticateLabel,
-				)
-
-				if (disposed) return
-
-				if (choice !== authenticateLabel) {
-					progress.report({ message: t("mcp:oauth.flow.dismissedHint") })
-					return
-				}
-
-				// Guard: another window may have authed while the toast was open
-				const tokens = await this.secretStorage!.getOAuthData(serverUrl, oauthClientId)
-				if (disposed) return
-				if (tokens && Date.now() < tokens.expires_at - TOKEN_EXPIRY_BUFFER_MS) {
-					cleanup(cancellationDisposable)
-					await authProvider.close()
-					await this.deleteConnection(name, source)
-					const validatedFastPathConfig = this.validateServerConfig(config, name)
-					await this.connectToServer(name, validatedFastPathConfig, source)
-					await this.notifyWebviewOfServerChanges()
-					resolve()
-					return
-				}
-
-				// Clean up before exchanging tokens — this sets disposed=true so the
-				// cross-window token watcher doesn't race to reconnect when SecretStorage
-				// fires onDidChange during token exchange inside _completeOAuthFlow.
-				cleanup(cancellationDisposable)
-				try {
-					await this._completeOAuthFlow(authProvider, transport, connection, name, source, cancellationToken)
-				} catch {
-					// _completeOAuthFlow handles its own error state
-				}
-				resolve()
-			})()
-		})
-	}
-
-	private async _completeOAuthFlow(
-		authProvider: McpOAuthClientProvider,
-		_transport: StreamableHTTPClientTransport,
 		connection: ConnectedMcpConnection,
 		name: string,
 		source: "global" | "project",
 		cancellationToken: vscode.CancellationToken,
 	): Promise<void> {
-		const config = JSON.parse(connection.server.config)
-
-		// Build a promise that rejects when the progress bar Cancel is pressed,
-		// so we can race it against waitForAuthCode() which blocks indefinitely.
-		const cancelledError = new Error(t("mcp:oauth.flow.cancelled"))
-		let cancelListener: vscode.Disposable | undefined
-		const cancellationPromise = new Promise<never>((_, reject) => {
-			if (cancellationToken.isCancellationRequested) {
-				reject(cancelledError)
-				return
-			}
-			cancelListener = cancellationToken.onCancellationRequested(() => reject(cancelledError))
-		})
-
-		try {
-			// Open the browser now that the user has confirmed the toast.
-			// redirectToAuthorization() was already called by the SDK (which stored
-			// the URL in _pendingAuthorizationUrl), but deliberately did not open it.
-			await authProvider.openBrowser()
-
-			const code = await Promise.race([authProvider.waitForAuthCode(), cancellationPromise])
-
-			// Exchange auth code for tokens using the pre-fetched token_endpoint
-			// directly. The SDK's transport.finishAuth() re-runs discovery internally
-			// and hits the same broken URL for path-prefixed issuers (see
-			// utils/oauth.ts for upstream issue links).
-			await authProvider.exchangeCodeForTokens(code)
-			await authProvider.close()
-
-			// Recover the validated server config stored on the connection so we
-			// can pass it directly to connectToServer without re-reading the file.
-			const validatedConfig = this.validateServerConfig(config, name)
-
-			// Remove the broken connection (closes the old transport/client),
-			// then reconnect. The new McpOAuthClientProvider will find the token
-			// in SecretStorage and connect without another OAuth round-trip.
-			await this.deleteConnection(name, source)
-			await this.connectToServer(name, validatedConfig, source)
-
-			await this.notifyWebviewOfServerChanges()
-			void vscode.window.showInformationMessage(t("mcp:oauth.flow.connected", { name }))
-		} catch (error) {
-			await authProvider.close()
-			const conn = this.findConnection(name, source)
-			if (conn) {
-				conn.server.status = "disconnected"
-				this.appendErrorMessage(conn, error instanceof Error ? error.message : `${error}`)
-			}
-			await this.notifyWebviewOfServerChanges()
-		} finally {
-			cancelListener?.dispose()
-		}
+		return this.oauthFlow.complete(authProvider, transport, connection, name, source, cancellationToken)
 	}
 
 	private appendErrorMessage(connection: McpConnection, error: string, level: "error" | "warn" | "info" = "error") {
@@ -1501,98 +996,19 @@ export class McpHub {
 		return null
 	}
 
-	private async fetchToolsList(serverName: string, source?: "global" | "project"): Promise<McpTool[]> {
-		try {
-			// Use the helper method to find the connection
-			const connection = this.findConnection(serverName, source)
-
-			if (!connection || connection.type !== "connected") {
-				return []
-			}
-
-			const response = await connection.client.request({ method: "tools/list" }, ListToolsResultSchema)
-
-			// Determine the actual source of the server
-			const actualSource = connection.server.source || "global"
-			let configPath: string
-			let alwaysAllowConfig: string[] = []
-			let disabledToolsList: string[] = []
-
-			// Read from the appropriate config file based on the actual source
-			try {
-				let serverConfigData: Record<string, any> = {}
-				if (actualSource === "project") {
-					// Get project MCP config path
-					const projectMcpPath = await this.getProjectMcpPath()
-					if (projectMcpPath) {
-						configPath = projectMcpPath
-						const content = await fs.readFile(configPath, "utf-8")
-						serverConfigData = JSON.parse(content)
-					}
-				} else {
-					// Get global MCP settings path
-					configPath = await this.getMcpSettingsFilePath()
-					const content = await fs.readFile(configPath, "utf-8")
-					serverConfigData = JSON.parse(content)
-				}
-				if (serverConfigData) {
-					alwaysAllowConfig = serverConfigData.mcpServers?.[serverName]?.alwaysAllow || []
-					disabledToolsList = serverConfigData.mcpServers?.[serverName]?.disabledTools || []
-				}
-			} catch (error) {
-				console.error(`Failed to read tool configuration for ${serverName}:`, error)
-				// Continue with empty configs
-			}
-
-			// Check if wildcard "*" is in the alwaysAllow config
-			const hasWildcard = alwaysAllowConfig.includes("*")
-
-			// Mark tools as always allowed and enabled for prompt based on settings
-			const tools = (response?.tools || []).map((tool) => ({
-				...tool,
-				alwaysAllow: hasWildcard || alwaysAllowConfig.includes(tool.name),
-				enabledForPrompt: !disabledToolsList.includes(tool.name),
-			}))
-
-			return tools
-		} catch (error) {
-			console.error(`Failed to fetch tools for ${serverName}:`, error)
-			return []
-		}
+	private fetchToolsList(serverName: string, source?: "global" | "project"): Promise<McpTool[]> {
+		return this.capabilities.fetchToolsList(serverName, source)
 	}
 
-	private async fetchResourcesList(serverName: string, source?: "global" | "project"): Promise<McpResource[]> {
-		try {
-			const connection = this.findConnection(serverName, source)
-			if (!connection || connection.type !== "connected") {
-				return []
-			}
-			const response = await connection.client.request({ method: "resources/list" }, ListResourcesResultSchema)
-			return response?.resources || []
-		} catch {
-			// console.error(`Failed to fetch resources for ${serverName}:`, error)
-			return []
-		}
+	private fetchResourcesList(serverName: string, source?: "global" | "project"): Promise<McpResource[]> {
+		return this.capabilities.fetchResourcesList(serverName, source)
 	}
 
-	private async fetchResourceTemplatesList(
+	private fetchResourceTemplatesList(
 		serverName: string,
 		source?: "global" | "project",
 	): Promise<McpResourceTemplate[]> {
-		try {
-			const connection = this.findConnection(serverName, source)
-			if (!connection || connection.type !== "connected") {
-				return []
-			}
-			const response = await connection.client.request(
-				{ method: "resources/templates/list" },
-				ListResourceTemplatesResultSchema,
-			)
-			return response?.resourceTemplates || []
-		} catch {
-			// console.error(`Failed to fetch resource templates for ${serverName}:`, error)
-			return []
-		}
+		return this.capabilities.fetchResourceTemplatesList(serverName, source)
 	}
 
 	async deleteConnection(name: string, source?: "global" | "project"): Promise<void> {
@@ -1641,7 +1057,7 @@ export class McpHub {
 	}
 
 	async updateServerConnections(
-		newServers: Record<string, any>,
+		newServers: Record<string, unknown>,
 		source: "global" | "project" = "global",
 		manageConnectingState: boolean = true,
 	): Promise<void> {
@@ -1669,7 +1085,7 @@ export class McpHub {
 			const currentConnection = this.findConnection(name, source)
 
 			// Validate and transform the config
-			let validatedConfig: z.infer<typeof ServerConfigSchema>
+			let validatedConfig: ServerConfig
 			try {
 				validatedConfig = this.validateServerConfig(config, name)
 			} catch (error) {
@@ -1709,11 +1125,7 @@ export class McpHub {
 		}
 	}
 
-	private setupFileWatcher(
-		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
-		source: "global" | "project" = "global",
-	) {
+	private setupFileWatcher(name: string, config: ServerConfig, source: "global" | "project" = "global") {
 		// Initialize an empty array for this server if it doesn't exist
 		if (!this.fileWatchers.has(name)) {
 			this.fileWatchers.set(name, [])
@@ -2024,7 +1436,7 @@ export class McpHub {
 	private async readServerConfigFromFile(
 		serverName: string,
 		source: "global" | "project" = "global",
-	): Promise<z.infer<typeof ServerConfigSchema>> {
+	): Promise<ServerConfig> {
 		// Determine which config file to read
 		let configPath: string
 		if (source === "project") {
@@ -2074,7 +1486,7 @@ export class McpHub {
 	 */
 	private async updateServerConfig(
 		serverName: string,
-		configUpdate: Record<string, any>,
+		configUpdate: Record<string, unknown>,
 		source: "global" | "project" = "global",
 	): Promise<void> {
 		// Determine which config file to update

@@ -278,6 +278,14 @@ Three request tests failed before the fix. They cover Claude and Gemini model en
 
 With non-loopback traffic blocked, the installed VSIX loaded a mock catalog and sent both system and user cache markers for an unlisted Claude model. It completed the task and reopened the saved result. This run checked the request body and did not measure provider cache hits or costs.
 
+### OpenRouter session routing and cache usage
+
+Requests tied to a task send a `session_id` to the official OpenRouter API. The handler hashes the task ID, model ID, and selected endpoint into a 64-character key. The same task and route keep their key across turns and handler replacement. A model or endpoint change gets a separate key. Custom URLs and unscoped requests omit the field. OpenAI Native already supplies its own cache routing key. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2245) · [OpenRouter chat request reference](https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request)
+
+The usage stream now includes OpenRouter's cache-write count with its cache-read count. The provider's total input tokens already include both counts. Three tests reproduced the missing routing key or cache-write count before the change. All 143 focused tests and 45 distribution checks passed. Host type and lint checks passed. The VSIX build used Node 24.22.3. [OpenRouter usage fields](https://openrouter.ai/docs/guides/best-practices/prompt-caching#usage-object-fields)
+
+In a temporary VS Code profile with non-loopback traffic blocked, a mocked OpenRouter origin received the same opaque key on two serialized requests for one task. The saved request recorded 1,000 input tokens, 300 cache writes, and 600 cache reads. The task reopened with its saved result. This run checked request serialization and local accounting with mock usage.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

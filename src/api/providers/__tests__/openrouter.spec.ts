@@ -140,6 +140,12 @@ describe("OpenRouterHandler", () => {
 		openRouterModelId: "anthropic/claude-sonnet-4",
 	})
 
+	// The SDK module is mocked here. Set the chat method that the handler calls.
+	const stubChatCreate = (mockCreate: ReturnType<typeof vitest.fn>) => {
+		const proto = OpenAI.prototype as unknown as { chat: { completions: { create: unknown } } }
+		proto.chat = { completions: { create: mockCreate } }
+	}
+
 	beforeEach(() => {
 		clearAllMocks()
 		// Endpoint records default to "not fetched" (same as the real guard for
@@ -383,6 +389,86 @@ describe("OpenRouterHandler", () => {
 		})
 	})
 	describe("createMessage", () => {
+		it("keeps one routing key for a task and separates different routes and tasks", async () => {
+			const mockCreate = vitest.fn().mockImplementation(async () => asyncStreamFrom([]))
+			stubChatCreate(mockCreate)
+			const handler = new OpenRouterHandler(mockOptions)
+			const longPrefix = "task-".repeat(60)
+			const taskId = longPrefix + "first"
+			const routeKey = async (provider: OpenRouterHandler, id: string) => {
+				await collectStream(provider.createMessage("test system", [], { taskId: id }))
+				return mockCreate.mock.lastCall?.[0]?.session_id
+			}
+
+			const key = await routeKey(handler, taskId)
+			expect(key).toMatch(/^[a-f0-9]{64}$/)
+			expect(await routeKey(handler, taskId)).toBe(key)
+			expect(
+				await routeKey(
+					new OpenRouterHandler({
+						...mockOptions,
+						openRouterBaseUrl: "https://openrouter.ai/api/v1/",
+						openRouterSpecificProvider: OPENROUTER_DEFAULT_PROVIDER_NAME,
+					}),
+					taskId,
+				),
+			).toBe(key)
+
+			const otherKeys = [
+				await routeKey(handler, longPrefix + "second"),
+				await routeKey(new OpenRouterHandler({ ...mockOptions, openRouterModelId: "openai/gpt-4o" }), taskId),
+				await routeKey(new OpenRouterHandler({ ...mockOptions, openRouterSpecificProvider: "pinned" }), taskId),
+			]
+			for (const otherKey of otherKeys) expect(otherKey).toMatch(/^[a-f0-9]{64}$/)
+			expect(new Set([key, ...otherKeys]).size).toBe(4)
+		})
+
+		it.each([
+			{ scenario: "a custom endpoint", baseUrl: "https://router.example.test/v1", taskId: "test-task" },
+			{ scenario: "without task metadata", baseUrl: undefined, taskId: undefined },
+			{ scenario: "with an empty task ID", baseUrl: undefined, taskId: "" },
+		])("omits the routing key $scenario", async ({ baseUrl, taskId }) => {
+			const mockCreate = vitest.fn().mockImplementation(async () => asyncStreamFrom([]))
+			stubChatCreate(mockCreate)
+			const handler = new OpenRouterHandler({ ...mockOptions, openRouterBaseUrl: baseUrl })
+
+			await collectStream(handler.createMessage("test system", [], taskId === undefined ? undefined : { taskId }))
+
+			expect(mockCreate.mock.lastCall?.[0]).toBeDefined()
+			expect(mockCreate.mock.lastCall?.[0]).not.toHaveProperty("session_id")
+		})
+
+		it("reports both cache write and cache read tokens from final usage", async () => {
+			const mockCreate = vitest.fn().mockResolvedValue(
+				asyncStreamFrom([
+					{
+						id: "test-id",
+						choices: [],
+						usage: {
+							prompt_tokens: 1000,
+							completion_tokens: 25,
+							prompt_tokens_details: { cache_write_tokens: 300, cached_tokens: 600 },
+							cost: 0.012,
+						},
+					},
+				]),
+			)
+			stubChatCreate(mockCreate)
+
+			const chunks = await collectStream(new OpenRouterHandler(mockOptions).createMessage("test system", []))
+
+			expect(chunks).toEqual([
+				{
+					type: "usage",
+					inputTokens: 1000,
+					outputTokens: 25,
+					cacheWriteTokens: 300,
+					cacheReadTokens: 600,
+					totalCost: 0.012,
+				},
+			])
+		})
+
 		it("generates correct stream chunks", async () => {
 			const handler = new OpenRouterHandler(mockOptions)
 
@@ -493,13 +579,6 @@ describe("OpenRouterHandler", () => {
 
 			const requestBody = (mockCreate: ReturnType<typeof vitest.fn>) =>
 				mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-
-			// `openai` is mocked for this file, so the prototype is a plain object here.
-			// Reaching it once keeps the casts out of each test body.
-			const stubChatCreate = (mockCreate: ReturnType<typeof vitest.fn>) => {
-				const proto = OpenAI.prototype as unknown as { chat: { completions: { create: unknown } } }
-				proto.chat = { completions: { create: mockCreate } }
-			}
 
 			const cacheControlsIn = (body: unknown) => {
 				const found: Array<Record<string, unknown>> = []
@@ -1148,6 +1227,23 @@ describe("OpenRouterHandler", () => {
 	})
 
 	describe("completePrompt", () => {
+		it("uses the same routing key for a completion explicitly scoped to a task", async () => {
+			const mockCreate = vitest
+				.fn()
+				.mockResolvedValueOnce(asyncStreamFrom([]))
+				.mockResolvedValueOnce({ choices: [{ message: { content: "test completion" } }] })
+			stubChatCreate(mockCreate)
+			const handler = new OpenRouterHandler(mockOptions)
+			const options = { taskId: "test-task" }
+
+			await collectStream(handler.createMessage("test system", [], options))
+			await expect(handler.completePrompt("test prompt", options)).resolves.toBe("test completion")
+
+			const [stream, completion] = mockCreate.mock.calls.map(([body]) => body.session_id)
+			expect(stream).toMatch(/^[a-f0-9]{64}$/)
+			expect(completion).toBe(stream)
+		})
+
 		it("returns correct response", async () => {
 			const handler = new OpenRouterHandler(mockOptions)
 			const mockResponse = { choices: [{ message: { content: "test completion" } }] }

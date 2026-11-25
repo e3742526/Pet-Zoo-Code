@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { z } from "zod"
@@ -7,6 +9,7 @@ import {
 	ApiProviderError,
 	openRouterDefaultModelId,
 	openRouterDefaultModelInfo,
+	OPENROUTER_API_BASE_URL,
 	OPENROUTER_DEFAULT_PROVIDER_NAME,
 	OPEN_ROUTER_PROMPT_CACHING_MODELS,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
@@ -48,6 +51,7 @@ import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
 
 // Add custom interface for OpenRouter params.
 type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
+	session_id?: string
 	transforms?: string[]
 	include_reasoning?: boolean
 	// https://openrouter.ai/docs/use-cases/reasoning-tokens
@@ -126,6 +130,7 @@ interface CompletionUsage {
 	prompt_tokens?: number
 	prompt_tokens_details?: {
 		cached_tokens?: number
+		cache_write_tokens?: number
 	}
 	total_tokens?: number
 	cost?: number
@@ -145,7 +150,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		super()
 		this.options = options
 
-		const baseURL = this.options.openRouterBaseUrl || "https://openrouter.ai/api/v1"
+		const baseURL = this.options.openRouterBaseUrl || OPENROUTER_API_BASE_URL
 		const apiKey = this.options.openRouterApiKey ?? NOT_PROVIDED
 
 		this.client = new OpenAI({ baseURL, apiKey, defaultHeaders: DEFAULT_HEADERS, timeout: this.timeoutMs })
@@ -170,6 +175,17 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			Boolean(this.options.openRouterSpecificProvider) &&
 			this.options.openRouterSpecificProvider !== OPENROUTER_DEFAULT_PROVIDER_NAME
 		)
+	}
+
+	/** Keep affinity across turns and resumed tasks without sending the local task ID. */
+	private getCacheSessionId(modelId: string, taskId?: string): string | undefined {
+		const baseUrl = this.options.openRouterBaseUrl || OPENROUTER_API_BASE_URL
+		if (!taskId || baseUrl.replace(/\/+$/, "") !== OPENROUTER_API_BASE_URL) return undefined
+
+		const endpoint = this.hasSpecificProvider ? this.options.openRouterSpecificProvider : undefined
+		return createHash("sha256")
+			.update(JSON.stringify(["pet-zoo-code/openrouter", taskId, modelId, endpoint]))
+			.digest("hex")
 	}
 
 	async ensureModelFetched(signal?: AbortSignal): Promise<void> {
@@ -323,8 +339,10 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		// https://openrouter.ai/docs/transforms
+		const sessionId = this.getCacheSessionId(modelId, metadata?.taskId)
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,
+			...(sessionId && { session_id: sessionId }),
 			...(maxTokens && maxTokens > 0 && { max_tokens: maxTokens }),
 			temperature,
 			top_p: topP,
@@ -549,6 +567,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				type: "usage",
 				inputTokens: lastUsage.prompt_tokens || 0,
 				outputTokens: lastUsage.completion_tokens || 0,
+				cacheWriteTokens: lastUsage.prompt_tokens_details?.cache_write_tokens,
 				cacheReadTokens: lastUsage.prompt_tokens_details?.cached_tokens,
 				reasoningTokens: lastUsage.completion_tokens_details?.reasoning_tokens,
 				totalCost: (lastUsage.cost_details?.upstream_inference_cost || 0) + (lastUsage.cost || 0),
@@ -608,11 +627,13 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		return { id, info, topP: isDeepSeekR1 ? 0.95 : undefined, ...params }
 	}
 
-	async completePrompt(prompt: string, _options?: CompletePromptOptions) {
+	async completePrompt(prompt: string, options?: CompletePromptOptions) {
 		const { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
 
+		const sessionId = this.getCacheSessionId(modelId, options?.taskId)
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,
+			...(sessionId && { session_id: sessionId }),
 			max_tokens: maxTokens,
 			temperature,
 			messages: [{ role: "user", content: prompt }],

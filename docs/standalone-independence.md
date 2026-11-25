@@ -117,3 +117,13 @@ The installed-package test set the same `ROO_CODE_CLOUD_ORG_SETTINGS` allowlist 
 Local `main` builds the `e3742526.pet-zoo-code` VSIX. During the first build on `main`, a cached webview restore kept five JavaScript chunks from a previous build. Direct packaging reproduced the same behavior with a probe file. The VSIX prepublish hook now clears the generated webview build directory before it restores or builds those files.
 
 Direct packaging discarded the probe on a confirmed webview cache hit. The `main` VSIX contained 557 scripts that matched the build outputs. The five old chunks and probe were absent from the archive. The build passed 23 cache contract checks and 45 distribution checks.
+
+## Commit messages, model age, and privacy review
+
+On November 25, 2026, the fork added commit message drafting in Source Control. The command reads the staged diff, masks common secret formats, and sends the diff only to the selected provider or to the local `dory` CLI. It discards a draft if the staged changes or the commit input box change while the draft runs. A workspace cannot redirect the `dory` executable, because the command reads `dory.cliPath` only from user settings.
+
+The same day, model lists began to hide models released more than 24 months ago. Bundled catalogs record release dates, and OpenRouter supplies its listing date. A model without a date stays selectable. A profile that already uses an older model keeps it. The CLI `list models` command applies the same filter.
+
+A privacy review of the tracked files found no credentials or personal email addresses. Eight modularity assessment files at the repository root contained absolute links to a local home directory. The links are now relative. The custom tool dispatcher wrote tool arguments and results to the extension host console. It now writes only the tool name. `PRIVACY.md` now starts with a section that describes the fork, before the upstream policy.
+
+The four commit message suites passed 27 tests, the assistant message suites passed 174 tests, and the model picker suites passed 18 tests. Repository type checks passed, and targeted lint checks passed with no new suppressions.

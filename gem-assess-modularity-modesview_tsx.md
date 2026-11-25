@@ -1,7 +1,7 @@
 # Modularity Assessment: `webview-ui/src/components/modes/ModesView.tsx`
 
 **Date:** 2026-11-24  
-**Target File:** [ModesView.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/ModesView.tsx) (`1,789` lines, `60,391` bytes)  
+**Target File:** [ModesView.tsx](webview-ui/src/components/modes/ModesView.tsx) (`1,789` lines, `60,391` bytes)  
 **Scope:** Analysis & modularization blueprint only (no code modified).
 
 ---
@@ -16,13 +16,13 @@
 4. **Mode Action Buttons (`854–924`):** Create (`+`), Rename, Delete (triggers `deleteCustomMode` with `checkOnly: true`), Export (`exportMode`).
 5. **Mode-Scoped API Configuration Selector (`928–955`):** `Select` bound to `currentApiConfigName`, posting `loadApiConfiguration`.
 6. **Prompt & Instructions Editors (`129–152`, `600–614`, `958–1342`):** Four nearly identical editable sections (`roleDefinition`, `description`, `whenToUse`, `customInstructions`) with built-in reset buttons, custom-vs-built-in branching (`updateCustomMode` vs `updateAgentPrompt`), and `./.roo/rules-<slug>/rules.md` link.
-7. **Tools & MCP Restriction Editor (`490–514`, `1124–1236`):** Toggleable `TOOL_GROUPS` checkbox grid + `McpServerRestriction` (already extracted to [McpServerRestriction.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/McpServerRestriction.tsx)).
+7. **Tools & MCP Restriction Editor (`490–514`, `1124–1236`):** Toggleable `TOOL_GROUPS` checkbox grid + `McpServerRestriction` (already extracted to [McpServerRestriction.tsx](webview-ui/src/components/modes/McpServerRestriction.tsx)).
 8. **System Prompt Preview / Copy & Global Custom Instructions (`1344–1444`, `1674–1702`):** Preview/copy buttons, full-height slide-over modal for `systemPrompt`, and global `customInstructions` textarea + `./.roo/rules/rules.md` link.
 9. **Modals & Host Message Bus (`324–487`, `536–598`, `1447–1784`):**
     - Create Mode slide-over dialog (9 form fields + 5 Zod error states + `McpServerChecklist`)
     - System Prompt preview slide-over dialog
     - Import Mode dialog (`project` vs `global`)
-    - `DeleteModeDialog` ([DeleteModeDialog.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/DeleteModeDialog.tsx))
+    - `DeleteModeDialog` ([DeleteModeDialog.tsx](webview-ui/src/components/modes/DeleteModeDialog.tsx))
     - Single `window.addEventListener("message", ...)` dispatcher using 4 refs (`handleModeSwitchRef`, `customModesRef`, `switchModeRef`, `modeToDeleteRef`) + `visualModeRef`.
 
 ---
@@ -31,15 +31,15 @@
 
 ### A. Inbound Consumers (Who Imports / Renders `ModesView`)
 
-| File                                                                                                                                                                           | Usage                                                                                                  | Impact if Modularized                                                                                |
-| :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
-| [SettingsView.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/settings/SettingsView.tsx#L86)                                                        | `import ModesView from "../modes/ModesView"` and `{activeTab === "modes" && <ModesView />}` (line 910) | **None** if `ModesView.tsx` keeps its default export and zero-prop signature.                        |
-| [App.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/__tests__/App.spec.tsx#L71)                                                                          | `vi.mock("@src/components/modes/ModesView", ...)`                                                      | **None** if path & default export are preserved.                                                     |
-| [SettingsView.change-detection.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/settings/__tests__/SettingsView.change-detection.spec.tsx#L192) | `vi.mock("@src/components/modes/ModesView", ...)`                                                      | **None.**                                                                                            |
-| [SettingsView.unsaved-changes.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/settings/__tests__/SettingsView.unsaved-changes.spec.tsx#L168)   | `vi.mock("@src/components/modes/ModesView", ...)`                                                      | **None.**                                                                                            |
-| [ModesView.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/__tests__/ModesView.spec.tsx)                                                 | Imports `../ModesView`, mocks `@src/utils/vscode`, queries `data-testid`s and i18n keys                | **High** if `data-testid`s or `vscode.postMessage` payloads change.                                  |
-| [ModesView.import-switch.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/__tests__/ModesView.import-switch.spec.tsx)                     | Imports `../ModesView`, dispatches `importModeResult` window messages                                  | **High** if `importModeResult` handling or `visualMode` switching moves without preserving behavior. |
-| [McpServerRestriction.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/__tests__/McpServerRestriction.spec.tsx)                           | Imports `../ModesView`, mocks `DeleteModeDialog`                                                       | **Medium/High** — tests `ModesView` integration with `McpServerRestriction`.                         |
+| File                                                                                                                               | Usage                                                                                                  | Impact if Modularized                                                                                |
+| :--------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| [SettingsView.tsx](webview-ui/src/components/settings/SettingsView.tsx#L86)                                                        | `import ModesView from "../modes/ModesView"` and `{activeTab === "modes" && <ModesView />}` (line 910) | **None** if `ModesView.tsx` keeps its default export and zero-prop signature.                        |
+| [App.spec.tsx](webview-ui/src/__tests__/App.spec.tsx#L71)                                                                          | `vi.mock("@src/components/modes/ModesView", ...)`                                                      | **None** if path & default export are preserved.                                                     |
+| [SettingsView.change-detection.spec.tsx](webview-ui/src/components/settings/__tests__/SettingsView.change-detection.spec.tsx#L192) | `vi.mock("@src/components/modes/ModesView", ...)`                                                      | **None.**                                                                                            |
+| [SettingsView.unsaved-changes.spec.tsx](webview-ui/src/components/settings/__tests__/SettingsView.unsaved-changes.spec.tsx#L168)   | `vi.mock("@src/components/modes/ModesView", ...)`                                                      | **None.**                                                                                            |
+| [ModesView.spec.tsx](webview-ui/src/components/modes/__tests__/ModesView.spec.tsx)                                                 | Imports `../ModesView`, mocks `@src/utils/vscode`, queries `data-testid`s and i18n keys                | **High** if `data-testid`s or `vscode.postMessage` payloads change.                                  |
+| [ModesView.import-switch.spec.tsx](webview-ui/src/components/modes/__tests__/ModesView.import-switch.spec.tsx)                     | Imports `../ModesView`, dispatches `importModeResult` window messages                                  | **High** if `importModeResult` handling or `visualMode` switching moves without preserving behavior. |
+| [McpServerRestriction.spec.tsx](webview-ui/src/components/modes/__tests__/McpServerRestriction.spec.tsx)                           | Imports `../ModesView`, mocks `DeleteModeDialog`                                                       | **Medium/High** — tests `ModesView` integration with `McpServerRestriction`.                         |
 
 ### B. Outbound Imports (What `ModesView.tsx` Depends On)
 
@@ -55,11 +55,11 @@
     - `@src/components/settings/Section`
     - `@src/components/ui` (`Button`, `Select*`, `Popover*`, `Command*`, `Input`, `StandardTooltip`)
     - `@src/hooks/useEscapeKey`
-    - Siblings: [DeleteModeDialog.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/DeleteModeDialog.tsx) (56 lines), [McpServerRestriction.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/McpServerRestriction.tsx) (173 lines), [McpServerChecklist.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/McpServerChecklist.tsx) (64 lines).
+    - Siblings: [DeleteModeDialog.tsx](webview-ui/src/components/modes/DeleteModeDialog.tsx) (56 lines), [McpServerRestriction.tsx](webview-ui/src/components/modes/McpServerRestriction.tsx) (173 lines), [McpServerChecklist.tsx](webview-ui/src/components/modes/McpServerChecklist.tsx) (64 lines).
 
 ### C. Extension Host Message Contract (`vscode.postMessage` ↔ `window` `"message"`)
 
-All 13 outbound messages and 5 inbound messages are handled in [webviewMessageHandler.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/webview/webviewMessageHandler.ts) (none need backend changes during a pure UI modularization):
+All 13 outbound messages and 5 inbound messages are handled in [webviewMessageHandler.ts](src/core/webview/webviewMessageHandler.ts) (none need backend changes during a pure UI modularization):
 
 - **Outbound (`webview -> host`):**
     1. `updatePrompt` (`promptMode`, `customPrompt`) → line 2127
@@ -135,19 +135,19 @@ Split `ModesView.tsx` into cohesive, single-responsibility modules under `webvie
 4. **`deleteCustomMode` two-step flow (`882–896`, `582–593`, `1770–1784`):**
     - Clicking trash sends `{ type: "deleteCustomMode", slug, checkOnly: true }` and sets `modeToDelete`; `DeleteModeDialog` only opens after `deleteCustomModeCheck` arrives with `rulesFolderPath`.
 5. **Default export & zero-prop signature of `ModesView.tsx`:**
-    - Required by [SettingsView.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/settings/SettingsView.tsx#L86) and the 3 `vi.mock("@src/components/modes/ModesView", ...)` test mocks.
+    - Required by [SettingsView.tsx](webview-ui/src/components/settings/SettingsView.tsx#L86) and the 3 `vi.mock("@src/components/modes/ModesView", ...)` test mocks.
 
 ---
 
 ## 5. Other Files Impacted
 
-- **Zero backend (`src/`) changes required** — all 13 outbound and 5 inbound message types in [webviewMessageHandler.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/webview/webviewMessageHandler.ts) and [ClineProvider.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/webview/ClineProvider.ts) remain untouched.
+- **Zero backend (`src/`) changes required** — all 13 outbound and 5 inbound message types in [webviewMessageHandler.ts](src/core/webview/webviewMessageHandler.ts) and [ClineProvider.ts](src/core/webview/ClineProvider.ts) remain untouched.
 - **Zero `SettingsView.tsx` changes required** (unless you also choose to lazy-load `ModesView` with `React.lazy` later, which is orthogonal).
 - **Test files to run/verify after modularization:**
-    - [ModesView.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/__tests__/ModesView.spec.tsx)
-    - [ModesView.import-switch.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/__tests__/ModesView.import-switch.spec.tsx)
-    - [McpServerRestriction.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/modes/__tests__/McpServerRestriction.spec.tsx)
-    - [SettingsView.change-detection.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/settings/__tests__/SettingsView.change-detection.spec.tsx)
-    - [SettingsView.unsaved-changes.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/settings/__tests__/SettingsView.unsaved-changes.spec.tsx)
-    - [App.spec.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/__tests__/App.spec.tsx)
+    - [ModesView.spec.tsx](webview-ui/src/components/modes/__tests__/ModesView.spec.tsx)
+    - [ModesView.import-switch.spec.tsx](webview-ui/src/components/modes/__tests__/ModesView.import-switch.spec.tsx)
+    - [McpServerRestriction.spec.tsx](webview-ui/src/components/modes/__tests__/McpServerRestriction.spec.tsx)
+    - [SettingsView.change-detection.spec.tsx](webview-ui/src/components/settings/__tests__/SettingsView.change-detection.spec.tsx)
+    - [SettingsView.unsaved-changes.spec.tsx](webview-ui/src/components/settings/__tests__/SettingsView.unsaved-changes.spec.tsx)
+    - [App.spec.tsx](webview-ui/src/__tests__/App.spec.tsx)
 - **New unit tests recommended** for extracted pure helpers/hooks (`modeHelpers.spec.ts`, `useModesState.spec.ts`, `CreateModeDialog.spec.tsx`).

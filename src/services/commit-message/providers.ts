@@ -20,10 +20,24 @@ import { singleCompletionHandler } from "../../utils/single-completion-handler"
 
 import { buildCommitMessagePrompt, getCommitMessage } from "./prompt"
 
+/**
+ * Commit message provider selections, stored in `commitMessage.provider`:
+ * - `"default"`: try every available route in priority order (see getRoutes).
+ * - `"profile:<id>"`: use one saved API configuration profile.
+ * - `"dory:<provider>"`: forward to the external `dory` CLI.
+ */
 export const DEFAULT_COMMIT_PROVIDER = "default"
 const NATIVE_TIMEOUT_MS = 60_000
 const DORY_TIMEOUT_MS = 360_000
-const { openaiCodex, githubCopilot, kimiCode, qwenCode, vscodeLm, antigravity, museCode } = providerIdentifiers
+const { openaiCodex, githubCopilot, kimiCode, qwenCode, vscodeLm, antigravity, museCode, fakeAi, geminiCli } =
+	providerIdentifiers
+
+/** Providers that sign in through a subscription or the editor, not an API key. */
+const SERVICE_PROVIDERS: ReadonlySet<string> = new Set([openaiCodex, githubCopilot, qwenCode, vscodeLm])
+/** Providers that run a local CLI agent. */
+const CLI_PROVIDERS: ReadonlySet<string> = new Set([antigravity, museCode])
+/** Providers that the default selection tries even when no saved profile uses them. */
+const IMPLICIT_PROVIDERS = [openaiCodex, githubCopilot, kimiCode, qwenCode, antigravity, museCode] as const
 
 export interface CommitProfile {
 	id: string
@@ -40,29 +54,23 @@ interface DoryRoute {
 	provider: string
 }
 
+/** Classifies a profile by how it authenticates. Returns undefined for providers that cannot draft. */
 function toProfileRoute(settings: ProviderSettings): ProfileRoute | undefined {
 	const provider = settings.apiProvider
-	if (
-		!isProviderName(provider) ||
-		provider === providerIdentifiers.fakeAi ||
-		provider === providerIdentifiers.geminiCli
-	) {
-		return undefined
-	}
-	if (
-		provider === openaiCodex ||
-		provider === githubCopilot ||
-		provider === qwenCode ||
-		provider === vscodeLm ||
-		(provider === kimiCode && settings.kimiCodeAuthMethod !== "api-key")
-	)
+	if (!isProviderName(provider) || provider === fakeAi || provider === geminiCli) return undefined
+	// Kimi Code uses OAuth unless the profile selects an API key.
+	if (SERVICE_PROVIDERS.has(provider) || (provider === kimiCode && settings.kimiCodeAuthMethod !== "api-key")) {
 		return { kind: "service", settings }
-
-	if (provider === antigravity || provider === museCode) return { kind: "cli", settings }
-
+	}
+	if (CLI_PROVIDERS.has(provider)) return { kind: "cli", settings }
 	return { kind: "api", settings }
 }
 
+/**
+ * Lists the routes to try, in order. An explicit selection yields at most one route.
+ * The default selection tries signed-in services, then CLI agents, then the Dory CLI,
+ * then API-key profiles. Every profile route must pass the organization allowlist.
+ */
 function getRoutes(
 	selection: string,
 	profiles: CommitProfile[],
@@ -82,7 +90,8 @@ function getRoutes(
 	}
 
 	const routes = profiles.flatMap(({ settings }) => profileRoute(settings) ?? [])
-	for (const apiProvider of [openaiCodex, githubCopilot, kimiCode, qwenCode, antigravity, museCode]) {
+	// Add a bare route for each subscription provider that no saved profile already covers.
+	for (const apiProvider of IMPLICIT_PROVIDERS) {
 		const route = profileRoute({ apiProvider })
 		if (
 			route &&
@@ -100,6 +109,7 @@ function getRoutes(
 	]
 }
 
+/** Checks local credentials for a service route, so the default selection skips services the user has not signed in to. */
 async function isSignedIn(settings: ProviderSettings): Promise<boolean> {
 	switch (settings.apiProvider) {
 		case openaiCodex:
@@ -119,6 +129,10 @@ async function isSignedIn(settings: ProviderSettings): Promise<boolean> {
 
 const doryResult = z.object({ success: z.literal(true), stdout: z.string() })
 
+/**
+ * Runs `dory session draft-commit --dry-run --json` and returns the drafted message.
+ * Only a user-level `dory.cliPath` is honored, so a workspace cannot redirect the executable.
+ */
 async function draftWithDory(provider: string, cwd: string, signal: AbortSignal) {
 	const configured = vscode.workspace.getConfiguration("dory").inspect<string>("cliPath")?.globalValue?.trim()
 	const path = configured && expandHomeDirectory(configured)
@@ -158,6 +172,10 @@ interface DraftOptions {
 	log: (message: string) => void
 }
 
+/**
+ * Tries each route until one returns a valid message. A failed or rejected attempt
+ * falls through to the next route. Caller cancellation stops the loop at once.
+ */
 export async function draftCommitMessage(options: DraftOptions): Promise<string | undefined> {
 	const { selection, profiles, allowList, patch, cwd, signal, beforeDory, log } = options
 	const prompt = buildCommitMessagePrompt(patch)

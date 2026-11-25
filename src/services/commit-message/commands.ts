@@ -5,6 +5,7 @@ import { Package } from "../../shared/package"
 import { prepareCommitIndex, readStagedCommitDiff, type AutoStage } from "./git"
 import { DEFAULT_COMMIT_PROVIDER, draftCommitMessage, type CommitProfile } from "./providers"
 
+// Minimal structural types for the parts of the built-in `vscode.git` extension API that this module uses.
 interface GitRepository {
 	rootUri: vscode.Uri
 	inputBox: { value: string }
@@ -37,6 +38,10 @@ async function getGitApi(): Promise<GitApi | undefined> {
 	return git?.enabled ? git.getAPI(1) : undefined
 }
 
+/**
+ * Picks the target repository: the one whose SCM title button was clicked, the only
+ * repository, the only selected repository, or the user's choice from a quick pick.
+ */
 async function selectRepository(repositories: GitRepository[], sourceControl?: Pick<vscode.SourceControl, "rootUri">) {
 	const root = sourceControl?.rootUri
 	if (root) return repositories.find((repo) => repo.rootUri.toString() === root.toString())
@@ -60,6 +65,12 @@ function configuration(resource?: vscode.Uri) {
 	return vscode.workspace.getConfiguration(`${Package.name}.commitMessage`, resource)
 }
 
+/**
+ * Reads a `commitMessage.*` setting that the user set explicitly. When no scope sets it,
+ * falls back to the same key under the legacy `dory.commitMessage` section (converted by
+ * `useLegacy`), and then to `fallback`. The manifest default is ignored on purpose, so a
+ * legacy value can still apply.
+ */
 function readCommitSetting(
 	key: string,
 	fallback: string,
@@ -73,12 +84,14 @@ function readCommitSetting(
 	return typeof legacy === "string" ? (useLegacy?.(legacy) ?? legacy) : fallback
 }
 
+/** Legacy Dory values name a CLI provider, so `"codex"` becomes `"dory:codex"` and `"auto"` becomes the default. */
 function readCommitProvider(resource?: vscode.Uri): string {
 	return readCommitSetting("provider", DEFAULT_COMMIT_PROVIDER, resource, (legacy) =>
 		legacy === "auto" ? DEFAULT_COMMIT_PROVIDER : `dory:${legacy}`,
 	)
 }
 
+/** Loads the profiles the selection can use. The active profile comes first so the default route tries it first. */
 async function loadCommitProfiles(provider: CommitMessageProvider, selection: string, currentName?: string) {
 	if (selection.startsWith("dory:")) return []
 	const manager = provider.providerSettingsManager
@@ -137,6 +150,8 @@ async function draftInRepository(
 				})
 				const profiles = await loadCommitProfiles(provider, selection, currentApiConfigName)
 
+				// Drafting can take minutes. Re-read the index before the Dory CLI runs and after
+				// any draft, and discard the draft if the staged changes no longer match it.
 				let indexChanged = false
 				const checkIndex = async () => {
 					const current = await readStagedCommitDiff(git, cwd, signal)
@@ -156,6 +171,7 @@ async function draftInRepository(
 				signal.throwIfAborted()
 				if (message) await checkIndex()
 				signal.throwIfAborted()
+				// Never overwrite text that the user typed into the commit box while the draft ran.
 				if (indexChanged || (message && repo.inputBox.value !== originalInput)) {
 					void vscode.window.showWarningMessage(
 						"The staged changes or commit input changed. Generate the message again.",
@@ -186,10 +202,16 @@ const doryChoices = [
 	{ selection: "dory:omlx", label: "oMLX (local)" },
 ]
 
+/**
+ * Creates the handlers for `generateCommitMessage` (the SCM title button) and
+ * `setCommitMessageProvider` (Command Palette). Errors are logged without details
+ * because a Git error can quote file contents.
+ */
 export function createCommitMessageCommands(
 	provider: CommitMessageProvider,
 	output: Pick<vscode.OutputChannel, "appendLine">,
 ) {
+	// Repository roots with a draft in progress, so repeated clicks do not start a second draft.
 	const pending = new Set<string>()
 
 	return {

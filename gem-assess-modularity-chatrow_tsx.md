@@ -1,7 +1,7 @@
 # Modularity Assessment: `webview-ui/src/components/chat/ChatRow.tsx`
 
 **Date:** 2026-11-24  
-**Target File:** [ChatRow.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/chat/ChatRow.tsx) (`1,824` lines, `59,780` bytes)  
+**Target File:** [ChatRow.tsx](webview-ui/src/components/chat/ChatRow.tsx) (`1,824` lines, `59,780` bytes)  
 **Scope:** Analysis & modularization blueprint only (no code modified).
 
 ---
@@ -13,7 +13,7 @@
 1. **Row Shell & Auto-Scroll Height Observer (`156–188`):**
     - `ChatRow` (`React.memo(..., deepEqual)`) wraps `ChatRowContent` and attaches a `ResizeObserver` when `isLast` is true to notify `ChatView` via `onHeightChange`.
 2. **Context Isolation & Transcript Wrapper (`190–275`):**
-    - `ChatRowContent` reads the narrow `useExtensionChatRowState()` context (`ExtensionChatRowContext` in [ExtensionStateContext.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/context/ExtensionStateContext.tsx#L187-L193)) and only mounts `ChatRowWithTranscript` (which reads full `useExtensionState().clineMessages`) for `subtask_result`, `newTask`, or `updateTodoList`.
+    - `ChatRowContent` reads the narrow `useExtensionChatRowState()` context (`ExtensionChatRowContext` in [ExtensionStateContext.tsx](webview-ui/src/context/ExtensionStateContext.tsx#L187-L193)) and only mounts `ChatRowWithTranscript` (which reads full `useExtensionState().clineMessages`) for `subtask_result`, `newTask`, or `updateTodoList`.
     - `EditChatTextArea` subscribes to `useExtensionState()` + `window` `"selectedImages"` messages only while editing a `user_feedback` row.
 3. **Header Icon & Title Computation (`377–495`):**
     - `useMemo` returning `[icon, title]` tuple for `command`, `use_mcp_server`, `completion_result`, `api_req_started`, `followup`, etc.
@@ -30,22 +30,22 @@
 
 ### A. Inbound Consumers (Who Imports `ChatRow` or `ChatRowContent`)
 
-| File                                                                                                                           | Import                                                                                  | Impact if Modularized                                              |
-| :----------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- | :----------------------------------------------------------------- |
-| [ChatView.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/components/chat/ChatView.tsx)                        | Default `ChatRow`                                                                       | **None** if `ChatRow.tsx` keeps default export + `ChatRowProps`.   |
-| **9 `ChatView.*.spec.tsx` tests**                                                                                              | `vi.mock("../ChatRow", ...)`                                                            | **None** if path & default export are preserved.                   |
-| **8 `ChatRow.*.spec.tsx` + `IgnoredDisabledToolsNotice.spec.tsx` + `MessageTimestamps.visual.fixture.tsx`**                    | Named `ChatRowContent` (and `ChatRow` in `ChatRow.timestamp.spec.tsx`)                  | **None** if `ChatRow.tsx` keeps `export const ChatRowContent`.     |
-| [stories.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/playwright/gallery/stories.tsx)                           | Gallery stories (uses `MessageTimestamps.visual.fixture.tsx` / `ChatRow`)               | **None** if exports are preserved.                                 |
-| [ExtensionStateContext.tsx](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/src/context/ExtensionStateContext.tsx#L187) | Defines `ExtensionChatRowState` + `useExtensionChatRowState` specifically for `ChatRow` | **None** (keep `ChatRowContent` using `useExtensionChatRowState`). |
+| File                                                                                                        | Import                                                                                  | Impact if Modularized                                              |
+| :---------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- | :----------------------------------------------------------------- |
+| [ChatView.tsx](webview-ui/src/components/chat/ChatView.tsx)                                                 | Default `ChatRow`                                                                       | **None** if `ChatRow.tsx` keeps default export + `ChatRowProps`.   |
+| **9 `ChatView.*.spec.tsx` tests**                                                                           | `vi.mock("../ChatRow", ...)`                                                            | **None** if path & default export are preserved.                   |
+| **8 `ChatRow.*.spec.tsx` + `IgnoredDisabledToolsNotice.spec.tsx` + `MessageTimestamps.visual.fixture.tsx`** | Named `ChatRowContent` (and `ChatRow` in `ChatRow.timestamp.spec.tsx`)                  | **None** if `ChatRow.tsx` keeps `export const ChatRowContent`.     |
+| [stories.tsx](webview-ui/playwright/gallery/stories.tsx)                                                    | Gallery stories (uses `MessageTimestamps.visual.fixture.tsx` / `ChatRow`)               | **None** if exports are preserved.                                 |
+| [ExtensionStateContext.tsx](webview-ui/src/context/ExtensionStateContext.tsx#L187)                          | Defines `ExtensionChatRowState` + `useExtensionChatRowState` specifically for `ChatRow` | **None** (keep `ChatRowContent` using `useExtensionChatRowState`). |
 
 ### B. Backend Coupling (Implicit String Contracts)
 
-- [Task.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/task/Task.ts#L6198-L6199): Formats `api_req_retry_delayed` as `"<status>\n<message>"` and `<retry_timer>N</retry_timer>` specifically for `ChatRow` parsing (lines 1188–1203).
-- [error-handler.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/api/providers/utils/error-handler.ts#L112): Emits error fields consumed by `ChatRow` / `ErrorRow`.
+- [Task.ts](src/core/task/Task.ts#L6198-L6199): Formats `api_req_retry_delayed` as `"<status>\n<message>"` and `<retry_timer>N</retry_timer>` specifically for `ChatRow` parsing (lines 1188–1203).
+- [error-handler.ts](src/api/providers/utils/error-handler.ts#L112): Emits error fields consumed by `ChatRow` / `ErrorRow`.
 
 ### C. ESLint Config Coupling
 
-- [webview-ui/eslint.config.mjs](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/eslint.config.mjs#L50-L65) has **two file-specific rule exemptions** for `src/components/chat/ChatRow.tsx`:
+- [webview-ui/eslint.config.mjs](webview-ui/eslint.config.mjs#L50-L65) has **two file-specific rule exemptions** for `src/components/chat/ChatRow.tsx`:
     - `"react/jsx-key": "off"` (lines 50–54)
     - `"no-case-declarations": "off"` (lines 56–65)
 
@@ -75,7 +75,7 @@ Keep `ChatRow.tsx` as the thin entry point (`~180–220` lines) exporting `defau
 
 ### Bugs & Code-Quality Issues to Fix During Modularization
 
-1. **ESLint Exemptions in [webview-ui/eslint.config.mjs](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/eslint.config.mjs#L50-L65):**
+1. **ESLint Exemptions in [webview-ui/eslint.config.mjs](webview-ui/eslint.config.mjs#L50-L65):**
     - Any newly created `.tsx` files will **not** inherit `ChatRow.tsx`'s `"react/jsx-key": "off"` or `"no-case-declarations": "off"` overrides.
     - Fix all unbraced `case` variable declarations (`{ ... }`) and return `{ icon, title }` objects instead of `[icon, title]` arrays, then remove `ChatRow.tsx` from those two ESLint override lists too.
 2. **Eliminate `as any` & Empty-Object Disable:**
@@ -100,7 +100,7 @@ Keep `ChatRow.tsx` as the thin entry point (`~180–220` lines) exporting `defau
 
 ## 5. Other Files Impacted
 
-- **Zero changes required in `src/` or `ChatView.tsx`** (unless you also clean up the `ChatRow.tsx` entries in [webview-ui/eslint.config.mjs](file:///Users/eric/Work/vscode/Pet-Zoo-Code/webview-ui/eslint.config.mjs#L50-L65)).
+- **Zero changes required in `src/` or `ChatView.tsx`** (unless you also clean up the `ChatRow.tsx` entries in [webview-ui/eslint.config.mjs](webview-ui/eslint.config.mjs#L50-L65)).
 - **Required verification after modularization:**
     - `pnpm --dir webview-ui check-types`
     - `pnpm --dir webview-ui lint`

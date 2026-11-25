@@ -292,9 +292,9 @@ export async function listModels(options: BaseListOptions): Promise<void> {
 	await withHostAndSignalHandlers(options, { ephemeral: true }, async (host) => {
 		// Match the extension's model lists: leave out deprecated models and models
 		// released more than MODEL_SELECTION_MAX_AGE_MONTHS ago.
-		const models = Object.fromEntries(
+		const models: ModelRecord = Object.fromEntries(
 			Object.entries(await requestOpenRouterModels(host)).filter(([, info]) => !isModelHiddenFromSelection(info)),
-		) as ModelRecord
+		)
 
 		if (format === "json") {
 			outputJson({ models })

@@ -1,3 +1,4 @@
+/** Well-known credential formats (GitHub, GitLab, npm, Stripe, OpenAI-style, AWS, Slack, Google). */
 const KNOWN_TOKENS =
 	/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[\w-]{20,}|npm_[A-Za-z0-9]{20,}|[rs]k_(?:live|test)_[A-Za-z0-9]{10,}|sk-[\w-]{10,}|A(?:KIA|SIA)[0-9A-Z]{16}|xox[baprs]-[\w-]{10,}|AIza[\w-]{20,})\b/g
 
@@ -17,6 +18,10 @@ function redactSecrets(text: string): string {
 		.replace(KNOWN_TOKENS, "[REDACTED]")
 }
 
+/**
+ * Builds the single-turn prompt. The patch goes in as redacted JSON so the model
+ * treats it as data, not as instructions.
+ */
 export function buildCommitMessagePrompt(patch: string): string {
 	return [
 		"Write one Git commit message from the staged patch. Return only the message, with no label, plan, quotes, or Markdown fences.",
@@ -28,9 +33,22 @@ export function buildCommitMessagePrompt(patch: string): string {
 }
 
 const TYPE_PREFIX = /^(?:feat|fix|refactor|docs|test|perf|build|ci|chore|revert)(?:\([^)]*\))?!?:\s*/i
+/** Lines that show the model narrated its work instead of returning only the message. */
 const NARRATION =
 	/^(?:i\b|i['’](?:ll|m|ve|d)\b|we\b|we['’](?:ll|re|ve|d)\b|let(?:['’]s|\s+me)\b|(?:first|next|now)[,:]?\s+(?:i|we|let)\b|here(?:\s+(?:is|are)|['’]s)\b|sure\b|certainly\b|as an? (?:ai|assistant)\b|(?:commit message|analysis|reasoning|plan|summary of changes|explanation)\s*:|(?:based on|looking at|after (?:reviewing|inspecting)) (?:the |this )?diff\b|<\/?think(?:ing)?\b|```)/i
 
+/** Removes a list marker and a Conventional Commit type so NARRATION sees the words that follow. */
+const stripLinePrefix = (line: string) =>
+	line
+		.trim()
+		.replace(/^[-*] /, "")
+		.replace(TYPE_PREFIX, "")
+
+/**
+ * Validates a model reply and returns it as a commit message, or undefined when the
+ * reply is empty, too long, has control characters, a bad subject line, a missing
+ * blank line after the subject, or narration. The result is redacted again.
+ */
 export function getCommitMessage(raw: string): string | undefined {
 	const text = raw.trim().replace(/\r\n/g, "\n")
 	if (!text || text.length > 8_000) return undefined
@@ -38,18 +56,8 @@ export function getCommitMessage(raw: string): string | undefined {
 		return undefined
 	}
 	const [subject, next, ...body] = text.split("\n")
+	// Count code points, not UTF-16 units, so the 72-character limit is fair to non-ASCII text.
 	if (Array.from(subject).length > 72 || /^["'`#{[>]|^[-*] /.test(subject) || next?.trim()) return undefined
-	if (
-		[subject, ...body].some((line) =>
-			NARRATION.test(
-				line
-					.trim()
-					.replace(/^[-*] /, "")
-					.replace(TYPE_PREFIX, ""),
-			),
-		)
-	) {
-		return undefined
-	}
+	if ([subject, ...body].some((line) => NARRATION.test(stripLinePrefix(line)))) return undefined
 	return redactSecrets(text)
 }

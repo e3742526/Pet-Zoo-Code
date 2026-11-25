@@ -1,4 +1,37 @@
-# Zoo Code Privacy Policy
+# Privacy
+
+## Dory Code
+
+**Last Updated: November 25th, 2026**
+
+Dory Code is an independently maintained fork of Zoo Code. It does not operate
+a server and it does not collect data. The upstream Zoo Code policy below does
+not apply to the fork where it differs from this section.
+
+- **Telemetry**: Dory Code starts no analytics client. It sends no usage data,
+  error reports, or machine identifiers. The release checks scan the built
+  extension for retired service endpoints. See
+  [standalone independence](docs/standalone-independence.md).
+- **Accounts and cloud services**: Dory Code removes Zoo Code sign-in, billing,
+  Zoo Gateway, and Roo Cloud. A saved Zoo Gateway profile cannot send requests.
+- **Model providers**: Your prompts, files, and command output go only to the
+  provider that you configure. That provider's privacy policy applies.
+- **Commit messages**: When you draft a commit message, Dory Code sends the
+  staged diff to the provider that you select. It masks common secret formats
+  first, but this does not find every secret. Review the staged changes before
+  you draft. The **Dory CLI** option starts the `dory` executable on your
+  computer.
+- **Marketplace**: The mode and MCP catalog is bundled with the extension. Dory
+  Code does not request it from a server.
+- **Credentials**: API keys and sign-in tokens stay in VS Code secret storage
+  on your computer. A settings export can contain API keys. Keep export files
+  private.
+
+---
+
+## Upstream Zoo Code Privacy Policy
+
+This is the upstream policy, kept for reference.
 
 **Last Updated: August 15th, 2026**
 

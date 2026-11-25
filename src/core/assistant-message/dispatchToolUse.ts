@@ -268,9 +268,8 @@ export async function dispatchToolUse(
 						task: cline,
 					})
 
-					console.log(
-						`${customTool.name}.execute(): ${JSON.stringify(customToolArgs)} -> ${JSON.stringify(result)}`,
-					)
+					// Log only the tool name. Arguments and results can hold file contents or secrets.
+					console.log(`${customTool.name}.execute() completed`)
 
 					pushToolResult(result)
 					cline.consecutiveMistakeCount = 0

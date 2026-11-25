@@ -1,7 +1,7 @@
 # Modularity Assessment: `packages/types/src/providers/openai.ts`
 
 **Date:** 2026-11-24  
-**Target File:** [openai.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/providers/openai.ts) (`1,207` lines, `37,128` bytes)  
+**Target File:** [openai.ts](packages/types/src/providers/openai.ts) (`1,207` lines, `37,128` bytes)  
 **Scope:** Analysis & modularization blueprint only (no code modified).
 
 ---
@@ -26,7 +26,7 @@
 
 ### Key Structural Anomaly
 
-- [openai-native.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/providers/openai-native.ts) (`26` lines) defines `openAiNativeProviderDefinition` and has to import `openAiNativeDefaultModelId` _from_ `openai.ts`, while the entire `openAiNativeModels` catalog (`1,030+` lines) lives inside `openai.ts` (the OpenAI-Compatible provider file).
+- [openai-native.ts](packages/types/src/providers/openai-native.ts) (`26` lines) defines `openAiNativeProviderDefinition` and has to import `openAiNativeDefaultModelId` _from_ `openai.ts`, while the entire `openAiNativeModels` catalog (`1,030+` lines) lives inside `openai.ts` (the OpenAI-Compatible provider file).
 
 ---
 
@@ -34,19 +34,19 @@
 
 ### A. Package Export Boundary (`@roo-code/types`)
 
-Per [packages/types/package.json](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/package.json), `@roo-code/types` only exposes `.` ([src/index.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/index.ts)), `./model`, and `./provider-identifiers`—it does **not** expose `./providers/openai` as a public subpath.  
-All external packages (`src/`, `webview-ui/`, `apps/`) import `openai.ts` symbols through `@roo-code/types` → [providers/index.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/providers/index.ts#L18) (`export * from "./openai.js"`).
+Per [packages/types/package.json](packages/types/package.json), `@roo-code/types` only exposes `.` ([src/index.ts](packages/types/src/index.ts)), `./model`, and `./provider-identifiers`—it does **not** expose `./providers/openai` as a public subpath.  
+All external packages (`src/`, `webview-ui/`, `apps/`) import `openai.ts` symbols through `@roo-code/types` → [providers/index.ts](packages/types/src/providers/index.ts#L18) (`export * from "./openai.js"`).
 
 ### B. Direct File Imports (Inside `packages/types/` Only — 6 Files)
 
-| File                                                                                                                                           | Imported Symbols                                           | Impact if Modularized                                                                                                      |
-| :--------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| [providers/index.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/providers/index.ts#L18)                                    | `export * from "./openai.js"` + `openAiProviderDefinition` | **None** if `openai.ts` re-exports split modules or `index.ts` exports them.                                               |
-| [providers/openai-native.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/providers/openai-native.ts#L11)                    | `openAiNativeDefaultModelId`                               | **Cleaner** if `openAiNativeModels` + `openAiNativeDefaultModelId` move to `openai-native-models.ts` / `openai-native.ts`. |
-| [vscode-extension-host.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/vscode-extension-host.ts#L18)                        | `OpenAiModelsMessageType`                                  | **None** if re-exported from `openai.ts` (or updated to import from `openai-messages.ts`).                                 |
-| [cache-write-ttl-pricing.test.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/__tests__/cache-write-ttl-pricing.test.ts#L7) | `openAiNativeModels`                                       | **None** if `openai.ts` re-exports, or 1-line import update.                                                               |
-| [model-message-types.test.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/__tests__/model-message-types.test.ts#L6)         | `OpenAiModelsMessageType`, `openAiModelsMessageTypeSchema` | **None** if `openai.ts` re-exports, or 1-line import update.                                                               |
-| [openai-models.test.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/__tests__/openai-models.test.ts#L2)                     | `openAiNativeDefaultModelId`, `openAiNativeModels`         | **None** if `openai.ts` re-exports, or 1-line import update.                                                               |
+| File                                                                                               | Imported Symbols                                           | Impact if Modularized                                                                                                      |
+| :------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| [providers/index.ts](packages/types/src/providers/index.ts#L18)                                    | `export * from "./openai.js"` + `openAiProviderDefinition` | **None** if `openai.ts` re-exports split modules or `index.ts` exports them.                                               |
+| [providers/openai-native.ts](packages/types/src/providers/openai-native.ts#L11)                    | `openAiNativeDefaultModelId`                               | **Cleaner** if `openAiNativeModels` + `openAiNativeDefaultModelId` move to `openai-native-models.ts` / `openai-native.ts`. |
+| [vscode-extension-host.ts](packages/types/src/vscode-extension-host.ts#L18)                        | `OpenAiModelsMessageType`                                  | **None** if re-exported from `openai.ts` (or updated to import from `openai-messages.ts`).                                 |
+| [cache-write-ttl-pricing.test.ts](packages/types/src/__tests__/cache-write-ttl-pricing.test.ts#L7) | `openAiNativeModels`                                       | **None** if `openai.ts` re-exports, or 1-line import update.                                                               |
+| [model-message-types.test.ts](packages/types/src/__tests__/model-message-types.test.ts#L6)         | `OpenAiModelsMessageType`, `openAiModelsMessageTypeSchema` | **None** if `openai.ts` re-exports, or 1-line import update.                                                               |
+| [openai-models.test.ts](packages/types/src/__tests__/openai-models.test.ts#L2)                     | `openAiNativeDefaultModelId`, `openAiNativeModels`         | **None** if `openai.ts` re-exports, or 1-line import update.                                                               |
 
 ### C. Downstream Consumers (Via `@roo-code/types` — 36+ Files)
 
@@ -91,7 +91,7 @@ Because external consumers only import from `@roo-code/types`, `openai.ts` can b
 
 1. **Exact Barrel Exports in `@roo-code/types`:** Every exported symbol (`openAiNativeModels`, `openAiNativeDefaultModelId`, `OpenAiNativeModelId`, `openAiModelInfoSaneDefaults`, `OpenAiModelsMessageType`, `parseOpenAiExtraBody`, `isAzureAiInferenceBaseUrl`, `isAzureOpenAiBaseUrl`, `openAiProviderDefinition`, etc.) must remain exported at the package root (`packages/types/src/index.ts` → `providers/index.ts`).
 2. **`as const satisfies Record<string, ModelInfo>` on `openAiNativeModels`:** Required so `OpenAiNativeModelId = keyof typeof openAiNativeModels` stays a literal union of model IDs rather than widening to `string`.
-3. **Declaration Merging of `OpenAiModelsMessageType` (`17–19`):** Both the `const` object and the `type` share the name `OpenAiModelsMessageType`; [vscode-extension-host.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/vscode-extension-host.ts#L18) and [model-message-types.test.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/__tests__/model-message-types.test.ts#L6) rely on both value and type exports.
+3. **Declaration Merging of `OpenAiModelsMessageType` (`17–19`):** Both the `const` object and the `type` share the name `OpenAiModelsMessageType`; [vscode-extension-host.ts](packages/types/src/vscode-extension-host.ts#L18) and [model-message-types.test.ts](packages/types/src/__tests__/model-message-types.test.ts#L6) rely on both value and type exports.
 4. **Build Output (`tsup` CJS + ESM + `.d.cts`):** `packages/types` builds with `tsup` (`pnpm --filter @roo-code/types build`) and type-checks with ESM `.js` relative import extensions (`./...js`). All new internal relative imports in `packages/types/src/` must use `.js` extensions.
 
 ---
@@ -100,9 +100,9 @@ Because external consumers only import from `@roo-code/types`, `openai.ts` can b
 
 - **Zero changes required in `src/`, `webview-ui/`, or `apps/`** (assuming `providers/index.ts` continues to re-export all symbols).
 - **Optional 1-line import updates in `packages/types/`:**
-    - [openai-native.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/providers/openai-native.ts#L11)
-    - [cache-write-ttl-pricing.test.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/__tests__/cache-write-ttl-pricing.test.ts#L7)
-    - [openai-models.test.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/packages/types/src/__tests__/openai-models.test.ts#L2)
+    - [openai-native.ts](packages/types/src/providers/openai-native.ts#L11)
+    - [cache-write-ttl-pricing.test.ts](packages/types/src/__tests__/cache-write-ttl-pricing.test.ts#L7)
+    - [openai-models.test.ts](packages/types/src/__tests__/openai-models.test.ts#L2)
 - **Verification commands after modularizing:**
     - `pnpm --filter @roo-code/types check-types`
     - `pnpm --filter @roo-code/types test`

@@ -4,17 +4,33 @@ import { promisify } from "node:util"
 
 const execGit = promisify(execFile)
 const GIT_TIMEOUT_MS = 15_000
+/** Maximum number of diff bytes sent to the model. Larger diffs are truncated at a line boundary. */
 const DIFF_LIMIT = 24_000
+/** Two-letter `git status --porcelain=v1` codes for unmerged paths. */
+const CONFLICT_STATES = new Set(["DD", "AU", "UD", "UA", "DU", "AA", "UU"])
 
+/** The `commitMessage.autoStage` setting: when to run `git add -A` before drafting. */
 export type AutoStage = "never" | "if-empty" | "always"
 
-export async function prepareCommitIndex(git: string, cwd: string, autoStage: AutoStage, signal: AbortSignal) {
+export type CommitIndexStatus = "clean" | "conflicts" | "unstaged" | "ready"
+
+/**
+ * Checks the working tree and stages changes as `autoStage` allows.
+ * Returns `"ready"` only when the index holds changes to describe.
+ */
+export async function prepareCommitIndex(
+	git: string,
+	cwd: string,
+	autoStage: AutoStage,
+	signal: AbortSignal,
+): Promise<CommitIndexStatus> {
 	const options = { cwd, signal, timeout: GIT_TIMEOUT_MS, windowsHide: true }
 	const { stdout } = await execGit(git, ["status", "--porcelain=v1", "--untracked-files=normal"], options)
-	const states = [...stdout.matchAll(/^(.{2}) /gm)].map((match) => match[1])
+	const states = [...stdout.matchAll(/^(.{2}) /gm)].map(([, state]) => state)
 	if (states.length === 0) return "clean"
-	if (states.some((state) => /^(DD|AU|UD|UA|DU|AA|UU)$/.test(state))) return "conflicts"
+	if (states.some((state) => CONFLICT_STATES.has(state))) return "conflicts"
 
+	// The first status column is the index. A space means unchanged, and "?" means untracked.
 	const staged = states.some(([index]) => index !== " " && index !== "?")
 	if (autoStage === "always" || (autoStage === "if-empty" && !staged)) {
 		await execGit(git, ["add", "-A"], options)
@@ -41,6 +57,7 @@ export function readStagedCommitDiff(
 		let bytes = 0
 		const hash = createHash("sha256")
 		child.stdout.on("data", (chunk: Buffer) => {
+			// Hash every byte, but copy only up to DIFF_LIMIT so a large diff does not grow memory.
 			hash.update(chunk)
 			if (bytes < DIFF_LIMIT) chunk.copy(buffer, bytes, 0, DIFF_LIMIT - bytes)
 			bytes += chunk.length

@@ -47,6 +47,8 @@ Dory Code removes the upstream account, gateway, billing, and analytics services
 - **Current models only.** Model lists do not show a model released more than 24 months ago. Bundled catalogs record each release date, and OpenRouter supplies its listing date. A profile that already uses an older model keeps it.
 - **Long MCP tool names.** A name over 64 characters becomes a stable alias (`mcp--0--<hint>_<hash>`). Saved history with old names is repaired in the request copy.
 - **No workspace.** Open file tabs and `@` mentions work without a workspace folder. The environment details do not list the home directory.
+- **Commit messages.** Draft a commit message from the staged changes in Source Control. See [Draft commit messages](#draft-commit-messages).
+- **Privacy.** The fork collects no data and has no server. Prompts and files go only to the provider that you configure. See [PRIVACY.md](PRIVACY.md).
 - **Performance work.** [Optimization review](docs/optimization-review-2026-11-24.md) lists each finding and its status. The upstream survey is in [gem-hydro-parentrepo-survey-24NOV2026.md](gem-hydro-parentrepo-survey-24NOV2026.md).
 
 ## Draft commit messages
@@ -55,9 +57,13 @@ Select the bubbles in Git Source Control to draft a message in the commit input 
 
 **Default (Automatic)** tries signed-in services, then CLI agents, then saved API profiles. The CLI group includes the Dory wrapper if the `dory` CLI is installed. To pick one provider, run **Dory Code: Set Commit Message Provider** from the Command Palette.
 
-Dory Code uses the staged changes. By default, it stages all changes if the index is empty. Set `pet-zoo-code.commitMessage.autoStage` to `never` to stage files yourself.
+Dory Code uses the staged changes. By default, it stages all changes if the index is empty. Set `pet-zoo-code.commitMessage.autoStage` to `never` to stage files yourself, or to `always` to stage all changes each time.
 
-## What is new in Zoo Code v3.98.2
+Dory Code sends the staged diff to the selected provider. It masks common secret formats first, but it cannot find every secret. If the staged changes or the commit input box change while the draft runs, Dory Code discards the draft. The command does not run in an untrusted workspace.
+
+## Upstream base: Zoo Code v3.98.2
+
+Dory Code is based on Zoo Code v3.98.2. That release added:
 
 - 🔌 Models: Use Gemini 3.8 Flash and the new Gemini 4 Carbon, Hydrogen, and Neon models, with `xhigh` thinking levels on Gemini.
 - 🔧 Fixes and provider support: Stop Vertex Gemini requests that end with a model turn, keep Gemini thought signatures intact through LiteLLM, condense Ollama tasks at the configured context limit, and turn on Responses API support for OpenAI Compatible providers.

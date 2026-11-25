@@ -125,20 +125,10 @@ export const ModelPicker = ({
 
 		// Keep the currently selected model so a saved choice stays visible, even if it is
 		// deprecated or older than the selection age limit. Hide every other such model.
-		const availableModels = Object.entries(filteredModels ?? {})
-			.filter(([modelId, modelInfo]) => {
-				if (modelId === selectedModelId) return true
-				return !isModelHiddenFromSelection(modelInfo)
-			})
-			.reduce(
-				(acc, [modelId, modelInfo]) => {
-					acc[modelId] = modelInfo
-					return acc
-				},
-				{} as Record<string, ModelInfo>,
-			)
-
-		return Object.keys(availableModels).sort((a, b) => a.localeCompare(b))
+		return Object.entries(filteredModels ?? {})
+			.filter(([modelId, modelInfo]) => modelId === selectedModelId || !isModelHiddenFromSelection(modelInfo))
+			.map(([modelId]) => modelId)
+			.sort((a, b) => a.localeCompare(b))
 	}, [models, activeProvider, organizationAllowList, selectedModelId])
 
 	const [searchValue, setSearchValue] = useState("")

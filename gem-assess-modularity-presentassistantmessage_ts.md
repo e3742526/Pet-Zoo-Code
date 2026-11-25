@@ -1,7 +1,7 @@
 # Modularity Assessment: `src/core/assistant-message/presentAssistantMessage.ts`
 
 **Date:** 2026-11-24  
-**Target File:** [presentAssistantMessage.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/assistant-message/presentAssistantMessage.ts) (`1,220` lines, `45,432` bytes)  
+**Target File:** [presentAssistantMessage.ts](src/core/assistant-message/presentAssistantMessage.ts) (`1,220` lines, `45,432` bytes)  
 **Scope:** Analysis & modularization blueprint only (no code modified).
 
 ---
@@ -32,10 +32,10 @@
 
 | File                                                                                                                                                                                                                                                            | Usage                                                                                     | Impact if Modularized                                                 |
 | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
-| [Task.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/task/Task.ts)                                                                                                                                                                                    | Calls `presentAssistantMessage(this, policySnapshot)` via `presentAssistantMessageSafe()` | **None** if `presentAssistantMessage` signature & export stay intact. |
-| [index.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/assistant-message/index.ts)                                                                                                                                                                     | Barrel re-export                                                                          | **None.**                                                             |
+| [Task.ts](src/core/task/Task.ts)                                                                                                                                                                                                                                | Calls `presentAssistantMessage(this, policySnapshot)` via `presentAssistantMessageSafe()` | **None** if `presentAssistantMessage` signature & export stay intact. |
+| [index.ts](src/core/assistant-message/index.ts)                                                                                                                                                                                                                 | Barrel re-export                                                                          | **None.**                                                             |
 | **12+ Test Suites:** `presentAssistantMessage-*.spec.ts` (auto-deny, custom-tool, images, tool-usage-attribution, unknown-tool, etc.), `ToolExecutionContext.spec.ts`, `Task.spec.ts` (spies on `presentAssistantMessage`), `Task.streaming-tool-calls.spec.ts` | Import `presentAssistantMessage` and/or `toTelemetryToolName`                             | **None** if both exports stay in `presentAssistantMessage.ts`.        |
-| [scripts/check-tool-turn-continuation.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/scripts/check-tool-turn-continuation.ts#L132)                                                                                                                             | Models `DispatchState` / `pendingWork` lock semantics                                     | **None** (preserve lock semantics).                                   |
+| [scripts/check-tool-turn-continuation.ts](scripts/check-tool-turn-continuation.ts#L132)                                                                                                                                                                         | Models `DispatchState` / `pendingWork` lock semantics                                     | **None** (preserve lock semantics).                                   |
 
 ### B. Outbound Dependencies
 
@@ -45,8 +45,8 @@
 
 ### C. Lint & Suppressions
 
-- [src/eslint.config.mjs](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/eslint.config.mjs#L81): Disables `"no-case-declarations": "off"` for `presentAssistantMessage.ts`.
-- [src/eslint-suppressions.json](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/eslint-suppressions.json#L462): `3` `@typescript-eslint/no-explicit-any` suppressions (`let block: any` at line 149, `(block as any).id` at line 464, `catch (executionError: any)` at line 1131).
+- [src/eslint.config.mjs](src/eslint.config.mjs#L81): Disables `"no-case-declarations": "off"` for `presentAssistantMessage.ts`.
+- [src/eslint-suppressions.json](src/eslint-suppressions.json#L462): `3` `@typescript-eslint/no-explicit-any` suppressions (`let block: any` at line 149, `(block as any).id` at line 464, `catch (executionError: any)` at line 1131).
 
 ---
 
@@ -97,7 +97,7 @@ Keep `presentAssistantMessage()` and `toTelemetryToolName()` in `src/core/assist
 
 ## 5. Other Files Impacted
 
-- **Zero changes required in [Task.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/task/Task.ts) or any of the 22 tool handlers** if `presentAssistantMessage` and `toTelemetryToolName` keep their signatures and exports.
+- **Zero changes required in [Task.ts](src/core/task/Task.ts) or any of the 22 tool handlers** if `presentAssistantMessage` and `toTelemetryToolName` keep their signatures and exports.
 - **Required verification after modularization:**
     - `pnpm --dir src run check-types`
     - `pnpm --dir src exec vitest run src/core/assistant-message/__tests__/ src/core/task/__tests__/ToolExecutionContext.spec.ts src/core/task/__tests__/Task.streaming-tool-calls.spec.ts`

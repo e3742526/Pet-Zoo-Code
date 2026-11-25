@@ -1,7 +1,7 @@
 # Modularity Assessment: `src/services/mcp/McpHub.ts`
 
 **Date:** 2026-11-24  
-**Target File:** [McpHub.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/mcp/McpHub.ts) (`2,594` lines, `89,880` bytes)  
+**Target File:** [McpHub.ts](src/services/mcp/McpHub.ts) (`2,594` lines, `89,880` bytes)  
 **Scope:** Analysis & modularization blueprint only (no code modified).
 
 ---
@@ -33,20 +33,20 @@
 
 ### A. Inbound Consumers (Who Imports / Calls `McpHub`)
 
-- **Lifecycle Owner:** [McpServerManager.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/mcp/McpServerManager.ts#L2) (`new McpHub(provider, secretStorage)`).
+- **Lifecycle Owner:** [McpServerManager.ts](src/services/mcp/McpServerManager.ts#L2) (`new McpHub(provider, secretStorage)`).
 - **Tool & Prompt Consumers (11 production files):**
-    - [ToolRouter.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/tools/ToolRouter.ts#L3) (`Pick<McpHub, "onServerListChanged">`)
-    - [UseMcpToolTool.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/tools/UseMcpToolTool.ts) (`callTool`, `findServerNameBySanitizedName`)
-    - [accessMcpResourceTool.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/tools/accessMcpResourceTool.ts) (`readResource`)
-    - [presentAssistantMessage.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/assistant-message/presentAssistantMessage.ts) (`findServerNameBySanitizedName`)
-    - [Task.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/task/Task.ts), [build-tools.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/task/build-tools.ts)
-    - [system.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/prompts/system.ts), [effective-tool-policy.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/prompts/tools/effective-tool-policy.ts), [filter-tools-for-mode.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/prompts/tools/filter-tools-for-mode.ts), [mcp_server.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/prompts/tools/native-tools/mcp_server.ts)
-    - [ClineProvider.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/webview/ClineProvider.ts), [generateSystemPrompt.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/webview/generateSystemPrompt.ts), [webviewMessageHandler.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/core/webview/webviewMessageHandler.ts)
+    - [ToolRouter.ts](src/services/tools/ToolRouter.ts#L3) (`Pick<McpHub, "onServerListChanged">`)
+    - [UseMcpToolTool.ts](src/core/tools/UseMcpToolTool.ts) (`callTool`, `findServerNameBySanitizedName`)
+    - [accessMcpResourceTool.ts](src/core/tools/accessMcpResourceTool.ts) (`readResource`)
+    - [presentAssistantMessage.ts](src/core/assistant-message/presentAssistantMessage.ts) (`findServerNameBySanitizedName`)
+    - [Task.ts](src/core/task/Task.ts), [build-tools.ts](src/core/task/build-tools.ts)
+    - [system.ts](src/core/prompts/system.ts), [effective-tool-policy.ts](src/core/prompts/tools/effective-tool-policy.ts), [filter-tools-for-mode.ts](src/core/prompts/tools/filter-tools-for-mode.ts), [mcp_server.ts](src/core/prompts/tools/native-tools/mcp_server.ts)
+    - [ClineProvider.ts](src/core/webview/ClineProvider.ts), [generateSystemPrompt.ts](src/core/webview/generateSystemPrompt.ts), [webviewMessageHandler.ts](src/core/webview/webviewMessageHandler.ts)
 - **Test & CI Contract Files (20+ files):**
-    - [McpHub.spec.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/mcp/__tests__/McpHub.spec.ts) (**2,900+ lines**, `150` `@typescript-eslint/no-explicit-any` suppressions)
-    - [McpHub.settingsCreation.integration.spec.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/mcp/__tests__/McpHub.settingsCreation.integration.spec.ts)
-    - [ToolRouter.integration.spec.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/tools/__tests__/ToolRouter.integration.spec.ts)
-    - [verify-coverage-cache-inputs.mjs](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/scripts/verify-coverage-cache-inputs.mjs#L32) & [verify-coverage-contract.mjs](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/scripts/verify-coverage-contract.mjs#L67) — `McpHub.spec.ts` is the **pinned coverage anchor** for `services`.
+    - [McpHub.spec.ts](src/services/mcp/__tests__/McpHub.spec.ts) (**2,900+ lines**, `150` `@typescript-eslint/no-explicit-any` suppressions)
+    - [McpHub.settingsCreation.integration.spec.ts](src/services/mcp/__tests__/McpHub.settingsCreation.integration.spec.ts)
+    - [ToolRouter.integration.spec.ts](src/services/tools/__tests__/ToolRouter.integration.spec.ts)
+    - [verify-coverage-cache-inputs.mjs](src/scripts/verify-coverage-cache-inputs.mjs#L32) & [verify-coverage-contract.mjs](src/scripts/verify-coverage-contract.mjs#L67) — `McpHub.spec.ts` is the **pinned coverage anchor** for `services`.
 
 ### B. Outbound Dependencies
 
@@ -77,7 +77,7 @@ Keep `McpHub` in `src/services/mcp/McpHub.ts` as the **public facade** preservin
 ### Bugs & Code-Quality Issues to Fix During Modularization
 
 1. **ESLint `@typescript-eslint/no-explicit-any` Suppressions (`7` in `McpHub.ts`, `150` in `McpHub.spec.ts`):**
-    - Per [AGENTS.md](file:///Users/eric/Work/vscode/Pet-Zoo-Code/AGENTS.md), suppression counts in [src/eslint-suppressions.json](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/eslint-suppressions.json#L1157-L1175) must **never increase**, and new files/tests must have **zero** `any`s. Replace `config: any` / `Record<string, any>` / `(configInjected as any).type` / `error.code === "ENOENT"` (implicit `any`) with `unknown` + type guards, and run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0`.
+    - Per [AGENTS.md](AGENTS.md), suppression counts in [src/eslint-suppressions.json](src/eslint-suppressions.json#L1157-L1175) must **never increase**, and new files/tests must have **zero** `any`s. Replace `config: any` / `Record<string, any>` / `(configInjected as any).type` / `error.code === "ENOENT"` (implicit `any`) with `unknown` + type guards, and run `pnpm --dir src exec eslint --prune-suppressions --max-warnings=0`.
 2. **Global `EventSource` Mutation (`line 973`):**
     - `global.EventSource = ReconnectingEventSource` mutates Node's global scope on SSE connect. Isolate or restore if needed, and verify `SSEClientTransport` tests don't depend on the global side effect.
 3. **Unscoped `isProgrammaticUpdate` Flag (`lines 199–200`, `2139`, `2433`):**
@@ -89,7 +89,7 @@ Keep `McpHub` in `src/services/mcp/McpHub.ts` as the **public facade** preservin
 
 ### Invariants That MUST Be Preserved (Do Not Break)
 
-1. **Coverage Contract Anchor:** Do not delete, rename, or break [McpHub.spec.ts](file:///Users/eric/Work/vscode/Pet-Zoo-Code/src/services/mcp/__tests__/McpHub.spec.ts) — it is hardcoded in `verify-coverage-cache-inputs.mjs` and `verify-coverage-contract.mjs`.
+1. **Coverage Contract Anchor:** Do not delete, rename, or break [McpHub.spec.ts](src/services/mcp/__tests__/McpHub.spec.ts) — it is hardcoded in `verify-coverage-cache-inputs.mjs` and `verify-coverage-contract.mjs`.
 2. **`McpHub` Public Facade & `connections` Array:** `McpHub.spec.ts` and `ToolRouter.integration.spec.ts` instantiate `new McpHub(provider, secretStorage)` directly and inspect `mcpHub.connections` / private methods in unit tests; keep the public API identical and re-export `ServerConfigSchema`, `McpConnection`, `DisableReason`.
 3. **OAuth Registration & TDZ Ordering (`lines 1266–1284`):** `_oauthWatchers.set(...)` MUST happen _before_ `cancellationToken.onCancellationRequested(...)` so synchronous cancellation on an already-cancelled token finds the watcher entry without hitting the `cancellationDisposable` TDZ.
 4. **Stdio `transport.start` No-Op Patch (`lines 820, 1003–1005`):** Must remain `stdio`-only so `stderr` is captured before `client.connect(transport)` without breaking `SSE` or `StreamableHTTP` transports.

@@ -55,6 +55,13 @@ function getQwenCachedCredentialPath(customPath?: string): string {
 	return path.join(os.homedir(), QWEN_DIR, QWEN_CREDENTIAL_FILENAME)
 }
 
+export async function hasQwenCredentials(customPath?: string): Promise<boolean> {
+	return fs.access(getQwenCachedCredentialPath(customPath)).then(
+		() => true,
+		() => false,
+	)
+}
+
 function objectToUrlEncoded(data: Record<string, string>): string {
 	return Object.keys(data)
 		.map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)

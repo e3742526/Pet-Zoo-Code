@@ -181,12 +181,34 @@
 				"category": "%configuration.title%"
 			},
 			{
+				"command": "pet-zoo-code.generateCommitMessage",
+				"title": "%command.generateCommitMessage.title%",
+				"category": "%configuration.title%",
+				"enablement": "isWorkspaceTrusted",
+				"icon": {
+					"light": "assets/icons/commit-bubbles-light.svg",
+					"dark": "assets/icons/commit-bubbles-dark.svg"
+				}
+			},
+			{
+				"command": "pet-zoo-code.setCommitMessageProvider",
+				"title": "%command.setCommitMessageProvider.title%",
+				"category": "%configuration.title%"
+			},
+			{
 				"command": "pet-zoo-code.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
 			}
 		],
 		"menus": {
+			"scm/title": [
+				{
+					"command": "pet-zoo-code.generateCommitMessage",
+					"when": "scmProvider == git && isWorkspaceTrusted",
+					"group": "navigation@5"
+				}
+			],
 			"editor/context": [
 				{
 					"submenu": "pet-zoo-code.contextMenu",
@@ -312,6 +334,28 @@
 		"configuration": {
 			"title": "%configuration.title%",
 			"properties": {
+				"pet-zoo-code.commitMessage.provider": {
+					"type": "string",
+					"default": "default",
+					"scope": "resource",
+					"description": "%settings.commitMessage.provider.description%"
+				},
+				"pet-zoo-code.commitMessage.autoStage": {
+					"type": "string",
+					"enum": [
+						"never",
+						"if-empty",
+						"always"
+					],
+					"default": "if-empty",
+					"scope": "resource",
+					"description": "%settings.commitMessage.autoStage.description%",
+					"enumDescriptions": [
+						"%settings.commitMessage.autoStage.never%",
+						"%settings.commitMessage.autoStage.ifEmpty%",
+						"%settings.commitMessage.autoStage.always%"
+					]
+				},
 				"pet-zoo-code.allowedCommands": {
 					"type": "array",
 					"items": {

@@ -48,6 +48,14 @@ Dory Code removes the upstream account, gateway, billing, and analytics services
 - **No workspace.** Open file tabs and `@` mentions work without a workspace folder. The environment details do not list the home directory.
 - **Performance work.** [Optimization review](docs/optimization-review-2026-11-24.md) lists each finding and its status. The upstream survey is in [gem-hydro-parentrepo-survey-24NOV2026.md](gem-hydro-parentrepo-survey-24NOV2026.md).
 
+## Draft commit messages
+
+Select the bubbles in Git Source Control to draft a message in the commit input box. Review the draft before you commit.
+
+**Default (Automatic)** tries signed-in services, then CLI agents, then saved API profiles. The CLI group includes the Dory wrapper if the `dory` CLI is installed. To pick one provider, run **Dory Code: Set Commit Message Provider** from the Command Palette.
+
+Dory Code uses the staged changes. By default, it stages all changes if the index is empty. Set `pet-zoo-code.commitMessage.autoStage` to `never` to stage files yourself.
+
 ## What is new in Zoo Code v3.98.2
 
 - 🔌 Models: Use Gemini 3.8 Flash and the new Gemini 4 Carbon, Hydrogen, and Neon models, with `xhigh` thinking levels on Gemini.

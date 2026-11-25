@@ -15,6 +15,11 @@ function fallbackSearchDirectories(): string[] {
 	return [path.join(home, ".local", "bin"), path.join(home, "bin"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
 }
 
+export function getCliSearchDirectories(): string[] {
+	const pathDirectories = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)
+	return [...new Set([...pathDirectories, ...fallbackSearchDirectories()])]
+}
+
 function executableCandidates(name: string): string[] {
 	if (process.platform !== "win32" || path.extname(name)) {
 		return [name]
@@ -65,9 +70,7 @@ export async function resolveCliExecutable(
 		)
 	}
 
-	const pathDirectories = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)
-	const directories = [...new Set([...pathDirectories, ...fallbackSearchDirectories()])]
-	for (const directory of directories) {
+	for (const directory of getCliSearchDirectories()) {
 		for (const candidate of executableCandidates(requested)) {
 			const fullPath = path.join(directory, candidate)
 			if (await isExecutableFile(fullPath)) {

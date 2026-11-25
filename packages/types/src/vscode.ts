@@ -51,6 +51,8 @@ export const commandIds = [
 
 	"showRipgrepDiagnostic",
 	"createDiagnosticsReport",
+	"generateCommitMessage",
+	"setCommitMessageProvider",
 ] as const
 
 export type CommandId = (typeof commandIds)[number]

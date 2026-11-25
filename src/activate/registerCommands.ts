@@ -15,6 +15,7 @@ import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic
 import { createDiagnosticsReport } from "../services/diagnostics"
 import { handleLegacyHistoryImport } from "../core/webview/handleLegacyHistoryImport"
 import { t } from "../i18n"
+import { createCommitMessageCommands } from "../services/commit-message/commands"
 
 /**
  * Helper to get the visible ClineProvider instance or log if not found.
@@ -88,6 +89,7 @@ const getCommandsMap = ({
 	provider,
 }: RegisterCommandOptions): Record<Exclude<CommandId, "showRipgrepDiagnostic">, CommandCallback> => ({
 	activationCompleted: () => {},
+	...createCommitMessageCommands(provider, outputChannel),
 	plusButtonClicked: async () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 

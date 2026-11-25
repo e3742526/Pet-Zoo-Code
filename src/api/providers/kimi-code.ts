@@ -13,7 +13,7 @@ import {
 import type { ApiHandlerOptions, GetModelsOptions } from "../../shared/api"
 import { kimiCodeOAuthManager } from "../../integrations/kimi-code/oauth"
 
-import type { ApiHandlerCreateMessageMetadata, ModelCacheScope } from "../index"
+import type { ApiHandlerCreateMessageMetadata, CompletePromptOptions, ModelCacheScope } from "../index"
 import type { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
@@ -21,6 +21,7 @@ import { OpenAiHandler } from "./openai"
 import { NOT_PROVIDED } from "./constants"
 import { getModels } from "./fetchers/modelCache"
 import { getKimiCodeModels } from "./fetchers/kimi-code"
+import { throwIfAborted } from "./utils/abort-signal"
 
 const OAUTH_AUTH_METHOD: KimiCodeAuthMethod = "oauth"
 const API_KEY_AUTH_METHOD: KimiCodeAuthMethod = "api-key"
@@ -110,14 +111,18 @@ export class KimiCodeHandler extends OpenAiHandler {
 		}
 	}
 
-	override async completePrompt(prompt: string): Promise<string> {
+	override async completePrompt(prompt: string, options?: CompletePromptOptions): Promise<string> {
+		throwIfAborted(options?.abortSignal)
 		await this.prepareRequest()
+		throwIfAborted(options?.abortSignal)
 		try {
-			return await super.completePrompt(prompt)
+			return await super.completePrompt(prompt, options)
 		} catch (error) {
 			if (getHttpStatus(error) !== 401 || !this.canRefreshOAuth()) throw error
+			throwIfAborted(options?.abortSignal)
 			await this.prepareRequest(true)
-			return super.completePrompt(prompt)
+			throwIfAborted(options?.abortSignal)
+			return super.completePrompt(prompt, options)
 		}
 	}
 

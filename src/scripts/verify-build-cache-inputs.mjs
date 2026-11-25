@@ -199,6 +199,12 @@ test("build cache input contract", async (context) => {
 			assert.deepEqual(vsix.dependencies, tasks["pet-zoo-code#bundle"].dependencies)
 			assert.deepEqual(vsix.definition.env, ["PKG_RELEASE_CHANNEL", "VSCODE_TEXTMATE_DEBUG"])
 		})
+		await context.test("VSIX clears generated webview files before restoring the webview build", () => {
+			const manifest = JSON.parse(readFileSync(resolve(probeRoot, "src/package.json"), "utf8"))
+			const [cleanup, build] = manifest.scripts["vscode:prepublish"].split(" && ")
+			assert.equal(cleanup, "rimraf webview-ui/build")
+			assert.match(build, /--filter=@roo-code\/vscode-webview\b/)
+		})
 		await context.test("files regenerated during packaging do not invalidate the VSIX", () => {
 			const before = hashesOnly()
 			const after = withChangedFile("src/dist/cache-probe.js", appendComment, hashesOnly)

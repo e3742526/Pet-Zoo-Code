@@ -671,6 +671,7 @@ describe("NanoGptHandler", () => {
 		expect(getModels).toHaveBeenLastCalledWith(
 			expect.objectContaining({ provider: providerIdentifiers.nanogpt, apiKey: undefined }),
 			expect.anything(),
+			"model:thinking",
 		)
 	})
 

@@ -80,13 +80,13 @@ export abstract class RouterProvider extends BaseProvider {
 			}
 
 			this.modelFetchPromise = (async () => {
-				let models = await getModels(fetchOptions, this)
+				let models = await getModels(fetchOptions, this, id)
 				this.models = models
 
 				// A cached catalog can predate this model or one of its capabilities.
 				// refreshModels retains the cached catalog if the proxy is unavailable.
 				if (!this.isCatalogModelCurrent(models[id])) {
-					models = await refreshModels(fetchOptions, this)
+					models = await refreshModels(fetchOptions, this, id)
 					this.models = models
 				}
 

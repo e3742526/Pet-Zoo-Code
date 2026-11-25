@@ -67,19 +67,65 @@ it("shares an asynchronous cold read and returns a separate catalog to each call
 	const finish = holdDiskRead()
 	const first = getModels(options, handler)
 	const second = getModels(options, handler)
+	const selected = getModels(options, handler, "cached-model")
 	expect(readFromDisk).toHaveBeenCalledTimes(1)
 	expect(existsSync).not.toHaveBeenCalled()
 	expect(readFileSync).not.toHaveBeenCalled()
 
 	finish(JSON.stringify(diskModels))
-	const [left, right] = await Promise.all([first, second])
+	const [left, right, single] = await Promise.all([first, second, selected])
 	expect(left).toEqual(diskModels)
 	expect(right).toEqual(diskModels)
+	expect(single).toEqual(diskModels)
 	expect(right["cached-model"]).not.toBe(left["cached-model"])
+	expect(single["cached-model"]).not.toBe(left["cached-model"])
+	expect(single["cached-model"]).not.toBe(right["cached-model"])
 	expect(getModelsFromCache(options, handler)).toEqual(diskModels)
 	expect(readFileSync).not.toHaveBeenCalled()
 	expect(fetchModels).not.toHaveBeenCalled()
 })
+
+it.each([
+	["lookup", getModels],
+	["refresh", refreshModels],
+] as const)("stores the complete provider response for a selected model %s", async (_operation, load) => {
+	const complete = { ...freshModels, ...diskModels }
+	readFromDisk.mockRejectedValue(Object.assign(new Error("Missing fixture cache"), { code: "ENOENT" }))
+	fetchModels.mockResolvedValueOnce(complete)
+
+	const selected = await load(options, handler, "fresh-model")
+	expect(selected).toEqual(freshModels)
+	expect(selected["fresh-model"]).not.toBe(complete["fresh-model"])
+	selected["fresh-model"].maxTokens = 12
+	expect(await getModels(options, handler)).toEqual(complete)
+	expect(await getModels(options, handler, "absent-model")).toEqual({})
+	expect(fetchModels).toHaveBeenCalledTimes(1)
+})
+
+it.each(["empty catalog", "fetch error"] as const)(
+	"copies one entry from a retained catalog after a refresh returns %s",
+	async (result) => {
+		const previous = { ...diskModels, ...freshModels }
+		readFromDisk.mockResolvedValueOnce(JSON.stringify(previous))
+		if (result === "empty catalog") {
+			fetchModels.mockResolvedValueOnce({})
+		} else {
+			fetchModels.mockRejectedValueOnce(new Error("Provider offline"))
+		}
+
+		const clone = vi.spyOn(globalThis, "structuredClone")
+		try {
+			const selected = await refreshModels(options, handler, "cached-model")
+			expect(selected).toEqual(diskModels)
+			expect(clone.mock.calls).toEqual([[diskModels["cached-model"]]])
+			selected["cached-model"].maxTokens = 12
+		} finally {
+			clone.mockRestore()
+		}
+		expect(getModelsFromCache(options, handler)).toEqual(previous)
+		expect(readFromDisk).toHaveBeenCalledTimes(1)
+	},
+)
 
 it("still loads a cold catalog for synchronous model metadata callers", () => {
 	vi.mocked(existsSync).mockReturnValue(true)

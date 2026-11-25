@@ -248,6 +248,22 @@ The LiteLLM fixture saved 1,800 models in a 1,057,291-byte file. It alternated t
 
 Two before-change tests observed a full catalog copy. The corrected tests cover memory and cold disk reads, absent metadata, and isolation from changes to returned data. The corrected build passed 731 focused tests and 45 distribution checks. Host type and lint checks passed. The VSIX build used Node 24.22.3.
 
+### Asynchronous router model preparation
+
+The five router providers also request one entry when they prepare a model for inference. A fresh provider response still populates the complete catalog. The model picker can read the complete list, and a refresh that fails or returns an empty list can reuse a saved entry.
+
+The same 1,800-model fixture alternated both implementations in one process over ten pairs after three warm-up pairs. Each trial started with a cold asynchronous disk read, made eight full-catalog reads, and then prepared the selected model across 64 new handlers. The fixture checked the returned metadata and made no live requests. The median cold lookup and full reads each stayed within the 1 ms regression limit.
+
+| Workload                          | Median before (ms) | Median after (ms) | Range before (ms) | Range after (ms) |
+| --------------------------------- | -----------------: | ----------------: | ----------------: | ---------------: |
+| 64 warm model preparations        |              73.31 |             0.134 |       69.49–79.24 |      0.112–0.179 |
+| One cold asynchronous disk lookup |               3.56 |              3.65 |        3.33–11.88 |        2.31–7.86 |
+| Eight full-catalog reads          |               7.92 |              8.13 |         7.59–9.78 |       7.82–12.91 |
+
+The warm and cold regression cases observed a full copy before the fix. The new checks also cover concurrent readers, retention of the full catalog after a provider fetch, and the fallback after an empty or failed refresh. The cold path still parses and validates the saved catalog. The benchmark measures model preparation and excludes inference latency.
+
+The change passed 737 focused provider and cache tests and 45 distribution checks. Host type and lint checks passed with no increase in lint suppressions. All 560 packaged scripts matched the build output. With non-loopback traffic blocked, the installed VSIX fetched a two-entry LiteLLM mock catalog, sent inference with the selected model's output limit, completed the task, and reopened the saved result. The build used Node 24.22.3.
+
 ## OpenCode Go model limits
 
 Curated OpenCode Go models use the registry context window in live catalogs, when the host reads a saved catalog, and while the handler waits for model metadata. Models outside the registry use the live context window when available. The fetcher reads nested limits and image input types, and accepts flat fields from older responses. It lists chat models and entries without a type. A catalog refresh applies the type filter to new data because older cache files contain no model types. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2646) · [Public model catalog](https://opencode.ai/zen/go/v1/models)

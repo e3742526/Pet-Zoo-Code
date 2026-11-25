@@ -211,12 +211,14 @@ async function fetchModelsFromProvider(
  * 1. Memory cache - This is a simple in-memory cache that is used to store models for a short period of time.
  * 2. File cache - This is a file-based cache that is used to store models for a longer period of time.
  *
- * @param router - The router to fetch models from.
- * @param apiKey - Optional API key for the provider.
- * @param baseUrl - Optional base URL for the provider (currently used only for LiteLLM).
- * @returns The models from the cache or the fetched models.
+ * With a selected model ID, return a record containing only that model, if present.
+ * The cache still loads and stores the complete catalog.
  */
-export const getModels = async (options: GetModelsOptions, handler: ApiHandler): Promise<ModelRecord> => {
+export const getModels = async (
+	options: GetModelsOptions,
+	handler: ApiHandler,
+	selectedModelId?: string,
+): Promise<ModelRecord> => {
 	const { provider } = options
 	const cacheKey = getCacheKey(options, handler)
 
@@ -229,7 +231,7 @@ export const getModels = async (options: GetModelsOptions, handler: ApiHandler):
 			: cached
 
 	if (models) {
-		return models
+		return selectModels(models, selectedModelId, true)
 	}
 
 	// Route the cache-miss fetch through dedupedFetch(), the same single-flight coordinator
@@ -276,7 +278,7 @@ export const getModels = async (options: GetModelsOptions, handler: ApiHandler):
 			})
 		}
 
-		return fetched
+		return selectModels(fetched, selectedModelId, false)
 	} catch (error) {
 		// Log the error and re-throw it so the caller can handle it (e.g., show a UI message).
 		console.error(`[getModels] Failed to fetch models in modelCache for ${provider}:`, error)
@@ -426,10 +428,13 @@ function joinFlight(cacheKey: string, record: FlightRecord, callerSignal?: Abort
  * This function also prevents concurrent API calls for the same provider using
  * in-flight request tracking to avoid race conditions.
  *
- * @param options - Provider options for fetching models
- * @returns Fresh models from API, or existing cache if refresh yields worse data
+ * With a selected model ID, return only that entry from the fresh or retained catalog.
  */
-export const refreshModels = async (options: GetModelsOptions, handler: ApiHandler): Promise<ModelRecord> => {
+export const refreshModels = async (
+	options: GetModelsOptions,
+	handler: ApiHandler,
+	selectedModelId?: string,
+): Promise<ModelRecord> => {
 	const { provider } = options
 	const cacheKey = getCacheKey(options, handler)
 
@@ -463,7 +468,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 				hasExistingCache: existingCount > 0,
 				existingCacheSize: existingCount,
 			})
-			return existingCache ?? {}
+			return existingCache ? selectModels(existingCache, selectedModelId, true) : {}
 		}
 
 		reportedEmptyModelResponse.delete(cacheKey)
@@ -476,7 +481,7 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 			)
 		}
 
-		return models
+		return selectModels(models, selectedModelId, false)
 	} catch (error) {
 		// Log the error for debugging, then return existing cache if available (graceful degradation).
 		// For auth-scoped providers we MUST NOT return cached models from a prior
@@ -485,7 +490,8 @@ export const refreshModels = async (options: GetModelsOptions, handler: ApiHandl
 		if (shouldSkipCache) {
 			return {}
 		}
-		return (await readCachedModels(cacheKey)) ?? {}
+		const cached = await readCachedModels(cacheKey)
+		return cached ? selectModels(cached, selectedModelId, true) : {}
 	}
 }
 
@@ -559,8 +565,15 @@ function readCatalogFile(primary: string, fallback: string | undefined): Promise
 	})
 }
 
-function copyCatalog(models: ModelRecord | undefined): ModelRecord | undefined {
-	return models && structuredClone(models)
+function copyModel(models: ModelRecord | undefined, id: string): ModelInfo | undefined {
+	return models && Object.hasOwn(models, id) ? structuredClone(models[id]) : undefined
+}
+
+function selectModels(models: ModelRecord, selectedModelId: string | undefined, fromCache: boolean): ModelRecord {
+	if (selectedModelId === undefined) return fromCache ? structuredClone(models) : models
+
+	const selected = copyModel(models, selectedModelId)
+	return selected ? { [selectedModelId]: selected } : {}
 }
 
 function validateAndCacheModels(cacheKey: string, data: string): ModelRecord | undefined {
@@ -585,21 +598,21 @@ function validateAndCacheModels(cacheKey: string, data: string): ModelRecord | u
 	return validation.data
 }
 
+// Return cache-owned records. Callers copy the requested data before returning it.
 // Return memory hits and known misses immediately. Share only the cold disk read.
 function readCachedModels(
 	cacheKey: string,
 	signal?: AbortSignal,
 ): ModelRecord | Promise<ModelRecord | undefined> | undefined {
 	const cached = memoryCache.get<ModelRecord>(cacheKey)
-	if (cached || signal?.aborted) return copyCatalog(cached)
+	if (cached || signal?.aborted) return cached
 
 	const paths = diskCachePaths(cacheKey)
 	if (!paths) return undefined
 	const [primary, fallback] = paths
 
 	const pending = inFlightDiskReads.get(cacheKey)
-	// Each caller receives its own copy, as it would on a memory-cache hit.
-	if (pending?.path === primary) return pending.load.then(copyCatalog)
+	if (pending?.path === primary) return pending.load
 
 	const load: Promise<ModelRecord | undefined> = readCatalogFile(primary, fallback)
 		.then((data) => {
@@ -626,7 +639,7 @@ function readCachedModels(
 			if (inFlightDiskReads.get(cacheKey)?.load === load) inFlightDiskReads.delete(cacheKey)
 		})
 	inFlightDiskReads.set(cacheKey, { path: primary, load })
-	return load.then(copyCatalog)
+	return load
 }
 
 /** Read the cache-owned catalog. Copy the returned data before exposing it to callers. */
@@ -666,13 +679,13 @@ function readModelsFromCache(options: GetModelsOptions, handler: ApiHandler): Mo
 
 /** Return a separate copy of the cached catalog for synchronous callers. */
 export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandler): ModelRecord | undefined {
-	return copyCatalog(readModelsFromCache(options, handler))
+	const models = readModelsFromCache(options, handler)
+	return models && structuredClone(models)
 }
 
 /** Return a copy of one cached model without copying the rest of the catalog. */
 export function getModelFromCache(options: GetModelsOptions, handler: ApiHandler, id: string): ModelInfo | undefined {
-	const models = readModelsFromCache(options, handler)
-	return models && Object.hasOwn(models, id) ? structuredClone(models[id]) : undefined
+	return copyModel(readModelsFromCache(options, handler), id)
 }
 
 /**

@@ -123,9 +123,16 @@ it("retains both LiteLLM output token capabilities in the disk cache", async () 
 	}
 })
 
-it.each(["memory", "disk"] as const)(
-	"copies only the router's selected model from the %s catalog",
-	async (storageKind) => {
+const routerReadCases = [
+	["memory", "getModel"],
+	["disk", "getModel"],
+	["memory", "fetchModel"],
+	["disk", "fetchModel"],
+] as const
+
+it.each(routerReadCases)(
+	"copies only the router's selected model from the %s catalog through %s",
+	async (storageKind, method) => {
 		const modelId = "team-chat"
 		const baseUrl = "http://127.0.0.1:4000"
 		const apiKey = "cache-test-key"
@@ -146,9 +153,10 @@ it.each(["memory", "disk"] as const)(
 			if (storageKind === "disk") await flushModels(request, source)
 			fetch.mockClear().mockRejectedValue(new Error("Provider offline"))
 			const router = makeRouter()
+			const routerFetch = vi.spyOn(router, "fetchModels").mockRejectedValue(new Error("Provider offline"))
 			const clone = vi.spyOn(globalThis, "structuredClone")
 			try {
-				const result = router.getModel()
+				const result = await router[method]()
 				expect(result).toEqual({ id: modelId, info: model })
 				expect(router.getModel().info).toBe(result.info)
 				const unavailable = makeRouter("missing-model")
@@ -164,6 +172,7 @@ it.each(["memory", "disk"] as const)(
 			expect(makeRouter().getModel().info).toEqual(model)
 			await expect(getModels(request, source)).resolves.toEqual(models)
 			expect(fetch).not.toHaveBeenCalled()
+			expect(routerFetch).not.toHaveBeenCalled()
 		} finally {
 			await flushModels(request, source)
 		}

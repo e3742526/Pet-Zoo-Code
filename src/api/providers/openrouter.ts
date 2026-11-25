@@ -45,8 +45,17 @@ import type {
 	ModelCacheScope,
 	SingleCompletionHandler,
 } from "../index"
+import {
+	createAbortError,
+	isRequestAborted,
+	mergeAbortSignalAndTimeout,
+	resolveModelWithAbort,
+	settleOnAbort,
+	throwIfAborted,
+} from "./utils/abort-signal"
 import { handleOpenAIError } from "./utils/error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
+import { createTimeoutError } from "./utils/request-timeout"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
 
 // Add custom interface for OpenRouter params.
@@ -206,6 +215,14 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		return this.currentReasoningDetails.length > 0 ? this.currentReasoningDetails : undefined
 	}
 
+	private getChatRequestOptions(modelId: string, signal?: AbortSignal): OpenAI.RequestOptions | undefined {
+		const headers = modelId.startsWith("anthropic/")
+			? { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" }
+			: undefined
+
+		return headers || signal ? { ...(headers && { headers }), ...(signal && { signal }) } : undefined
+	}
+
 	/**
 	 * Handle OpenRouter streaming error response and report to telemetry.
 	 * OpenRouter may include metadata.raw with the actual upstream provider error.
@@ -231,7 +248,10 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): AsyncGenerator<ApiStreamChunk> {
-		const model = await this.fetchModel()
+		const abortSignal = metadata?.abortSignal
+		const model = await resolveModelWithAbort(() => this.fetchModel(), abortSignal, "OpenRouter")
+		// The SDK attaches listeners to its input signal. Keep them on a request-local signal.
+		const requestSignal = abortSignal && AbortSignal.any([abortSignal])
 
 		let { id: modelId, maxTokens, temperature, topP, reasoning } = model
 
@@ -363,15 +383,17 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			tool_choice: metadata?.tool_choice,
 		}
 
-		// Add Anthropic beta header for fine-grained tool streaming when using Anthropic models
-		const requestOptions = modelId.startsWith("anthropic/")
-			? { headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } }
-			: undefined
-
 		let stream
 		try {
-			stream = await this.client.chat.completions.create(completionParams, requestOptions)
+			throwIfAborted(requestSignal)
+			const request = this.client.chat.completions.create(
+				completionParams,
+				this.getChatRequestOptions(modelId, requestSignal),
+			)
+			stream = await settleOnAbort(request, requestSignal, "OpenRouter")
 		} catch (error) {
+			if (isRequestAborted(error, requestSignal)) throw createAbortError("OpenRouter")
+
 			// Try to parse as OpenRouter error structure using Zod
 			const parseResult = OpenRouterErrorResponseSchema.safeParse(error)
 
@@ -411,6 +433,19 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			}
 		}
 
+		try {
+			yield* this.readCompletionStream(stream, modelId, requestSignal)
+		} catch (error) {
+			if (isRequestAborted(error, requestSignal)) throw createAbortError("OpenRouter")
+			throw error
+		}
+	}
+
+	private async *readCompletionStream(
+		stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
+		modelId: string,
+		signal?: AbortSignal,
+	): AsyncGenerator<ApiStreamChunk> {
 		let lastUsage: CompletionUsage | undefined = undefined
 		// Accumulator for reasoning_details FROM the API.
 		// We preserve the original shape of reasoning_details to prevent malformed responses.
@@ -435,6 +470,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		const activeToolCallIds = new Set<string>()
 
 		for await (const chunk of stream) {
+			throwIfAborted(signal)
 			// OpenRouter returns an error object instead of the OpenAI SDK throwing an error.
 			if ("error" in chunk) {
 				this.handleStreamingError(chunk.error as OpenRouterError, modelId, "createMessage")
@@ -506,6 +542,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 						}
 
 						if (reasoningText) {
+							throwIfAborted(signal)
 							hasYieldedReasoningFromDetails = true
 							yield { type: "reasoning", text: reasoningText }
 						}
@@ -516,6 +553,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				// Skip if we've already yielded from reasoning_details to avoid duplicate display.
 				if ("reasoning" in delta && delta.reasoning && typeof delta.reasoning === "string") {
 					if (!hasYieldedReasoningFromDetails) {
+						throwIfAborted(signal)
 						yield { type: "reasoning", text: delta.reasoning }
 					}
 				}
@@ -523,6 +561,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				// Emit raw tool call chunks - NativeToolCallParser handles state management
 				if ("tool_calls" in delta && Array.isArray(delta.tool_calls)) {
 					for (const toolCall of delta.tool_calls) {
+						throwIfAborted(signal)
 						if (toolCall.id) {
 							activeToolCallIds.add(toolCall.id)
 						}
@@ -537,6 +576,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				}
 
 				if (delta.content) {
+					throwIfAborted(signal)
 					yield { type: "text", text: delta.content }
 				}
 			}
@@ -545,6 +585,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			// This ensures tool calls are finalized even if the stream doesn't properly close
 			if (finishReason === "tool_calls") {
 				for (const id of activeToolCallIds) {
+					throwIfAborted(signal)
 					yield { type: "tool_call_end", id }
 				}
 				activeToolCallIds.clear()
@@ -554,6 +595,9 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				lastUsage = chunk.usage
 			}
 		}
+
+		// The SDK can end iteration without throwing when the request is aborted.
+		throwIfAborted(signal)
 
 		// After streaming completes, consolidate and store reasoning_details from the API.
 		// This filters out corrupted encrypted blocks (missing `data`) and consolidates by index.
@@ -628,7 +672,24 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions) {
-		const { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
+		const callerSignal = options?.abortSignal
+		const deadline = mergeAbortSignalAndTimeout(undefined, options?.timeoutMs)
+		const requestSignal = callerSignal
+			? AbortSignal.any(deadline ? [callerSignal, deadline] : [callerSignal])
+			: deadline
+		const didTimeout = () => deadline?.aborted && requestSignal?.reason === deadline.reason
+
+		const {
+			id: modelId,
+			maxTokens,
+			temperature,
+			reasoning,
+		} = await resolveModelWithAbort(() => this.fetchModel(), requestSignal, "OpenRouter").catch(
+			(error: unknown) => {
+				if (didTimeout()) throw createTimeoutError("OpenRouter", "model discovery")
+				throw error
+			},
+		)
 
 		const sessionId = this.getCacheSessionId(modelId, options?.taskId)
 		const completionParams: OpenRouterChatCompletionParams = {
@@ -650,16 +711,20 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			...(reasoning && { reasoning }),
 		}
 
-		// Add Anthropic beta header for fine-grained tool streaming when using Anthropic models
-		const requestOptions = modelId.startsWith("anthropic/")
-			? { headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } }
-			: undefined
-
 		let response
 
 		try {
-			response = await this.client.chat.completions.create(completionParams, requestOptions)
+			throwIfAborted(requestSignal)
+			const request = this.client.chat.completions.create(
+				completionParams,
+				this.getChatRequestOptions(modelId, requestSignal),
+			)
+			response = await settleOnAbort(request, requestSignal, "OpenRouter")
+			throwIfAborted(requestSignal)
 		} catch (error) {
+			if (didTimeout()) throw createTimeoutError("OpenRouter", "completion request")
+			if (isRequestAborted(error, requestSignal)) throw createAbortError("OpenRouter")
+
 			// Try to parse as OpenRouter error structure using Zod
 			const parseResult = OpenRouterErrorResponseSchema.safeParse(error)
 

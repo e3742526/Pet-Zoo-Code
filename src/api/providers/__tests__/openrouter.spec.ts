@@ -27,6 +27,7 @@ import { OpenRouterHandler } from "../openrouter"
 import { Package } from "../../../shared/package"
 import { makeApiHandlerOptions } from "../../../test-utils/api"
 import { asyncStreamFrom, collectStream } from "../../../test-utils/stream"
+import { flushMacrotasks } from "../../../test-utils/timers"
 import { collectStreamAndParseToolCalls } from "../../../test-utils/native-tool-call-stream"
 import { clearAllMocks } from "../../../test-utils/reset"
 
@@ -1223,6 +1224,130 @@ describe("OpenRouterHandler", () => {
 				{ type: "tool_call_start", id: "call_openrouter_b", name: "read_file" },
 				{ type: "tool_call_delta", id: "call_openrouter_b", name: "read_file", delta: '{"path":"b' },
 			])
+		})
+	})
+
+	describe("request cancellation", () => {
+		const requestKinds = ["stream", "prompt"] as const
+		const request = (handler: OpenRouterHandler, kind: (typeof requestKinds)[number], signal: AbortSignal) =>
+			kind === "stream"
+				? collectStream(handler.createMessage("test system", [], { taskId: "test-task", abortSignal: signal }))
+				: handler.completePrompt("test prompt", { abortSignal: signal })
+		const abortError = { name: "AbortError" }
+
+		it.each(requestKinds)("skips %s model discovery when the caller has already cancelled", async (kind) => {
+			const mockCreate = vitest.fn().mockResolvedValue(kind === "stream" ? asyncStreamFrom([]) : { choices: [] })
+			stubChatCreate(mockCreate)
+			const handler = new OpenRouterHandler(mockOptions)
+			const fetchModel = vitest.spyOn(handler, "fetchModel")
+
+			await expect(request(handler, kind, AbortSignal.abort())).rejects.toMatchObject(abortError)
+			expect(fetchModel).not.toHaveBeenCalled()
+			expect(mockCreate).not.toHaveBeenCalled()
+		})
+
+		it.each(requestKinds)("stops waiting for %s model discovery when the caller cancels", async (kind) => {
+			const mockCreate = vitest.fn().mockResolvedValue(kind === "stream" ? asyncStreamFrom([]) : { choices: [] })
+			stubChatCreate(mockCreate)
+			const handler = new OpenRouterHandler(mockOptions)
+			let finishLoad!: () => void
+			const load = new Promise<ReturnType<OpenRouterHandler["getModel"]>>((resolve) => {
+				finishLoad = () => resolve(handler.getModel())
+			})
+			const fetchModel = vitest.spyOn(handler, "fetchModel").mockReturnValueOnce(load)
+			const controller = new AbortController()
+			const outcome = Promise.allSettled([request(handler, kind, controller.signal)])
+			expect(fetchModel).toHaveBeenCalledOnce()
+
+			controller.abort()
+
+			try {
+				await expect(Promise.race([outcome, flushMacrotasks()])).resolves.toEqual([
+					{ status: "rejected", reason: expect.objectContaining(abortError) },
+				])
+			} finally {
+				finishLoad()
+			}
+			await outcome
+			expect(mockCreate).not.toHaveBeenCalled()
+		})
+
+		it.each(requestKinds)("aborts the %s transport and stops waiting for the SDK", async (kind) => {
+			const mockCreate = vitest.fn().mockReturnValue(new Promise<never>(() => {}))
+			stubChatCreate(mockCreate)
+			const handler = new OpenRouterHandler(mockOptions)
+			const controller = new AbortController()
+			const outcome = Promise.allSettled([request(handler, kind, controller.signal)])
+			await vitest.waitFor(() => expect(mockCreate).toHaveBeenCalledOnce())
+			const options = mockCreate.mock.lastCall?.[1]
+
+			controller.abort()
+
+			expect(options?.headers).toEqual({ "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" })
+			expect(options?.signal).toBeInstanceOf(AbortSignal)
+			expect(options?.signal).not.toBe(controller.signal)
+			expect(options?.signal.aborted).toBe(true)
+			await expect(Promise.race([outcome, flushMacrotasks()])).resolves.toEqual([
+				{ status: "rejected", reason: expect.objectContaining(abortError) },
+			])
+			expect(mockCaptureException).not.toHaveBeenCalled()
+		})
+
+		it.each(["end of stream", "another delta in the same chunk"] as const)(
+			"reports an abort before returning %s",
+			async (stopPoint) => {
+				const delta =
+					stopPoint === "end of stream"
+						? { reasoning: "first" }
+						: { reasoning: "first", content: "must not be emitted" }
+				const mockCreate = vitest.fn().mockResolvedValue(asyncStreamFrom([{ choices: [{ delta }] }]))
+				stubChatCreate(mockCreate)
+				const controller = new AbortController()
+				const stream = new OpenRouterHandler(mockOptions).createMessage("test system", [], {
+					taskId: "test-task",
+					abortSignal: controller.signal,
+				})
+
+				await expect(stream.next()).resolves.toEqual({
+					done: false,
+					value: { type: "reasoning", text: "first" },
+				})
+				controller.abort()
+
+				await expect(stream.next()).rejects.toMatchObject(abortError)
+			},
+		)
+
+		it.each(["model discovery", "completion request"] as const)("times out a prompt during %s", async (phase) => {
+			const deadline = new AbortController()
+			const timeout = vitest.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal)
+			try {
+				const mockCreate = vitest.fn().mockReturnValue(new Promise<never>(() => {}))
+				stubChatCreate(mockCreate)
+				const handler = new OpenRouterHandler(mockOptions)
+				const fetchModel = vitest.spyOn(handler, "fetchModel")
+				if (phase === "model discovery") fetchModel.mockReturnValueOnce(new Promise<never>(() => {}))
+
+				const outcome = Promise.allSettled([handler.completePrompt("test prompt", { timeoutMs: 25 })])
+				await vitest.waitFor(() =>
+					expect(phase === "model discovery" ? fetchModel : mockCreate).toHaveBeenCalledOnce(),
+				)
+				deadline.abort(new DOMException("Test deadline expired", "TimeoutError"))
+
+				await expect(Promise.race([outcome, flushMacrotasks()])).resolves.toEqual([
+					{
+						status: "rejected",
+						reason: expect.objectContaining({
+							name: "TimeoutError",
+							message: expect.stringContaining(phase),
+						}),
+					},
+				])
+				expect(timeout).toHaveBeenCalledWith(25)
+				if (phase === "model discovery") expect(mockCreate).not.toHaveBeenCalled()
+			} finally {
+				timeout.mockRestore()
+			}
 		})
 	})
 

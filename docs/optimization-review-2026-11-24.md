@@ -286,6 +286,14 @@ The usage stream now includes OpenRouter's cache-write count with its cache-read
 
 In a temporary VS Code profile with non-loopback traffic blocked, a mocked OpenRouter origin received the same opaque key on two serialized requests for one task. The saved request recorded 1,000 input tokens, 300 cache writes, and 600 cache reads. The task reopened with its saved result. This run checked request serialization and local accounting with mock usage.
 
+### OpenRouter cancellation
+
+OpenRouter now stops waiting for model discovery when the caller cancels. The catalog load can still finish for other callers. A request-local signal reaches the SDK and closes the response stream. A one-shot completion with a timeout uses one deadline for model discovery and the request. The handler reports the phase that timed out.
+
+Ten tests reproduced the missing cancellation or timeout behavior before the fix. The provider and cancellation suites passed 190 tests. Eight focused task cases and 45 distribution checks passed. Host type and lint checks passed with no new suppressions. The VSIX build used Node 24.22.3.
+
+The installed VSIX ran with non-loopback traffic blocked. After the user stop action, the mock server recorded its open response closing in 3 ms in this run. The extension retained the interrupted task in local history and completed and reopened a new task using the same mock.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

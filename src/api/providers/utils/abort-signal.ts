@@ -248,10 +248,9 @@ export function detachOnAbort<T>(pending: Promise<T>, signal: AbortSignal): Prom
  * provider AbortError; any other resolution failure propagates unchanged.
  *
  * Accepts a provider-specific resolution step so the entry guard, race, and
- * normalization can share one implementation. Direct contract tests cover
- * this helper; providers do not currently call it.
+ * normalization can share one implementation.
  *
- * @internal Shared cancellation helper retained with direct contract tests for provider adoption.
+ * @internal
  */
 export async function resolveModelWithAbort<T>(
 	fetchModel: () => Promise<T>,

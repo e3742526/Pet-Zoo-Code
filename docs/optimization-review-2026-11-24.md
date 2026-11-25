@@ -385,3 +385,9 @@ The sidebar now receives open file tabs on launch and on tab changes when no wor
 New tasks without a workspace use Desktop when it is a directory and the home directory otherwise. The home fallback skips automatic file listing unless that directory is open as a workspace. The prompt points the model to a directory the user identifies. The workspace tracker fixture now supplies `Uri.file`, so its successful directory-stat assertion includes the trailing folder separator.
 
 Four tests reproduced the dropped tab update, invalid working paths, and automatic home listing. The corrected build passed 376 host tests, 147 webview tests, and 45 distribution checks. Host and webview type and lint checks passed. The VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3.
+
+## Command approval controls during streaming
+
+The chat shows Run and Deny only after a command finishes streaming and requires a manual decision. The regressions send the same message update that the host uses to finalize a command. The manual paths confirm enabled controls and the correct approval response. The automatic approval path keeps the controls hidden. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2648)
+
+Three before-change cases reproduced the disabled controls. The corrected build passed 87 focused webview tests, 66 command-handler tests, and 45 distribution checks. Webview type and lint checks passed. The rebuilt VSIX contains the new command logic and 556 matching webview scripts. The build used Node 24.22.3.

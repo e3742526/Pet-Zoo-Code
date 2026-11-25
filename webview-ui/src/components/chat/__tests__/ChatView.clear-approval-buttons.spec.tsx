@@ -248,6 +248,52 @@ describe("ChatView approval button behavior", () => {
 		})
 	})
 
+	it.each([
+		{ completion: "Run", button: RUN_BUTTON_LABEL, response: "yesButtonClicked" },
+		{ completion: "Deny", button: DENY_BUTTON_LABEL, response: "noButtonClicked" },
+		{ completion: "automatic approval", button: undefined, response: undefined },
+	])(
+		"shows approval controls only after streaming when the command completes with $completion",
+		async ({ button, response }) => {
+			renderChatView()
+			const partialCommand: ClineMessage = { type: "ask", ask: "command", ts: 2, text: "echo par", partial: true }
+			await act(async () => {
+				hydrateState([{ type: "say", say: "task", ts: 1, text: "Initial task" }, partialCommand])
+			})
+			await screen.findByText(/echo par/)
+			expect(screen.queryByRole("button", { name: RUN_BUTTON_LABEL })).not.toBeInTheDocument()
+			expect(screen.queryByRole("button", { name: DENY_BUTTON_LABEL })).not.toBeInTheDocument()
+
+			await act(async () => {
+				window.dispatchEvent(
+					new MessageEvent("message", {
+						data: {
+							type: "messageUpdated",
+							clineMessage: {
+								...partialCommand,
+								text: "echo ready",
+								partial: false,
+								isAnswered: button ? undefined : true,
+							},
+						},
+					}),
+				)
+			})
+			await screen.findByText(/echo ready/)
+
+			if (button) {
+				expect(screen.getByRole("button", { name: RUN_BUTTON_LABEL })).toBeEnabled()
+				expect(screen.getByRole("button", { name: DENY_BUTTON_LABEL })).toBeEnabled()
+				fireEvent.click(screen.getByRole("button", { name: button }))
+				expect(vscode.postMessage).toHaveBeenCalledWith({ type: "askResponse", askResponse: response })
+			} else {
+				expect(screen.queryByRole("button", { name: RUN_BUTTON_LABEL })).not.toBeInTheDocument()
+				expect(screen.queryByRole("button", { name: DENY_BUTTON_LABEL })).not.toBeInTheDocument()
+				expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "askResponse" }))
+			}
+		},
+	)
+
 	describe("approval feedback segments", () => {
 		const typed = async (input: HTMLElement) => {
 			fireEvent.input(input, { target: { value: "use @/ok" } })

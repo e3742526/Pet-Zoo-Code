@@ -192,6 +192,12 @@ describe("Single-open-task invariant", () => {
 				taskSyncEnabled: false,
 			}),
 			// Methods used by createTaskWithHistoryItem for pending edit cleanup
+			getValues: vi.fn(() => ({
+				apiProvider: providerIdentifiers.anthropic,
+				enableCheckpoints: true,
+				checkpointTimeout: 60,
+				experiments: {},
+			})),
 			getPendingEditOperation: vi.fn().mockReturnValue(undefined),
 			clearPendingEditOperation: vi.fn(),
 			taskScheduler: { schedule: schedulespy },
@@ -265,6 +271,12 @@ describe("Single-open-task invariant", () => {
 				cloudUserInfo: null,
 				taskSyncEnabled: false,
 			}),
+			getValues: vi.fn(() => ({
+				apiProvider: providerIdentifiers.anthropic,
+				enableCheckpoints: true,
+				checkpointTimeout: 60,
+				experiments: {},
+			})),
 			getPendingEditOperation: vi.fn().mockReturnValue(undefined),
 			clearPendingEditOperation: vi.fn(),
 			taskScheduler: { schedule: schedulespy },
@@ -337,6 +349,12 @@ describe("Single-open-task invariant", () => {
 				cloudUserInfo: null,
 				taskSyncEnabled: false,
 			}),
+			getValues: vi.fn(() => ({
+				apiProvider: providerIdentifiers.anthropic,
+				enableCheckpoints: true,
+				checkpointTimeout: 60,
+				experiments: {},
+			})),
 			getPendingEditOperation: vi.fn().mockReturnValue(undefined),
 			clearPendingEditOperation: vi.fn(),
 			taskScheduler: { schedule: schedulespy },
@@ -368,7 +386,7 @@ describe("Single-open-task invariant", () => {
 		const secondResume = privateClineProvider.createTaskWithHistoryItem.call(provider, historyItem)
 
 		await vi.waitFor(() => expect(evictCurrentTask).toHaveBeenCalledTimes(1))
-		expect(provider.getState).not.toHaveBeenCalled()
+		expect(provider.getValues).not.toHaveBeenCalled()
 
 		releaseFirstEviction()
 		const [firstTask, secondTask] = await Promise.all([firstResume, secondResume])

@@ -15,6 +15,9 @@ import { providerIdentifiers } from "@roo-code/types"
  * - Fixed callback port: 1455
  * - Codex-specific params: codex_cli_simplified_flow=true, originator=zoo-code
  */
+/** For callback responses that echo text from the request or the provider. */
+const PLAIN_TEXT_HEADERS = { "Content-Type": "text/plain; charset=utf-8", "X-Content-Type-Options": "nosniff" }
+
 export const OPENAI_CODEX_OAUTH_CONFIG = {
 	authorizationEndpoint: "https://auth.openai.com/oauth/authorize",
 	tokenEndpoint: "https://auth.openai.com/oauth/token",
@@ -614,7 +617,7 @@ export class OpenAiCodexOAuthManager {
 					const error = url.searchParams.get("error")
 
 					if (error) {
-						res.writeHead(400)
+						res.writeHead(400, PLAIN_TEXT_HEADERS)
 						res.end(`Authentication failed: ${error}`)
 						reject(new Error(`OAuth error: ${error}`))
 						server.close()
@@ -682,7 +685,7 @@ export class OpenAiCodexOAuthManager {
 						server.close()
 						resolve(credentials)
 					} catch (exchangeError) {
-						res.writeHead(500)
+						res.writeHead(500, PLAIN_TEXT_HEADERS)
 						res.end(`Token exchange failed: ${exchangeError}`)
 						reject(exchangeError)
 						server.close()
@@ -718,7 +721,8 @@ export class OpenAiCodexOAuthManager {
 				5 * 60 * 1000,
 			) // 5 minutes
 
-			server.listen(OPENAI_CODEX_OAUTH_CONFIG.callbackPort, () => {
+			// Loopback only. Without a host, other machines on the network can reach the callback.
+			server.listen(OPENAI_CODEX_OAUTH_CONFIG.callbackPort, "localhost", () => {
 				if (this.pendingAuth) {
 					this.pendingAuth.server = server
 				}

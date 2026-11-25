@@ -43,13 +43,14 @@ const converter = new Convert({
  * to match terminal rendering behavior.
  */
 export const TerminalOutput: React.FC<TerminalOutputProps> = ({ content, className }) => {
-	const html = useMemo(() => {
+	const rendered = useMemo(() => {
 		try {
-			return converter.toHtml(content)
+			return { dangerouslySetInnerHTML: { __html: converter.toHtml(content) } }
 		} catch {
-			// Fallback: if conversion fails, show raw text (stripped of ANSI)
+			// If conversion fails, show the text without ANSI codes. It is unescaped command
+			// output, so it must be a text child and never innerHTML.
 			// eslint-disable-next-line no-control-regex
-			return content.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "")
+			return { children: content.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "") }
 		}
 	}, [content])
 
@@ -71,7 +72,7 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ content, classNa
 				// Support Unicode box-drawing characters and extended ASCII
 				unicodeBidi: "embed",
 			}}
-			dangerouslySetInnerHTML={{ __html: html }}
+			{...rendered}
 		/>
 	)
 }

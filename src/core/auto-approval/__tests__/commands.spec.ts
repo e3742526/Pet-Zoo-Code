@@ -958,3 +958,44 @@ describe("getCommandDecisionDetailed", () => {
 		}
 	})
 })
+
+describe("getCommandDecision — substitutions that parseCommand does not extract", () => {
+	// `zap` is on no allowlist. Each shell form below runs it.
+	const allow = ["echo", "ls", "git log", "printf"]
+
+	it.each([
+		['git log "$(zap)"'],
+		['git log "`zap`"'],
+		['echo "${x:-$(zap)}"'],
+		['echo ${x:-"$(zap)"}'],
+		['echo "${x:-"$(zap)"}"'],
+		['echo "$(echo ")" ; zap)"'],
+		['echo "$((a[$(zap)]))"'],
+		['echo "$((zap) )"'],
+		['echo "$\\\n(zap)"'],
+		["echo '\\' \"$(zap)\""],
+		["printf -v 'a[$(zap)]' x"],
+		["echo ${(e):-'$(zap)'}"],
+		["echo .(e:'zap':)"],
+		["echo $((:;zap\n))"],
+		["echo (#$(zap)"],
+		["ls ((#;zap"],
+	])("does not auto-approve %j", (command) => {
+		expect(getCommandDecision(command, allow, [])).toBe("ask_user")
+	})
+
+	it("does not auto-approve a denylisted command inside double quotes", () => {
+		expect(getCommandDecision('echo "$(rm -rf x)"', ["echo"], ["rm"])).not.toBe("auto_approve")
+	})
+
+	it.each([
+		['git log --format="%h %s"'],
+		['git log --grep="(#42)"'],
+		['echo "$((1 + 2))"'],
+		["echo $(ls)"],
+		["echo $((count+1))"],
+		['echo "cost: $5"'],
+	])("still auto-approves %j", (command) => {
+		expect(getCommandDecision(command, allow, [])).toBe("auto_approve")
+	})
+})

@@ -47,6 +47,7 @@ Dory Code removes the upstream account, gateway, billing, and analytics services
 - **Current models only.** Model lists do not show a model released more than 24 months ago. Bundled catalogs record each release date, and OpenRouter supplies its listing date. A profile that already uses an older model keeps it.
 - **Long MCP tool names.** A name over 64 characters becomes a stable alias (`mcp--0--<hint>_<hash>`). Saved history with old names is repaired in the request copy.
 - **No workspace.** Open file tabs and `@` mentions work without a workspace folder. The environment details do not list the home directory.
+- **Safer command approval.** A command that has a double quote and also a `$(...)` or backtick substitution needs your approval. The command parser does not check substitutions inside double quotes. Automatic approval is not a sandbox. An allowed command can still write files, for example with `>` or `--output`.
 - **Commit messages.** Draft a commit message from the staged changes in Source Control. See [Draft commit messages](#draft-commit-messages).
 - **Privacy.** The fork collects no data and has no server. Prompts and files go only to the provider that you configure. See [PRIVACY.md](PRIVACY.md).
 - **Performance work.** [Optimization review](docs/optimization-review-2026-11-24.md) lists each finding and its status. The upstream survey is in [gem-hydro-parentrepo-survey-24NOV2026.md](gem-hydro-parentrepo-survey-24NOV2026.md).

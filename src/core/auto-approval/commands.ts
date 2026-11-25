@@ -1,5 +1,23 @@
 import { parseCommand } from "../../shared/parse-command"
 
+/** `$((…))` that holds only integer arithmetic. Anything else after `$((` can be a command substitution. */
+const LITERAL_ARITHMETIC = /\$\(\([\d\s+*/%-]*\)\)/g
+
+/**
+ * True when a command pairs a double quote with a command substitution. A shell expands
+ * `$(...)` and backticks inside double quotes, but `parseCommand` does not extract them,
+ * so their commands never reach the allowlist or denylist.
+ *
+ * This check deliberately does not track quote state. Nested forms such as
+ * `"${x:-"$(cmd)"}"`, comments, and heredocs can mislead a partial tracker into approving.
+ * The cost of the simple rule is an extra prompt for some safe commands.
+ */
+function mayHideSubstitutionInDoubleQuotes(source: string): boolean {
+	// The shell removes backslash-newline first, so `$\<newline>(` is still `$(`.
+	const joined = source.replace(/\\\r?\n/g, "").replace(LITERAL_ARITHMETIC, "")
+	return joined.includes('"') && (joined.includes("$(") || joined.includes("`"))
+}
+
 /**
  * Detect dangerous parameter substitutions that could lead to command execution.
  * These patterns are never auto-approved and always require explicit user approval.
@@ -15,6 +33,12 @@ import { parseCommand } from "../../shared/parse-command"
  * - <<<$(...) or <<<`...` - Here-strings with command substitution
  * - =(...) - Zsh process substitution that executes commands (array assignments like `var=(...)` are excluded)
  * - *(e:...:) or similar - Zsh glob qualifiers with code execution
+ * - ${(e)...} - Zsh parameter flag that evaluates substitutions in the value, even a single-quoted one
+ * - name[$(...)] - A substitution in an array subscript, which some builtins evaluate even when quoted
+ * - $(( that holds a command instead of arithmetic
+ * - (# followed by a substitution or separator, which zsh can run
+ * - Any command substitution in a command that also has a double quote (see
+ *   mayHideSubstitutionInDoubleQuotes)
  *
  * @param source - The command string to analyze
  * @returns true if dangerous substitution patterns are detected, false otherwise
@@ -49,9 +73,24 @@ export function containsDangerousSubstitution(source: string): boolean {
 	const zshProcessSubstitution = /(?:(?<=^)|(?<=[\s;|&(<]))=\([^)]+\)/.test(source)
 
 	// Check for zsh glob qualifiers with code execution (e:...:)
-	// Patterns like *(e:whoami:) or ?(e:rm -rf /:) execute commands during glob expansion
-	// This regex matches patterns like *(e:...:), ?(e:...:), +(e:...:), @(e:...:), !(e:...:)
-	const zshGlobQualifier = /[*?+@!]\(e:[^:]+:\)/.test(source)
+	// Patterns like *(e:whoami:) or ?(e:rm -rf /:) execute commands during glob expansion.
+	// A literal path also takes a qualifier, as in .(e:whoami:), so no wildcard is required.
+	const zshGlobQualifier = /\(e:[^:]+:\)/.test(source)
+
+	// Check for the zsh (e) parameter expansion flag, for example ${(e):-'$(whoami)'}
+	const zshEvalFlag = /\$\{\([^)]*e[^)]*\)/.test(source)
+
+	// Check for a substitution in an array subscript. `printf -v` and `test -v` evaluate
+	// the subscript, so single quotes do not make `'a[$(whoami)]'` inert.
+	const subscriptSubstitution = /[A-Za-z_]\w*\[[^\]]*(?:\$\(|`)/.test(source)
+
+	// `$((` with a command separator, or with two words and no operator, is not arithmetic.
+	// zsh can run it as `$( (...) )`.
+	const commandInArithmetic = /\$\(\([^)]*(?:[;\n]|[A-Za-z_]\w*[ \t]+[A-Za-z_])/.test(source)
+
+	// zsh does not start a comment at `(#`, but parseCommand does, so anything after it that can
+	// run a command is unchecked. Plain text such as "(#42)" has no such construct.
+	const zshParenHash = /\(#[\s\S]*(?:\$\(|`|[;&|\n]|[<>=]\()/.test(source)
 
 	// Return true if any dangerous pattern is detected
 	return (
@@ -60,7 +99,12 @@ export function containsDangerousSubstitution(source: string): boolean {
 		indirectExpansion ||
 		hereStringWithSubstitution ||
 		zshProcessSubstitution ||
-		zshGlobQualifier
+		zshGlobQualifier ||
+		zshEvalFlag ||
+		subscriptSubstitution ||
+		commandInArithmetic ||
+		mayHideSubstitutionInDoubleQuotes(source) ||
+		zshParenHash
 	)
 }
 
@@ -129,7 +173,8 @@ export function findLongestPrefixMatch(command: string, prefixes: string[]): str
  * decomposition of the command.
  * The parser does not extract substitutions inside double quotes, so an
  * unbalanced delimiter there does not qualify. This is a parser
- * limitation: a shell still expands `$(...)` inside double quotes.
+ * limitation: a shell still expands `$(...)` inside double quotes. Such a
+ * command can be denied or sent to the user, but it is never auto-approved.
  */
 export type CommandDecision = "auto_approve" | "auto_deny" | "ask_user" | "malformed_command"
 
@@ -163,7 +208,7 @@ export type CommandDecision = "auto_approve" | "auto_deny" | "ask_user" | "malfo
  *   whose structure is unproven based on a partial decomposition. Unbalanced
  *   delimiters inside double quotes stay parseable because the parser does
  *   not extract substitutions there. A shell still expands `$(...)` inside
- *   double quotes.
+ *   double quotes, so containsDangerousSubstitution blocks auto-approval.
  *
  * **Examples:**
  * ```typescript

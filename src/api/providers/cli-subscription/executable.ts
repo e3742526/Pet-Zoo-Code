@@ -25,7 +25,9 @@ function executableCandidates(name: string): string[] {
 		return [name]
 	}
 	const extensions = (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean)
-	return [name, ...extensions.map((extension) => name + extension.toLowerCase())]
+	// The bare name goes last. npm installs an extensionless POSIX shell script next to the
+	// `.cmd` file, and Windows cannot start that script.
+	return [...extensions.map((extension) => name + extension.toLowerCase()), name]
 }
 
 async function isExecutableFile(candidate: string): Promise<boolean> {

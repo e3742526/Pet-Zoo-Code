@@ -37,9 +37,33 @@ export interface CliTurnRequest {
  * CLI cannot switch off away from project files and workspace-specific CLI rules.
  */
 async function getNeutralWorkingDirectory(providerId: string): Promise<string> {
-	const directory = path.join(os.tmpdir(), "zoo-code-cli-providers", providerId)
-	await fs.mkdir(directory, { recursive: true, mode: 0o700 })
+	// The user ID keeps accounts apart where they share one temporary folder.
+	const uid = process.getuid?.()
+	const root = path.join(os.tmpdir(), uid === undefined ? "zoo-code-cli-providers" : `zoo-code-cli-providers-${uid}`)
+	await ensurePrivateDirectory(root)
+	const directory = path.join(root, providerId)
+	await ensurePrivateDirectory(directory)
 	return directory
+}
+
+/**
+ * Creates a folder that only this user can use, or checks an existing one. On Linux the
+ * temporary folder is shared, so another account could create this predictable path first
+ * and leave CLI configuration in it. A link or a folder with another owner is rejected.
+ */
+export async function ensurePrivateDirectory(directory: string): Promise<void> {
+	try {
+		await fs.mkdir(directory, { mode: 0o700 })
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error
+	}
+	const stat = await fs.lstat(directory)
+	// Windows has no numeric user ID, and its temporary folder is already per user.
+	const uid = process.getuid?.()
+	if (!stat.isDirectory() || (uid !== undefined && stat.uid !== uid)) {
+		throw new Error(`"${directory}" is not a private folder of the current user. Remove it and try again.`)
+	}
+	if (uid !== undefined) await fs.chmod(directory, 0o700)
 }
 
 /** Tool call IDs use only characters that every provider accepts, so a task can switch providers. */

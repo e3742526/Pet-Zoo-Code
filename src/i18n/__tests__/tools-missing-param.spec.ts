@@ -36,11 +36,12 @@ describe("tools:missingToolParameter locales", () => {
 		}
 	})
 
-	it("brands the English messages as Zoo, not Roo", () => {
+	it("brands the English messages as Dory Code, not Zoo or Roo", () => {
 		const tools = loadTools("en")
-		expect(tools.missingToolParameter).toContain("Zoo")
-		expect(tools.missingToolParameter).not.toContain("Roo")
-		expect(tools.missingToolParameterWithPath).toContain("Zoo")
-		expect(tools.missingToolParameterWithPath).not.toContain("Roo")
+		for (const message of [tools.missingToolParameter, tools.missingToolParameterWithPath]) {
+			expect(message).toContain("Dory Code")
+			expect(message).not.toContain("Zoo")
+			expect(message).not.toContain("Roo")
+		}
 	})
 })

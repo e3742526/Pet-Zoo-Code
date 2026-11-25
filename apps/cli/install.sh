@@ -166,8 +166,19 @@ if (latestVersion) {
     info "Latest version: $VERSION"
 }
 
+# The installer replaces INSTALL_DIR with `rm -rf`. Refuse a folder that holds anything
+# other than an earlier installation, such as a home or system folder set by mistake.
+check_install_dir() {
+    if [ -d "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/bin/roo" ] && [ -n "$(ls -A "$INSTALL_DIR")" ]; then
+        error "$INSTALL_DIR is not empty and is not a Dory Code CLI installation.
+Set ROO_INSTALL_DIR to a new or empty folder, or remove this folder yourself."
+    fi
+}
+
 # Download and extract
 download_and_install() {
+    check_install_dir
+
     TARBALL="roo-cli-${PLATFORM}.tar.gz"
     
     # Create temp directory

@@ -48,9 +48,12 @@ jobs:
 
             - name: Get version
               id: version
+              env:
+                  # Passed through the environment so the input is never parsed as shell code.
+                  INPUT_VERSION: ${{ inputs.version }}
               run: |
-                  if [ -n "${{ inputs.version }}" ]; then
-                    VERSION="${{ inputs.version }}"
+                  if [ -n "$INPUT_VERSION" ]; then
+                    VERSION="$INPUT_VERSION"
                   else
                     VERSION=$(node -p "require('./apps/cli/package.json').version")
                   fi
@@ -220,9 +223,12 @@ jobs:
 
             - name: Get version
               id: version
+              env:
+                  # Passed through the environment so the input is never parsed as shell code.
+                  INPUT_VERSION: ${{ inputs.version }}
               run: |
-                  if [ -n "${{ inputs.version }}" ]; then
-                    VERSION="${{ inputs.version }}"
+                  if [ -n "$INPUT_VERSION" ]; then
+                    VERSION="$INPUT_VERSION"
                   else
                     VERSION=$(node -p "require('./apps/cli/package.json').version")
                   fi

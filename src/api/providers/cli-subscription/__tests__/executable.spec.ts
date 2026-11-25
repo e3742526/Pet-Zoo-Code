@@ -50,6 +50,31 @@ describe.skipIf(process.platform === "win32")("resolveCliExecutable", () => {
 	})
 })
 
+describe.skipIf(process.platform === "win32")("resolveCliExecutable on Windows", () => {
+	const platform = process.platform
+
+	afterEach(() => {
+		Object.defineProperty(process, "platform", { value: platform })
+		vi.unstubAllEnvs()
+	})
+
+	it("prefers a Windows executable over the extensionless script beside it", async () => {
+		const directory = await fs.mkdtemp(path.join(os.tmpdir(), "zoo-cli-win-"))
+		try {
+			await fs.writeFile(path.join(directory, "tool"), "#!/bin/sh\n")
+			await fs.writeFile(path.join(directory, "tool.exe"), "")
+			Object.defineProperty(process, "platform", { value: "win32" })
+			vi.stubEnv("PATHEXT", ".EXE")
+
+			await expect(resolveCliExecutable(path.join(directory, "tool"), "tool", "Test")).resolves.toBe(
+				path.join(directory, "tool.exe"),
+			)
+		} finally {
+			await fs.rm(directory, { recursive: true, force: true })
+		}
+	})
+})
+
 describe("expandHomeDirectory", () => {
 	it.each([
 		["~", os.homedir()],

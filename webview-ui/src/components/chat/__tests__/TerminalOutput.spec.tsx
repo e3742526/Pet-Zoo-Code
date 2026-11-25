@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react"
+import Convert from "ansi-to-html"
 import { TerminalOutput } from "../TerminalOutput"
 
 describe("TerminalOutput", () => {
@@ -18,6 +19,20 @@ describe("TerminalOutput", () => {
 		const { container } = render(<TerminalOutput content={'<script>alert("xss")</script>'} />)
 		expect(container.innerHTML).not.toContain("<script>")
 		expect(container.textContent).toContain('<script>alert("xss")</script>')
+	})
+
+	it("renders output as text when ANSI conversion fails", () => {
+		const spy = vi.spyOn(Convert.prototype, "toHtml").mockImplementation(() => {
+			throw new Error("conversion failed")
+		})
+		try {
+			const content = "\x1B[31m<img src=x onerror=alert(1)>\x1B[0m"
+			const { container } = render(<TerminalOutput content={content} />)
+			expect(container.querySelector("img")).toBeNull()
+			expect(container.textContent).toBe("<img src=x onerror=alert(1)>")
+		} finally {
+			spy.mockRestore()
+		}
 	})
 
 	it("handles empty content", () => {

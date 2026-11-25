@@ -782,7 +782,11 @@
 			"howItWorks": "Dory Code runs the {{name}} CLI that is installed on this computer and uses its sign-in, so your subscription pays for the requests. The CLI's own tools are switched off. Dory Code runs all tools, asks for your approval, and makes checkpoints as usual.",
 			"setup": "Before you start, install the CLI and sign in with \"{{loginCommand}}\" in a terminal.",
 			"museCode": "Meta Muse Code",
-			"antigravity": "Google Antigravity"
+			"antigravity": "Google Antigravity",
+			"quotaFallbackLabel": "Quota fallback profile",
+			"quotaFallbackOff": "Off",
+			"quotaFallbackUnavailable": "Unavailable profile",
+			"quotaFallbackDescription": "If Muse Code runs out of quota before it replies, continue this task with the selected profile. That provider receives the conversation and can charge for requests."
 		}
 	},
 	"checkpoints": {

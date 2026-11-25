@@ -169,6 +169,22 @@ describe.skipIf(process.platform === "win32")("MuseCodeHandler", () => {
 		)
 	})
 
+	it.each([
+		[
+			"API error 429 [request_id=test]: Subscription quota exhausted. Your usage window resets at 2026-11-25T20:58:01Z. (rate_limit_error).",
+			"ProviderQuotaExhaustedError",
+		],
+		["API error 429 [request_id=test]: Too many requests. (rate_limit_error).", "Error"],
+	])("classifies the Muse failure %s", async (reason, name) => {
+		await cli.script({ lines: [started, terminal("failed", reason)], exitCode: 1 })
+
+		await expect(collectStream(handler().createMessage("S", messages))).rejects.toMatchObject({
+			name,
+			message: expect.stringContaining(reason),
+		})
+		expect(await cli.records()).toHaveLength(1)
+	})
+
 	it("explains an exit without a result and includes stderr", async () => {
 		await cli.script({ lines: [], stderr: "error: not logged in", exitCode: 2 })
 		await expect(collectStream(handler().createMessage("S", messages, { taskId: "t1" }))).rejects.toThrow(

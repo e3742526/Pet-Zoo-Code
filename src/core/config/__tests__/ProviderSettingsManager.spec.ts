@@ -713,6 +713,24 @@ describe("ProviderSettingsManager", () => {
 			},
 		)
 
+		it("stores and clears the fallback profile ID on a Muse profile", async () => {
+			const apiProvider = providerIdentifiers.museCode
+			await providerSettingsManager.saveConfig("Muse", {
+				apiProvider,
+				museCodeQuotaFallbackProfileId: "alternate-id",
+			})
+			mockSecrets.get.mockResolvedValue(mockSecrets.store.mock.calls.at(-1)?.[1])
+			await expect(providerSettingsManager.getProfile({ name: "Muse" })).resolves.toMatchObject({
+				museCodeQuotaFallbackProfileId: "alternate-id",
+			})
+
+			await providerSettingsManager.saveConfig("Muse", { apiProvider })
+			mockSecrets.get.mockResolvedValue(mockSecrets.store.mock.calls.at(-1)?.[1])
+			await expect(providerSettingsManager.getProfile({ name: "Muse" })).resolves.not.toHaveProperty(
+				"museCodeQuotaFallbackProfileId",
+			)
+		})
+
 		it.each([undefined, "auto", "on", "off"] as const)(
 			"round-trips LiteLLM reasoning preservation %s through profile storage",
 			async (litellmPreserveReasoning) => {

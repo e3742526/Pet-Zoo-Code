@@ -9,6 +9,11 @@ export interface CliFailureCommands {
 
 const MAX_DIAGNOSTIC_CHARS = 1_500
 
+/** A provider rejected the turn because its allowance is exhausted. A short retry cannot fix it. */
+export class ProviderQuotaExhaustedError extends Error {
+	override readonly name = "ProviderQuotaExhaustedError"
+}
+
 /**
  * Gives a next step for a CLI failure. Diagnostics can echo prompt text or tool output, so only
  * known phrases are matched and the caller decides how much of the diagnostic to show.

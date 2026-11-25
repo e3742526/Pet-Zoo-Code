@@ -110,7 +110,9 @@
 		},
 		"api": {
 			"invalidKeyInvalidChars": "API key contains invalid characters.",
-			"apiRequestFailed": "API request failed ({{status}})"
+			"apiRequestFailed": "API request failed ({{status}})",
+			"quotaFallback": "Muse Code reached its usage limit. This task will continue with {{profile}}.",
+			"quotaManualRetry": "Select a different provider profile and retry, or wait for the quota to reset."
 		},
 		"manual_url_empty": "Please enter a valid callback URL",
 		"manual_url_no_query": "Invalid callback URL: missing query parameters",

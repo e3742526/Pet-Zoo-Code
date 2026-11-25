@@ -31,6 +31,7 @@ import { getEnvironmentDetails } from "../../environment/getEnvironmentDetails"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { ApiStreamChunk } from "../../../api/transform/stream"
 import { OutputTokenLimitError } from "../../../api/providers/utils/output-token-limit-error"
+import { ProviderQuotaExhaustedError } from "../../../api/providers/cli-subscription/errors"
 import { ContextProxy } from "../../config/ContextProxy"
 import { parseMentions } from "../../mentions"
 import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
@@ -195,6 +196,7 @@ vi.mock("vscode", () => {
 				onDidChangeTabs: vi.fn(() => ({ dispose: vi.fn() })),
 			},
 			showErrorMessage: vi.fn(),
+			showInformationMessage: vi.fn(),
 		},
 		workspace: {
 			workspaceFolders: [
@@ -697,13 +699,13 @@ describe("Cline", () => {
 			throw new OutputTokenLimitError()
 		}
 
-		function createStreamingTask(autoApprovalEnabled = true) {
+		function createStreamingTask(autoApprovalEnabled = true, apiConfiguration = mockApiConfig) {
 			vi.spyOn(mockProvider, "getState").mockResolvedValue(
 				providerStateWith({ autoApprovalEnabled, requestDelaySeconds: 0 }),
 			)
 			const task = new Task({
 				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
+				apiConfiguration,
 				task: "test task",
 				startTask: false,
 			})
@@ -796,6 +798,78 @@ describe("Cline", () => {
 			expect(attempt).toHaveBeenCalledOnce()
 			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", "Provider unavailable")
 		})
+
+		const quotaError = () => new ProviderQuotaExhaustedError("Subscription quota exhausted")
+
+		it.each([
+			{ case: "no fallback", fallbackId: undefined, output: false },
+			{ case: "partial output", fallbackId: "alternate-id", output: true },
+		])("asks instead of automatically retrying exhausted quota with $case", async ({ fallbackId, output }) => {
+			const task = createStreamingTask(true, {
+				apiProvider: providerIdentifiers.museCode,
+				museCodeQuotaFallbackProfileId: fallbackId,
+			})
+			const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
+			const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
+			const getProfile = vi.spyOn(mockProvider.providerSettingsManager, "getProfile")
+			const primary = vi.spyOn(task.api, "createMessage").mockImplementation(async function* () {
+				if (output) yield { type: "text", text: "partial answer" }
+				throw quotaError()
+			})
+
+			await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+			expect(primary).toHaveBeenCalledOnce()
+			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", expect.stringContaining(quotaError().message))
+			expect(backoff).not.toHaveBeenCalled()
+			expect(getProfile).not.toHaveBeenCalled()
+		})
+
+		it.each(["Alternate unavailable", "context length exceeded", undefined])(
+			"uses the saved quota fallback once and asks on fallback failure %s",
+			async (failure) => {
+				const task = createStreamingTask(true, {
+					apiProvider: providerIdentifiers.museCode,
+					museCodeQuotaFallbackProfileId: "alternate-id",
+				})
+				const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
+				const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
+				const activateProfile = vi.spyOn(mockProvider, "activateProviderProfile")
+				const getProfile = vi
+					.spyOn(mockProvider.providerSettingsManager, "getProfile")
+					.mockResolvedValue({ ...mockApiConfig, id: "alternate-id", name: "Backup" })
+				const primary = vi.spyOn(task.api, "createMessage").mockImplementation(async function* () {
+					yield { type: "usage", inputTokens: 10, outputTokens: 0 }
+					throw quotaError()
+				})
+				const fallback = vi.fn<typeof task.api.createMessage>(async function* () {
+					yield* []
+					if (failure) throw new Error(failure)
+				})
+				const updateApiConfiguration = task.updateApiConfiguration.bind(task)
+				vi.spyOn(task, "updateApiConfiguration").mockImplementation((configuration) => {
+					updateApiConfiguration(configuration)
+					vi.spyOn(task.api, "createMessage").mockImplementation(fallback)
+				})
+
+				await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+				expect(primary).toHaveBeenCalledOnce()
+				expect(getProfile).toHaveBeenCalledExactlyOnceWith({ id: "alternate-id" })
+				expect(fallback).toHaveBeenCalledOnce()
+				expect(fallback.mock.calls[0]?.[1]).toEqual(primary.mock.calls[0]?.[1])
+				expect(task.apiConversationHistory.filter(({ role }) => role === "user")).toHaveLength(1)
+				expect(task.taskApiConfigName).toBe("Backup")
+				expect(task.apiConfiguration.apiProvider).toBe(providerIdentifiers.anthropic)
+				expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("common:api.quotaFallback")
+				expect(activateProfile).not.toHaveBeenCalled()
+				expect(backoff).not.toHaveBeenCalled()
+				expect(ask).toHaveBeenCalledExactlyOnceWith(
+					"api_req_failed",
+					failure ?? expect.stringContaining("returned no assistant messages"),
+				)
+			},
+		)
 	})
 
 	describe("native tool-call request isolation", () => {

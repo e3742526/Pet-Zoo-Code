@@ -15,7 +15,7 @@ import { getModelParams } from "../transform/model-params"
 
 import { CliSubscriptionHandler, type CliTurnEvent, type CliTurnRequest } from "./cli-subscription/base-handler"
 import { BUILT_IN_TOOL_CORRECTION } from "./cli-subscription/prompt"
-import { formatCliFailure, type CliFailureCommands } from "./cli-subscription/errors"
+import { formatCliFailure, ProviderQuotaExhaustedError, type CliFailureCommands } from "./cli-subscription/errors"
 import { resolveCliExecutable } from "./cli-subscription/executable"
 import { MuseEventReducer } from "./cli-subscription/muse-events"
 import { runJsonlProcess } from "./cli-subscription/process"
@@ -56,6 +56,8 @@ export const MUSE_RESTRICTION_FLAGS = [
 ] as const
 
 const MAX_BUILT_IN_TOOL_RETRIES = 1
+const SUBSCRIPTION_QUOTA_REASON =
+	/^(?:API error 429(?: \[request_id=[^\]\r\n]+\])?: )?Subscription (?:quota exhausted|limit reached)\b/i
 
 export class MuseCodeHandler extends CliSubscriptionHandler {
 	protected readonly providerId = providerIdentifiers.museCode
@@ -146,7 +148,12 @@ export class MuseCodeHandler extends CliSubscriptionHandler {
 				? `the run ended with status "${terminal.terminal}"${terminal.reason ? `: ${terminal.reason}` : ""}.`
 				: `the CLI exited (code ${item.exitCode ?? "none"}${item.signal ? `, signal ${item.signal}` : ""}) without a result.`
 			const diagnostic = [reducer.errors, item.stderr, ...item.nonJsonLines].filter(Boolean).join("\n")
-			throw new Error(formatCliFailure(LABEL, summary, diagnostic, COMMANDS))
+			const message = formatCliFailure(LABEL, summary, diagnostic, COMMANDS)
+			// Use the CLI's terminal reason. Stderr and non-JSON output can echo prompt text.
+			if (terminal?.terminal === "failed" && SUBSCRIPTION_QUOTA_REASON.test(terminal.reason ?? "")) {
+				throw new ProviderQuotaExhaustedError(message)
+			}
+			throw new Error(message)
 		}
 	}
 }

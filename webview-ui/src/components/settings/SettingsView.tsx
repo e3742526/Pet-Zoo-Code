@@ -3,6 +3,7 @@ import React, {
 	useCallback,
 	useEffect,
 	useImperativeHandle,
+	useId,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -41,6 +42,8 @@ import {
 	DEFAULT_TASK_TITLE_GENERATION_ENABLED,
 	GLOBAL_SETTINGS_KEYS,
 	ImageGenerationProvider,
+	isRetiredProvider,
+	providerIdentifiers,
 } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
@@ -143,6 +146,14 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 	const extensionState = useExtensionState()
 	const { currentApiConfigName, listApiConfigMeta, uriScheme, settingsImportedAt, mode } = extensionState
+	const quotaFallbackProfiles = (listApiConfigMeta ?? []).filter(
+		({ id, name, apiProvider }) =>
+			id &&
+			name !== currentApiConfigName &&
+			apiProvider &&
+			apiProvider !== providerIdentifiers.museCode &&
+			!isRetiredProvider(apiProvider),
+	)
 
 	const [isDiscardDialogShow, setDiscardDialogShow] = useState(false)
 	const [isChangeDetected, setChangeDetected] = useState(false)
@@ -181,6 +192,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		() => ({ ...settingsDraft, apiConfiguration: providerDraft }),
 		[settingsDraft, providerDraft],
 	)
+	const quotaFallbackId = cachedState.apiConfiguration.museCodeQuotaFallbackProfileId ?? ""
+	const quotaFallbackControlId = useId()
+	const quotaFallbackDescriptionId = `${quotaFallbackControlId}-description`
 	// The save waiting for the host's answer, and the form state it sent. The "unsaved changes" flag stays on until the
 	// host says it was stored, and then goes off only if the user has not edited anything since.
 	const [pendingSaveId, setPendingSaveId] = useState<string | undefined>(undefined)
@@ -802,6 +816,46 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 									errorMessage={errorMessage}
 									setErrorMessage={setErrorMessage}
 								/>
+								{apiConfiguration.apiProvider === providerIdentifiers.museCode && (
+									<div className="flex flex-col gap-1">
+										<label htmlFor={quotaFallbackControlId} className="font-medium">
+											{t("settings:providers.cliSubscription.quotaFallbackLabel")}
+										</label>
+										<select
+											id={quotaFallbackControlId}
+											aria-describedby={quotaFallbackDescriptionId}
+											className="w-full rounded border border-vscode-input-border bg-vscode-input-background px-2 py-1 text-vscode-input-foreground"
+											value={quotaFallbackId}
+											onChange={(event) =>
+												setApiConfigurationField(
+													"museCodeQuotaFallbackProfileId",
+													event.target.value || undefined,
+												)
+											}>
+											<option value="">
+												{t("settings:providers.cliSubscription.quotaFallbackOff")}
+											</option>
+											{quotaFallbackId &&
+												!quotaFallbackProfiles.some(({ id }) => id === quotaFallbackId) && (
+													<option value={quotaFallbackId}>
+														{t(
+															"settings:providers.cliSubscription.quotaFallbackUnavailable",
+														)}
+													</option>
+												)}
+											{quotaFallbackProfiles.map(({ id, name }) => (
+												<option key={id} value={id}>
+													{name}
+												</option>
+											))}
+										</select>
+										<span
+											id={quotaFallbackDescriptionId}
+											className="text-sm text-vscode-descriptionForeground">
+											{t("settings:providers.cliSubscription.quotaFallbackDescription")}
+										</span>
+									</div>
+								)}
 							</Section>
 						</div>
 					)}

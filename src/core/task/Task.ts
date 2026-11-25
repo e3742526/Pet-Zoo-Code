@@ -64,6 +64,7 @@ import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "..
 import { disposeApiHandler } from "../../api/dispose-api-handler"
 import { ApiStream, type ApiStreamAssistantContentChunk, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
+import { ProviderQuotaExhaustedError } from "../../api/providers/cli-subscription/errors"
 import { OutputTokenLimitError } from "../../api/providers/utils/output-token-limit-error"
 
 // shared
@@ -76,6 +77,7 @@ import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { DiffStrategy, type AutoApprovalContext, type ToolUse } from "../../shared/tools"
 import { getModelMaxOutputTokens } from "../../shared/api"
+import { ProfileValidator } from "../../shared/ProfileValidator"
 
 // services
 import { McpHub } from "../../services/mcp/McpHub"
@@ -244,6 +246,13 @@ function queuedResponseForAsk(type: ClineAsk, text?: string): QueuedAskResolutio
 
 const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
+
+interface ApiRequestOptions {
+	skipProviderRateLimit?: boolean
+	requestModelInfo?: ModelInfo
+	/** The configured alternate has one automatic attempt for this turn. */
+	quotaFallback?: boolean
+}
 
 export interface ToolExecutionContext {
 	toolCallId: string
@@ -2547,8 +2556,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// released — immediately when idle, or when the last request, retry,
 		// background drain, or condense that leased it settles.
 		const previousApi = this.api
+		const nextApi = buildApiHandler(newApiConfiguration)
 		this.apiConfiguration = newApiConfiguration
-		this.api = buildApiHandler(this.apiConfiguration)
+		this.api = nextApi
 		this.retireApi(previousApi)
 
 		// Refresh only the soft tool-repetition limit from the new profile so an
@@ -2563,6 +2573,38 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.consecutiveMistakeLimit,
 		)
 		this.toolRepetitionDetector.updateLimits(this.toolRepetitionSoftLimit, this.consecutiveMistakeLimit)
+	}
+
+	/** Switches this task to the alternate profile that the user selected on its Muse profile. */
+	private async switchToQuotaFallback(failedConfiguration: ProviderSettings): Promise<boolean> {
+		const fallbackId = failedConfiguration.museCodeQuotaFallbackProfileId
+		const provider = this.providerRef.deref()
+		if (!provider || failedConfiguration.apiProvider !== providerIdentifiers.museCode || !fallbackId) return false
+
+		try {
+			const { name, id: _id, ...fallback } = await provider.providerSettingsManager.getProfile({ id: fallbackId })
+			const { organizationAllowList } = await provider.getState({ includeTaskHistory: false })
+			// Respect a cancellation or manual profile change while the saved profile was loading.
+			if (
+				this.abort ||
+				this.abandoned ||
+				this.apiConfiguration !== failedConfiguration ||
+				!fallback.apiProvider ||
+				fallback.apiProvider === providerIdentifiers.museCode ||
+				isRetiredProvider(fallback.apiProvider) ||
+				!ProfileValidator.isProfileAllowed(fallback, organizationAllowList)
+			) {
+				return false
+			}
+
+			this.updateApiConfiguration(fallback)
+			this.setTaskApiConfigName(name)
+			void vscode.window.showInformationMessage(t("common:api.quotaFallback", { profile: name }))
+			return true
+		} catch (error) {
+			console.warn(`[Task#${this.taskId}] Could not switch to the configured quota fallback:`, error)
+			return false
+		}
 	}
 
 	/**
@@ -3996,6 +4038,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			includeFileDetails: boolean
 			retryAttempt?: number
 			reuseUserMessage?: boolean
+			quotaFallback?: boolean
 			userMessageWasRemoved?: boolean // Track if user message was removed due to empty response
 		}
 
@@ -4253,6 +4296,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// This is especially important for tools and background usage collection
 				this.cachedStreamingModel = this.api.getModel()
 				const streamModelInfo = this.cachedStreamingModel.info
+				const requestConfiguration = this.apiConfiguration
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
@@ -4260,12 +4304,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, {
 					skipProviderRateLimit: true,
 					requestModelInfo: streamModelInfo,
+					...(currentItem.quotaFallback ? { quotaFallback: true } : {}),
 				})
 				let assistantMessage = ""
 				let reasoningMessage = ""
 				let assistantContentFromProvider: ApiStreamAssistantContentChunk | undefined
 				const pendingGroundingSources: GroundingSource[] = []
 				let streamStarted = false
+				let receivedAssistantOutput = false
 				this.isStreaming = true
 
 				try {
@@ -4302,6 +4348,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					streamStarted = !item.done
 					while (!item.done) {
 						const chunk = item.value
+						if (chunk && chunk.type !== "usage") receivedAssistantOutput = true
 						item = await nextChunkWithAbort()
 						if (!chunk) {
 							// Sometimes chunk is undefined, no idea that can cause
@@ -4792,6 +4839,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// Determine cancellation reason
 						const cancelReason: ClineApiReqCancelReason = this.abort ? "user_cancelled" : "streaming_failed"
 
+						const quotaExhausted = error instanceof ProviderQuotaExhaustedError
 						const rawErrorMessage = error.message ?? JSON.stringify(serializeError(error), null, 2)
 						const streamingFailedMessage = this.abort
 							? undefined
@@ -4804,13 +4852,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							// A cancel can land during abortStream after cancelReason was computed; setAbortReason keeps the first reason.
 							this.setAbortReason("user_cancelled")
 							await this.abortTask()
-						} else if (!streamStarted) {
+						} else if (!streamStarted && !quotaExhausted && !currentItem.quotaFallback) {
 							// The request generator already handles failures before the first chunk.
 							throw error
 						} else {
+							// Never replay a turn automatically after it started to produce text or tools.
+							const quotaFallback =
+								quotaExhausted &&
+								!currentItem.quotaFallback &&
+								!receivedAssistantOutput &&
+								(await this.switchToQuotaFallback(requestConfiguration))
 							const retryAttempt = currentItem.retryAttempt ?? 0
-							// The same request can hit the output limit again. Ask before retrying it.
+							// Quota, output limits, and a failed alternate need a user decision.
 							const retryAutomatically =
+								!quotaExhausted &&
+								!currentItem.quotaFallback &&
 								!(error instanceof OutputTokenLimitError) &&
 								retryAttempt < MAX_MID_STREAM_AUTO_RETRIES &&
 								(await this.providerRef.deref()?.getState())?.autoApprovalEnabled === true
@@ -4828,8 +4884,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								break
 							}
 
-							if (!retryAutomatically) {
-								const { response } = await this.ask("api_req_failed", rawErrorMessage)
+							if (!retryAutomatically && !quotaFallback) {
+								const errorMessage = quotaExhausted
+									? `${rawErrorMessage}\n\n${t("common:api.quotaManualRetry")}`
+									: rawErrorMessage
+								const { response } = await this.ask("api_req_failed", errorMessage)
 								if (response !== "yesButtonClicked") {
 									throw new Error("API request failed")
 								}
@@ -4841,6 +4900,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								includeFileDetails: false,
 								retryAttempt: retryAutomatically ? retryAttempt + 1 : 0,
 								reuseUserMessage: true,
+								quotaFallback: currentItem.quotaFallback || quotaFallback,
 							})
 							continue
 						}
@@ -5268,7 +5328,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					// Check if we should auto-retry or prompt the user
 					// Reuse the state variable from above
-					if (state?.autoApprovalEnabled) {
+					if (state?.autoApprovalEnabled && !currentItem.quotaFallback) {
 						// Auto-retry with backoff - don't persist failure message when retrying
 						await this.backoffAndAnnounce(
 							currentItem.retryAttempt ?? 0,
@@ -5314,6 +5374,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								includeFileDetails: false,
 								retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
 								userMessageWasRemoved: removedCurrentUserMessage,
+								quotaFallback: currentItem.quotaFallback,
 							})
 
 							// Continue to retry the request
@@ -5723,10 +5784,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	public async *attemptApiRequest(
-		retryAttempt: number = 0,
-		options: { skipProviderRateLimit?: boolean; requestModelInfo?: ModelInfo } = {},
-	): ApiStream {
+	public async *attemptApiRequest(retryAttempt: number = 0, options: ApiRequestOptions = {}): ApiStream {
 		// Hold replaced handlers from request setup until the stream is fully
 		// consumed (including the background usage drain) or closed early.
 		// Retries recurse through this method and nest their own unit of work.
@@ -5738,10 +5796,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	private async *attemptApiRequestWithActiveApi(
-		retryAttempt: number,
-		options: { skipProviderRateLimit?: boolean; requestModelInfo?: ModelInfo },
-	): ApiStream {
+	private async *attemptApiRequestWithActiveApi(retryAttempt: number, options: ApiRequestOptions): ApiStream {
 		const state = await this.providerRef.deref()?.getState()
 
 		const {
@@ -6087,6 +6142,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.isWaitingForFirstChunk = false
 		} catch (error) {
 			this.isWaitingForFirstChunk = false
+			if (error instanceof ProviderQuotaExhaustedError || options.quotaFallback) {
+				// Let the request loop rebuild model state or ask after the alternate's one attempt.
+				this.currentRequestAbortController = undefined
+				throw error
+			}
 			const isContextWindowExceededError = checkContextWindowExceededError(error)
 
 			if (!isContextWindowExceededError) {

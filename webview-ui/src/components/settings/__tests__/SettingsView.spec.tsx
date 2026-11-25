@@ -4,13 +4,50 @@ import { renderWithExtensionState, screen, fireEvent, within, waitFor } from "@/
 import { act } from "@testing-library/react"
 
 import { vscode } from "@/utils/vscode"
-import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, type ProviderSettings } from "@roo-code/types"
+import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, providerIdentifiers, type ProviderSettings } from "@roo-code/types"
 import { experimentDefault } from "@roo/experiments"
 import type { ApiOptionsProps } from "../ApiOptions"
 
 import SettingsView from "../SettingsView"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
+
+describe("Muse quota fallback", () => {
+	it.each([
+		{ saved: undefined, next: "backup-id" },
+		{ saved: "backup-id", next: "" },
+	])("buffers the fallback change from $saved and includes it in Save", ({ saved, next }) => {
+		vi.clearAllMocks()
+		renderWithExtensionState(<SettingsView onDone={vi.fn()} targetSection="providers" />, {
+			state: {
+				currentApiConfigName: "Muse",
+				apiConfiguration: {
+					apiProvider: providerIdentifiers.museCode,
+					museCodeQuotaFallbackProfileId: saved,
+				},
+				listApiConfigMeta: [
+					{ id: "muse-id", name: "Muse", apiProvider: providerIdentifiers.museCode },
+					{ id: "second-muse-id", name: "Other Muse", apiProvider: providerIdentifiers.museCode },
+					{ id: "backup-id", name: "Backup", apiProvider: providerIdentifiers.openrouter },
+				],
+			},
+		})
+
+		const select = screen.getByRole("combobox", { name: "settings:providers.cliSubscription.quotaFallbackLabel" })
+		expect(select).toHaveValue(saved ?? "")
+		expect(within(select).queryByRole("option", { name: "Other Muse" })).not.toBeInTheDocument()
+		fireEvent.change(select, { target: { value: next } })
+		const upsert = () =>
+			vi.mocked(vscode.postMessage).mock.calls.find(([message]) => message.type === "upsertApiConfiguration")
+		expect(upsert()).toBeUndefined()
+
+		fireEvent.click(screen.getByTestId("save-button"))
+		expect(upsert()?.[0]).toMatchObject({
+			text: "Muse",
+			apiConfiguration: { museCodeQuotaFallbackProfileId: next || undefined },
+		})
+	})
+})
 
 // SettingsView hands the buffered api configuration to the provider section, so the
 // save round trip can be observed without rendering the whole provider tree.

@@ -65,5 +65,6 @@ export const museCodeProviderDefinition = createProviderDefinition({
 	schema: {
 		...apiModelIdProviderModelShape,
 		museCodeExecutablePath: z.string().optional(),
+		museCodeQuotaFallbackProfileId: z.string().min(1).optional(),
 	},
 })

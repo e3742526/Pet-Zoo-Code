@@ -18,9 +18,11 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import { OPENROUTER_DEFAULT_PROVIDER_NAME, openRouterDefaultModelInfo, providerIdentifiers } from "@roo-code/types"
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo, ModelRecord } from "@roo-code/types"
 import { ApiProviderError, extractApiProviderErrorProperties } from "@roo-code/types"
 
+import type { ApiHandler } from "../../index"
+import type { GetModelsOptions } from "../../../shared/api"
 import { applyOpenRouterMoonshotK3Profile } from "../fetchers/openrouter"
 
 import { OpenRouterHandler } from "../openrouter"
@@ -128,6 +130,11 @@ vitest.mock("../fetchers/modelCache", () => ({
 				supportsReasoningEffort: true,
 			},
 		})
+	}),
+	getCatalogModel: vitest.fn(async (options: GetModelsOptions, handler: ApiHandler, id: string) => {
+		const { getModels } = await import("../fetchers/modelCache")
+		const models: ModelRecord = await getModels(options, handler)
+		return { model: models[id], hasModels: Object.keys(models).length > 0 }
 	}),
 	refreshModels: vitest.fn(async (options, handler) => {
 		const { getModels } = await import("../fetchers/modelCache")
@@ -1609,7 +1616,7 @@ describe("OpenRouterHandler", () => {
 
 	describe("model catalog", () => {
 		it("passes the configured URL to both discovery caches", async () => {
-			const { getModels } = await import("../fetchers/modelCache")
+			const { getCatalogModel } = await import("../fetchers/modelCache")
 			const baseUrl = "https://router.example.test/api/v1"
 			const handler = new OpenRouterHandler({
 				...mockOptions,
@@ -1619,7 +1626,11 @@ describe("OpenRouterHandler", () => {
 
 			await handler.fetchModel()
 
-			expect(getModels).toHaveBeenCalledWith({ provider: providerIdentifiers.openrouter, baseUrl }, handler)
+			expect(getCatalogModel).toHaveBeenCalledWith(
+				{ provider: providerIdentifiers.openrouter, baseUrl },
+				handler,
+				mockOptions.openRouterModelId,
+			)
 			expect(mockGetModelEndpoints).toHaveBeenCalledWith(
 				{
 					router: providerIdentifiers.openrouter,
@@ -1628,6 +1639,7 @@ describe("OpenRouterHandler", () => {
 					baseUrl,
 				},
 				handler,
+				vitest.mocked(getCatalogModel).mock.results[0].value,
 			)
 		})
 
@@ -1652,11 +1664,11 @@ describe("OpenRouterHandler", () => {
 		})
 
 		it("does not fetch the catalog in the constructor", async () => {
-			const { getModels } = await import("../fetchers/modelCache")
+			const { getCatalogModel } = await import("../fetchers/modelCache")
 
 			new OpenRouterHandler(mockOptions)
 
-			expect(getModels).not.toHaveBeenCalled()
+			expect(getCatalogModel).not.toHaveBeenCalled()
 			expect(mockGetModelEndpoints).not.toHaveBeenCalled()
 		})
 
@@ -1738,6 +1750,17 @@ describe("OpenRouterHandler", () => {
 			// Without a selected provider the model-level catalog is what getModel()
 			// uses, so an empty endpoint response must not force a refetch.
 			expect(mockGetModelEndpoints).toHaveBeenCalledTimes(1)
+		})
+
+		it("keeps fallback metadata for an unlisted selection when the model catalog is populated", async () => {
+			const { getCatalogModel } = await import("../fetchers/modelCache")
+			const handler = new OpenRouterHandler({ ...mockOptions, openRouterModelId: "vendor/unlisted" })
+
+			await handler.ensureModelFetched()
+			await handler.ensureModelFetched()
+
+			expect(getCatalogModel).toHaveBeenCalledOnce()
+			expect(handler.getModel()).toMatchObject({ id: "vendor/unlisted", info: openRouterDefaultModelInfo })
 		})
 
 		it("treats the [default] provider sentinel as the default provider", async () => {

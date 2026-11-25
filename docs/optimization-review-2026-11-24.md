@@ -294,6 +294,23 @@ Ten tests reproduced the missing cancellation or timeout behavior before the fix
 
 The installed VSIX ran with non-loopback traffic blocked. After the user stop action, the mock server recorded its open response closing in 3 ms in this run. The extension retained the interrupted task in local history and completed and reopened a new task using the same mock.
 
+### OpenRouter model and endpoint reads
+
+OpenRouter task requests copy only the selected model. Endpoint discovery shares that lookup and copies the inherited capability arrays for each endpoint. The settings picker still reads the full catalog. A populated catalog without the selected model can still complete pre-warm with fallback metadata.
+
+The 1,800-model fixture saved a 1,089,691-byte catalog. It alternated both implementations over ten pairs after three warm-up pairs and checked the returned metadata. The endpoint lookup used a mocked response and included its local cache write. The median for eight full reads stayed within the 1 ms regression limit.
+
+| Workload                         | Median before (ms) | Median after (ms) | Range before (ms) | Range after (ms) |
+| -------------------------------- | -----------------: | ----------------: | ----------------: | ---------------: |
+| 64 warm model preparations       |              97.34 |             0.175 |      91.61–106.39 |      0.130–0.207 |
+| One fresh pinned endpoint lookup |              10.58 |              5.30 |        7.38–21.87 |       4.72–19.24 |
+| One cold disk lookup             |               3.80 |              2.40 |         3.59–5.70 |        2.27–4.93 |
+| Eight full catalog reads         |              10.50 |             10.33 |       10.14–22.95 |      10.15–17.08 |
+
+The regression tests observed one full copy for an unpinned request and two for a fresh pinned request before the fix. Each request now copies one model. The benchmark measures catalog preparation. Provider inference time is outside its scope.
+
+All 317 focused tests and 45 distribution checks passed. Host type and lint checks passed, and the endpoint test lost nine lint suppressions. All 560 packaged scripts matched the build. The installed VSIX ran with non-loopback traffic blocked, fetched the model catalog once, used the pinned endpoint's output cap, and completed and reopened a task. The build used Node 24.22.3.
+
 ## OpenAI Compatible output limits
 
 The OpenAI Compatible checkbox and request handler now use the same default. When the setting is enabled or unset, the handler uses the configured output limit or the limit in the model metadata. It sends the limit on both the Chat Completions and Responses routes. An explicit off value or the absence of a limit suppresses the automatically generated field. Kimi Code keeps its own default. [Upstream finding](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2668)

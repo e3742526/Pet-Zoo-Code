@@ -3,12 +3,13 @@ import { tmpdir } from "os"
 import { join } from "path"
 import * as vscode from "vscode"
 
-import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
+import { providerIdentifiers, type ModelInfo, type ModelRecord } from "@roo-code/types"
 
 import { makeWorkspaceConfiguration } from "../../../../test-utils/vscode"
 import type { ApiHandler } from "../../../index"
 import { LiteLLMHandler } from "../../lite-llm"
-import { flushModels, getModels, getModelsFromCache, refreshModels } from "../modelCache"
+import { OpenRouterHandler } from "../../openrouter"
+import { flushModels, getCatalogModel, getModels, getModelsFromCache, refreshModels } from "../modelCache"
 import { getOpenRouterModelEndpoints } from "../openrouter"
 
 const storage = vi.hoisted(() => ({ global: "" }))
@@ -21,7 +22,11 @@ vi.mock("../../../../core/config/ContextProxy", () => ({
 		},
 	},
 }))
-vi.mock("../openrouter", () => ({ getOpenRouterModelEndpoints: vi.fn() }))
+vi.mock("../openrouter", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../openrouter")>()),
+	getOpenRouterModelEndpoints: vi.fn(),
+}))
+vi.mock("@roo-code/telemetry", () => ({ TelemetryService: { instance: { captureEvent: vi.fn() } } }))
 
 const options = { provider: providerIdentifiers.openrouter } as const
 const catalog: ModelRecord = {
@@ -206,6 +211,13 @@ it("does not reuse a default storage miss after switching to a custom path", asy
 	expect(fetchModels).not.toHaveBeenCalled()
 })
 
+it.each([true, false])("reports whether an unlisted selection has a populated catalog (%s)", async (hasModels) => {
+	fetchModels.mockResolvedValueOnce(hasModels ? catalog : {})
+
+	await expect(getCatalogModel(options, handler, "vendor/unlisted")).resolves.toEqual({ model: undefined, hasModels })
+	expect(fetchModels).toHaveBeenCalledTimes(1)
+})
+
 it("reopens the saved endpoint list for the requested model when its live list is empty", async () => {
 	const { getModelEndpoints } = await import("../modelEndpointCache")
 	const endpointOptions = {
@@ -224,6 +236,57 @@ it("reopens the saved endpoint list for the requested model when its live list i
 		await expect(getModelEndpoints(endpointOptions, handler)).resolves.toEqual(endpoints)
 	} finally {
 		vi.useRealTimers()
+	}
+})
+
+it.each([undefined, "test-endpoint"])("copies one OpenRouter model with endpoint %s", async (pin) => {
+	const modelId = "vendor/selected"
+	const baseUrl = "https://selection.example.test/api/v1"
+	const request = { provider: providerIdentifiers.openrouter, baseUrl } as const
+	const model: ModelInfo = {
+		contextWindow: 65536,
+		maxTokens: 4096,
+		supportsPromptCache: false,
+		supportsReasoningEffort: ["low", "high"],
+		supportedParameters: ["reasoning", "temperature"],
+	}
+	const models = { [modelId]: model, "vendor/sibling": { ...model, maxTokens: 6553 } }
+	const makeRouter = (endpoint?: string) =>
+		new OpenRouterHandler({
+			openRouterModelId: modelId,
+			openRouterBaseUrl: baseUrl,
+			openRouterSpecificProvider: endpoint,
+		})
+	const source = makeRouter()
+	const fetch = vi.spyOn(source, "fetchModels").mockResolvedValueOnce(models)
+	try {
+		await refreshModels(request, source)
+		const router = makeRouter(pin)
+		const unexpectedFetch = vi.spyOn(router, "fetchModels").mockRejectedValue(new Error("Provider offline"))
+		vi.mocked(getOpenRouterModelEndpoints)
+			.mockClear()
+			.mockResolvedValueOnce({
+				"test-endpoint": { contextWindow: 32768, maxTokens: 2048, supportsPromptCache: false },
+			})
+		const clone = vi.spyOn(globalThis, "structuredClone")
+		try {
+			const selected = await router.fetchModel()
+			expect(selected.id).toBe(modelId)
+			expect(selected.info.contextWindow).toBe(pin ? 32768 : 65536)
+			expect(selected.info.supportedParameters).toEqual(model.supportedParameters)
+			expect(selected.info.supportsReasoningEffort).toEqual(model.supportsReasoningEffort)
+			expect(clone.mock.calls).toEqual([[model]])
+			selected.info.supportedParameters?.push("max_tokens")
+		} finally {
+			clone.mockRestore()
+		}
+		await expect(getModels(request, source)).resolves.toEqual(models)
+		expect(fetch).toHaveBeenCalledTimes(1)
+		expect(unexpectedFetch).not.toHaveBeenCalled()
+		expect(getOpenRouterModelEndpoints).toHaveBeenCalledTimes(pin ? 1 : 0)
+	} finally {
+		vi.mocked(getOpenRouterModelEndpoints).mockReset()
+		await flushModels(request, source)
 	}
 })
 

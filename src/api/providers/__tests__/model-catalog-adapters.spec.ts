@@ -26,8 +26,8 @@ const fetchers = vi.hoisted(() => ({
 	getVercelAiGatewayModels: vi.fn(),
 }))
 
-// The pre-warm hook reaches the fetcher either directly (fetchModel) or through
-// getModels(). Delegating to the handler's own fetchModels keeps the fetcher
+// The pre-warm hook reaches the fetcher directly or through the model cache.
+// Delegating to the handler's own fetchModels keeps the fetcher
 // call counts in this file meaningful and avoids touching the real disk cache.
 const modelCache = vi.hoisted(() => ({
 	getModels: vi.fn(),
@@ -37,6 +37,10 @@ const modelCache = vi.hoisted(() => ({
 vi.mock("../fetchers/modelCache", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../fetchers/modelCache")>()),
 	getModels: modelCache.getModels,
+	getCatalogModel: async (options: GetModelsOptions, handler: ApiHandler, id: string) => {
+		const models: ModelRecord = await modelCache.getModels(options, handler)
+		return { model: models[id], hasModels: Object.keys(models).length > 0 }
+	},
 	getModelFromCache: modelCache.getModelFromCache,
 }))
 

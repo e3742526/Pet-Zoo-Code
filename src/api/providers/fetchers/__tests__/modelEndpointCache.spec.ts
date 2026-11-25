@@ -2,7 +2,7 @@
 
 import { vi, describe, it, expect, beforeEach } from "vitest"
 
-import { providerIdentifiers } from "@roo-code/types"
+import { providerIdentifiers, type ModelInfo, type ModelRecord } from "@roo-code/types"
 
 import { getModelEndpoints } from "../modelEndpointCache"
 import * as modelCache from "../modelCache"
@@ -24,7 +24,10 @@ describe("modelEndpointCache", () => {
 
 	describe("getModelEndpoints", () => {
 		it("keeps model endpoint metadata and parent models separate for custom URLs", async () => {
-			const getModels = vi.mocked(modelCache.getModels).mockResolvedValue({})
+			const getCatalogModel = vi.mocked(modelCache.getCatalogModel).mockResolvedValue({
+				model: undefined,
+				hasModels: false,
+			})
 			const getEndpoints = vi.mocked(openrouter.getOpenRouterModelEndpoints)
 			getEndpoints.mockResolvedValueOnce({ pinned: { contextWindow: 4096, supportsPromptCache: false } })
 			getEndpoints.mockResolvedValueOnce({ pinned: { contextWindow: 8192, supportsPromptCache: false } })
@@ -48,31 +51,30 @@ describe("modelEndpointCache", () => {
 					{ untrustedBaseUrl: true },
 				]),
 			)
-			expect(getModels.mock.calls).toEqual(
+			expect(getCatalogModel.mock.calls).toEqual(
 				[firstUrl, secondUrl].map((baseUrl) => [
 					{ provider: providerIdentifiers.openrouter, baseUrl },
 					handler,
+					selection.modelId,
 				]),
 			)
 		})
 
 		it("should copy model-level capabilities from parent model to endpoints", async () => {
 			// Mock the parent model data with capabilities
-			const mockParentModels = {
-				"anthropic/claude-sonnet-4": {
-					maxTokens: 8192,
-					contextWindow: 200000,
-					supportsImages: true,
-					supportsPromptCache: true,
-					supportsReasoningEffort: true,
-					supportedParameters: ["max_tokens", "temperature", "reasoning"] as any,
-					inputPrice: 3,
-					outputPrice: 15,
-				},
+			const parentModel: ModelInfo = {
+				maxTokens: 8192,
+				contextWindow: 200000,
+				supportsImages: true,
+				supportsPromptCache: true,
+				supportsReasoningEffort: true,
+				supportedParameters: ["max_tokens", "temperature", "reasoning"],
+				inputPrice: 3,
+				outputPrice: 15,
 			}
 
 			// Mock endpoint data WITHOUT capabilities (as returned by API)
-			const mockEndpoints = {
+			const mockEndpoints: ModelRecord = {
 				anthropic: {
 					maxTokens: 8192,
 					contextWindow: 200000,
@@ -92,8 +94,8 @@ describe("modelEndpointCache", () => {
 				},
 			}
 
-			vi.spyOn(modelCache, "getModels").mockResolvedValue(mockParentModels as any)
-			vi.spyOn(openrouter, "getOpenRouterModelEndpoints").mockResolvedValue(mockEndpoints as any)
+			vi.mocked(modelCache.getCatalogModel).mockResolvedValue({ model: parentModel, hasModels: true })
+			vi.mocked(openrouter.getOpenRouterModelEndpoints).mockResolvedValue(mockEndpoints)
 
 			const result = await getModelEndpoints(
 				{
@@ -113,16 +115,15 @@ describe("modelEndpointCache", () => {
 		})
 
 		it("should create independent array copies to avoid shared references", async () => {
-			const mockParentModels = {
-				"test/model": {
-					maxTokens: 1000,
-					contextWindow: 10000,
-					supportsPromptCache: false,
-					supportedParameters: ["max_tokens", "temperature"] as any,
-				},
+			const parentModel: ModelInfo = {
+				maxTokens: 1000,
+				contextWindow: 10000,
+				supportsPromptCache: false,
+				supportedParameters: ["max_tokens", "temperature"],
+				supportsReasoningEffort: ["low", "high"],
 			}
 
-			const mockEndpoints = {
+			const mockEndpoints: ModelRecord = {
 				"endpoint-1": {
 					maxTokens: 1000,
 					contextWindow: 10000,
@@ -135,8 +136,8 @@ describe("modelEndpointCache", () => {
 				},
 			}
 
-			vi.spyOn(modelCache, "getModels").mockResolvedValue(mockParentModels as any)
-			vi.spyOn(openrouter, "getOpenRouterModelEndpoints").mockResolvedValue(mockEndpoints as any)
+			const parentLoad = Promise.resolve({ model: parentModel, hasModels: true })
+			vi.mocked(openrouter.getOpenRouterModelEndpoints).mockResolvedValue(mockEndpoints)
 
 			const result = await getModelEndpoints(
 				{
@@ -145,19 +146,23 @@ describe("modelEndpointCache", () => {
 					endpoint: "endpoint-1",
 				},
 				handler,
+				parentLoad,
 			)
 
 			// Modify one endpoint's array
-			result["endpoint-1"].supportedParameters?.push("reasoning" as any)
+			result["endpoint-1"].supportedParameters?.push("reasoning")
 
 			// Verify the other endpoint's array was NOT affected (independent copy)
 			expect(result["endpoint-1"].supportedParameters).toHaveLength(3)
 			expect(result["endpoint-2"].supportedParameters).toHaveLength(2)
+			expect(result["endpoint-1"].supportsReasoningEffort).toEqual(parentModel.supportsReasoningEffort)
+			expect(result["endpoint-1"].supportsReasoningEffort).not.toBe(parentModel.supportsReasoningEffort)
+			expect(result["endpoint-1"].supportsReasoningEffort).not.toBe(result["endpoint-2"].supportsReasoningEffort)
+			expect(modelCache.getCatalogModel).not.toHaveBeenCalled()
 		})
 
 		it("should handle missing parent model gracefully", async () => {
-			const mockParentModels = {}
-			const mockEndpoints = {
+			const mockEndpoints: ModelRecord = {
 				anthropic: {
 					maxTokens: 8192,
 					contextWindow: 200000,
@@ -166,8 +171,8 @@ describe("modelEndpointCache", () => {
 				},
 			}
 
-			vi.spyOn(modelCache, "getModels").mockResolvedValue(mockParentModels as any)
-			vi.spyOn(openrouter, "getOpenRouterModelEndpoints").mockResolvedValue(mockEndpoints as any)
+			vi.mocked(modelCache.getCatalogModel).mockResolvedValue({ model: undefined, hasModels: false })
+			vi.mocked(openrouter.getOpenRouterModelEndpoints).mockResolvedValue(mockEndpoints)
 
 			const result = await getModelEndpoints(
 				{

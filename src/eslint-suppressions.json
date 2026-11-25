@@ -224,11 +224,6 @@
 			"count": 3
 		}
 	},
-	"api/providers/fetchers/__tests__/modelEndpointCache.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 9
-		}
-	},
 	"api/providers/fetchers/__tests__/moonshot.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 1

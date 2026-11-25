@@ -33,7 +33,7 @@ import { resolveCacheTtl } from "../transform/caching/ttl"
 import type { OpenRouterReasoningParams } from "../transform/reasoning"
 import { getModelParams } from "../transform/model-params"
 
-import { getModels } from "./fetchers/modelCache"
+import { getCatalogModel } from "./fetchers/modelCache"
 import { getModelEndpoints } from "./fetchers/modelEndpointCache"
 import { applyOpenRouterMoonshotK3Profile, getOpenRouterModels } from "./fetchers/openrouter"
 
@@ -153,6 +153,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	private client: OpenAI
 	protected models: ModelRecord = {}
 	protected endpoints: ModelRecord = {}
+	private hasModelCatalog = false
 	private currentReasoningDetails: any[] = []
 
 	constructor(options: ApiHandlerOptions) {
@@ -200,14 +201,10 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	async ensureModelFetched(signal?: AbortSignal): Promise<void> {
 		await this.ensureCatalogLoaded(async () => {
 			await this.fetchModel()
-			// fetchModel() returns model info, not the catalog, so report emptiness
-			// from the catalogs it assigned: an empty response must stay retryable.
 			// With a specific provider selected, the endpoint catalog is what
 			// getModel() uses, so an empty endpoint response is a failed load even
 			// when the model-level catalog arrived.
-			const hasModels = Object.keys(this.models).length > 0
-			const hasEndpoints = Object.keys(this.endpoints).length > 0
-			return hasModels && (!this.hasSpecificProvider || hasEndpoints)
+			return this.hasModelCatalog && (!this.hasSpecificProvider || Object.keys(this.endpoints).length > 0)
 		}, signal)
 	}
 
@@ -620,9 +617,11 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	public async fetchModel() {
+		const id = this.options.openRouterModelId ?? openRouterDefaultModelId
 		const baseUrl = this.options.openRouterBaseUrl
-		const [models, endpoints] = await Promise.all([
-			getModels({ provider: providerIdentifiers.openrouter, baseUrl }, this),
+		const parentLoad = getCatalogModel({ provider: providerIdentifiers.openrouter, baseUrl }, this, id)
+		const [{ model, hasModels }, endpoints] = await Promise.all([
+			parentLoad,
 			getModelEndpoints(
 				{
 					router: providerIdentifiers.openrouter,
@@ -631,10 +630,12 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 					baseUrl,
 				},
 				this,
+				parentLoad,
 			),
 		])
 
-		this.models = models
+		this.models = model ? { [id]: model } : {}
+		this.hasModelCatalog = hasModels
 		this.endpoints = endpoints
 
 		return this.getModel()

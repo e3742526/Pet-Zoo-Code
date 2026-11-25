@@ -214,11 +214,25 @@ async function fetchModelsFromProvider(
  * With a selected model ID, return a record containing only that model, if present.
  * The cache still loads and stores the complete catalog.
  */
-export const getModels = async (
+export const getModels = (
 	options: GetModelsOptions,
 	handler: ApiHandler,
 	selectedModelId?: string,
-): Promise<ModelRecord> => {
+): Promise<ModelRecord> =>
+	loadCatalog(options, handler, (models, fromCache) => selectModels(models, selectedModelId, fromCache))
+
+/** Return one model and indicate whether the catalog had any entries. */
+export const getCatalogModel = (options: GetModelsOptions, handler: ApiHandler, id: string) =>
+	loadCatalog(options, handler, (models) => {
+		const model = copyModel(models, id)
+		return { model, hasModels: model !== undefined || Object.keys(models).length > 0 }
+	})
+
+async function loadCatalog<T>(
+	options: GetModelsOptions,
+	handler: ApiHandler,
+	select: (models: ModelRecord, fromCache: boolean) => T,
+): Promise<T> {
 	const { provider } = options
 	const cacheKey = getCacheKey(options, handler)
 
@@ -231,7 +245,7 @@ export const getModels = async (
 			: cached
 
 	if (models) {
-		return selectModels(models, selectedModelId, true)
+		return select(models, true)
 	}
 
 	// Route the cache-miss fetch through dedupedFetch(), the same single-flight coordinator
@@ -278,7 +292,7 @@ export const getModels = async (
 			})
 		}
 
-		return selectModels(fetched, selectedModelId, false)
+		return select(fetched, false)
 	} catch (error) {
 		// Log the error and re-throw it so the caller can handle it (e.g., show a UI message).
 		console.error(`[getModels] Failed to fetch models in modelCache for ${provider}:`, error)

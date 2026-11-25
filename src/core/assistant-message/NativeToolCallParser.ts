@@ -17,6 +17,7 @@ import type {
 	ApiStreamToolCallEndChunk,
 } from "../../api/transform/stream"
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName, normalizeMcpToolName } from "../../utils/mcp-name"
+import { recoverLegacyFollowUp } from "./recoverLegacyFollowUp"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -893,20 +894,37 @@ export class NativeToolCallParser {
 					}
 					break
 
-				case "ask_followup_question":
+				case "ask_followup_question": {
+					const { question, follow_up: followUp } = args
+					const recovered =
+						typeof question === "string" && (followUp === undefined || followUp === null)
+							? recoverLegacyFollowUp(question)
+							: undefined
+					if (recovered) {
+						params.question = recovered.question
+						params.follow_up = JSON.stringify(recovered.followUp)
+						nativeArgs = {
+							question: recovered.question,
+							follow_up: recovered.followUp,
+						} as NativeArgsFor<TName>
+						usedLegacyFormat = true
+						break
+					}
+
 					// Require a question and a present follow_up. When follow_up is
 					// present-but-not-an-array (e.g. an object/string/number produced by
 					// incremental JSON parsing), we still construct nativeArgs and forward
 					// the raw value so the tool can emit a precise "must be an array" error
 					// instead of the generic parser failure, which would surface as a
 					// misleading "Missing value for required parameter 'follow_up'" error.
-					if (args.question !== undefined && args.follow_up !== undefined) {
+					if (question !== undefined && followUp !== undefined) {
 						nativeArgs = {
-							question: args.question,
-							follow_up: args.follow_up,
+							question,
+							follow_up: followUp,
 						} as NativeArgsFor<TName>
 					}
 					break
+				}
 
 				case "codebase_search":
 					if (args.query !== undefined) {

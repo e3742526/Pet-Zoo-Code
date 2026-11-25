@@ -13,10 +13,12 @@ interface Suggestion {
 
 interface AskFollowupQuestionParams {
 	question: string
-	// follow_up is typed as an array, but at runtime the value may arrive as a
-	// non-array (object/string/number) due to incremental JSON parsing, so the
-	// runtime validation in execute() guards against that explicitly.
-	follow_up: Suggestion[]
+	// The native parser forwards malformed model values for validation here.
+	follow_up?: unknown
+}
+
+function isSuggestion(value: unknown): value is Suggestion {
+	return typeof value === "object" && value !== null && "text" in value && typeof value.text === "string"
 }
 
 export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
@@ -60,6 +62,13 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 				await recordValidationError(
 					"The 'follow_up' parameter must be an array of suggestion objects, each shaped like { text: string, mode?: string }. " +
 						"Retry with 'follow_up' as a JSON array.",
+				)
+				return
+			}
+
+			if (!follow_up.every(isSuggestion)) {
+				await recordValidationError(
+					"Each suggestion must have a string 'text'. Send the suggestions again with text for each item.",
 				)
 				return
 			}

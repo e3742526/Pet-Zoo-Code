@@ -2,6 +2,71 @@ import { NativeToolCallParser, type ToolCallStreamEvent } from "../NativeToolCal
 
 describe("NativeToolCallParser", () => {
 	describe("parseToolCall", () => {
+		describe("legacy follow-up suggestions", () => {
+			const parse = (question: string, follow_up?: unknown) =>
+				NativeToolCallParser.parseToolCall({
+					id: "follow-up-1",
+					name: "ask_followup_question",
+					arguments: JSON.stringify({ question, follow_up }),
+				})
+
+			it.each([
+				{
+					question: '<question>Which source?</question><follow_up>[{"text":"Config"}]</follow_up></invoke>',
+					expected: "Config",
+				},
+				{
+					question:
+						'<invoke  name="ask_followup_question"><parameter   name="question">Which source?</parameter>' +
+						'<parameter name=\'follow_up\'>[{"text":"Env","mode":null}]</parameter></invoke>',
+					expected: "Env",
+					followUp: null,
+				},
+				{
+					question: 'Which source?<follow_up>[{"text":"Say \\"hi\\" </follow_up>"}]</follow_up>',
+					expected: 'Say "hi" </follow_up>',
+				},
+				{
+					question:
+						'Which source?<parameter name="follow_up">[{"text":"Use <follow_up>[]</follow_up> or </parameter>"}]</parameter>',
+					expected: "Use <follow_up>[]</follow_up> or </parameter>",
+				},
+			])("recovers $expected from legacy markup", ({ question, expected, followUp }) => {
+				expect(parse(question, followUp)).toMatchObject({
+					usedLegacyFormat: true,
+					nativeArgs: { question: "Which source?", follow_up: [{ text: expected }] },
+				})
+			})
+
+			it("finds a valid wrapper after a rejected payload", () => {
+				const question =
+					'Which source?<parameter name="follow_up">{"text":"<follow_up>[]</follow_up>"}</parameter>' +
+					'<follow_up>[{"text":"Config"}]</follow_up>'
+
+				expect(parse(question)).toMatchObject({
+					usedLegacyFormat: true,
+					nativeArgs: { follow_up: [{ text: "Config" }] },
+				})
+			})
+
+			it.each([
+				"Which source?",
+				"Which source?<follow_up>bad JSON</follow_up>",
+				'Which source?<follow_up>[{"text":"Config"}]',
+				'Which source?<parameter name="follow_up">{"text":"<follow_up>[]</follow_up>"}</parameter>',
+			])("keeps rejecting unrecoverable input %s", (question) => {
+				expect(parse(question)).toBeNull()
+			})
+
+			it.each([[[]], [[{ text: "Use the explicit option" }]], ["wrong shape"]])(
+				"keeps an explicit follow_up value %j",
+				(followUp) => {
+					const question = 'Which source?<follow_up>[{"text":"Config"}]</follow_up>'
+					expect(parse(question, followUp)).toMatchObject({ nativeArgs: { question, follow_up: followUp } })
+				},
+			)
+		})
+
 		describe("read_file tool", () => {
 			it("should parse minimal single-file read_file args", () => {
 				const toolCall = {

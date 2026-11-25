@@ -72,7 +72,7 @@ describe("AskFollowupQuestionTool", () => {
 	})
 
 	it("should handle missing follow_up parameter (null)", async () => {
-		const params = { question: "What?", follow_up: null as any }
+		const params = { question: "What?", follow_up: null }
 
 		await tool.execute(params, mockTask, mockCallbacks)
 
@@ -84,7 +84,7 @@ describe("AskFollowupQuestionTool", () => {
 	})
 
 	it("should handle missing follow_up parameter (undefined)", async () => {
-		const params = { question: "What?", follow_up: undefined as any }
+		const params = { question: "What?", follow_up: undefined }
 
 		await tool.execute(params, mockTask, mockCallbacks)
 
@@ -92,7 +92,7 @@ describe("AskFollowupQuestionTool", () => {
 	})
 
 	it("should report a type error when follow_up is a string", async () => {
-		const params = { question: "What?", follow_up: "not-an-array" as any }
+		const params = { question: "What?", follow_up: "not-an-array" }
 
 		await tool.execute(params, mockTask, mockCallbacks)
 
@@ -101,7 +101,7 @@ describe("AskFollowupQuestionTool", () => {
 		expect(mockTask.didToolFailInCurrentTurn).toBe(true)
 		// A present-but-non-array value is a type error.
 		expect(mockTask.sayAndCreateMissingParamError).not.toHaveBeenCalled()
-		const pushed = (mockCallbacks.pushToolResult as any).mock.calls[0][0]
+		const pushed = vi.mocked(mockCallbacks.pushToolResult).mock.calls[0][0]
 		expect(pushed).toContain("must be an array")
 		expect(pushed).not.toContain("Missing value")
 	})
@@ -113,7 +113,7 @@ describe("AskFollowupQuestionTool", () => {
 			follow_up: {
 				"0": { mode: null, text: "Keep the guard" },
 				"1": { mode: null, text: "Remove the guard" },
-			} as any,
+			},
 		}
 
 		await tool.execute(params, mockTask, mockCallbacks)
@@ -123,7 +123,7 @@ describe("AskFollowupQuestionTool", () => {
 		expect(mockTask.didToolFailInCurrentTurn).toBe(true)
 		expect(mockTask.sayAndCreateMissingParamError).not.toHaveBeenCalled()
 		expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("must be an array"))
-		const pushed = (mockCallbacks.pushToolResult as any).mock.calls[0][0]
+		const pushed = vi.mocked(mockCallbacks.pushToolResult).mock.calls[0][0]
 		expect(pushed).toContain("must be an array")
 		expect(pushed).not.toContain("Missing value")
 		// The tool must not proceed to ask the user with an invalid payload.
@@ -131,6 +131,21 @@ describe("AskFollowupQuestionTool", () => {
 	})
 
 	// ===== Happy path tests =====
+
+	it.each([null, { mode: "code" }, { text: 7 }])(
+		"reports malformed suggestion %j as a validation error",
+		async (item) => {
+			await tool.execute({ question: "Proceed?", follow_up: [item] }, mockTask, mockCallbacks)
+
+			expect(mockTask.recordToolError).toHaveBeenCalledWith("ask_followup_question")
+			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
+			expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
+				expect.stringContaining("Each suggestion must have a string 'text'"),
+			)
+			expect(mockCallbacks.handleError).not.toHaveBeenCalled()
+			expect(askMock).not.toHaveBeenCalled()
+		},
+	)
 
 	it("should ask the user a followup question with suggestions", async () => {
 		const params = {
@@ -531,6 +546,51 @@ describe("AskFollowupQuestionTool", () => {
 	})
 
 	// ===== NativeToolCallParser integration tests for ask_followup_question =====
+
+	function finalizeLegacyFollowUp(payload: string) {
+		const scope = NativeToolCallParser.createScope()
+		const name = "ask_followup_question"
+		const id = "legacy-followup"
+		const key = NativeToolCallParser.makeStreamingKey(id, name)
+		const args = JSON.stringify({ question: `Proceed?</question><follow_up>${payload}</follow_up>` })
+		const tagBoundary = args.indexOf("<follow_up>") + "<follow_".length
+		NativeToolCallParser.startStreamingToolCall(id, name, scope)
+		NativeToolCallParser.processStreamingChunk(key, args.slice(0, tagBoundary), scope)
+		NativeToolCallParser.processStreamingChunk(key, args.slice(tagBoundary), scope)
+		const result = NativeToolCallParser.finalizeStreamingToolCall(key, scope)
+		return result?.type === "tool_use" && result.name === name ? (result as ToolUse<typeof name>) : null
+	}
+
+	it("asks the recovered question after the legacy suggestions finish streaming", async () => {
+		const result = finalizeLegacyFollowUp('[{"text":"Yes","mode":"code"},{"text":"No"}]')
+		if (!result) {
+			throw new Error("Expected a completed follow-up call")
+		}
+		await tool.handle(mockTask, result, mockCallbacks)
+
+		expect(askMock).toHaveBeenCalledWith(
+			"followup",
+			JSON.stringify({ question: "Proceed?", suggest: [{ answer: "Yes", mode: "code" }, { answer: "No" }] }),
+			false,
+		)
+	})
+
+	it("rejects a streamed legacy payload without a suggestion array", () => {
+		expect(finalizeLegacyFollowUp('{"text":"Yes"}')).toBeNull()
+	})
+
+	it("reports a validation error when a streamed legacy suggestion has no text", async () => {
+		const result = finalizeLegacyFollowUp('[{"mode":"code"}]')
+		if (!result) {
+			throw new Error("Expected the parsed follow-up to reach tool validation")
+		}
+		await tool.handle(mockTask, result, mockCallbacks)
+
+		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
+			expect.stringContaining("Each suggestion must have a string 'text'"),
+		)
+		expect(askMock).not.toHaveBeenCalled()
+	})
 
 	describe("NativeToolCallParser.createPartialToolUse for ask_followup_question", () => {
 		it("should build nativeArgs with question and follow_up during streaming", async () => {

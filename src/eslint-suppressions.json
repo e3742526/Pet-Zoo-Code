@@ -771,7 +771,7 @@
 	},
 	"core/tools/__tests__/askFollowupQuestionTool.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 20
+			"count": 14
 		}
 	},
 	"core/tools/__tests__/attemptCompletionTool.spec.ts": {

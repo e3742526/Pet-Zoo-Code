@@ -363,3 +363,9 @@ The five request regressions reproduced placeholder text and a crash on roleless
 MiniMax task history now retains completed thinking and redacted thinking blocks with their original signatures and order. The saved tool calls still come from the task's validated history. The next MiniMax request reuses those blocks. A request to another provider omits them. Interrupted responses keep the existing partial history behavior. Older saved tasks pass through the Anthropic-format filter before MiniMax inference. [Reported provider issue](https://github.com/Zoo-Code-Org/Zoo-Code/pull/1666) · [MiniMax tool use guide](https://platform.minimax.io/docs/guides/text-m3-function-call)
 
 The before-change test failed because the stream supplied only reasoning text. The corrected build passed 364 focused tests and 45 distribution checks. Host type and lint checks passed, and lint suppressions fell by two. The VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3. The tests used a mocked MiniMax endpoint.
+
+## Follow-up questions with legacy suggestions
+
+When a completed native follow-up call has an absent or null `follow_up`, the parser can recover its JSON array from the question. It supports both legacy wrappers, respects quoted and escaped text inside the JSON, and sends the cleaned question to the tool. Explicit native values still take precedence. The tool checks that every suggestion has string text before showing the question. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2651)
+
+Eight before-change tests reproduced the drop or missing validation. The corrected build passed 195 focused tests, 924 parser-scope interleavings, and 45 distribution checks. Host type and lint checks passed, and lint suppressions fell by six. The rebuilt VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3.

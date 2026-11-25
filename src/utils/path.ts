@@ -1,5 +1,6 @@
 import * as path from "path"
 import os from "os"
+import { statSync } from "node:fs"
 import * as vscode from "vscode"
 
 import { Package } from "../shared/package"
@@ -111,6 +112,17 @@ export function getReadablePath(cwd: string, relPath?: string): string {
 export const toRelativePath = (filePath: string, cwd: string) => {
 	const relativePath = path.relative(cwd, filePath).toPosix()
 	return filePath.endsWith("/") ? relativePath + "/" : relativePath
+}
+
+/** Select a working directory when there is no workspace folder. */
+export function getNoWorkspaceFallbackPath(): string {
+	const home = os.homedir()
+	const desktop = path.join(home, "Desktop")
+	try {
+		return statSync(desktop, { throwIfNoEntry: false })?.isDirectory() ? desktop : home
+	} catch {
+		return home
+	}
 }
 
 /**

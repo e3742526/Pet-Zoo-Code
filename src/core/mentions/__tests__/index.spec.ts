@@ -46,6 +46,18 @@ describe("parseMentions - folder content", () => {
 		await fs.rm(root, { recursive: true, force: true })
 	})
 
+	it("reads an absolute open-tab mention from outside the task directory", async () => {
+		const file = path.join(root, "open notes.txt")
+		await fs.writeFile(file, "Notes from the open tab.")
+		const mention = `@/${file.toPosix().replace(/ /g, "\\ ")}`
+
+		const result = await parseMentions(`Read ${mention}`, folder)
+
+		expect(result.contentBlocks).toEqual([
+			expect.objectContaining({ type: "file", content: expect.stringContaining("Notes from the open tab.") }),
+		])
+	})
+
 	it("includes all available text in a folder within the limit", async () => {
 		await fs.mkdir(path.join(folder, "nested"))
 		await fs.writeFile(path.join(folder, "small.txt"), "small file contents")

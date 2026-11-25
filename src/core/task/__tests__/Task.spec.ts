@@ -3,7 +3,7 @@ import { WebviewFocusTracker } from "../../webview/WebviewFocusTracker"
 
 import { DispatchState } from "../dispatchState"
 import * as fsReal from "fs"
-import * as os from "os"
+import os from "os"
 import * as path from "path"
 
 import * as vscode from "vscode"
@@ -467,6 +467,38 @@ describe("Cline", () => {
 			yield* chunks
 		})()
 	}
+
+	it.each(["directory", "missing", "file"])(
+		"selects an existing cwd without a workspace when Desktop is %s",
+		async (desktop) => {
+			const home = await fsReal.promises.mkdtemp(path.join(os.tmpdir(), "pet-zoo-home-"))
+			const desktopPath = path.join(home, "Desktop")
+			const folders = vscode.workspace.workspaceFolders
+			const editor = vscode.window.activeTextEditor
+			const homeDirectory = vi.spyOn(os, "homedir").mockReturnValue(home)
+			try {
+				Reflect.set(vscode.workspace, "workspaceFolders", undefined)
+				Reflect.set(vscode.window, "activeTextEditor", undefined)
+				if (desktop === "directory") {
+					await fsReal.promises.mkdir(desktopPath)
+				} else if (desktop === "file") {
+					await fsReal.promises.writeFile(desktopPath, "Not a directory")
+				}
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "Check cwd",
+					startTask: false,
+				})
+				expect(task.cwd).toBe(desktop === "directory" ? desktopPath : home)
+			} finally {
+				Reflect.set(vscode.workspace, "workspaceFolders", folders)
+				Reflect.set(vscode.window, "activeTextEditor", editor)
+				homeDirectory.mockRestore()
+				await fsReal.promises.rm(home, { recursive: true, force: true })
+			}
+		},
+	)
 
 	async function createTaskWithManualRetries(apiConfiguration = mockApiConfig) {
 		const task = new Task({

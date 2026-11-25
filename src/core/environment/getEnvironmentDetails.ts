@@ -227,6 +227,11 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 			// Don't want to immediately access desktop since it would show
 			// permission popup.
 			details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
+		} else if (
+			arePathsEqual(cline.cwd, os.homedir()) &&
+			!vscode.workspace.workspaceFolders?.some((folder) => arePathsEqual(folder.uri.fsPath, cline.cwd))
+		) {
+			details += "(Home directory files not shown automatically. Use list_files to explore if needed.)"
 		} else {
 			const maxFiles = maxWorkspaceFiles ?? 200
 

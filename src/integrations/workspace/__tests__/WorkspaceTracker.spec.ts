@@ -35,6 +35,13 @@ const mockWatcher = {
 
 // Mock vscode
 vitest.mock("vscode", () => ({
+	TabInputText: class {
+		constructor(readonly uri: vscode.Uri) {}
+	},
+	Uri: {
+		file: (fsPath: string) => ({ fsPath, scheme: "file" }),
+		parse: (uri: string) => ({ fsPath: uri.slice("untitled:".length), scheme: "untitled" }),
+	},
 	window: {
 		tabGroups: {
 			onDidChangeTabs: vitest.fn(function (callback) {
@@ -79,6 +86,7 @@ describe("WorkspaceTracker", () => {
 
 		// Reset all mock implementations
 		registeredTabChangeCallback = null
+		Reflect.set(vscode.window.tabGroups, "all", [])
 
 		// Reset workspace path mock
 		;(getWorkspacePath as Mock).mockReturnValue("/test/workspace")
@@ -114,6 +122,61 @@ describe("WorkspaceTracker", () => {
 			openedTabs: [],
 		})
 		expect((mockProvider.postMessageToWebview as Mock).mock.calls[0][0].filePaths).toHaveLength(2)
+	})
+
+	it("sends absolute opened tab paths from initial load and tab changes without a workspace", async () => {
+		workspaceTracker.dispose()
+		vitest.mocked(getWorkspacePath).mockReturnValue("")
+		workspaceTracker = new WorkspaceTracker(mockProvider)
+		const file = "/test/standalone/open file.ts"
+		const firstTab = {
+			input: new vscode.TabInputText(vscode.Uri.file(file)),
+			label: "open file.ts",
+			isActive: true,
+		}
+		const untitled = {
+			input: new vscode.TabInputText(vscode.Uri.parse("untitled:Untitled-1")),
+			label: "Untitled-1",
+			isActive: false,
+		}
+		Reflect.set(vscode.window.tabGroups, "all", [{ tabs: [firstTab, untitled] }])
+
+		await workspaceTracker.initializeFilePaths()
+		vitest.runAllTimers()
+		expect(mockProvider.postMessageToWebview).toHaveBeenLastCalledWith({
+			type: "workspaceUpdated",
+			openedTabs: [{ label: "open file.ts", isActive: true, path: file }],
+		})
+
+		Reflect.set(vscode.window.tabGroups, "all", [])
+		await registeredTabChangeCallback?.()
+		vitest.runAllTimers()
+		expect(mockProvider.postMessageToWebview).toHaveBeenLastCalledWith({ type: "workspaceUpdated", openedTabs: [] })
+		expect(listFiles).not.toHaveBeenCalled()
+	})
+
+	it("clears workspace files and keeps open tabs when a workspace closes", async () => {
+		const file = "/test/workspace/app.ts"
+		const tab = { input: new vscode.TabInputText(vscode.Uri.file(file)), label: "app.ts", isActive: true }
+		Reflect.set(vscode.window.tabGroups, "all", [{ tabs: [tab] }])
+		vitest.mocked(listFiles).mockResolvedValue([[file], false])
+		await workspaceTracker.initializeFilePaths()
+		await vitest.runAllTimersAsync()
+		expect(mockProvider.postMessageToWebview).toHaveBeenLastCalledWith({
+			type: "workspaceUpdated",
+			filePaths: ["app.ts"],
+			openedTabs: [{ label: "app.ts", isActive: true, path: "app.ts" }],
+		})
+
+		vitest.mocked(getWorkspacePath).mockReturnValue("")
+		await registeredTabChangeCallback?.()
+		await vitest.runAllTimersAsync()
+		expect(mockProvider.postMessageToWebview).toHaveBeenLastCalledWith({
+			type: "workspaceUpdated",
+			filePaths: [],
+			openedTabs: [{ label: "app.ts", isActive: true, path: file }],
+		})
+		expect(listFiles).toHaveBeenCalledTimes(1)
 	})
 
 	it("should handle file creation events", async () => {
@@ -181,7 +244,8 @@ describe("WorkspaceTracker", () => {
 
 		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "workspaceUpdated",
-			filePaths: expect.arrayContaining(["newdir"]),
+			// A successful directory stat adds the separator used by folder mentions.
+			filePaths: expect.arrayContaining(["newdir/"]),
 			openedTabs: [],
 		})
 		const lastCall = (mockProvider.postMessageToWebview as Mock).mock.calls.slice(-1)[0]

@@ -27,8 +27,9 @@ class WorkspaceTracker {
 
 	async initializeFilePaths() {
 		const cwd = this.cwd
-		// should not auto get filepaths for desktop since it would immediately show permission popup before cline ever creates a file
+		// Open tabs are available without a workspace directory to scan.
 		if (!cwd) {
+			this.workspaceDidUpdate(false)
 			return
 		}
 		const [files] = await listFiles(cwd, true, MAX_INITIAL_FILES)
@@ -73,18 +74,24 @@ class WorkspaceTracker {
 		)
 	}
 
-	private getOpenedTabsInfo() {
+	private getOpenedTabsInfo(cwd: string) {
 		return vscode.window.tabGroups.all.reduce(
 			(acc, group) => {
-				const groupTabs = group.tabs
-					.filter((tab) => tab.input instanceof vscode.TabInputText)
-					.map((tab) => ({
-						label: tab.label,
-						isActive: tab.isActive,
-						path: toRelativePath((tab.input as vscode.TabInputText).uri.fsPath, this.cwd || ""),
-					}))
-
-				groupTabs.forEach((tab) => (tab.isActive ? acc.unshift(tab) : acc.push(tab)))
+				for (const { input, label, isActive } of group.tabs) {
+					if (!(input instanceof vscode.TabInputText)) {
+						continue
+					}
+					const { fsPath, scheme } = input.uri
+					if (!cwd && scheme !== "file" && scheme !== "vscode-remote") {
+						continue
+					}
+					const tab = { label, isActive, path: cwd ? toRelativePath(fsPath, cwd) : fsPath.toPosix() }
+					if (isActive) {
+						acc.unshift(tab)
+					} else {
+						acc.push(tab)
+					}
+				}
 				return acc
 			},
 			[] as Array<{ label: string; isActive: boolean; path: string }>,
@@ -103,14 +110,19 @@ class WorkspaceTracker {
 	}
 
 	private async resetWorkspace() {
-		if (this.prevWorkSpacePath !== this.cwd) {
-			await this.providerRef.deref()?.postMessageToWebview({
-				type: "workspaceUpdated",
-				filePaths: [],
-				openedTabs: this.getOpenedTabsInfo(),
-			})
-			this.filePaths.clear()
-			this.prevWorkSpacePath = this.cwd
+		const cwd = this.cwd
+		if (this.prevWorkSpacePath === cwd) {
+			return
+		}
+		this.filePaths.clear()
+		this.filePathsChanged = false
+		this.prevWorkSpacePath = cwd
+		await this.providerRef.deref()?.postMessageToWebview({
+			type: "workspaceUpdated",
+			filePaths: [],
+			openedTabs: this.getOpenedTabsInfo(cwd),
+		})
+		if (cwd && this.cwd === cwd) {
 			await this.initializeFilePaths()
 		}
 	}
@@ -124,18 +136,19 @@ class WorkspaceTracker {
 		this.updateTimer = setTimeout(() => {
 			this.updateTimer = null
 			const cwd = this.cwd
-			if (!cwd || this.prevWorkSpacePath !== cwd) {
+			if (this.prevWorkSpacePath !== cwd) {
 				return
 			}
 
-			const fileUpdate = this.filePathsChanged
-				? { filePaths: Array.from(this.filePaths, (file) => toRelativePath(file, cwd)) }
-				: {}
+			const fileUpdate =
+				cwd && this.filePathsChanged
+					? { filePaths: Array.from(this.filePaths, (file) => toRelativePath(file, cwd)) }
+					: {}
 			this.filePathsChanged = false
 			void this.providerRef.deref()?.postMessageToWebview({
 				type: "workspaceUpdated",
 				...fileUpdate,
-				openedTabs: this.getOpenedTabsInfo(),
+				openedTabs: this.getOpenedTabsInfo(cwd),
 			})
 		}, 300) // Debounce for 300ms
 	}

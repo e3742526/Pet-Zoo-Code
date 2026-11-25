@@ -377,3 +377,11 @@ Provider declarations now use a stable alias when a full MCP function name excee
 New tool calls save the bounded name. Requests resumed from older tasks repair overlong names and recover old truncations when one catalog entry matches. This repair works on a request copy and preserves call and result IDs. Ambiguous old truncations contain too little information to identify the original tool.
 
 Four before-change tests reproduced colliding names, a missing tool separator, a failed dispatch, and an overlong name in resumed history. The corrected build passed 499 focused tests, 924 parser-scope interleavings, and 45 distribution checks. Type and lint checks passed, and lint suppression counts stayed at their previous values. The rebuilt VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3.
+
+## Open tabs without a workspace
+
+The sidebar now receives open file tabs on launch and on tab changes when no workspace folder is open. It sends absolute paths in that case. The composer keeps the additional slash that the host removes from a file mention. The host test reads a file with spaces in its name from outside the task directory. A workspace reset clears its file list and preserves the open tabs. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2681)
+
+New tasks without a workspace use Desktop when it is a directory and the home directory otherwise. The home fallback skips automatic file listing unless that directory is open as a workspace. The prompt points the model to a directory the user identifies. The workspace tracker fixture now supplies `Uri.file`, so its successful directory-stat assertion includes the trailing folder separator.
+
+Four tests reproduced the dropped tab update, invalid working paths, and automatic home listing. The corrected build passed 376 host tests, 147 webview tests, and 45 distribution checks. Host and webview type and lint checks passed. The VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3.

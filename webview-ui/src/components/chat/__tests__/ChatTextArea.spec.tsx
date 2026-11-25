@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { providerIdentifiers } from "@roo-code/types"
 import { defaultModeSlug } from "@roo/modes"
 
@@ -16,7 +17,8 @@ vi.mock("@src/utils/vscode", () => ({
 
 vi.mock("@src/components/common/CodeBlock")
 vi.mock("@src/components/common/MarkdownBlock")
-vi.mock("@src/utils/path-mentions", () => ({
+vi.mock("@src/utils/path-mentions", async (importOriginal) => ({
+	...(await importOriginal<typeof pathMentions>()),
 	convertToMentionPath: vi.fn((path, cwd) => {
 		// Simple mock implementation that mimics the real function's behavior
 		if (cwd && path.toLowerCase().startsWith(cwd.toLowerCase())) {
@@ -74,6 +76,26 @@ describe("ChatTextArea", () => {
 			taskHistory: [],
 			cwd: "/test/workspace",
 		})
+	})
+
+	it("inserts an absolute mention for a tab opened without a workspace", () => {
+		;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
+			filePaths: [],
+			openedTabs: [{ label: "open file.ts", isActive: true, path: "/test/standalone/open file.ts" }],
+			apiConfiguration: { apiProvider: providerIdentifiers.anthropic },
+			taskHistory: [],
+			cwd: "",
+		})
+		function Composer() {
+			const [inputValue, setInputValue] = useState("")
+			return <ChatTextArea {...defaultProps} inputValue={inputValue} setInputValue={setInputValue} />
+		}
+		render(<Composer />)
+		const textarea = screen.getByPlaceholderText(defaultProps.placeholderText)
+		fireEvent.change(textarea, { target: { value: "@open", selectionStart: 5 } })
+		fireEvent.click(screen.getByText("open file.ts"))
+
+		expect(textarea).toHaveValue("@//test/standalone/open\\ file.ts ")
 	})
 
 	it.each([false, true])("only autofocuses the mounted input when this document has focus=%s", (hasFocus) => {

@@ -333,6 +333,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					.filter((tab) => tab.path)
 					.map((tab) => ({
 						type: ContextMenuOptionType.OpenedFile,
+						// Keep the mention prefix even when the tab path is already absolute.
 						value: "/" + tab.path,
 					})),
 				...filePaths

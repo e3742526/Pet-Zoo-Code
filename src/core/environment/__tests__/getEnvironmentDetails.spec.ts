@@ -3,6 +3,8 @@
 import pWaitFor from "p-wait-for"
 import delay from "delay"
 import type { Mock } from "vitest"
+import os from "node:os"
+import * as vscode from "vscode"
 
 import { getEnvironmentDetails } from "../getEnvironmentDetails"
 import { getFullModeDetails } from "../../../shared/modes"
@@ -21,6 +23,7 @@ import { getGitStatus } from "../../../utils/git"
 import { Task } from "../../task/Task"
 
 vi.mock("vscode", () => ({
+	workspace: { workspaceFolders: [] },
 	window: {
 		tabGroups: { all: [], onDidChangeTabs: vi.fn() },
 		visibleTextEditors: [],
@@ -195,6 +198,29 @@ describe("getEnvironmentDetails", () => {
 		const result = await getEnvironmentDetails(mockCline as Task, true)
 		expect(result).toContain("Desktop files not shown automatically")
 		expect(listFiles).not.toHaveBeenCalled()
+	})
+
+	it("skips automatic file listing from the home directory fallback", async () => {
+		vi.mocked(arePathsEqual).mockImplementation((first, second) => first === second)
+		const task = { ...mockCline, cwd: os.homedir() } as Task
+
+		const result = await getEnvironmentDetails(task, true)
+
+		expect(result).toContain("Home directory files not shown automatically")
+		expect(listFiles).not.toHaveBeenCalled()
+	})
+
+	it("lists the home directory when it is explicitly open as a workspace", async () => {
+		vi.mocked(arePathsEqual).mockImplementation((first, second) => first === second)
+		const task = { ...mockCline, cwd: os.homedir() } as Task
+		const previousFolders = vscode.workspace.workspaceFolders
+		Reflect.set(vscode.workspace, "workspaceFolders", [{ uri: { fsPath: task.cwd } }])
+		try {
+			await getEnvironmentDetails(task, true)
+			expect(listFiles).toHaveBeenCalledWith(task.cwd, true, 50)
+		} finally {
+			Reflect.set(vscode.workspace, "workspaceFolders", previousFolders)
+		}
 	})
 
 	it("should skip file listing when maxWorkspaceFiles is 0", async () => {

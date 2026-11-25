@@ -1,5 +1,19 @@
 # Pet-Zoo-Code independence review
 
+## Current execution decision
+
+Use `main` at `9bcb6a5e1` as the baseline. The proposed removal of Zoo Gateway, Zoo sign-in and billing, Roo Cloud, and PostHog is complete. The fork builds and installs as `e3742526.pet-zoo-code`. Start from this baseline for work on the existing Muse and Antigravity providers.
+
+- Keep saved Zoo Gateway profiles and task history. The retired provider reports that the user must select a different provider before sending a request.
+- Keep local administrator policy, bundled marketplace files, and direct and local providers. A user can select which provider to use and which remote services to configure.
+- Upstream documentation and support links open when the user selects them. The inherited Marketplace publishing jobs run only in the upstream repository. The fork uses its local VSIX for installation, and the CLI uses the fork's GitHub releases.
+
+On November 24, 2026, `pnpm vsix` restored the package from the local build cache. The archive passed its integrity check. The 560 host and webview scripts matched the build output and passed the retired endpoint scan. The five focused host suites passed 143 tests, and `pnpm --dir src run test:dist` passed 45 tests. The build and tests used Node 24.22.3. The repository pins Node 22.23.4.
+
+The VSIX installed in a temporary VS Code profile. The process sandbox blocked non-loopback traffic, and a TCP connection from the extension host to `192.0.2.1` returned `EPERM`. The sidebar loaded, the extension completed a task through a loopback LM Studio mock, and it reopened the saved result. This check covers the installed local workflow. Live Muse and Antigravity sign-in and a full runtime traffic inventory remain open.
+
+## Initial review baseline
+
 Review baseline `0f2b44050` on `main`. The supplied plan describes the runtime before the fork removed its upstream services. Use the current checkout as the baseline.
 
 ## Dependency inventory

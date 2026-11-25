@@ -10,9 +10,10 @@ vitest.mock("vscode", () => ({
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type MinimaxModelId, minimaxDefaultModelId, minimaxModels } from "@roo-code/types"
+import { type MinimaxModelId, minimaxDefaultModelId, minimaxModels, providerIdentifiers } from "@roo-code/types"
 
 import { type ApiStreamUsageChunk } from "../../../api/transform/stream"
+import { getContentForProvider, prepareApiConversationMessage } from "../../../core/task/apiConversationHistory"
 import { MiniMaxHandler } from "../minimax"
 import { calculateApiCostAnthropic } from "../../../shared/cost"
 import { MAX_TIMEOUT_MS } from "../utils/abort-signal"
@@ -20,28 +21,17 @@ import { asyncStreamFrom, collectStream } from "../../../test-utils/stream"
 import { makeCreateMessageMetadata } from "../../../test-utils/api"
 import { clearAllMocks } from "../../../test-utils/reset"
 
-vitest.mock("@anthropic-ai/sdk", () => {
-	const mockCreate = vitest.fn()
-	return {
-		Anthropic: vitest.fn(function () {
-			return {
-				messages: {
-					create: mockCreate,
-				},
-			}
-		}),
-	}
-})
+const mockCreate = vitest.hoisted(() => vitest.fn())
+
+vitest.mock("@anthropic-ai/sdk", () => ({
+	Anthropic: vitest.fn(function () {
+		return { messages: { create: mockCreate } }
+	}),
+}))
 
 describe("MiniMaxHandler", () => {
 	let handler: MiniMaxHandler
-	let mockCreate: any
-
-	beforeEach(() => {
-		clearAllMocks()
-		const anthropicInstance = (Anthropic as unknown as any)()
-		mockCreate = anthropicInstance.messages.create
-	})
+	beforeEach(() => clearAllMocks())
 
 	describe("International MiniMax (default)", () => {
 		beforeEach(() => {
@@ -510,6 +500,120 @@ describe("MiniMaxHandler", () => {
 
 			expect(firstChunk.done).toBe(false)
 			expect(firstChunk.value).toEqual({ type: "reasoning", text: thinkingContent })
+		})
+
+		it("replays complete thinking blocks in order with the persisted tool call", async () => {
+			const call = { type: "tool_use", id: "tool-1", name: "read_file", input: { path: "notes.txt" } } as const
+			const thinking = {
+				type: "thinking",
+				thinking: " Read the notes. \n",
+				signature: "first-signature",
+			} as const
+			const redacted = { type: "redacted_thinking", data: "opaque-data" } as const
+			const text = { type: "text", text: "Checking the notes." } as const
+			mockCreate.mockResolvedValueOnce(
+				asyncStreamFrom<Anthropic.Messages.RawMessageStreamEvent>([
+					{
+						type: "content_block_start",
+						index: 0,
+						content_block: { type: "thinking", thinking: " ", signature: "" },
+					},
+					{
+						type: "content_block_delta",
+						index: 0,
+						delta: { type: "thinking_delta", thinking: "Read the notes. \n" },
+					},
+					{
+						type: "content_block_delta",
+						index: 0,
+						delta: { type: "signature_delta", signature: thinking.signature },
+					},
+					{ type: "content_block_stop", index: 0 },
+					{ type: "content_block_start", index: 1, content_block: { ...call, caller: { type: "direct" } } },
+					{ type: "content_block_stop", index: 1 },
+					{ type: "content_block_start", index: 2, content_block: redacted },
+					{ type: "content_block_stop", index: 2 },
+					{
+						type: "content_block_start",
+						index: 3,
+						content_block: { ...text, text: "Checking", citations: null },
+					},
+					{ type: "content_block_delta", index: 3, delta: { type: "text_delta", text: " the notes." } },
+					{ type: "content_block_stop", index: 3 },
+					{ type: "message_stop" },
+				]),
+			)
+			const user: Anthropic.Messages.MessageParam = { role: "user", content: "Read the notes." }
+			const chunks = await collectStream(handler.createMessage("System prompt", [user]))
+			const assistantContent = chunks.find((chunk) => chunk.type === "assistant_content")
+			expect(assistantContent).toBeDefined()
+			const saved = prepareApiConversationMessage({
+				message: { role: "assistant", content: [{ type: "text", text: "\nChecking the notes." }, call] },
+				reasoning: thinking.thinking,
+				assistantContent,
+				api: handler,
+				apiConfiguration: { apiProvider: providerIdentifiers.minimax },
+				apiConversationHistory: [user],
+			})
+			expect(saved.content).toEqual([thinking, call, redacted, text])
+			expect(getContentForProvider(saved, providerIdentifiers.anthropic)).toEqual([call, text])
+
+			mockCreate.mockResolvedValueOnce(asyncStreamFrom([]))
+			await collectStream(
+				handler.createMessage("System prompt", [
+					user,
+					{ role: "assistant", content: getContentForProvider(saved, providerIdentifiers.minimax) },
+					{ role: "user", content: [{ type: "tool_result", tool_use_id: call.id, content: "Notes" }] },
+				]),
+			)
+			expect(mockCreate).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					messages: [
+						expect.objectContaining({ role: "user" }),
+						{ role: "assistant", content: [thinking, call, redacted, text] },
+						expect.objectContaining({ role: "user" }),
+					],
+				}),
+				undefined,
+			)
+		})
+
+		it("omits an incomplete thinking block from the replayable response", async () => {
+			mockCreate.mockResolvedValueOnce(
+				asyncStreamFrom<Anthropic.Messages.RawMessageStreamEvent>([
+					{
+						type: "content_block_start",
+						index: 0,
+						content_block: { type: "thinking", thinking: "Partial", signature: "" },
+					},
+					{ type: "message_stop" },
+				]),
+			)
+			const chunks = await collectStream(handler.createMessage("System prompt", []))
+			expect(chunks).toEqual([{ type: "reasoning", text: "Partial" }])
+		})
+
+		it("filters reasoning from older saved tasks before sending requests", async () => {
+			mockCreate.mockResolvedValueOnce(asyncStreamFrom([]))
+			// Older or transferred histories can contain internal blocks outside the SDK type.
+			const messages = [
+				{ role: "user", content: "Read the notes." },
+				{ type: "reasoning", encrypted_content: "foreign-data" },
+				{
+					role: "assistant",
+					content: [
+						{ type: "reasoning", text: "Review the notes", summary: [] },
+						{ type: "text", text: "Notes reviewed." },
+					],
+				},
+				{ role: "user", content: "Summarize the notes." },
+			] as unknown as Anthropic.Messages.MessageParam[]
+			await collectStream(handler.createMessage("System prompt", messages))
+			expect(mockCreate.mock.lastCall?.[0].messages).toMatchObject([
+				{ role: "user", content: [{ type: "text", text: "Read the notes." }] },
+				{ role: "assistant", content: [{ type: "text", text: "Notes reviewed." }] },
+				{ role: "user", content: [{ type: "text", text: "Summarize the notes." }] },
+			])
 		})
 
 		it("should handle tool calls in stream", async () => {

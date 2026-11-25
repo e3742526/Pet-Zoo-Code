@@ -89,11 +89,6 @@
 			"count": 18
 		}
 	},
-	"api/providers/__tests__/minimax.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 2
-		}
-	},
 	"api/providers/__tests__/moonshot.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 22

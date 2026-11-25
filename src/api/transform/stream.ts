@@ -1,3 +1,5 @@
+import type { Anthropic } from "@anthropic-ai/sdk"
+
 export type ApiStream = AsyncGenerator<ApiStreamChunk>
 
 export type ApiStreamChunk =
@@ -5,6 +7,7 @@ export type ApiStreamChunk =
 	| ApiStreamUsageChunk
 	| ApiStreamReasoningChunk
 	| ApiStreamThinkingCompleteChunk
+	| ApiStreamAssistantContentChunk
 	| ApiStreamGroundingChunk
 	| ApiStreamToolCallChunk
 	| ApiStreamToolCallStartChunk
@@ -53,6 +56,17 @@ export interface ApiStreamThinkingCompleteChunk {
 	 * Must be preserved and passed back to the API when continuing conversations with tool use.
 	 */
 	signature: string
+}
+
+export interface ApiStreamAssistantContentChunk {
+	type: "assistant_content"
+	provider: "minimax"
+	content: Array<
+		| Anthropic.Messages.TextBlockParam
+		| Anthropic.Messages.ThinkingBlockParam
+		| Anthropic.Messages.RedactedThinkingBlockParam
+		| Pick<Anthropic.Messages.ToolUseBlockParam, "type" | "id">
+	>
 }
 
 export interface ApiStreamUsageChunk {

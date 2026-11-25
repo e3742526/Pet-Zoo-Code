@@ -4,11 +4,12 @@ import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 import { withFinallyCleanup } from "./stream-cleanup"
 import OpenAI from "openai"
 
-import { type MinimaxModelId, minimaxDefaultModelId, minimaxModels } from "@roo-code/types"
+import { type MinimaxModelId, minimaxDefaultModelId, minimaxModels, providerIdentifiers } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { ApiStream } from "../transform/stream"
+import type { ApiStream, ApiStreamAssistantContentChunk } from "../transform/stream"
+import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
 import { getModelParams } from "../transform/model-params"
 import { mergeEnvironmentDetailsForMiniMax } from "../transform/minimax-format"
 
@@ -103,7 +104,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 		// into the tool_result content. This preserves reasoning continuity for
 		// thinking models by preventing user messages from interrupting the
 		// reasoning context after tool use (similar to r1-format's mergeToolResultText).
-		const processedMessages = mergeEnvironmentDetailsForMiniMax(messages)
+		const processedMessages = mergeEnvironmentDetailsForMiniMax(filterNonAnthropicBlocks(messages))
 
 		// Build the system blocks array
 		const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
@@ -139,6 +140,9 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 		let cacheWriteTokens = 0
 		let cacheWrite1hTokens = 0
 		let cacheReadTokens = 0
+		const assistantContent = new Map<number, ApiStreamAssistantContentChunk["content"][number]>()
+		const completedBlockIndices = new Set<number>()
+		let hasUnsupportedBlock = false
 
 		for await (const chunk of withFinallyCleanup(stream, removeExternalAbortListener)) {
 			switch (chunk.type) {
@@ -185,12 +189,22 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 					}
 
 					break
-				case "message_stop":
-					// No usage data, just an indicator that the message is done.
+				case "message_stop": {
+					if (hasUnsupportedBlock || completedBlockIndices.size !== assistantContent.size) {
+						break
+					}
+					const content = [...assistantContent.entries()]
+						.sort(([left], [right]) => left - right)
+						.map(([, block]) => block)
+					if (content.some(({ type }) => type === "thinking" || type === "redacted_thinking")) {
+						yield { type: "assistant_content", provider: providerIdentifiers.minimax, content }
+					}
 					break
+				}
 				case "content_block_start":
 					switch (chunk.content_block.type) {
 						case "thinking":
+							assistantContent.set(chunk.index, { ...chunk.content_block })
 							// Yield thinking/reasoning content
 							if (chunk.index > 0) {
 								yield { type: "reasoning", text: "\n" }
@@ -198,7 +212,11 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 
 							yield { type: "reasoning", text: chunk.content_block.thinking }
 							break
+						case "redacted_thinking":
+							assistantContent.set(chunk.index, { ...chunk.content_block })
+							break
 						case "text":
+							assistantContent.set(chunk.index, { type: "text", text: chunk.content_block.text })
 							// We may receive multiple text blocks
 							if (chunk.index > 0) {
 								yield { type: "text", text: "\n" }
@@ -207,6 +225,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 							yield { type: "text", text: chunk.content_block.text }
 							break
 						case "tool_use": {
+							assistantContent.set(chunk.index, { type: "tool_use", id: chunk.content_block.id })
 							// Emit initial tool call partial with id and name
 							yield {
 								type: "tool_call_partial",
@@ -217,14 +236,28 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 							}
 							break
 						}
+						default:
+							hasUnsupportedBlock = true
 					}
 					break
-				case "content_block_delta":
+				case "content_block_delta": {
+					const block = assistantContent.get(chunk.index)
 					switch (chunk.delta.type) {
 						case "thinking_delta":
+							if (block?.type === "thinking") {
+								block.thinking += chunk.delta.thinking
+							}
 							yield { type: "reasoning", text: chunk.delta.thinking }
 							break
+						case "signature_delta":
+							if (block?.type === "thinking") {
+								block.signature = chunk.delta.signature
+							}
+							break
 						case "text_delta":
+							if (block?.type === "text") {
+								block.text += chunk.delta.text
+							}
 							yield { type: "text", text: chunk.delta.text }
 							break
 						case "input_json_delta": {
@@ -241,8 +274,11 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 					}
 
 					break
+				}
 				case "content_block_stop":
-					// Block is complete - no action needed, NativeToolCallParser handles completion
+					if (assistantContent.has(chunk.index)) {
+						completedBlockIndices.add(chunk.index)
+					}
 					break
 			}
 		}

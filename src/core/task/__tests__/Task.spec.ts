@@ -467,22 +467,55 @@ describe("Cline", () => {
 		})()
 	}
 
-	async function createTaskWithManualRetries() {
+	async function createTaskWithManualRetries(apiConfiguration = mockApiConfig) {
 		const task = new Task({
 			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
+			apiConfiguration,
 			task: "test task",
 			startTask: false,
 		})
 		const state = await mockProvider.getState()
 		vi.spyOn(mockProvider, "getState").mockResolvedValue({
 			...state,
-			apiConfiguration: mockApiConfig,
+			apiConfiguration,
 			autoApprovalEnabled: false,
 		})
 		vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
 		return task
 	}
+
+	it("persists the original MiniMax thinking blocks from a completed stream", async () => {
+		const task = await createTaskWithManualRetries({
+			apiProvider: providerIdentifiers.minimax,
+			minimaxApiKey: "test-key",
+		})
+		const thinking = { type: "thinking", thinking: " Check the notes.\n", signature: "opaque-data" } as const
+		const text = { type: "text", text: "Notes checked." } as const
+		vi.spyOn(task, "ask").mockResolvedValue({ response: "yesButtonClicked" } satisfies TaskAskResult)
+		vi.spyOn(task, "attemptApiRequest")
+			.mockImplementationOnce(() =>
+				stream([
+					{ type: "reasoning", text: thinking.thinking },
+					{ type: "text", text: text.text },
+					{ type: "assistant_content", provider: providerIdentifiers.minimax, content: [thinking, text] },
+				]),
+			)
+			.mockImplementation(() => {
+				throw new Error("stop after saving the completed response")
+			})
+
+		await task.recursivelyMakeClineRequests([{ type: "text", text: "Read the notes." }])
+
+		expect(task.apiConversationHistory).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: "assistant",
+					assistantContentProvider: providerIdentifiers.minimax,
+					content: [thinking, text],
+				}),
+			]),
+		)
+	})
 
 	describe("empty-response retries", () => {
 		it("restores the user message before a confirmed empty-response retry", async () => {

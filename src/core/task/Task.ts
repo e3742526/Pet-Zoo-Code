@@ -63,7 +63,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
 import { disposeApiHandler } from "../../api/dispose-api-handler"
-import { ApiStream, GroundingSource } from "../../api/transform/stream"
+import { ApiStream, type ApiStreamAssistantContentChunk, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { OutputTokenLimitError } from "../../api/providers/utils/output-token-limit-error"
 
@@ -143,7 +143,7 @@ import { type AutoDenyDetail, AutoApprovalHandler, checkAutoApproval } from "../
 import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
-import { orderToolResultsFirst, prepareApiConversationMessage } from "./apiConversationHistory"
+import { getContentForProvider, orderToolResultsFirst, prepareApiConversationMessage } from "./apiConversationHistory"
 import { shouldAddUserMessageToHistory } from "./messageCounting"
 import { type TaskExecutionContext } from "./providerHandoff"
 import { abort, abortReason, initialRunState, type Ask, type RunEvent, type RunState } from "./run-state/runState"
@@ -1434,7 +1434,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Appends an API turn and records whether an assistant turn reached persistent storage.
 	 * If the message resolves a pending action, retries the save on initial failure before clearing the action.
 	 */
-	private async addToApiConversationHistory(message: Anthropic.MessageParam, reasoning?: string): Promise<void> {
+	private async addToApiConversationHistory(
+		message: Anthropic.MessageParam,
+		reasoning?: string,
+		assistantContent?: ApiStreamAssistantContentChunk,
+	): Promise<void> {
 		const resolvesPendingAction =
 			this.pendingAction &&
 			message.role === "user" &&
@@ -1446,6 +1450,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			prepareApiConversationMessage({
 				message,
 				reasoning,
+				assistantContent,
 				api: this.api,
 				apiConfiguration: this.apiConfiguration,
 				apiConversationHistory: this.apiConversationHistory,
@@ -4254,6 +4259,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				})
 				let assistantMessage = ""
 				let reasoningMessage = ""
+				let assistantContentFromProvider: ApiStreamAssistantContentChunk | undefined
 				const pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
@@ -4298,6 +4304,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 
 						switch (chunk.type) {
+							case "assistant_content":
+								assistantContentFromProvider = chunk
+								break
 							case "reasoning": {
 								reasoningMessage += chunk.text
 								// Only apply formatting if the message contains sentence-ending punctuation followed by **
@@ -4538,6 +4547,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 
 						if (this.didRejectTool) {
+							assistantContentFromProvider = undefined
 							// `userContent` has a tool rejection, so interrupt the
 							// assistant's response to present the user's feedback.
 							assistantMessage += "\n\n[Response interrupted by user feedback]"
@@ -4549,6 +4559,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 
 						if (this.didAlreadyUseTool) {
+							assistantContentFromProvider = undefined
 							assistantMessage +=
 								"\n\n[Response interrupted by a tool use result. Only one tool may be used at a time and should be placed at the end of the message.]"
 							break
@@ -5133,6 +5144,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					await this.addToApiConversationHistory(
 						{ role: "assistant", content: assistantContent },
 						reasoningMessage || undefined,
+						assistantContentFromProvider,
 					)
 
 					this.messageCounts.assistant++
@@ -6251,9 +6263,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				continue
 			}
 
+			const messageContent = getContentForProvider(msg, this.apiConfiguration.apiProvider)
 			// Preferred path: assistant message with embedded reasoning as first content block
 			if (msg.role === "assistant") {
-				const rawContent = msg.content
+				const rawContent = messageContent
 
 				const contentArray: Anthropic.Messages.ContentBlockParam[] = Array.isArray(rawContent)
 					? (rawContent as Anthropic.Messages.ContentBlockParam[])
@@ -6361,9 +6374,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				cleanConversationHistory.push({
 					role: msg.role,
 					content:
-						msg.role === "user" && Array.isArray(msg.content)
-							? orderToolResultsFirst(msg.content)
-							: msg.content,
+						msg.role === "user" && Array.isArray(messageContent)
+							? orderToolResultsFirst(messageContent)
+							: messageContent,
 				})
 			}
 		}

@@ -580,6 +580,39 @@ describe("Task reasoning preservation", () => {
 		})
 	})
 
+	it.each([
+		{ provider: providerIdentifiers.minimax, keepsThinking: true },
+		{ provider: providerIdentifiers.anthropic, keepsThinking: false },
+		{ provider: providerIdentifiers.bedrock, keepsThinking: false },
+	])("replays saved MiniMax blocks only on their provider ($provider)", async ({ provider, keepsThinking }) => {
+		const task = new Task({
+			provider: mockProvider as ClineProvider,
+			apiConfiguration: { apiProvider: providerIdentifiers.minimax, minimaxApiKey: "test-key" },
+			task: "Test task",
+			startTask: false,
+		})
+		const thinking = { type: "thinking", thinking: " Check the notes.\n", signature: "minimax-signature" } as const
+		const text = { type: "text", text: "Notes look good." } as const
+		await task["addToApiConversationHistory"]({ role: "assistant", content: text.text }, thinking.thinking, {
+			type: "assistant_content",
+			provider: providerIdentifiers.minimax,
+			content: [thinking, text],
+		})
+		const saved = task.apiConversationHistory[0]
+		expect(saved).toMatchObject({
+			assistantContentProvider: providerIdentifiers.minimax,
+			content: [thinking, text],
+		})
+		task.apiConfiguration = { apiProvider: provider }
+		const history = task["buildCleanConversationHistory"](task.apiConversationHistory, {
+			contextWindow: 32_000,
+			supportsPromptCache: true,
+			preserveReasoning: true,
+		})
+		expect(history).toEqual([{ role: "assistant", content: keepsThinking ? [thinking, text] : [text] }])
+		expect(saved.content).toEqual([thinking, text])
+	})
+
 	it("should strip plain text reasoning in buildCleanConversationHistory when preserveReasoning is not set", async () => {
 		const task = new Task({
 			provider: mockProvider as ClineProvider,

@@ -23,7 +23,9 @@ export const VALID_ANTHROPIC_BLOCK_TYPES = new Set([
  * - Gemini's "thoughtSignature" blocks (encrypted reasoning continuity tokens)
  * - Any other unknown block types
  */
-function filterNonAnthropicBlocks(messages: Anthropic.Messages.MessageParam[]): Anthropic.Messages.MessageParam[] {
+export function filterNonAnthropicBlocks(
+	messages: Anthropic.Messages.MessageParam[],
+): Anthropic.Messages.MessageParam[] {
 	return messages
 		.map((message) => {
 			if (typeof message.content === "string") {

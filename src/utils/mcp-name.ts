@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 /**
  * Utilities for sanitizing MCP server and tool names to conform to
  * API function name requirements across all providers.
@@ -17,12 +19,15 @@ export const MCP_TOOL_SEPARATOR = "--"
  */
 export const MCP_TOOL_PREFIX = "mcp"
 
+/** Longest function name that every supported provider accepts. */
 export const MAX_MCP_TOOL_NAME_LENGTH = 64
 
-// A sanitized server name always starts with a letter or underscore.
+// Long names become `mcp--0--<tool hint>_<hash>`. The "0" server slot cannot clash
+// with a real server because a sanitized server name always starts with a letter or underscore.
 const MCP_TOOL_ALIAS_PREFIX = `${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}0${MCP_TOOL_SEPARATOR}`
 const MCP_TOOL_ALIAS_UNDERSCORE_PREFIX = normalizeForComparison(MCP_TOOL_ALIAS_PREFIX)
 
+/** Minimal server and tool shape needed to resolve provider function names. */
 export type McpServerToolNames = ReadonlyArray<{ name: string; tools?: ReadonlyArray<{ name: string }> }>
 
 /**
@@ -122,10 +127,15 @@ export function sanitizeMcpName(name: string): string {
 	return sanitized
 }
 
+/** Joins sanitized parts into the untruncated `mcp--server--tool` name. */
 function buildFullMcpToolName(server: string, tool: string): string {
 	return `${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}${server}${MCP_TOOL_SEPARATOR}${tool}`
 }
 
+/**
+ * Returns the name unchanged if it fits the limit. Otherwise returns a stable alias:
+ * a hash of the full name keeps aliases unique, and a tool-name hint keeps them readable.
+ */
 function fitMcpToolName(fullName: string, tool: string): string {
 	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
 		return fullName
@@ -141,11 +151,17 @@ export function buildMcpToolName(serverName: string, toolName: string): string {
 	return fitMcpToolName(buildFullMcpToolName(sanitizeMcpName(serverName), tool), tool)
 }
 
+/** True for names that `fitMcpToolName` produced (hyphen or underscore form). */
 export function isMcpToolAlias(name: string): boolean {
 	return name.startsWith(MCP_TOOL_ALIAS_PREFIX) || name.startsWith(MCP_TOOL_ALIAS_UNDERSCORE_PREFIX)
 }
 
-/** Resolves provider function names to catalog entries. Ambiguous matches have no target. */
+/**
+ * Resolves provider function names to catalog entries. Ambiguous matches have no target.
+ * Match ranks: 3 exact, 2 equal after hyphen/underscore folding, 1 old 64-character
+ * truncation (only when `includeLegacyTruncation` is set, for saved history).
+ * A higher rank wins; a tie at the best rank returns undefined.
+ */
 export function resolveMcpToolByName(
 	servers: McpServerToolNames,
 	calledName: string,
@@ -236,4 +252,3 @@ export function parseMcpToolName(mcpToolName: string): { serverName: string; too
 export function toolNamesMatch(name1: string, name2: string): boolean {
 	return normalizeForComparison(name1) === normalizeForComparison(name2)
 }
-import { createHash } from "node:crypto"

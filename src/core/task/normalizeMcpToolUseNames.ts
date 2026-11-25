@@ -9,10 +9,15 @@ import {
 	type McpServerToolNames,
 } from "../../utils/mcp-name"
 
+/** True for alias names and for names at or over the limit that an older version truncated. */
 function needsNormalization(name: string): boolean {
 	return isMcpToolAlias(name) || (name.length >= MAX_MCP_TOOL_NAME_LENGTH && isMcpTool(name))
 }
 
+/**
+ * Maps a saved MCP tool name to the name the current build sends.
+ * Order: catalog match, name already within the limit, rebuilt alias, hard truncation.
+ */
 export function getMcpToolNameForHistory(name: string, getServers: () => McpServerToolNames): string {
 	if (!needsNormalization(name)) {
 		return name
@@ -33,9 +38,12 @@ export function normalizeMcpToolUseNames<Message extends Anthropic.Messages.Mess
 	messages: Message[],
 	getServers: () => McpServerToolNames,
 ): Message[] {
+	// Read the server catalog at most once per call, and only if a name needs repair.
 	let servers: McpServerToolNames | undefined
 	const getServerSnapshot = () => (servers ??= getServers())
+	// Cache repaired names so repeated calls to one tool resolve once.
 	const names = new Map<string, string>()
+	// Copy-on-write: return the input array untouched when nothing needs repair.
 	let normalized: Message[] | undefined
 	for (let index = 0; index < messages.length; index++) {
 		const message = messages[index]

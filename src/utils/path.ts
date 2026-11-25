@@ -114,7 +114,11 @@ export const toRelativePath = (filePath: string, cwd: string) => {
 	return filePath.endsWith("/") ? relativePath + "/" : relativePath
 }
 
-/** Select a working directory when there is no workspace folder. */
+/**
+ * Select a working directory when there is no workspace folder.
+ * Prefer ~/Desktop when it exists, otherwise use the home directory.
+ * Callers must not list either path automatically; see getEnvironmentDetails.
+ */
 export function getNoWorkspaceFallbackPath(): string {
 	const home = os.homedir()
 	const desktop = path.join(home, "Desktop")

@@ -34,6 +34,16 @@ Zoo Code builds on the foundation created by Roo Code and continues to expand it
 - **More dependable terminal and editing workflows** — fixes for premature terminal completion, task-state races, context management, diff editing, and provider-specific tool use.
 - **More control over your workspace** — rules management, per-mode MCP restrictions, multi-root path controls, model reasoning options, and completion change review actions.
 
+## What Pet-Zoo-Code changes
+
+Pet-Zoo-Code removes the upstream account, gateway, billing, and analytics services. It also adds fixes that the fork needs for local work:
+
+- **Local-first runtime.** The fork starts no analytics client. Saved Zoo Gateway profiles and task history stay, and the retired provider asks you to select a different provider. See [standalone independence](docs/standalone-independence.md).
+- **OpenRouter.** Catalog and endpoint discovery use your configured base URL and copy only the selected model. Prompt caching uses catalog capabilities. A hashed `session_id` keeps cache routing stable within a task, and a canceled task stops its request.
+- **Long MCP tool names.** A name over 64 characters becomes a stable alias (`mcp--0--<hint>_<hash>`). Saved history with old names is repaired in the request copy.
+- **No workspace.** Open file tabs and `@` mentions work without a workspace folder. The environment details do not list the home directory.
+- **Performance work.** [Optimization review](docs/optimization-review-2026-11-24.md) lists each finding and its status. The upstream survey is in [gem-hydro-parentrepo-survey-24NOV2026.md](gem-hydro-parentrepo-survey-24NOV2026.md).
+
 ## What is new in Zoo Code v3.98.2
 
 - 🔌 Models: Use Gemini 3.8 Flash and the new Gemini 4 Carbon, Hydrogen, and Neon models, with `xhigh` thinking levels on Gemini.

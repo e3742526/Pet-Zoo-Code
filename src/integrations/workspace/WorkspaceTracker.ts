@@ -74,6 +74,10 @@ class WorkspaceTracker {
 		)
 	}
 
+	/**
+	 * Lists open text tabs, active tab first. With a cwd, paths are relative to it.
+	 * Without one, only local and remote file tabs are listed, with absolute paths.
+	 */
 	private getOpenedTabsInfo(cwd: string) {
 		return vscode.window.tabGroups.all.reduce(
 			(acc, group) => {
@@ -114,6 +118,7 @@ class WorkspaceTracker {
 		if (this.prevWorkSpacePath === cwd) {
 			return
 		}
+		// Reset state before awaiting so a concurrent update sees the new workspace.
 		this.filePaths.clear()
 		this.filePathsChanged = false
 		this.prevWorkSpacePath = cwd
@@ -122,6 +127,7 @@ class WorkspaceTracker {
 			filePaths: [],
 			openedTabs: this.getOpenedTabsInfo(cwd),
 		})
+		// Skip the scan if the workspace changed again while the message was posting.
 		if (cwd && this.cwd === cwd) {
 			await this.initializeFilePaths()
 		}

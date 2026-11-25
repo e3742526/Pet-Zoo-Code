@@ -153,6 +153,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	private client: OpenAI
 	protected models: ModelRecord = {}
 	protected endpoints: ModelRecord = {}
+	/** True once discovery returned any catalog entries, so an empty response stays retryable. */
 	private hasModelCatalog = false
 	private currentReasoningDetails: any[] = []
 
@@ -212,6 +213,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		return this.currentReasoningDetails.length > 0 ? this.currentReasoningDetails : undefined
 	}
 
+	/** Builds per-request SDK options: the Anthropic streaming beta header and the abort signal. */
 	private getChatRequestOptions(modelId: string, signal?: AbortSignal): OpenAI.RequestOptions | undefined {
 		const headers = modelId.startsWith("anthropic/")
 			? { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" }

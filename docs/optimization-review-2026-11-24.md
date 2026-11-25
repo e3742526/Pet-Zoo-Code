@@ -497,3 +497,14 @@ Four tests reproduced the dropped tab update, invalid working paths, and automat
 The chat shows Run and Deny only after a command finishes streaming and requires a manual decision. The regressions send the same message update that the host uses to finalize a command. The manual paths confirm enabled controls and the correct approval response. The automatic approval path keeps the controls hidden. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2648)
 
 Three before-change cases reproduced the disabled controls. The corrected build passed 87 focused webview tests, 66 command-handler tests, and 45 distribution checks. Webview type and lint checks passed. The rebuilt VSIX contains the new command logic and 556 matching webview scripts. The build used Node 24.22.3.
+
+## OpenRouter and MCP follow-up
+
+On November 24, 2026, these changes followed the review:
+
+- OpenRouter discovery copies only the selected model from the cached catalog. The full catalog stays in the cache. Endpoint discovery reuses the parent catalog load that is in flight.
+- OpenRouter enables explicit prompt caching when the catalog entry for the selected route supports it. A static model list remains as a fallback. Gemini needs a cache write price for explicit caching.
+- The `session_id` request field is a SHA-256 hash of the task ID, model, and endpoint. The extension sends it only to the official OpenRouter URL, so the local task ID never leaves the machine.
+- A canceled task aborts model discovery, the chat request, and the stream. Each request uses its own signal because the SDK attaches listeners to it.
+- MCP tool names over 64 characters become stable aliases. `resolveMcpToolByName` ranks exact, folded, and legacy-truncated matches, and an ambiguous match has no target.
+- `getNoWorkspaceFallbackPath` selects `~/Desktop` or the home directory when no workspace folder exists. Environment details do not list either path.

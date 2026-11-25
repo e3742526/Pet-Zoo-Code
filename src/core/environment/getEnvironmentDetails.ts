@@ -228,6 +228,8 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 			// permission popup.
 			details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
 		} else if (
+			// A home directory that is not a workspace folder is the no-workspace fallback.
+			// Scanning it can trigger OS permission prompts and returns unrelated files.
 			arePathsEqual(cline.cwd, os.homedir()) &&
 			!vscode.workspace.workspaceFolders?.some((folder) => arePathsEqual(folder.uri.fsPath, cline.cwd))
 		) {

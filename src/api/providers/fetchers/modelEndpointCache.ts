@@ -17,10 +17,17 @@ import { getOpenRouterModelEndpoints } from "./openrouter"
 import { getCatalogModel } from "./modelCache"
 import type { ApiHandler } from "../../index"
 
+/** In-memory endpoint cache. Entries live 5 minutes and are checked on the same interval. */
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
+/** Short TTL for fallback results, so a failed discovery is retried soon. */
 const ENDPOINT_FALLBACK_TTL_SECONDS = 30
+/** Parent catalog loads in flight, keyed by cache scope, so concurrent callers share one request. */
 const pendingCatalogs = new Map<string, Promise<ModelRecord>>()
 
+/**
+ * Builds the disk cache file key. A custom base URL is hashed with the model ID,
+ * so endpoints from different OpenRouter-compatible proxies never share a file.
+ */
 function getDiskKey(router: RouterName, modelId: string, baseUrl?: string): string {
 	if (baseUrl === undefined) return sanitize(`${router}_${modelId}`)
 	const scope = createHash("sha256")

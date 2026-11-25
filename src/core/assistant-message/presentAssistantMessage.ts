@@ -45,6 +45,7 @@ import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
+import { isMcpToolAlias, MAX_MCP_TOOL_NAME_LENGTH, resolveMcpToolByName } from "../../utils/mcp-name"
 
 /**
  * Maps a raw, potentially model-controlled tool name to a safe analytics key.
@@ -318,17 +319,31 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 				pushToolResult(formatResponse.toolError(errorString))
 			}
 
-			// Resolve sanitized server name back to original server name
-			// The serverName from parsing is sanitized (e.g., "my_server" from "my server")
-			// We need the original name to find the actual MCP connection
 			const mcpHub = cline.providerRef.deref()?.getMcpHub()
-			let resolvedServerName = mcpBlock.serverName
-			if (mcpHub) {
-				const originalName = mcpHub.findServerNameBySanitizedName(mcpBlock.serverName)
-				if (originalName) {
-					resolvedServerName = originalName
+			const needsResolution = isMcpToolAlias(mcpBlock.name) || mcpBlock.name.length > MAX_MCP_TOOL_NAME_LENGTH
+			const resolved = needsResolution
+				? resolveMcpToolByName(mcpHub?.getServers() ?? [], mcpBlock.name)
+				: undefined
+			if (needsResolution && !resolved && !mcpBlock.partial) {
+				const message =
+					"The MCP tool name does not match a unique available tool. Use a name from the current tool list."
+				cline.consecutiveMistakeCount++
+				cline.recordToolError("use_mcp_tool", message)
+				if (toolCallId) {
+					cline.pushToolResultToUserContent({
+						type: "tool_result",
+						tool_use_id: sanitizeToolUseId(toolCallId),
+						content: formatResponse.toolError(message),
+						is_error: true,
+					})
 				}
+				break
 			}
+			const resolvedServerName =
+				resolved?.serverName ??
+				mcpHub?.findServerNameBySanitizedName(mcpBlock.serverName) ??
+				mcpBlock.serverName
+			const resolvedToolName = resolved?.toolName ?? mcpBlock.toolName
 
 			// Execute the MCP tool using the same handler as use_mcp_tool
 			// Create a synthetic ToolUse block that the useMcpToolTool can handle
@@ -338,13 +353,13 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 				name: "use_mcp_tool",
 				params: {
 					server_name: resolvedServerName,
-					tool_name: mcpBlock.toolName,
+					tool_name: resolvedToolName,
 					arguments: JSON.stringify(mcpBlock.arguments),
 				},
 				partial: mcpBlock.partial,
 				nativeArgs: {
 					server_name: resolvedServerName,
-					tool_name: mcpBlock.toolName,
+					tool_name: resolvedToolName,
 					arguments: mcpBlock.arguments,
 				},
 			}

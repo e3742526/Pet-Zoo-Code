@@ -17,6 +17,14 @@ export const MCP_TOOL_SEPARATOR = "--"
  */
 export const MCP_TOOL_PREFIX = "mcp"
 
+export const MAX_MCP_TOOL_NAME_LENGTH = 64
+
+// A sanitized server name always starts with a letter or underscore.
+const MCP_TOOL_ALIAS_PREFIX = `${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}0${MCP_TOOL_SEPARATOR}`
+const MCP_TOOL_ALIAS_UNDERSCORE_PREFIX = normalizeForComparison(MCP_TOOL_ALIAS_PREFIX)
+
+export type McpServerToolNames = ReadonlyArray<{ name: string; tools?: ReadonlyArray<{ name: string }> }>
+
 /**
  * Normalize a string for comparison by treating hyphens and underscores as equivalent.
  * This is used to match tool names when models convert hyphens to underscores.
@@ -114,29 +122,69 @@ export function sanitizeMcpName(name: string): string {
 	return sanitized
 }
 
-/**
- * Build a full MCP tool function name from server and tool names.
- * The format is: mcp--{sanitized_server_name}--{sanitized_tool_name}
- *
- * The total length is capped at 64 characters to conform to API limits.
- *
- * @param serverName - The MCP server name
- * @param toolName - The tool name
- * @returns A sanitized function name in the format mcp--serverName--toolName
- */
-export function buildMcpToolName(serverName: string, toolName: string): string {
-	const sanitizedServer = sanitizeMcpName(serverName)
-	const sanitizedTool = sanitizeMcpName(toolName)
+function buildFullMcpToolName(server: string, tool: string): string {
+	return `${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}${server}${MCP_TOOL_SEPARATOR}${tool}`
+}
 
-	// Build the full name: mcp--{server}--{tool}
-	const fullName = `${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}${sanitizedServer}${MCP_TOOL_SEPARATOR}${sanitizedTool}`
-
-	// Truncate if necessary (max 64 chars for Gemini)
-	if (fullName.length > 64) {
-		return fullName.slice(0, 64)
+function fitMcpToolName(fullName: string, tool: string): string {
+	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
+		return fullName
 	}
+	const suffix = `_${createHash("sha256").update(fullName).digest("hex").slice(0, 16)}`
+	const hintLength = MAX_MCP_TOOL_NAME_LENGTH - MCP_TOOL_ALIAS_PREFIX.length - suffix.length
+	return `${MCP_TOOL_ALIAS_PREFIX}${tool.slice(0, hintLength)}${suffix}`
+}
 
-	return fullName
+/** Builds the provider function name, with a stable alias for long names. */
+export function buildMcpToolName(serverName: string, toolName: string): string {
+	const tool = sanitizeMcpName(toolName)
+	return fitMcpToolName(buildFullMcpToolName(sanitizeMcpName(serverName), tool), tool)
+}
+
+export function isMcpToolAlias(name: string): boolean {
+	return name.startsWith(MCP_TOOL_ALIAS_PREFIX) || name.startsWith(MCP_TOOL_ALIAS_UNDERSCORE_PREFIX)
+}
+
+/** Resolves provider function names to catalog entries. Ambiguous matches have no target. */
+export function resolveMcpToolByName(
+	servers: McpServerToolNames,
+	calledName: string,
+	includeLegacyTruncation = false,
+): { serverName: string; toolName: string; name: string } | undefined {
+	const comparableName = normalizeForComparison(calledName)
+	let bestRank = 0
+	let bestMatch: { serverName: string; toolName: string; name: string } | undefined
+	for (const server of servers) {
+		const sanitizedServer = sanitizeMcpName(server.name)
+		for (const tool of server.tools ?? []) {
+			const sanitizedTool = sanitizeMcpName(tool.name)
+			const fullName = buildFullMcpToolName(sanitizedServer, sanitizedTool)
+			const name = fitMcpToolName(fullName, sanitizedTool)
+			let rank = 0
+			if (calledName === name || calledName === fullName) {
+				rank = 3
+			} else if (
+				comparableName === normalizeForComparison(name) ||
+				comparableName === normalizeForComparison(fullName)
+			) {
+				rank = 2
+			} else if (
+				includeLegacyTruncation &&
+				calledName.length === MAX_MCP_TOOL_NAME_LENGTH &&
+				fullName.length > MAX_MCP_TOOL_NAME_LENGTH &&
+				comparableName === normalizeForComparison(fullName.slice(0, MAX_MCP_TOOL_NAME_LENGTH))
+			) {
+				rank = 1
+			}
+			if (rank > bestRank) {
+				bestRank = rank
+				bestMatch = { serverName: server.name, toolName: tool.name, name }
+			} else if (rank > 0 && rank === bestRank) {
+				bestMatch = undefined
+			}
+		}
+	}
+	return bestMatch
 }
 
 /**
@@ -188,3 +236,4 @@ export function parseMcpToolName(mcpToolName: string): { serverName: string; too
 export function toolNamesMatch(name1: string, name2: string): boolean {
 	return normalizeForComparison(name1) === normalizeForComparison(name2)
 }
+import { createHash } from "node:crypto"

@@ -143,6 +143,7 @@ import { type AutoDenyDetail, AutoApprovalHandler, checkAutoApproval } from "../
 import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
+import { getMcpToolNameForHistory, normalizeMcpToolUseNames } from "./normalizeMcpToolUseNames"
 import { getContentForProvider, orderToolResultsFirst, prepareApiConversationMessage } from "./apiConversationHistory"
 import { shouldAddUserMessageToHistory } from "./messageCounting"
 import { type TaskExecutionContext } from "./providerHandoff"
@@ -5063,7 +5064,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								assistantContent.push({
 									type: "tool_use" as const,
 									id: sanitizedId,
-									name: mcpBlock.name, // Original dynamic name
+									name: getMcpToolNameForHistory(
+										mcpBlock.name,
+										() => this.providerRef.deref()?.getMcpHub()?.getServers() ?? [],
+									),
 									input: mcpBlock.arguments, // Direct tool arguments
 								})
 							}
@@ -5960,7 +5964,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
 		const messagesWithoutImages = maybeRemoveImageBlocks(mergedForApi, this.api)
 		const cleanConversationHistory = this.buildCleanConversationHistory(
-			messagesWithoutImages as ApiMessage[],
+			normalizeMcpToolUseNames(
+				messagesWithoutImages as ApiMessage[],
+				() => this.providerRef.deref()?.getMcpHub()?.getServers() ?? [],
+			),
 			requestModelInfo,
 		)
 

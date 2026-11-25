@@ -195,7 +195,9 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 
 			// Get all servers to find the specific one
 			const servers = mcpHub.getAllServers()
-			const server = servers.find((s) => s.name === serverName)
+			const server =
+				servers.find((s) => s.name === serverName && s.source === "project") ??
+				servers.find((s) => s.name === serverName)
 
 			if (!server) {
 				// Fail fast when server is unknown
@@ -231,8 +233,10 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 				return { isValid: false, availableTools: [] }
 			}
 
-			// Check if the requested tool exists (using fuzzy matching to handle model mangling of hyphens)
-			const tool = server.tools.find((t) => toolNamesMatch(t.name, toolName))
+			// An exact name takes precedence when multiple tools differ only by separators.
+			const tool =
+				server.tools.find((t) => t.name === toolName) ??
+				server.tools.find((t) => toolNamesMatch(t.name, toolName))
 
 			if (!tool) {
 				// Tool not found - provide list of available tools

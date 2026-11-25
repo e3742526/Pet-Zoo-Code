@@ -42,6 +42,7 @@ import { McpServerManager } from "../../../services/mcp/McpServerManager"
 import { readFileTool } from "../../tools/ReadFileTool"
 import { writeToFileTool } from "../../tools/WriteToFileTool"
 import { manageContext } from "../../context-management"
+import { buildMcpToolName } from "../../../utils/mcp-name"
 
 type TaskTestAccess = {
 	getSystemPrompt: (requestState: ProviderState | undefined, requestModelInfo?: ModelInfo) => Promise<string>
@@ -1388,44 +1389,47 @@ describe("Cline", () => {
 			}
 		})
 
-		it("finalizes MCP tool call using the request-scoped parser state", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "mcp tool test",
-				startTask: false,
-			})
+		it.each(["myTool", "get_very_long_forecast_".repeat(6)])(
+			"finalizes MCP call %s using the request-scoped parser state",
+			async (toolName) => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "mcp tool test",
+					startTask: false,
+				})
 
-			vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
-			vi.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched").mockResolvedValue(stubModelInfo)
-			vi.spyOn(getTaskTestAccess(task), "presentAssistantMessageSafe").mockImplementation(() => {})
-			vi.spyOn(task, "attemptApiRequest").mockImplementation(() =>
-				asyncStreamFrom<ApiStreamChunk>([
+				vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
+				vi.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched").mockResolvedValue(stubModelInfo)
+				vi.spyOn(getTaskTestAccess(task), "presentAssistantMessageSafe").mockImplementation(() => {})
+				vi.spyOn(task, "attemptApiRequest").mockImplementation(() =>
+					asyncStreamFrom<ApiStreamChunk>([
+						{
+							type: "tool_call_partial",
+							index: 0,
+							id: "call_mcp",
+							name: `mcp--testServer--${toolName}`,
+						},
+						{ type: "tool_call_partial", index: 0, arguments: '{"param":"value"}' },
+					]),
+				)
+
+				await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+				const assistantMessage = task.apiConversationHistory.find((m) => m.role === "assistant")
+				// Verifies that finalizeStreamingToolCall receives the request-scoped state.
+				// If the scope argument is removed, finalization returns null and the block
+				// stays as a partial tool_use with input: {} instead of the parsed arguments.
+				expect(assistantMessage?.content).toEqual([
 					{
-						type: "tool_call_partial",
-						index: 0,
+						type: "tool_use",
 						id: "call_mcp",
-						name: "mcp--testServer--myTool",
+						name: buildMcpToolName("testServer", toolName),
+						input: { param: "value" },
 					},
-					{ type: "tool_call_partial", index: 0, arguments: '{"param":"value"}' },
-				]),
-			)
-
-			await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
-
-			const assistantMessage = task.apiConversationHistory.find((m) => m.role === "assistant")
-			// Verifies that finalizeStreamingToolCall receives the request-scoped state.
-			// If the scope argument is removed, finalization returns null and the block
-			// stays as a partial tool_use with input: {} instead of the parsed arguments.
-			expect(assistantMessage?.content).toEqual([
-				{
-					type: "tool_use",
-					id: "call_mcp",
-					name: "mcp--testServer--myTool",
-					input: { param: "value" },
-				},
-			])
-		})
+				])
+			},
+		)
 
 		it("blocks a truncated write_to_file call instead of executing it (issue #1221)", async () => {
 			// Regression test for #1221: if the model's stream is cut off mid-way
@@ -7302,6 +7306,68 @@ describe("Cline", () => {
 	})
 
 	describe("buildCleanConversationHistory", () => {
+		it.each([false, true])(
+			"sends the current MCP alias when resuming an older task (truncated=%s)",
+			async (truncated) => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "Read the forecast",
+					startTask: false,
+				})
+				vi.spyOn(getTaskTestAccess(task), "getSystemPrompt").mockResolvedValue("mock system prompt")
+				const createMessage = vi
+					.spyOn(task.api, "createMessage")
+					.mockReturnValue(asyncStreamFrom<ApiStreamChunk>([{ type: "text", text: "ok" }]))
+				const serverName = "weather"
+				const toolName = "get_forecast_".repeat(8)
+				const fullName = `mcp--${serverName}--${toolName}`
+				const oldName = truncated ? fullName.slice(0, 64) : fullName
+				const expectedName = buildMcpToolName(serverName, toolName)
+				if (truncated) {
+					const hub: Pick<McpHub, "getServers"> = {
+						getServers: () => [
+							{ name: serverName, status: "connected", config: "{}", tools: [{ name: toolName }] },
+						],
+					}
+					vi.spyOn(mockProvider, "getMcpHub").mockReturnValue(hub as McpHub)
+				}
+				const call: Anthropic.ToolUseBlockParam = {
+					type: "tool_use",
+					id: "forecast-1",
+					name: oldName,
+					input: {},
+				}
+				const result: Anthropic.ToolResultBlockParam = {
+					type: "tool_result",
+					tool_use_id: call.id,
+					content: "Sunny",
+				}
+				task.apiConversationHistory = [
+					{ role: "user", content: "Read the forecast" },
+					{ role: "assistant", content: [call] },
+					{ role: "user", content: [result] },
+				]
+				const saved = structuredClone(task.apiConversationHistory)
+
+				await collectStream(task.attemptApiRequest(0))
+
+				expect(createMessage.mock.lastCall?.[1]).toEqual([
+					{ role: "user", content: "Read the forecast" },
+					{ role: "assistant", content: [{ ...call, name: expectedName }] },
+					{ role: "user", content: [result] },
+				])
+				if (truncated) {
+					expect(createMessage.mock.lastCall?.[2]?.tools).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ function: expect.objectContaining({ name: expectedName }) }),
+						]),
+					)
+				}
+				expect(task.apiConversationHistory).toEqual(saved)
+			},
+		)
+
 		it.each([true, false])(
 			"sends saved tool results before other content (supportsImages=%s)",
 			async (supportsImages) => {

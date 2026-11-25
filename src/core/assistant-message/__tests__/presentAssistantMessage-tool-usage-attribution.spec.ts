@@ -10,6 +10,8 @@ import { getModeBySlug } from "../../../shared/modes"
 import type { Task } from "../../task/Task"
 import type { RequestPolicySnapshot } from "../../prompts/tools/effective-tool-policy"
 import { useMcpToolTool } from "../../tools/UseMcpToolTool"
+import { buildMcpToolName } from "../../../utils/mcp-name"
+import { NativeToolCallParser } from "../NativeToolCallParser"
 
 vi.mock("../../task/Task")
 vi.mock("../../../shared/modes", async (importOriginal) => {
@@ -322,6 +324,77 @@ describe("presentAssistantMessage - tool usage attribution", () => {
 	})
 
 	describe("native mcp_tool_use block", () => {
+		it("dispatches the declared short name to the full MCP tool identity", async () => {
+			const server = "weather".repeat(12)
+			const tool = "get-forecast"
+			const callTool = vi.fn().mockResolvedValue({ content: [{ type: "text", text: "Sunny" }] })
+			const fuzzyTool = { name: "get_forecast" }
+			const servers = [{ name: server, source: "project", tools: [fuzzyTool, { name: tool }] }]
+			const hub = {
+				getServers: () => servers,
+				getAllServers: () => [{ name: server, source: "global", tools: [fuzzyTool] }, ...servers],
+				findServerNameBySanitizedName: () => undefined,
+				callTool,
+			}
+			mockTask.providerRef = {
+				deref: () => ({
+					getMcpHub: () => hub,
+					getState: vi.fn().mockResolvedValue({ mode: "code" }),
+					postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+				}),
+			}
+			const parsed = NativeToolCallParser.parseDynamicMcpTool({
+				id: "forecast-1",
+				name: buildMcpToolName(server, tool),
+				arguments: '{"city":"Boston"}',
+			})
+			if (!parsed) {
+				throw new Error("Expected the declared MCP tool name to parse")
+			}
+			mockTask.assistantMessageContent = [parsed]
+
+			await presentAssistantMessage(mockTask as unknown as Task, baseSnapshot)
+
+			expect(mockTask.ask).toHaveBeenCalledWith(
+				"use_mcp_server",
+				expect.any(String),
+				false,
+				undefined,
+				false,
+				undefined,
+			)
+			expect(callTool).toHaveBeenCalledWith(server, tool, { city: "Boston" })
+		})
+
+		it("returns a paired error for an MCP alias with no available target", async () => {
+			const callTool = vi.fn()
+			const hub = { getServers: () => [], findServerNameBySanitizedName: () => undefined, callTool }
+			mockTask.providerRef = {
+				deref: () => ({ getMcpHub: () => hub, getState: vi.fn() }),
+			}
+			const parsed = NativeToolCallParser.parseDynamicMcpTool({
+				id: "forecast-1",
+				name: buildMcpToolName("weather".repeat(12), "get_forecast"),
+				arguments: "{}",
+			})
+			if (!parsed) {
+				throw new Error("Expected the declared MCP tool name to parse")
+			}
+			mockTask.assistantMessageContent = [parsed]
+			await presentAssistantMessage(mockTask as unknown as Task, baseSnapshot)
+
+			expect(mockTask.ask).not.toHaveBeenCalled()
+			expect(callTool).not.toHaveBeenCalled()
+			expect(mockTask.userMessageContent).toEqual([
+				{
+					type: "tool_result",
+					tool_use_id: "forecast-1",
+					content: expect.stringContaining("does not match a unique available tool"),
+					is_error: true,
+				},
+			])
+		})
+
 		it("records exactly one attempt once the MCP tool's own validation passes", async () => {
 			mockTask.providerRef = {
 				deref: () => ({

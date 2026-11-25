@@ -369,3 +369,11 @@ The before-change test failed because the stream supplied only reasoning text. T
 When a completed native follow-up call has an absent or null `follow_up`, the parser can recover its JSON array from the question. It supports both legacy wrappers, respects quoted and escaped text inside the JSON, and sends the cleaned question to the tool. Explicit native values still take precedence. The tool checks that every suggestion has string text before showing the question. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2651)
 
 Eight before-change tests reproduced the drop or missing validation. The corrected build passed 195 focused tests, 924 parser-scope interleavings, and 45 distribution checks. Host type and lint checks passed, and lint suppressions fell by six. The rebuilt VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3.
+
+## Long MCP tool names
+
+Provider declarations now use a stable alias when a full MCP function name exceeds 64 characters. Tools with the same initial 64 characters get distinct aliases. The dispatcher resolves the alias to the original catalog entry and uses the existing policy and approval checks. An alias with no unique target returns an error for the same tool call ID. [Upstream report](https://github.com/Zoo-Code-Org/Zoo-Code/pull/2118) · [Bedrock tool name requirements](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolUseBlock.html)
+
+New tool calls save the bounded name. Requests resumed from older tasks repair overlong names and recover old truncations when one catalog entry matches. This repair works on a request copy and preserves call and result IDs. Ambiguous old truncations contain too little information to identify the original tool.
+
+Four before-change tests reproduced colliding names, a missing tool separator, a failed dispatch, and an overlong name in resumed history. The corrected build passed 499 focused tests, 924 parser-scope interleavings, and 45 distribution checks. Type and lint checks passed, and lint suppression counts stayed at their previous values. The rebuilt VSIX contains the updated host and 556 matching webview scripts. The build used Node 24.22.3.

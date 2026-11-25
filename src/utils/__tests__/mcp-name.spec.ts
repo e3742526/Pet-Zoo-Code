@@ -1,6 +1,7 @@
 import {
 	sanitizeMcpName,
 	buildMcpToolName,
+	resolveMcpToolByName,
 	parseMcpToolName,
 	normalizeMcpToolName,
 	normalizeForComparison,
@@ -175,6 +176,22 @@ describe("mcp-name utilities", () => {
 			expect(result.startsWith("mcp--")).toBe(true)
 		})
 
+		it("assigns different provider names to tools that share their first 64 characters", () => {
+			const prefix = "get_" + "weather_".repeat(10)
+			const first = buildMcpToolName("weather", `${prefix}daily`)
+			const second = buildMcpToolName("weather", `${prefix}hourly`)
+
+			expect(first).not.toBe(second)
+			expect(first).toMatch(/^[a-zA-Z0-9_-]{1,64}$/)
+			expect(second).toMatch(/^[a-zA-Z0-9_-]{1,64}$/)
+			expect(buildMcpToolName("weather", `${prefix}daily`)).toBe(first)
+		})
+
+		it("keeps a parseable function name even when the server alone exceeds the limit", () => {
+			const name = buildMcpToolName("weather".repeat(12), "get_forecast")
+			expect(parseMcpToolName(name)).not.toBeNull()
+		})
+
 		it("should handle names starting with numbers", () => {
 			expect(buildMcpToolName("123server", "456tool")).toBe("mcp--_123server--_456tool")
 		})
@@ -190,6 +207,38 @@ describe("mcp-name utilities", () => {
 
 		it("should handle tool names with multiple hyphens", () => {
 			expect(buildMcpToolName("server", "get-user-profile")).toBe("mcp--server--get-user-profile")
+		})
+	})
+
+	describe("resolveMcpToolByName", () => {
+		const serverName = "weather-" + "station".repeat(10)
+		const firstTool = "get_forecast"
+		const secondTool = "get_observations"
+		const firstName = buildMcpToolName(serverName, firstTool)
+		const servers = [{ name: serverName, tools: [{ name: firstTool }, { name: secondTool }] }]
+		const fullName = `mcp--${serverName}--${firstTool}`
+		const oldName = fullName.slice(0, 64)
+
+		it.each([firstName, normalizeForComparison(firstName), fullName, normalizeForComparison(fullName)])(
+			"resolves the known tool from %s",
+			(name) => {
+				expect(resolveMcpToolByName(servers, name)).toEqual({
+					serverName,
+					toolName: firstTool,
+					name: firstName,
+				})
+			},
+		)
+
+		it("repairs a unique old truncation in history and leaves an ambiguous one unresolved", () => {
+			const singleTool = [{ name: serverName, tools: [{ name: firstTool }] }]
+			expect(resolveMcpToolByName(singleTool, oldName, true)).toEqual({
+				serverName,
+				toolName: firstTool,
+				name: firstName,
+			})
+			expect(resolveMcpToolByName(servers, oldName, true)).toBeUndefined()
+			expect(resolveMcpToolByName(singleTool, oldName)).toBeUndefined()
 		})
 	})
 

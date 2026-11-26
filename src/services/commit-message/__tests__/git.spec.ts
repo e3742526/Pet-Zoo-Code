@@ -41,6 +41,58 @@ it.each(stagingCases)(
 	},
 )
 
+it.each([
+	{ mode: "never", expected: "unstaged", staged: false },
+	{ mode: "if-empty", expected: "ready", staged: true },
+] as const)("handles intent-to-add with auto-stage set to $mode", async ({ mode, expected, staged }) => {
+	await writeFile(join(cwd, "intent.txt"), "Intent-to-add content\n")
+	git("add", "-N", "intent.txt")
+
+	await expect(prepareCommitIndex("git", cwd, mode, signal)).resolves.toBe(expected)
+	const { patch } = await readStagedCommitDiff("git", cwd, signal)
+	expect(patch.includes("Intent-to-add content")).toBe(staged)
+	expect(git("diff", "--cached", "--name-only", "--ita-invisible-in-index").trim()).toBe(staged ? "intent.txt" : "")
+})
+
+it("leaves unmerged index entries alone when auto-stage is set to always", async () => {
+	await writeFile(join(cwd, "conflict.txt"), "Conflict contents\n")
+	const blob = git("hash-object", "-w", "conflict.txt").trim()
+	execFileSync("git", ["update-index", "--index-info"], {
+		cwd,
+		input: `100644 ${blob} 2\tconflict.txt\n100644 ${blob} 3\tconflict.txt\n`,
+	})
+	const unmerged = git("ls-files", "--unmerged")
+	expect(unmerged).not.toBe("")
+
+	await expect(prepareCommitIndex("git", cwd, "always", signal)).resolves.toBe("conflicts")
+	expect(git("ls-files", "--unmerged")).toBe(unmerged)
+})
+
+it.skipIf(process.platform === "win32")("handles tracked filenames that contain a newline", async () => {
+	const name = "first line\nUU second line"
+	await writeFile(join(cwd, name), "A normal file\n")
+	git("add", name)
+
+	await expect(prepareCommitIndex("git", cwd, "never", signal)).resolves.toBe("ready")
+	const { patch } = await readStagedCommitDiff("git", cwd, signal)
+	expect(patch).toContain("+A normal file")
+})
+
+it("changes the fingerprint when only the staged binary content changes", async () => {
+	const binary = join(cwd, "binary")
+	await writeFile(binary, Buffer.from([0, 1]))
+	git("add", "binary")
+	const before = await readStagedCommitDiff("git", cwd, signal)
+
+	await writeFile(binary, Buffer.from([0, 2]))
+	git("add", "binary")
+	const after = await readStagedCommitDiff("git", cwd, signal)
+
+	expect(before.patch).toContain("Binary files")
+	expect(before.patch).toMatch(/^index [0-9a-f]{40,64}\.\.[0-9a-f]{40,64}$/m)
+	expect(after.fingerprint).not.toBe(before.fingerprint)
+})
+
 it("bounds the prompt patch and detects a staged change beyond the limit", async () => {
 	const contents = "+Long line of change content\n".repeat(1_000)
 	const path = join(cwd, "large.txt")

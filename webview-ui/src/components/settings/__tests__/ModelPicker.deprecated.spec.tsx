@@ -1,7 +1,7 @@
 import { providerIdentifiers } from "@roo-code/types"
 // npx vitest src/components/settings/__tests__/ModelPicker.deprecated.spec.tsx
 
-import { screen } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/react"
 
 import { renderWithExtensionState } from "@/utils/test-utils"
 import userEvent from "@testing-library/user-event"
@@ -233,6 +233,14 @@ describe("ModelPicker - Deprecated Models", () => {
 
 		expect(screen.getByTestId("model-option-recent-model")).toBeInTheDocument()
 		expect(screen.queryByTestId("model-option-aged-model")).not.toBeInTheDocument()
+
+		const input = screen.getByTestId("model-input")
+		for (const id of ["aged-model", "deprecated-model"]) {
+			fireEvent.change(input, { target: { value: id } })
+			expect(screen.queryByTestId("use-custom-model")).not.toBeInTheDocument()
+		}
+		fireEvent.change(input, { target: { value: "unknown-model" } })
+		expect(screen.getByTestId("use-custom-model")).toBeInTheDocument()
 	})
 
 	it("keeps an aged model that the profile already uses, without the deprecation error", async () => {
@@ -259,5 +267,26 @@ describe("ModelPicker - Deprecated Models", () => {
 		await user.click(screen.getByTestId("model-picker-button"))
 
 		expect(screen.getByTestId("model-option-aged-model")).toBeInTheDocument()
+	})
+
+	it("accepts a custom model ID while no catalog is available", () => {
+		renderWithExtensionState(
+			<ModelPicker
+				defaultModelId="model-1"
+				models={null}
+				modelIdKey="openRouterModelId"
+				serviceName="Test Service"
+				serviceUrl="https://test.com"
+				apiConfiguration={{ apiProvider: providerIdentifiers.openrouter }}
+				setApiConfigurationField={mockSetApiConfigurationField}
+				organizationAllowList={{ allowAll: true, providers: {} }}
+			/>,
+			{ queryClient },
+		)
+
+		fireEvent.click(screen.getByTestId("model-picker-button"))
+		fireEvent.change(screen.getByTestId("model-input"), { target: { value: "unknown-model" } })
+		fireEvent.click(screen.getByTestId("use-custom-model"))
+		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("openRouterModelId", "unknown-model")
 	})
 })

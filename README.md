@@ -60,7 +60,7 @@ Select the bubbles in Git Source Control to draft a message in the commit input 
 
 Dory Code uses the staged changes. By default, it stages all changes if the index is empty. Set `pet-zoo-code.commitMessage.autoStage` to `never` to stage files yourself, or to `always` to stage all changes each time.
 
-Dory Code sends the staged diff to the selected provider. It masks common secret formats first, but it cannot find every secret. If the staged changes or the commit input box change while the draft runs, Dory Code discards the draft. The command does not run in an untrusted workspace.
+Dory Code masks common secret formats before it sends a staged diff. Review the staged changes for other secrets. If a route uses the Dory CLI, the CLI reads the Git index and handles its own provider requests. If the staged changes or the commit input box change while the draft runs, Dory Code discards the draft. The command does not run in an untrusted workspace.
 
 ## Upstream base: Zoo Code v3.98.2
 

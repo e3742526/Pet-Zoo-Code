@@ -691,12 +691,6 @@ function readModelsFromCache(options: GetModelsOptions, handler: ApiHandler): Mo
 	return undefined
 }
 
-/** Return a separate copy of the cached catalog for synchronous callers. */
-export function getModelsFromCache(options: GetModelsOptions, handler: ApiHandler): ModelRecord | undefined {
-	const models = readModelsFromCache(options, handler)
-	return models && structuredClone(models)
-}
-
 /** Return a copy of one cached model without copying the rest of the catalog. */
 export function getModelFromCache(options: GetModelsOptions, handler: ApiHandler, id: string): ModelInfo | undefined {
 	return copyModel(readModelsFromCache(options, handler), id)

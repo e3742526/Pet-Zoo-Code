@@ -98,9 +98,14 @@ async function loadCommitProfiles(provider: CommitMessageProvider, selection: st
 	const entries = await manager.listConfig()
 	entries.sort((a, b) => Number(b.name === currentName) - Number(a.name === currentName))
 	const profiles: CommitProfile[] = []
-	for (const { id, name, apiProvider } of entries) {
+	for (const { id, apiProvider } of entries) {
 		if (!apiProvider || (selection !== DEFAULT_COMMIT_PROVIDER && selection !== `profile:${id}`)) continue
-		profiles.push({ id, settings: await manager.getProfile({ name }) })
+		try {
+			// Resolve by ID so a rename or replacement under the old name cannot change the selected profile.
+			profiles.push({ id, settings: await manager.getProfile({ id }) })
+		} catch {
+			// A profile can be removed while the draft starts. The remaining routes can still run.
+		}
 	}
 	return profiles
 }

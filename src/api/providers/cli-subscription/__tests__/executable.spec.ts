@@ -27,6 +27,20 @@ describe.skipIf(process.platform === "win32")("resolveCliExecutable", () => {
 		)
 	})
 
+	it("returns the checked executable when a PATH entry is relative", async () => {
+		process.env.PATH = path.relative(process.cwd(), directory)
+		await expect(resolveCliExecutable(undefined, "zoo-test-cli", "Test")).resolves.toBe(
+			path.join(directory, "zoo-test-cli"),
+		)
+	})
+
+	it("resolves a relative configured executable before the child changes directories", async () => {
+		const executable = path.join(directory, "zoo-test-cli")
+		await expect(resolveCliExecutable(path.relative(process.cwd(), executable), "other", "Test")).resolves.toBe(
+			executable,
+		)
+	})
+
 	it("uses a configured path and ignores surrounding spaces", async () => {
 		const configured = `  ${path.join(directory, "zoo-test-cli")} `
 		await expect(resolveCliExecutable(configured, "other", "Test")).resolves.toBe(

@@ -113,19 +113,21 @@ export const ModelSelector = ({
 		[models, provider, organizationAllowList],
 	)
 
+	const selectionDay = new Date().toISOString().slice(0, 10)
 	const modelIds = React.useMemo(() => {
 		if (!filteredModelRecord) return []
+		const now = new Date(selectionDay)
 		return Object.entries(filteredModelRecord)
 			.filter(([id, info]) => {
 				if (id === selectedModelId) return true
 				// The host cannot set awsCustomArn, so picking this here would save a model id without an ARN.
 				if (id === BEDROCK_CUSTOM_ARN_MODEL_ID) return false
 				// Hide deprecated models and models past the selection age limit.
-				return !isModelHiddenFromSelection(info)
+				return !isModelHiddenFromSelection(info, now)
 			})
 			.map(([id]) => id)
 			.sort((a, b) => a.localeCompare(b))
-	}, [filteredModelRecord, selectedModelId])
+	}, [filteredModelRecord, selectedModelId, selectionDay])
 
 	const searchableItems = React.useMemo(
 		() =>

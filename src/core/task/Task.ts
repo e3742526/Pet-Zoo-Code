@@ -65,6 +65,7 @@ import { disposeApiHandler } from "../../api/dispose-api-handler"
 import { ApiStream, type ApiStreamAssistantContentChunk, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { ProviderQuotaExhaustedError } from "../../api/providers/cli-subscription/errors"
+import { settleOnAbort } from "../../api/providers/utils/abort-signal"
 import { OutputTokenLimitError } from "../../api/providers/utils/output-token-limit-error"
 
 // shared
@@ -4311,47 +4312,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				let assistantContentFromProvider: ApiStreamAssistantContentChunk | undefined
 				const pendingGroundingSources: GroundingSource[] = []
 				let streamStarted = false
-				let assistantOutput: "none" | "text" | "other" = "none"
+				let assistantOutput: "none" | "text" | "other" | "tool" = "none"
 				this.isStreaming = true
 
 				try {
 					const iterator = stream[Symbol.asyncIterator]()
 
-					// Helper to race iterator.next() with abort signal
-					const nextChunkWithAbort = async () => {
-						const nextPromise = iterator.next()
-
-						// If we have an abort controller, race it with the next chunk
-						if (this.currentRequestAbortController) {
-							const abortPromise = new Promise<never>((_, reject) => {
-								const signal = this.currentRequestAbortController!.signal
-								if (signal.aborted) {
-									reject(new Error("Request cancelled by user"))
-								} else {
-									signal.addEventListener(
-										"abort",
-										() => {
-											reject(new Error("Request cancelled by user"))
-										},
-										{ once: true },
-									)
-								}
-							})
-							return await Promise.race([nextPromise, abortPromise])
-						}
-
-						// No abort controller, just return the next chunk normally
-						return await nextPromise
-					}
+					const nextChunkWithAbort = () =>
+						settleOnAbort(iterator.next(), this.currentRequestAbortController?.signal, "API")
 
 					let item = await nextChunkWithAbort()
 					streamStarted = !item.done
-					while (!item.done) {
+					// Process each chunk before requesting the next so a delayed or failed read cannot hide it.
+					for (; !item.done; item = await nextChunkWithAbort()) {
 						const chunk = item.value
-						if (chunk && chunk.type !== "usage" && assistantOutput !== "other") {
+						if (chunk?.type === "tool_call" || chunk?.type === "tool_call_partial") {
+							assistantOutput = "tool"
+						} else if (
+							chunk &&
+							chunk.type !== "usage" &&
+							(assistantOutput === "none" || assistantOutput === "text")
+						) {
 							assistantOutput = chunk.type === "text" ? "text" : "other"
 						}
-						item = await nextChunkWithAbort()
 						if (!chunk) {
 							// Sometimes chunk is undefined, no idea that can cause
 							// it, but this workaround seems to fix it.
@@ -4737,7 +4720,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							let usageFound = false
 							let chunkCount = 0
 
-							// Use the same iterator that the main loop was using
+							// A break leaves item on the last chunk already processed by the main loop.
+							if (!item.done) item = await iterator.next()
 							while (!item.done) {
 								// Check for timeout
 								if (performance.now() - startTime > timeoutMs) {
@@ -4752,7 +4736,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								}
 
 								const chunk = item.value
-								item = await iterator.next()
 								chunkCount++
 
 								if (chunk && chunk.type === "usage") {
@@ -4765,6 +4748,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									bgCacheReadTokens += chunk.cacheReadTokens ?? 0
 									bgTotalCost = chunk.totalCost
 								}
+								item = await iterator.next()
 							}
 
 							if (
@@ -4869,10 +4853,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								canReplayTurn &&
 								(await this.switchToQuotaFallback(requestConfiguration))
 							const retryAttempt = currentItem.retryAttempt ?? 0
-							// Quota, output limits, and a failed alternate need a user decision.
+							// Ask before replaying a request whose tool calls may have reached the presenter.
 							const retryAutomatically =
 								!quotaExhausted &&
 								!currentItem.quotaFallback &&
+								assistantOutput !== "tool" &&
 								!(error instanceof OutputTokenLimitError) &&
 								retryAttempt < MAX_MID_STREAM_AUTO_RETRIES &&
 								(await this.providerRef.deref()?.getState())?.autoApprovalEnabled === true

@@ -229,6 +229,12 @@ export const modelInfoSchema = z.object({
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>
 
+function formatReleaseDate(date: Date): string | undefined {
+	if (!Number.isFinite(date.getTime())) return undefined
+	const iso = date.toISOString()
+	return iso[10] === "T" ? iso.slice(0, 10) : undefined
+}
+
 /**
  * Converts a catalog timestamp in Unix seconds (for example OpenRouter `created`)
  * to a `releaseDate` string. Returns undefined for a missing or invalid value.
@@ -237,8 +243,7 @@ export function releaseDateFromUnixSeconds(seconds: number | null | undefined): 
 	if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
 		return undefined
 	}
-	const date = new Date(seconds * 1000)
-	return Number.isNaN(date.getTime()) ? undefined : date.toISOString().slice(0, 10)
+	return formatReleaseDate(new Date(seconds * 1000))
 }
 
 /** Model selection lists leave out models released more than this many months ago. */
@@ -262,13 +267,16 @@ export function isModelHiddenFromSelection(
 	if (!info.releaseDate) {
 		return false
 	}
-	const released = Date.parse(`${info.releaseDate}T00:00:00Z`)
-	if (Number.isNaN(released)) {
+	const released = new Date(`${info.releaseDate}T00:00:00Z`)
+	if (formatReleaseDate(released) !== info.releaseDate) {
 		return false
 	}
-	// Compare whole UTC days: a model released on the cutoff date stays selectable all day.
-	const cutoff = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - MODEL_SELECTION_MAX_AGE_MONTHS, now.getUTCDate())
-	return released < cutoff
+	// Clamp to the final day of the target month (for example, Feb 29 to Feb 28).
+	const cutoff = new Date(now.getTime())
+	cutoff.setUTCHours(0, 0, 0, 0)
+	cutoff.setUTCMonth(cutoff.getUTCMonth() - MODEL_SELECTION_MAX_AGE_MONTHS + 1, 0)
+	cutoff.setUTCDate(Math.min(now.getUTCDate(), cutoff.getUTCDate()))
+	return released.getTime() < cutoff.getTime()
 }
 
 /**

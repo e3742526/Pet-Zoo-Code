@@ -120,16 +120,20 @@ export const ModelPicker = ({
 			? undefined
 			: apiConfiguration.apiProvider
 
+	const selectionDay = new Date().toISOString().slice(0, 10)
 	const modelIds = useMemo(() => {
 		const filteredModels = filterModels(models, activeProvider, organizationAllowList)
+		const now = new Date(selectionDay)
 
 		// Keep the currently selected model so a saved choice stays visible, even if it is
 		// deprecated or older than the selection age limit. Hide every other such model.
 		return Object.entries(filteredModels ?? {})
-			.filter(([modelId, modelInfo]) => modelId === selectedModelId || !isModelHiddenFromSelection(modelInfo))
+			.filter(
+				([modelId, modelInfo]) => modelId === selectedModelId || !isModelHiddenFromSelection(modelInfo, now),
+			)
 			.map(([modelId]) => modelId)
 			.sort((a, b) => a.localeCompare(b))
-	}, [models, activeProvider, organizationAllowList, selectedModelId])
+	}, [models, activeProvider, organizationAllowList, selectedModelId, selectionDay])
 
 	const [searchValue, setSearchValue] = useState("")
 
@@ -267,7 +271,7 @@ export const ModelPicker = ({
 									))}
 								</CommandGroup>
 							</CommandList>
-							{searchValue && !modelIds.includes(searchValue) && (
+							{searchValue && (!models || !Object.hasOwn(models, searchValue)) && (
 								<div className="p-1 border-t border-vscode-input-border">
 									<CommandItem data-testid="use-custom-model" value={searchValue} onSelect={onSelect}>
 										{t("settings:modelPicker.useCustomModel", { modelId: searchValue })}

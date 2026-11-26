@@ -1,4 +1,9 @@
+import { spawn } from "child_process"
+import { once } from "events"
+
 import { buildCliEnvironment, CliProcessError, runJsonlProcess, type CliProcessItem } from "../process"
+
+vi.mock("child_process", { spy: true })
 
 /** Runs a Node.js script as the "CLI" so the tests use a real child process on every platform. */
 function runScript(
@@ -71,6 +76,45 @@ describe("runJsonlProcess", () => {
 		).rejects.toMatchObject({
 			reason: "inactive",
 		})
+	})
+
+	it("delivers the exit item after the consumer pauses past the inactivity deadline", async () => {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+		const stream = runScript(`console.log('{"ready":true}')`, { inactivityTimeoutMs: 500 })
+		try {
+			const first = stream.next()
+			const child = vi.mocked(spawn).mock.results.at(-1)?.value
+			if (!child) throw new Error("Expected the CLI to spawn")
+			const close = once(child, "close")
+			await expect(first).resolves.toMatchObject({ value: { type: "event", value: { ready: true } } })
+			await close
+			await vi.advanceTimersByTimeAsync(501)
+			await expect(collect(stream)).resolves.toEqual([
+				{ type: "exit", exitCode: 0, signal: null, stderr: "", nonJsonLines: [] },
+			])
+		} finally {
+			await stream.return(undefined)
+			vi.useRealTimers()
+		}
+	})
+
+	it("drains a backlog in order and decodes a character split between stdout writes", async () => {
+		const stream = runScript(`
+			process.stdout.write('{"text":"');
+			process.stdout.write(Buffer.from([0xf0, 0x9f]));
+			setTimeout(() => {
+				process.stdout.write(Buffer.from([0x90, 0x88]));
+				process.stdout.write('"}\\n');
+				for (let i = 0; i < 4000; i++) process.stdout.write(JSON.stringify(i) + '\\n');
+				process.stdout.write('true');
+			}, 20);
+		`)
+		const items = await collect(stream)
+
+		expect(items[0]).toEqual({ type: "event", value: { text: "🐈" } })
+		expect(items.slice(1, -2)).toEqual(Array.from({ length: 4000 }, (_, value) => ({ type: "event", value })))
+		expect(items.at(-2)).toEqual({ type: "event", value: true })
+		expect(items.at(-1)).toMatchObject({ type: "exit", exitCode: 0 })
 	})
 
 	it("reports a missing executable", async () => {

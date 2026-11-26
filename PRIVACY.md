@@ -14,13 +14,15 @@ not apply to the fork where it differs from this section.
   [standalone independence](docs/standalone-independence.md).
 - **Accounts and cloud services**: Dory Code removes Zoo Code sign-in, billing,
   Zoo Gateway, and Roo Cloud. A saved Zoo Gateway profile cannot send requests.
-- **Model providers**: Your prompts, files, and command output go only to the
-  provider that you configure. That provider's privacy policy applies.
-- **Commit messages**: When you draft a commit message, Dory Code sends the
-  staged diff to the provider that you select. It masks common secret formats
-  first, but this does not find every secret. Review the staged changes before
-  you draft. The **Dory CLI** option starts the `dory` executable on your
-  computer.
+- **Model providers**: Your task prompts, files, and command output go to the
+  provider that your task uses. If Muse Code reaches its quota and you configured
+  a fallback profile, the fallback provider can receive the conversation history
+  for the retry. Each provider's privacy policy applies.
+- **Commit messages**: Dory Code can send part or all of the staged diff to a
+  provider to draft a message. It masks common secret formats before it sends a
+  diff. Review the staged changes for other secrets before you draft.
+  **Default (Automatic)** can try more than one provider. When a route uses the
+  **Dory CLI**, the CLI reads the Git index and handles its own provider requests.
 - **Marketplace**: The mode and MCP catalog is bundled with the extension. Dory
   Code does not request it from a server.
 - **Credentials**: API keys and sign-in tokens stay in VS Code secret storage

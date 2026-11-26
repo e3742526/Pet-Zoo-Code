@@ -60,7 +60,7 @@ import { providerIdentifiers } from "@roo-code/types"
 import * as fsSync from "fs"
 import NodeCache from "node-cache"
 import { TelemetryService } from "@roo-code/telemetry"
-import { getModels, getModelsFromCache } from "../modelCache"
+import { getModelFromCache, getModels } from "../modelCache"
 import type { ApiHandler, ModelCacheScope } from "../../../index"
 import type { GetModelsOptions } from "../../../../shared/api"
 
@@ -295,7 +295,7 @@ describe("getModels with new GetModelsOptions", () => {
 	})
 })
 
-describe("getModelsFromCache disk fallback", () => {
+describe("getModelFromCache disk fallback", () => {
 	let mockCache: Mocked<NodeCache>
 
 	beforeEach(() => {
@@ -313,7 +313,11 @@ describe("getModelsFromCache disk fallback", () => {
 	it("returns undefined when both memory and disk cache miss", () => {
 		vi.mocked(fsSync.existsSync).mockReturnValue(false)
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler)
+		const result = getModelFromCache(
+			{ provider: providerIdentifiers.openrouter },
+			openRouterHandler,
+			"missing-model",
+		)
 
 		expect(result).toBeUndefined()
 	})
@@ -329,9 +333,13 @@ describe("getModelsFromCache disk fallback", () => {
 
 		mockCache.get.mockReturnValue(memoryModels)
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler)
+		const result = getModelFromCache(
+			{ provider: providerIdentifiers.openrouter },
+			openRouterHandler,
+			"memory-model",
+		)
 
-		expect(result).toEqual(memoryModels)
+		expect(result).toEqual(memoryModels["memory-model"])
 		// Disk should not be checked when memory cache hits
 		expect(fsSync.existsSync).not.toHaveBeenCalled()
 	})
@@ -347,7 +355,11 @@ describe("getModelsFromCache disk fallback", () => {
 
 		mockCache.get.mockReturnValue(previousUserModels)
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.requesty }, authScopedHandler)
+		const result = getModelFromCache(
+			{ provider: providerIdentifiers.requesty },
+			authScopedHandler,
+			"previous-user/model",
+		)
 
 		expect(result).toBeUndefined()
 		expect(mockCache.get).not.toHaveBeenCalled()
@@ -369,7 +381,7 @@ describe("getModelsFromCache disk fallback", () => {
 		vi.mocked(fsSync.existsSync).mockReturnValue(true)
 		vi.mocked(fsSync.readFileSync).mockReturnValue(JSON.stringify(diskModels))
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler)
+		const result = getModelFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler, "disk-model")
 
 		// In the test environment, ContextProxy.instance may not be fully initialized,
 		// so getCacheDirectoryPathSync returns undefined and disk cache is not attempted
@@ -384,7 +396,7 @@ describe("getModelsFromCache disk fallback", () => {
 
 		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(function () {})
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler)
+		const result = getModelFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler, "disk-model")
 
 		expect(result).toBeUndefined()
 		expect(consoleErrorSpy).toHaveBeenCalled()
@@ -398,7 +410,7 @@ describe("getModelsFromCache disk fallback", () => {
 
 		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(function () {})
 
-		const result = getModelsFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler)
+		const result = getModelFromCache({ provider: providerIdentifiers.openrouter }, openRouterHandler, "disk-model")
 
 		expect(result).toBeUndefined()
 		expect(consoleErrorSpy).toHaveBeenCalled()

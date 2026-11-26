@@ -5,7 +5,7 @@ import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import type { ApiHandler } from "../../../index"
 import { getCustomStoragePath } from "../../../../utils/storage"
-import { flushModels, getModelFromCache, getModels, getModelsFromCache, refreshModels } from "../modelCache"
+import { flushModels, getModelFromCache, getModels, refreshModels } from "../modelCache"
 
 vi.mock("../../../../core/config/ContextProxy", () => ({
 	ContextProxy: { instance: { globalStorageUri: { fsPath: "/test-storage" } } },
@@ -80,7 +80,7 @@ it("shares an asynchronous cold read and returns a separate catalog to each call
 	expect(right["cached-model"]).not.toBe(left["cached-model"])
 	expect(single["cached-model"]).not.toBe(left["cached-model"])
 	expect(single["cached-model"]).not.toBe(right["cached-model"])
-	expect(getModelsFromCache(options, handler)).toEqual(diskModels)
+	expect(getModelFromCache(options, handler, "cached-model")).toEqual(diskModels["cached-model"])
 	expect(readFileSync).not.toHaveBeenCalled()
 	expect(fetchModels).not.toHaveBeenCalled()
 })
@@ -122,7 +122,9 @@ it.each(["empty catalog", "fetch error"] as const)(
 		} finally {
 			clone.mockRestore()
 		}
-		expect(getModelsFromCache(options, handler)).toEqual(previous)
+		for (const [id, model] of Object.entries(previous)) {
+			expect(getModelFromCache(options, handler, id)).toEqual(model)
+		}
 		expect(readFromDisk).toHaveBeenCalledTimes(1)
 	},
 )
@@ -131,7 +133,7 @@ it("still loads a cold catalog for synchronous model metadata callers", () => {
 	vi.mocked(existsSync).mockReturnValue(true)
 	vi.mocked(readFileSync).mockReturnValue(JSON.stringify(diskModels))
 
-	expect(getModelsFromCache(options, handler)).toEqual(diskModels)
+	expect(getModelFromCache(options, handler, "cached-model")).toEqual(diskModels["cached-model"])
 	expect(readFileSync).toHaveBeenCalledTimes(1)
 	expect(readFromDisk).not.toHaveBeenCalled()
 })
@@ -175,7 +177,8 @@ it("keeps data from a provider refresh when an older disk read finishes afterwar
 
 	finish(JSON.stringify(diskModels))
 	await expect(loading).resolves.toEqual(freshModels)
-	expect(getModelsFromCache(options, handler)).toEqual(freshModels)
+	expect(getModelFromCache(options, handler, "fresh-model")).toEqual(freshModels["fresh-model"])
+	expect(getModelFromCache(options, handler, "cached-model")).toBeUndefined()
 	expect(fetchModels).toHaveBeenCalledTimes(1)
 })
 
@@ -211,7 +214,7 @@ it("prevents a disk read from repopulating the cache after a flush", async () =>
 	finish(JSON.stringify(diskModels))
 	await new Promise<void>((resolve) => setImmediate(resolve))
 
-	expect(getModelsFromCache(options, handler)).toBeUndefined()
+	expect(getModelFromCache(options, handler, "cached-model")).toBeUndefined()
 	expect(fetchModels).not.toHaveBeenCalled()
 })
 
@@ -245,10 +248,6 @@ it("reads a selected model offline and isolates copies of nested metadata", asyn
 	const selected = getModelFromCache(options, handler, modelId)
 	expect(selected).toEqual(models[modelId])
 	selected?.includedTools?.push("write_to_file")
-
-	const syncCatalog = getModelsFromCache(options, handler)
-	expect(syncCatalog).toEqual(models)
-	syncCatalog?.[modelId].includedTools?.push("list_files")
 
 	const asyncCatalog = await getModels(options, handler)
 	expect(asyncCatalog).toEqual(models)

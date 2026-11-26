@@ -9,10 +9,10 @@ function redactSecrets(text: string): string {
 			/(-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----)[\s\S]*?(?=-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/g,
 			"$1\n[REDACTED]\n",
 		)
-		.replace(/(\b[a-z][\w+.-]*:\/\/[^/\s:@]*:)[^@\s/]+@/gi, "$1[REDACTED]@")
-		.replace(/(\bauthorization["']?\s*[:=]\s*["']?\s*bearer[ \t]+)\S+/gi, "$1[REDACTED]")
+		.replace(/(\b[a-z][\w+.-]*:\/\/)[^/@?#\s"'<>]+@/gi, "$1[REDACTED]@")
+		.replace(/(\bauthorization["']?\s*[:=]\s*["']?\s*(?:bearer|basic)[ \t]+)[^\s"']+/gi, "$1[REDACTED]")
 		.replace(
-			/(\b[\w-]*(?:token|password|passwd|secret|api[_-]?key|client[_-]?secret|private[_-]?key|\b(?:pwd|pw|key))\b["']?[ \t]*[:=][ \t]*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;}]+)/gi,
+			/(\b[\w-]*(?:token|password|passwd|secret|api[_-]?key|client[_-]?secret|private[_-]?key|\b(?:pwd|pw|key))\b["']?[ \t]*[:=][ \t]*)(?:"(?:\\[^\r\n]|[^"\\\r\n])*"?|'(?:\\[^\r\n]|[^'\\\r\n])*'?|[^\s,;}]+)/gi,
 			"$1[REDACTED]",
 		)
 		.replace(KNOWN_TOKENS, "[REDACTED]")

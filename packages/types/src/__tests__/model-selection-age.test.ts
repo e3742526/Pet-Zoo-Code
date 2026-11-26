@@ -58,8 +58,19 @@ describe("isModelHiddenFromSelection", () => {
 		expect(isModelHiddenFromSelection({}, NOW)).toBe(false)
 	})
 
-	it("keeps a model with an unparseable release date selectable", () => {
-		expect(isModelHiddenFromSelection({ releaseDate: "2020-13-45" }, NOW)).toBe(false)
+	it.each(["2020-13-45", "2023-02-29", "2024-04-31"])(
+		"keeps a model with invalid date %s selectable",
+		(releaseDate) => {
+			expect(isModelHiddenFromSelection({ releaseDate }, NOW)).toBe(false)
+		},
+	)
+
+	it.each([
+		["2026-02-27", true],
+		["2026-02-28", false],
+		["2026-03-01", false],
+	])("filters %s against the February cutoff in a leap year", (releaseDate, hidden) => {
+		expect(isModelHiddenFromSelection({ releaseDate }, new Date("2028-02-29T23:59:59Z"))).toBe(hidden)
 	})
 
 	it("hides a deprecated model regardless of its release date", () => {
@@ -72,9 +83,12 @@ describe("releaseDateFromUnixSeconds", () => {
 		expect(releaseDateFromUnixSeconds(1715558400)).toBe("2024-05-13")
 	})
 
-	it.each([undefined, null, 0, -1, Number.NaN, Number.POSITIVE_INFINITY])("returns undefined for %s", (value) => {
-		expect(releaseDateFromUnixSeconds(value)).toBeUndefined()
-	})
+	it.each([undefined, null, 0, -1, Number.NaN, Number.POSITIVE_INFINITY, 253402300800, 9e13])(
+		"returns undefined for %s",
+		(value) => {
+			expect(releaseDateFromUnixSeconds(value)).toBeUndefined()
+		},
+	)
 })
 
 describe("static catalog release dates", () => {

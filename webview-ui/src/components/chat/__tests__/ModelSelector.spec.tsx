@@ -146,6 +146,29 @@ describe("ModelSelector", () => {
 		expect(items[0]).toHaveTextContent("model-a")
 	})
 
+	test("rechecks the cutoff when the picker reopens on a new UTC day", () => {
+		vi.useFakeTimers({ toFake: ["Date"] })
+		try {
+			vi.setSystemTime(new Date("2026-11-25T23:59:59Z"))
+			staticModelsOverride.value = {
+				"model-a": base,
+				"aging-model": { ...base, releaseDate: "2024-11-25" },
+			}
+			render(<ModelSelector apiConfiguration={anthropicConfig} title="Select model" />)
+			const trigger = screen.getByTestId("model-selector-trigger")
+			fireEvent.click(trigger)
+			expect(screen.getByText("aging-model")).toBeInTheDocument()
+			fireEvent.click(trigger)
+
+			vi.setSystemTime(new Date("2026-11-26T00:00:00Z"))
+			fireEvent.click(trigger)
+			expect(screen.getByText("model-a")).toBeInTheDocument()
+			expect(screen.queryByText("aging-model")).not.toBeInTheDocument()
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
 	test("selecting a model patches the latest profile via updateProfileModel and closes the popover", () => {
 		render(<ModelSelector apiConfiguration={anthropicConfig} title="Select model" />)
 

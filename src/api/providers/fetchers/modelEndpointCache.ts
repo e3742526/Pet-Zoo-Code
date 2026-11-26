@@ -3,9 +3,9 @@ import fs from "fs/promises"
 import { createHash } from "node:crypto"
 
 import NodeCache from "node-cache"
-import sanitize from "sanitize-filename"
+import { z } from "zod"
 
-import { providerIdentifiers, type ModelRecord } from "@roo-code/types"
+import { modelInfoSchema, providerIdentifiers, type ModelRecord } from "@roo-code/types"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
 import type { RouterName } from "../../../shared/api"
@@ -23,13 +23,13 @@ const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 const ENDPOINT_FALLBACK_TTL_SECONDS = 30
 /** Parent catalog loads in flight, keyed by cache scope, so concurrent callers share one request. */
 const pendingCatalogs = new Map<string, Promise<ModelRecord>>()
+const endpointCatalogSchema = z.record(z.string(), modelInfoSchema)
 
 /**
- * Builds the disk cache file key. A custom base URL is hashed with the model ID,
- * so endpoints from different OpenRouter-compatible proxies never share a file.
+ * Keep both the full model ID and the base URL in the disk cache key.
+ * Older files dropped path separators and cannot identify which model they belong to.
  */
 function getDiskKey(router: RouterName, modelId: string, baseUrl?: string): string {
-	if (baseUrl === undefined) return sanitize(`${router}_${modelId}`)
 	const scope = createHash("sha256")
 		.update(JSON.stringify([baseUrl, modelId]))
 		.digest("hex")
@@ -54,7 +54,7 @@ async function getEndpointCacheFile(diskKey: string, storage: StorageScope): Pro
 async function readModelEndpoints(diskKey: string, storage: StorageScope): Promise<ModelRecord | undefined> {
 	const filePath = await getEndpointCacheFile(diskKey, storage)
 	const exists = await fileExistsAtPath(filePath)
-	return exists ? JSON.parse(await fs.readFile(filePath, "utf8")) : undefined
+	return exists ? endpointCatalogSchema.parse(JSON.parse(await fs.readFile(filePath, "utf8"))) : undefined
 }
 
 export const getModelEndpoints = async (

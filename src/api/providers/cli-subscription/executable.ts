@@ -16,7 +16,11 @@ function fallbackSearchDirectories(): string[] {
 }
 
 export function getCliSearchDirectories(): string[] {
-	const pathDirectories = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)
+	// Resolve checked paths in the host, before the child process changes directories.
+	const pathDirectories = (process.env.PATH ?? "")
+		.split(path.delimiter)
+		.filter(Boolean)
+		.map((directory) => path.resolve(directory))
 	return [...new Set([...pathDirectories, ...fallbackSearchDirectories()])]
 }
 
@@ -62,7 +66,7 @@ export async function resolveCliExecutable(
 	const requested = expandHomeDirectory(configured?.trim() || defaultName)
 
 	if (requested.includes("/") || requested.includes("\\")) {
-		for (const candidate of executableCandidates(requested)) {
+		for (const candidate of executableCandidates(path.resolve(requested))) {
 			if (await isExecutableFile(candidate)) {
 				return candidate
 			}

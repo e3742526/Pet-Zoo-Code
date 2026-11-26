@@ -9,7 +9,7 @@ import { makeWorkspaceConfiguration } from "../../../../test-utils/vscode"
 import type { ApiHandler } from "../../../index"
 import { LiteLLMHandler } from "../../lite-llm"
 import { OpenRouterHandler } from "../../openrouter"
-import { flushModels, getCatalogModel, getModels, getModelsFromCache, refreshModels } from "../modelCache"
+import { flushModels, getCatalogModel, getModelFromCache, getModels, refreshModels } from "../modelCache"
 import { getOpenRouterModelEndpoints } from "../openrouter"
 
 const storage = vi.hoisted(() => ({ global: "" }))
@@ -72,9 +72,11 @@ it.each(["catalog request", "synchronous model metadata"] as const)(
 		await flushModels(options, handler)
 		fetchModels.mockClear().mockRejectedValue(new Error("Provider offline"))
 
-		const result =
-			caller === "catalog request" ? await getModels(options, handler) : getModelsFromCache(options, handler)
-		expect(result).toEqual(catalog)
+		if (caller === "catalog request") {
+			await expect(getModels(options, handler)).resolves.toEqual(catalog)
+		} else {
+			expect(getModelFromCache(options, handler, "vendor/model")).toEqual(catalog["vendor/model"])
+		}
 		expect(fetchModels).not.toHaveBeenCalled()
 	},
 )
@@ -93,15 +95,17 @@ it.each(["catalog request", "synchronous model metadata"] as const)(
 			await flushModels(opencodeOptions, handler)
 			fetchModels.mockClear().mockRejectedValue(new Error("Provider offline"))
 
-			const models =
-				caller === "catalog request"
-					? await getModels(opencodeOptions, handler)
-					: getModelsFromCache(opencodeOptions, handler)
-
-			expect(models).toEqual({
+			const corrected = {
 				...staleCatalog,
 				"deepseek-v4.1-flash": { ...staleCatalog["deepseek-v4.1-flash"], contextWindow: 1_000_000 },
-			})
+			}
+			if (caller === "catalog request") {
+				await expect(getModels(opencodeOptions, handler)).resolves.toEqual(corrected)
+			} else {
+				for (const [id, model] of Object.entries(corrected)) {
+					expect(getModelFromCache(opencodeOptions, handler, id)).toEqual(model)
+				}
+			}
 			expect(fetchModels).not.toHaveBeenCalled()
 		} finally {
 			await flushModels(opencodeOptions, handler)
@@ -194,7 +198,7 @@ it("keeps a catalog in default storage available after a custom path is set", as
 
 	await expect(getModels(options, handler)).resolves.toEqual(catalog)
 	await flushModels(options, handler)
-	expect(getModelsFromCache(options, handler)).toEqual(catalog)
+	expect(getModelFromCache(options, handler, "vendor/model")).toEqual(catalog["vendor/model"])
 	expect(fetchModels).not.toHaveBeenCalled()
 })
 
@@ -203,7 +207,7 @@ it("does not reuse a default storage miss after switching to a custom path", asy
 	await flushModels(options, handler)
 	const destination = customStoragePath
 	customStoragePath = ""
-	expect(getModelsFromCache(options, handler)).toBeUndefined()
+	expect(getModelFromCache(options, handler, "vendor/model")).toBeUndefined()
 	customStoragePath = destination
 	fetchModels.mockClear().mockRejectedValue(new Error("Provider offline"))
 
@@ -228,7 +232,9 @@ it("reopens the saved endpoint list for the requested model when its live list i
 	}
 	getEndpoints.mockResolvedValueOnce(endpoints)
 	await expect(getModelEndpoints(endpointOptions, handler)).resolves.toEqual(endpoints)
-	expect(await readdir(join(customStoragePath, "cache"))).toContain("openrouter_vendormodel_endpoints.json")
+	expect(await readdir(join(customStoragePath, "cache"))).toContainEqual(
+		expect.stringMatching(/^openrouter_[a-f0-9]{64}_endpoints\.json$/),
+	)
 
 	vi.useFakeTimers({ toFake: ["Date"] })
 	try {
@@ -253,32 +259,81 @@ it("reopens the saved endpoint list for the requested model when its live list i
 
 it("keeps retained endpoint lists scoped to the configured storage directory", async () => {
 	const { getModelEndpoints } = await import("../modelEndpointCache")
-	const getEndpoints = vi.mocked(getOpenRouterModelEndpoints).mockReset().mockResolvedValue({})
+	const getEndpoints = vi.mocked(getOpenRouterModelEndpoints).mockReset().mockResolvedValueOnce(endpoints)
 	const customPath = customStoragePath
-	const diskFile = "openrouter_vendorfallback-storage_endpoints.json"
 	const selection = {
 		router: providerIdentifiers.openrouter,
 		modelId: "vendor/fallback-storage",
 		endpoint: "test-endpoint",
 	} as const
 	const defaults = { "test-endpoint": { ...endpoints["test-endpoint"], maxTokens: 8192 } }
+	vi.useFakeTimers({ toFake: ["Date"] })
 	try {
-		for (const [directory, catalog] of [
-			[customPath, endpoints],
-			[storage.global, defaults],
-		] as const) {
-			await mkdir(join(directory, "cache"), { recursive: true })
-			await writeFile(join(directory, "cache", diskFile), JSON.stringify(catalog))
-		}
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
+		const diskFile = (await readdir(join(customPath, "cache"))).find((file) => file.endsWith("_endpoints.json"))
+		expect(diskFile).toBeDefined()
+		await mkdir(join(storage.global, "cache"), { recursive: true })
+		await writeFile(join(storage.global, "cache", diskFile!), JSON.stringify(defaults))
 
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
+		getEndpoints.mockResolvedValue({})
 		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
 		customStoragePath = ""
 		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(defaults)
 		customStoragePath = customPath
 		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
-		expect(getEndpoints).toHaveBeenCalledTimes(2)
+		expect(getEndpoints).toHaveBeenCalledTimes(3)
+	} finally {
+		vi.useRealTimers()
+		getEndpoints.mockReset()
+	}
+})
+
+it("recovers the correct endpoint catalogs for IDs that shared a legacy filename", async () => {
+	const { getModelEndpoints } = await import("../modelEndpointCache")
+	const first = { router: providerIdentifiers.openrouter, modelId: "vendor/collision", endpoint: "test-endpoint" }
+	const second = { ...first, modelId: "vendorc/ollision" }
+	const otherEndpoints = { "test-endpoint": { ...endpoints["test-endpoint"], contextWindow: 32768 } }
+	const getEndpoints = vi
+		.mocked(getOpenRouterModelEndpoints)
+		.mockReset()
+		.mockResolvedValueOnce(endpoints)
+		.mockResolvedValueOnce(otherEndpoints)
+		.mockResolvedValue({})
+	vi.useFakeTimers({ toFake: ["Date"] })
+	try {
+		await expect(getModelEndpoints(first, handler)).resolves.toEqual(endpoints)
+		await expect(getModelEndpoints(second, handler)).resolves.toEqual(otherEndpoints)
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
+		await expect(getModelEndpoints(first, handler)).resolves.toEqual(endpoints)
+		await expect(getModelEndpoints(second, handler)).resolves.toEqual(otherEndpoints)
 	} finally {
 		getEndpoints.mockReset()
+		vi.useRealTimers()
+	}
+})
+
+it("ignores malformed endpoint metadata and retries discovery", async () => {
+	const { getModelEndpoints } = await import("../modelEndpointCache")
+	const selection = { router: providerIdentifiers.openrouter, modelId: "vendor/malformed", endpoint: "test-endpoint" }
+	const getEndpoints = vi.mocked(getOpenRouterModelEndpoints).mockReset().mockResolvedValueOnce(endpoints)
+	const log = vi.spyOn(console, "error").mockImplementation(() => {})
+	vi.useFakeTimers({ toFake: ["Date"] })
+	try {
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
+		const diskFile = (await readdir(join(customStoragePath, "cache"))).find((file) =>
+			file.endsWith("_endpoints.json"),
+		)
+		expect(diskFile).toBeDefined()
+		await writeFile(join(customStoragePath, "cache", diskFile!), '{"test-endpoint":{"contextWindow":"invalid"}}')
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
+		getEndpoints.mockResolvedValueOnce({}).mockResolvedValueOnce(endpoints)
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual({})
+		await expect(getModelEndpoints(selection, handler)).resolves.toEqual(endpoints)
+		expect(log).toHaveBeenCalledOnce()
+	} finally {
+		getEndpoints.mockReset()
+		vi.useRealTimers()
 	}
 })
 

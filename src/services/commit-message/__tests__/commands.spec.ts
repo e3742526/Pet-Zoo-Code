@@ -1,6 +1,6 @@
 import type * as vscode from "vscode"
 
-import { ORGANIZATION_ALLOW_ALL } from "@roo-code/types"
+import { ORGANIZATION_ALLOW_ALL, providerIdentifiers } from "@roo-code/types"
 
 import { makeUri } from "../../../test-utils/vscode"
 import { createCommitMessageCommands } from "../commands"
@@ -121,6 +121,40 @@ it.each(["input", "index"])("keeps the commit input when the %s changes during g
 	expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining("changed"))
 	expect(showErrorMessage).not.toHaveBeenCalled()
 })
+
+it.each([DEFAULT_COMMIT_PROVIDER, "profile:removed-id"])(
+	"loads profiles by ID and tolerates a profile removed during a %s draft",
+	async (selection) => {
+		const target = repo()
+		setRepositories([target])
+		inspect.mockImplementation((key: string) => (key === "provider" ? { globalValue: selection } : undefined))
+		listConfig.mockResolvedValue([
+			{ id: "removed-id", name: "API", apiProvider: providerIdentifiers.anthropic },
+			{ id: "remaining-id", name: "Other", apiProvider: providerIdentifiers.openrouter },
+		])
+		const remainingProfile = { name: "Renamed", apiProvider: providerIdentifiers.openrouter }
+		getProfile.mockImplementation(async ({ id }: { id: string }) => {
+			if (id === "removed-id") throw new Error("Profile was removed")
+			return remainingProfile
+		})
+		const automatic = selection === DEFAULT_COMMIT_PROVIDER
+		vi.mocked(draftCommitMessage).mockResolvedValue(automatic ? message : undefined)
+
+		await commands.generateCommitMessage()
+
+		expect(getProfile.mock.calls).toEqual(
+			automatic ? [[{ id: "removed-id" }], [{ id: "remaining-id" }]] : [[{ id: "removed-id" }]],
+		)
+		expect(draftCommitMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				selection,
+				profiles: automatic ? [{ id: "remaining-id", settings: remainingProfile }] : [],
+			}),
+		)
+		expect(target.inputBox.value).toBe(automatic ? message : "")
+		expect(showErrorMessage).not.toHaveBeenCalled()
+	},
+)
 
 it("lets the user select and save Default over a legacy pin", async () => {
 	legacySettings.set("provider", "omlx")

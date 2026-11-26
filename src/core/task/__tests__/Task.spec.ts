@@ -799,6 +799,28 @@ describe("Cline", () => {
 			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", "Provider unavailable")
 		})
 
+		it("asks before replaying a tool call when the next stream read fails", async () => {
+			const task = createStreamingTask()
+			const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
+			const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
+			const attempt = vi.spyOn(task, "attemptApiRequest").mockImplementation(async function* () {
+				yield {
+					type: "tool_call",
+					id: "call_test",
+					name: "read_file",
+					arguments: JSON.stringify({ path: "README.md" }),
+				}
+				throw new Error("Provider closed the stream")
+			})
+
+			await task.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+			expect(getTaskTestAccess(task).presentAssistantMessageSafe).toHaveBeenCalledOnce()
+			expect(attempt).toHaveBeenCalledOnce()
+			expect(backoff).not.toHaveBeenCalled()
+			expect(ask).toHaveBeenCalledExactlyOnceWith("api_req_failed", "Provider closed the stream")
+		})
+
 		const quotaError = () => new ProviderQuotaExhaustedError("Subscription quota exhausted")
 
 		it.each([
@@ -850,6 +872,7 @@ describe("Cline", () => {
 					museCodeQuotaFallbackProfileId: "alternate-id",
 					museCodeQuotaFallbackAfterPartialReply: partialReply,
 				})
+				if (partialReply) vi.mocked(getTaskTestAccess(task).presentAssistantMessageSafe).mockRestore()
 				const ask = vi.spyOn(task, "ask").mockResolvedValue({ response: "noButtonClicked" })
 				const backoff = vi.spyOn(getTaskTestAccess(task), "backoffAndAnnounce").mockResolvedValue(undefined)
 				const activateProfile = vi.spyOn(mockProvider, "activateProviderProfile")
@@ -878,6 +901,16 @@ describe("Cline", () => {
 				expect(fallback).toHaveBeenCalledOnce()
 				expect(fallback.mock.calls[0]?.[1]).toEqual(primary.mock.calls[0]?.[1])
 				expect(task.apiConversationHistory.filter(({ role }) => role === "user")).toHaveLength(1)
+				const primaryRequest = task.clineMessages.find(({ say }) => say === "api_req_started")
+				expect(JSON.parse(primaryRequest?.text ?? "{}")).toMatchObject({
+					tokensIn: 10,
+					cancelReason: "streaming_failed",
+				})
+				if (partialReply) {
+					expect(task.clineMessages).toEqual(
+						expect.arrayContaining([expect.objectContaining({ say: "text", text: "partial answer" })]),
+					)
+				}
 				expect(task.taskApiConfigName).toBe("Backup")
 				expect(task.apiConfiguration.apiProvider).toBe(providerIdentifiers.anthropic)
 				expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("common:api.quotaFallback")

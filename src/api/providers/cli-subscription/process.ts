@@ -3,6 +3,8 @@ import { StringDecoder } from "string_decoder"
 
 /** Largest stdout line kept in memory. A longer line means the stream is not the expected JSONL. */
 const MAX_LINE_BYTES = 64 * 1024 * 1024
+/** Pause stdout between chunks when the consumer cannot keep up. */
+const MAX_QUEUED_EVENTS = 128
 /** Amount of stderr kept for diagnostics. */
 const MAX_STDERR_CHARS = 16 * 1024
 /** Time between SIGTERM and SIGKILL when a CLI does not stop. */
@@ -92,6 +94,7 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 	const queue: CliProcessItem[] = []
 	let failure: CliProcessError | undefined
 	let exited = false
+	let stdoutPaused = false
 	let waiter: Waiter | undefined
 	const wake = () => {
 		const current = waiter
@@ -102,6 +105,7 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 	let stderr = ""
 	const nonJsonLines: string[] = []
 	let partialLine = ""
+	let lineBytes = 0
 	const decoder = new StringDecoder("utf8")
 
 	const signalTree = (signal: NodeJS.Signals) => {
@@ -115,13 +119,16 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 			// The process already exited.
 		}
 	}
+	let terminationTimer: NodeJS.Timeout | undefined
 	const terminate = () => {
-		if (exited) return
+		if (exited || terminationTimer) return
 		signalTree("SIGTERM")
-		const timer = setTimeout(() => {
+		terminationTimer = setTimeout(() => {
 			if (!exited) signalTree("SIGKILL")
 		}, KILL_GRACE_MS)
-		timer.unref?.()
+		terminationTimer.unref()
+		// Drain and discard pipe data so a paused stdout does not delay close.
+		if (stdoutPaused) child.stdout?.resume()
 	}
 	const fail = (error: CliProcessError) => {
 		if (!failure) failure = error
@@ -130,9 +137,13 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 	}
 
 	let inactivityTimer: NodeJS.Timeout | undefined
-	const resetWatchdog = () => {
-		if (options.inactivityTimeoutMs <= 0) return
+	const clearWatchdog = () => {
 		if (inactivityTimer) clearTimeout(inactivityTimer)
+		inactivityTimer = undefined
+	}
+	const resetWatchdog = () => {
+		clearWatchdog()
+		if (options.inactivityTimeoutMs <= 0 || exited || stdoutPaused || terminationTimer) return
 		inactivityTimer = setTimeout(() => {
 			fail(
 				new CliProcessError(
@@ -158,17 +169,32 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 	options.signal?.addEventListener("abort", onAbort, { once: true })
 
 	child.stdout?.on("data", (chunk: Buffer) => {
+		if (failure || terminationTimer) return
 		resetWatchdog()
-		partialLine += decoder.write(chunk)
-		let newline = partialLine.indexOf("\n")
-		while (newline !== -1) {
-			handleLine(partialLine.slice(0, newline))
-			partialLine = partialLine.slice(newline + 1)
-			newline = partialLine.indexOf("\n")
-		}
-		if (partialLine.length > MAX_LINE_BYTES) {
+		let start = 0
+		while (start < chunk.length) {
+			const newline = chunk.indexOf(0x0a, start)
+			const end = newline === -1 ? chunk.length : newline
+			lineBytes += end - start
+			if (lineBytes > MAX_LINE_BYTES) {
+				partialLine = ""
+				fail(new CliProcessError(`${options.label} wrote an output line that was too long.`, "output"))
+				return
+			}
+			const segment = chunk.subarray(start, end)
+			if (newline === -1) {
+				partialLine += decoder.write(segment)
+				break
+			}
+			handleLine(partialLine + decoder.end(segment))
 			partialLine = ""
-			fail(new CliProcessError(`${options.label} wrote an output line that was too long.`, "output"))
+			lineBytes = 0
+			start = newline + 1
+		}
+		if (queue.length >= MAX_QUEUED_EVENTS) {
+			stdoutPaused = true
+			child.stdout?.pause()
+			clearWatchdog()
 		}
 		wake()
 	})
@@ -181,11 +207,13 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 	})
 	child.on("close", (exitCode, signal) => {
 		exited = true
+		clearWatchdog()
+		if (terminationTimer) clearTimeout(terminationTimer)
 		partialLine += decoder.end()
-		if (partialLine) {
+		if (!failure && partialLine && !terminationTimer) {
 			handleLine(partialLine)
-			partialLine = ""
 		}
+		partialLine = ""
 		queue.push({ type: "exit", exitCode, signal, stderr, nonJsonLines })
 		wake()
 	})
@@ -209,11 +237,16 @@ export async function* runJsonlProcess(options: CliProcessOptions): AsyncGenerat
 			}
 			await new Promise<void>((resolve) => {
 				waiter = resolve
+				if (stdoutPaused) {
+					stdoutPaused = false
+					child.stdout?.resume()
+					resetWatchdog()
+				}
 			})
 		}
 	} finally {
 		options.signal?.removeEventListener("abort", onAbort)
-		if (inactivityTimer) clearTimeout(inactivityTimer)
+		clearWatchdog()
 		terminate()
 	}
 }

@@ -17,6 +17,24 @@ it("masks secret-shaped staged lines before encoding them as prompt data", () =>
 })
 
 it.each([
+	{ line: String.raw`"password": "fake-first\"fake-last with spaces"`, secret: "fake-last" },
+	{ line: String.raw`SECRET='fake-first\'fake-last with spaces'`, secret: "fake-last" },
+	{ line: 'PASSWORD="fake-first fake-last', secret: "fake-last" },
+	{ line: "Authorization: Basic ZmFrZS1jcmVkZW50aWFscw==", secret: "ZmFrZS1jcmVkZW50aWFscw" },
+	{ line: "https://fake-userinfo@example.invalid/file", secret: "fake-userinfo" },
+])("masks $secret in patch input and generated output", ({ line, secret }) => {
+	const prompt = buildCommitMessagePrompt(`+${line}\n+A regular change`)
+	expect(prompt).toContain("[REDACTED]")
+	expect(prompt).not.toContain(secret)
+	expect(prompt).toContain("+A regular change")
+
+	const draft = getCommitMessage(`fix: update settings\n\n${line}\nKeep this line.`)
+	expect(draft).toContain("[REDACTED]")
+	expect(draft).not.toContain(secret)
+	expect(draft).toContain("Keep this line.")
+})
+
+it.each([
 	"",
 	"```text\nfix: update settings\n```",
 	"Here is the commit message:\n\nfix: update settings",

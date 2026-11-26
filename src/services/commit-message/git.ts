@@ -25,8 +25,15 @@ export async function prepareCommitIndex(
 	signal: AbortSignal,
 ): Promise<CommitIndexStatus> {
 	const options = { cwd, signal, timeout: GIT_TIMEOUT_MS, windowsHide: true }
-	const { stdout } = await execGit(git, ["status", "--porcelain=v1", "--untracked-files=normal"], options)
-	const states = [...stdout.matchAll(/^(.{2}) /gm)].map(([, state]) => state)
+	const { stdout } = await execGit(
+		git,
+		["status", "--porcelain=v1", "-z", "--no-renames", "--ignore-submodules=dirty", "--untracked-files=normal"],
+		options,
+	)
+	const states = stdout
+		.split("\0")
+		.filter(Boolean)
+		.map((entry) => entry.slice(0, 2))
 	if (states.length === 0) return "clean"
 	if (states.some((state) => CONFLICT_STATES.has(state))) return "conflicts"
 
@@ -47,12 +54,27 @@ export function readStagedCommitDiff(
 	signal: AbortSignal,
 ): Promise<{ patch: string; fingerprint: string }> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(git, ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color", "--unified=3"], {
-			cwd,
-			signal: AbortSignal.any([signal, AbortSignal.timeout(GIT_TIMEOUT_MS)]),
-			stdio: ["ignore", "pipe", "ignore"],
-			windowsHide: true,
-		})
+		const child = spawn(
+			git,
+			[
+				"diff",
+				"--cached",
+				"--ita-invisible-in-index",
+				"--full-index",
+				"--no-ext-diff",
+				"--no-textconv",
+				"--no-color",
+				"--unified=3",
+				"--submodule=short",
+				"--ignore-submodules=dirty",
+			],
+			{
+				cwd,
+				signal: AbortSignal.any([signal, AbortSignal.timeout(GIT_TIMEOUT_MS)]),
+				stdio: ["ignore", "pipe", "ignore"],
+				windowsHide: true,
+			},
+		)
 		const buffer = Buffer.alloc(DIFF_LIMIT)
 		let bytes = 0
 		const hash = createHash("sha256")

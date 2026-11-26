@@ -40,6 +40,100 @@ describe("Task.ask queued message drain", () => {
 		})
 	}
 
+	it.each([false, true])("retains messages until an ask accepts them with editing set to %s", async (editing) => {
+		const task = await createTask()
+		const queue = task.messageQueueService
+		const first = queue.addMessage("same text")!
+		const second = queue.addMessage("same text")!
+		const edit = editing ? queue.beginEdit(first.id) : undefined
+		const segments = [{ text: "same text", source: "user" as const }]
+		task.processQueuedMessages()
+		task.processQueuedMessages()
+		if (edit) queue.commitEdit(first.id, edit, first.text, ["image"], segments)
+		task.processQueuedMessages()
+		expect(queue.messages.map(({ id }) => id)).toEqual([first.id, second.id])
+		await expect(task.ask("followup", "First?", false)).resolves.toMatchObject({
+			text: "same text",
+			images: editing ? ["image"] : undefined,
+			segments: editing ? segments : undefined,
+		})
+		expect(queue.messages.map(({ id }) => id)).toEqual([second.id])
+		await expect(task.ask("followup", "Second?", false)).resolves.toMatchObject({ text: "same text" })
+		expect(queue.isEmpty()).toBe(true)
+	})
+
+	it("keeps an edited message for the next ask when a manual reply wins", async () => {
+		const task = await createTask()
+		const queue = task.messageQueueService
+		const queued = queue.addMessage("original")!
+		const edit = queue.beginEdit(queued.id)!
+		vi.useFakeTimers()
+		try {
+			const first = task.ask("followup", "First?", false)
+			await vi.advanceTimersByTimeAsync(0)
+			task.handleWebviewAskResponse("messageResponse", "manual")
+			queue.commitEdit(queued.id, edit, "edited")
+			task.processQueuedMessages()
+			await vi.advanceTimersByTimeAsync(100)
+			await expect(first).resolves.toMatchObject({ text: "manual" })
+			expect(queue.messages).toMatchObject([{ id: queued.id, text: "edited" }])
+			await expect(task.ask("followup", "Second?", false)).resolves.toMatchObject({ text: "edited" })
+			expect(queue.isEmpty()).toBe(true)
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
+	it("releases an unaccepted claim when posting the ask fails", async () => {
+		const task = await createTask()
+		const queued = task.messageQueueService.addMessage("retain me")!
+		vi.mocked(task["addToClineMessages"]).mockRejectedValueOnce(new Error("post failed"))
+		await expect(task.ask("followup", "Will fail", false)).rejects.toThrow("post failed")
+		expect(task.messageQueueService.claimNextMessage()?.id).toBe(queued.id)
+	})
+
+	it("preserves order when an ask with an unaccepted answer is replaced in the same millisecond", async () => {
+		const task = await createTask()
+		const queue = task.messageQueueService
+		vi.useFakeTimers()
+		try {
+			const original = task.ask("followup", "Original?", false)
+			const originalOutcome = expect(original).rejects.toThrow("superseded")
+			await vi.advanceTimersByTimeAsync(0)
+			queue.addMessage("first")
+			const second = queue.addMessage("second")!
+			task.processQueuedMessages()
+			const replacement = task.ask("followup", "Replacement?", false)
+			await vi.advanceTimersByTimeAsync(100)
+			await originalOutcome
+			await expect(replacement).resolves.toMatchObject({ text: "first" })
+			expect(queue.messages.map(({ id }) => id)).toEqual([second.id])
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
+	it("releases a command claim when a manual answer arrives during a stalled policy read", async () => {
+		const getState = vi
+			.fn<() => Promise<Record<string, boolean>>>()
+			.mockResolvedValueOnce({})
+			.mockImplementationOnce(() => new Promise(() => {}))
+		const task = await createTask({ getState })
+		const queued = task.messageQueueService.addMessage("keep the command feedback")!
+		vi.useFakeTimers()
+		try {
+			const ask = task.ask("command", "npm test", false)
+			await vi.advanceTimersByTimeAsync(0)
+			expect(getState).toHaveBeenCalledTimes(2)
+			task.denyAsk()
+			await vi.advanceTimersByTimeAsync(200)
+			await expect(ask).resolves.toMatchObject({ response: "noButtonClicked" })
+			expect(task.messageQueueService.claimNextMessage()?.id).toBe(queued.id)
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
 	it("consumes queued message while blocked on followup ask", async () => {
 		const task = await createTask()
 

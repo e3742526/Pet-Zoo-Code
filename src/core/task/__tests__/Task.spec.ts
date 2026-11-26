@@ -1230,6 +1230,47 @@ describe("Cline", () => {
 			}
 		})
 
+		it("stops a turn after an unpaired dispatch failure without replaying the handler", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "read a file",
+				startTask: false,
+			})
+			vi.spyOn(task.diffViewProvider, "reset").mockResolvedValue(undefined)
+			vi.spyOn(getTaskTestAccess(task), "safeEnsureModelFetched").mockResolvedValue(stubModelInfo)
+			const handler = vi.spyOn(readFileTool, "handle").mockImplementation(async (_task, block) => {
+				if (!block.partial) throw new Error("dispatch outcome unknown")
+			})
+			const say = vi.spyOn(task, "say")
+			const attempt = vi.spyOn(task, "attemptApiRequest").mockImplementation(() => {
+				getTaskTestAccess(task).requestPolicySnapshot = {
+					disabledTools: [],
+					customModes: [],
+					modelInfo: stubModelInfo,
+				}
+				return asyncStreamFrom<ApiStreamChunk>([
+					{ type: "tool_call_partial", index: 0, id: "call_failing_tool", name: "read_file" },
+					{ type: "tool_call_partial", index: 0, arguments: '{"path":"README.md"}' },
+					{ type: "text", text: "after the tool" },
+				])
+			})
+			const { default: realWait } = await vi.importActual<typeof import("p-wait-for")>("p-wait-for")
+			vi.mocked(pWaitFor).mockImplementation((condition) => realWait(condition, { interval: 1, timeout: 1_000 }))
+			try {
+				await expect(task.recursivelyMakeClineRequests([{ type: "text", text: "read a file" }])).resolves.toBe(
+					false,
+				)
+				expect(handler.mock.calls.filter(([, block]) => !block.partial)).toHaveLength(1)
+				expect(attempt).toHaveBeenCalledOnce()
+				expect(say).toHaveBeenCalledWith("error", expect.any(String))
+				expect(task.dispatchState).toBe(DispatchState.IDLE)
+			} finally {
+				vi.mocked(pWaitFor).mockImplementation(async () => {})
+				handler.mockRestore()
+			}
+		})
+
 		it("waits for a running tool handler even when its result is already pushed", async () => {
 			const task = new Task({
 				provider: mockProvider,
@@ -8681,250 +8722,27 @@ describe("Queued message processing after condense", () => {
 		apiKey: "test-api-key",
 	}
 
-	it("processes queued message after condense completes", async () => {
-		const provider = createProvider()
+	it("keeps the full queued payload until a follow-up after condense", async () => {
 		const task = new Task({
-			provider,
+			provider: createProvider(),
 			apiConfiguration: apiConfig,
 			task: "initial task",
 			startTask: false,
 		})
-
-		// Make condense fast + deterministic
 		vi.spyOn(getTaskTestAccess(task), "getSystemPrompt").mockResolvedValue("system")
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
+		const segments = [{ text: "@/queued", source: "user" as const }]
+		const queued = task.messageQueueService.addMessage("@/queued", ["img1.png"], segments)
 
-		// Queue a message during condensing
-		task.messageQueueService.addMessage("queued text", ["img1.png"], [{ text: "queued text", source: "user" }])
-
-		// Use fake timers to capture setTimeout(0) in processQueuedMessages
-		vi.useFakeTimers()
 		await task.condenseContext()
-
-		// Flush the microtask that submits the queued message
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy).toHaveBeenCalledWith("queued text", ["img1.png"], undefined, undefined, [
-			{ text: "queued text", source: "user" },
-		])
+		task.processQueuedMessages()
+		expect(task.messageQueueService.messages).toEqual([queued])
+		await expect(task.ask("followup", "Continue?", false)).resolves.toMatchObject({
+			response: "messageResponse",
+			text: "@/queued",
+			images: ["img1.png"],
+			segments,
+		})
 		expect(task.messageQueueService.isEmpty()).toBe(true)
-	})
-
-	it("retries a drain that an edit blocked, once the edit commits", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-		const id = queue.addMessage("old")!.id
-		const token = queue.beginEdit(id)!
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		vi.runAllTimers()
-		expect(submitSpy).not.toHaveBeenCalled()
-
-		queue.commitEdit(id, token, "edited", ["data:b"], [{ text: "edited", source: "user" }])
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy).toHaveBeenCalledWith("edited", ["data:b"], undefined, undefined, [
-			{ text: "edited", source: "user" },
-		])
-		expect(queue.isEmpty()).toBe(true)
-	})
-
-	it("retries each drain that edits blocked, one per held message", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-		const first = queue.addMessage("one")!.id
-		const second = queue.addMessage("two")!.id
-		const tokens = [queue.beginEdit(first)!, queue.beginEdit(second)!]
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		task.processQueuedMessages()
-		queue.commitEdit(first, tokens[0], "one edited")
-		queue.commitEdit(second, tokens[1], "two edited")
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy.mock.calls.map((call) => call[0])).toEqual(["one edited", "two edited"])
-		expect(queue.isEmpty()).toBe(true)
-	})
-
-	it("does not let a surplus blocked drain send a message that arrived later", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-		const id = queue.addMessage("old")!.id
-		const token = queue.beginEdit(id)!
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		task.processQueuedMessages()
-		queue.addMessage("later")
-		queue.commitEdit(id, token, "edited")
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy.mock.calls.map((call) => call[0])).toEqual(["edited"])
-		expect(queue.messages.map((m) => m.text)).toEqual(["later"])
-	})
-
-	it("serves a blocked drain when the first of two held messages commits", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-		const a = queue.addMessage("a")!.id
-		const b = queue.addMessage("b")!.id
-		const tokenA = queue.beginEdit(a)!
-		queue.beginEdit(b)
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		queue.commitEdit(a, tokenA, "a edited")
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy.mock.calls.map((call) => call[0])).toEqual(["a edited"])
-	})
-
-	it("keeps a blocked drain when one of its held messages is removed, then serves it", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-		const a = queue.addMessage("a")!.id
-		const b = queue.addMessage("b")!.id
-		const tokenA = queue.beginEdit(a)!
-		queue.beginEdit(b)
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		queue.removeMessage(b)
-		vi.runAllTimers()
-		expect(submitSpy).not.toHaveBeenCalled()
-
-		queue.commitEdit(a, tokenA, "a edited")
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy.mock.calls.map((call) => call[0])).toEqual(["a edited"])
-	})
-
-	it("sends the edited message, not a consumer's released message, for a blocked drain", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-		queue.addMessage("x")
-		const x = queue.claimNextMessage()!
-		const a = queue.addMessage("a")!.id
-		const token = queue.beginEdit(a)!
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		queue.releaseMessage(x.id)
-		queue.commitEdit(a, token, "a edited")
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy.mock.calls.map((call) => call[0])).toEqual(["a edited"])
-		expect(queue.messages.map((m) => m.text)).toEqual(["x"])
-	})
-
-	it("does not retry a drain that no edit blocked", async () => {
-		const task = new Task({
-			provider: createProvider(),
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
-		const queue = task.messageQueueService
-
-		vi.useFakeTimers()
-		task.processQueuedMessages()
-		queue.addMessage("later")
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(submitSpy).not.toHaveBeenCalled()
-	})
-
-	it("does not cross-drain queues between separate tasks", async () => {
-		const providerA = createProvider()
-		const providerB = createProvider()
-
-		const taskA = new Task({
-			provider: providerA,
-			apiConfiguration: apiConfig,
-			task: "task A",
-			startTask: false,
-		})
-		const taskB = new Task({
-			provider: providerB,
-			apiConfiguration: apiConfig,
-			task: "task B",
-			startTask: false,
-		})
-
-		vi.spyOn(getTaskTestAccess(taskA), "getSystemPrompt").mockResolvedValue("system")
-		vi.spyOn(getTaskTestAccess(taskB), "getSystemPrompt").mockResolvedValue("system")
-
-		const spyA = vi.spyOn(taskA, "submitUserMessage").mockResolvedValue(undefined)
-		const spyB = vi.spyOn(taskB, "submitUserMessage").mockResolvedValue(undefined)
-
-		taskA.messageQueueService.addMessage("A message")
-		taskB.messageQueueService.addMessage("B message")
-
-		// Condense in task A should only drain A's queue
-		vi.useFakeTimers()
-		await taskA.condenseContext()
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(spyA).toHaveBeenCalledWith("A message", undefined, undefined, undefined, undefined)
-		expect(spyB).not.toHaveBeenCalled()
-		expect(taskB.messageQueueService.isEmpty()).toBe(false)
-
-		// Now condense in task B should drain B's queue
-		vi.useFakeTimers()
-		await taskB.condenseContext()
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(spyB).toHaveBeenCalledWith("B message", undefined, undefined, undefined, undefined)
-		expect(taskB.messageQueueService.isEmpty()).toBe(true)
 	})
 })
 

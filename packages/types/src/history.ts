@@ -48,6 +48,9 @@ export const historyItemSchema = z.object({
 	delegatedToId: z.string().optional(), // Last child this parent delegated to
 	childIds: z.array(z.string()).optional(), // All children spawned by this task
 	awaitingChildId: z.string().optional(), // Child currently awaited (set when delegated)
+	awaitedToolUseId: z.string().optional(), // Tool call that created the current delegation
+	attemptGeneration: z.number().int().nonnegative().optional(),
+	detachedFromParentId: z.string().optional(), // Parent whose handoff this child no longer owns
 	completedByChildId: z.string().optional(), // Child that completed and resumed this parent
 	completionResultSummary: z.string().optional(), // Summary from completed child
 	pendingAction: pendingTaskActionSchema.optional(),

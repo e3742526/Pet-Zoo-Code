@@ -40,25 +40,27 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 
 // Mock persistence BEFORE importing provider
-vi.mock("../core/task-persistence/taskMessages", () => ({
+vi.mock("../core/task-persistence/taskMessages", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../core/task-persistence/taskMessages")>()),
 	readTaskMessages: vi.fn().mockResolvedValue([]),
+	saveTaskMessages: vi.fn(async ({ messages }: { messages: ClineMessage[] }) => messages),
 }))
-vi.mock("../core/task-persistence", async (importOriginal) => {
-	const real = await importOriginal<typeof import("../core/task-persistence")>()
-	return {
-		...real,
-		readApiMessages: vi.fn().mockResolvedValue([]),
-		saveApiMessages: vi.fn(async ({ messages }: { messages: unknown[] }) => messages),
-		saveTaskMessages: vi.fn(async ({ messages }: { messages: unknown[] }) => messages),
-	}
-})
+vi.mock("../core/task-persistence/apiMessages", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../core/task-persistence/apiMessages")>()),
+	readApiMessages: vi.fn().mockResolvedValue([]),
+	saveApiMessages: vi.fn(async ({ messages }: { messages: ApiMessage[] }) => messages),
+}))
 
 import { ClineProvider } from "../core/webview/ClineProvider"
-import { readTaskMessages } from "../core/task-persistence/taskMessages"
-import { readApiMessages, saveApiMessages, saveTaskMessages } from "../core/task-persistence"
+import { readTaskMessages, saveTaskMessages } from "../core/task-persistence/taskMessages"
+import { readApiMessages, saveApiMessages } from "../core/task-persistence/apiMessages"
+import type { TaskHistoryStore } from "../core/task-persistence/TaskHistoryStore"
+import { HistoryOwnershipError } from "../core/task-persistence/taskStoreConcurrency"
 import { makeProviderStub } from "./helpers/provider-stub"
 import type { ToolUse } from "../shared/tools"
 import type { AttemptCompletionCallbacks } from "../core/tools/AttemptCompletionTool"
+
+type PairOptions = Parameters<TaskHistoryStore["atomicUpdatePair"]>[4]
 
 function firstContentBlock(message: ApiMessage) {
 	if (!Array.isArray(message.content) || message.content.length === 0) {
@@ -87,9 +89,12 @@ function makeTaskHistoryStoreStub<Child extends { id: string }, Parent extends {
 			secondId: string,
 			firstUpdater: (h: HistoryItem) => HistoryItem,
 			secondUpdater: (h: HistoryItem) => HistoryItem,
+			options?: PairOptions,
 		) => {
 			itemMap.set(firstId, firstUpdater(itemMap.get(firstId) as HistoryItem))
-			itemMap.set(secondId, secondUpdater(itemMap.get(secondId) as HistoryItem))
+			const parent = itemMap.get(secondId) as HistoryItem
+			await options?.second?.beforeCommit?.(parent)
+			itemMap.set(secondId, secondUpdater(parent))
 			return []
 		},
 	)
@@ -113,11 +118,13 @@ function makeStatefulTaskHistoryStore(...items: HistoryItem[]) {
 				secondId: string,
 				firstUpdater: (item: HistoryItem) => HistoryItem,
 				secondUpdater: (item: HistoryItem) => HistoryItem,
+				options?: PairOptions,
 			) => {
 				const first = itemMap.get(firstId)
 				const second = itemMap.get(secondId)
 				if (!first || !second) throw new Error(`Missing history item for atomic pair: ${firstId}, ${secondId}`)
 				itemMap.set(firstId, firstUpdater(first))
+				await options?.second?.beforeCommit?.(second)
 				itemMap.set(secondId, secondUpdater(second))
 				return [itemMap.get(firstId), itemMap.get(secondId)]
 			},
@@ -182,7 +189,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 		expect(removeClineFromStack).not.toHaveBeenCalled()
 	})
 
-	it("rejects an ownership change detected inside the atomic child updater", async () => {
+	it("rejects an ownership change detected under the child record lock", async () => {
 		const parentHistoryItem = {
 			id: "parent-1",
 			status: "delegated",
@@ -202,12 +209,15 @@ describe("History resume delegation - parent metadata transitions", () => {
 		}
 		const childHistoryItem = { id: "child-1", status: "active", pendingAction: expectedAction }
 		const atomicUpdatePair = vi.fn(
-			async (_firstId: string, _secondId: string, firstUpdater: (item: HistoryItem) => HistoryItem) => {
-				firstUpdater({
-					...childHistoryItem,
-					pendingAction: { ...expectedAction, actionId: "replacement-action" },
-				} as unknown as HistoryItem)
-				return []
+			async (
+				_firstId: string,
+				_secondId: string,
+				_firstUpdater: unknown,
+				_secondUpdater: unknown,
+				options?: PairOptions,
+			) => {
+				expect(options?.first?.guard?.pendingActionId).toBe("finish-action")
+				throw new HistoryOwnershipError("child-1")
 			},
 		)
 		const taskHistoryStore = makeTaskHistoryStoreStub(childHistoryItem, parentHistoryItem, { atomicUpdatePair })
@@ -229,7 +239,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				completionResultSummary: "Done",
 				pendingActionId: "finish-action",
 			}),
-		).rejects.toThrow("Pending action mismatch for child child-1")
+		).resolves.toBe(false)
 
 		expect(atomicUpdatePair).toHaveBeenCalledTimes(1)
 		expect(createTaskWithHistoryItem).not.toHaveBeenCalled()
@@ -589,6 +599,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			id: "p-tool",
 			status: "delegated",
 			awaitingChildId: "c-tool",
+			awaitedToolUseId: "toolu_abc123",
 			childIds: [],
 			ts: 100,
 			task: "Parent with tool_use",
@@ -1552,8 +1563,8 @@ describe("History resume delegation - parent metadata transitions", () => {
 			}),
 		).rejects.toThrow(persistError)
 
-		// Child is closed before the atomic write (new ordering) — child closed, parent not reopened
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
+		// A failed ownership commit leaves the current child instance open.
+		expect(removeClineFromStack).not.toHaveBeenCalled()
 		expect(createTaskWithHistoryItem).not.toHaveBeenCalled()
 	})
 
@@ -1786,10 +1797,12 @@ describe("History resume delegation - parent metadata transitions", () => {
 					_sId: string,
 					fU: (h: HistoryItem) => HistoryItem,
 					sU: (h: HistoryItem) => HistoryItem,
+					options?: PairOptions,
 				) => {
 					// Child double provides id and status, the fields read by this updater.
 					fU(childItem as unknown as HistoryItem)
 					// Parent double provides id, status, delegation links, timestamp, task, token counts, and cost.
+					await options?.second?.beforeCommit?.(parentItem as unknown as HistoryItem)
 					sU(parentItem as unknown as HistoryItem)
 					return []
 				},
@@ -1912,9 +1925,11 @@ describe("History resume delegation - parent metadata transitions", () => {
 					_secondId: string,
 					firstUpdater: (h: HistoryItem) => HistoryItem,
 					secondUpdater: (h: HistoryItem) => HistoryItem,
+					options?: PairOptions,
 				) => {
 					// Both updaters must be applied atomically
 					capturedChildResult = firstUpdater(childItem as unknown as HistoryItem)
+					await options?.second?.beforeCommit?.(parentItem as unknown as HistoryItem)
 					capturedParentResult = secondUpdater(parentItem as unknown as HistoryItem)
 					return []
 				},
@@ -2022,9 +2037,13 @@ describe("History resume delegation - parent metadata transitions", () => {
 						_secondId: string,
 						firstUpdater: (h: HistoryItem) => HistoryItem,
 						secondUpdater: (h: HistoryItem) => HistoryItem,
+						options?: PairOptions,
 					) => {
-						Object.assign(childItem, firstUpdater(childItem))
-						Object.assign(parentItem, secondUpdater(parentItem))
+						const updatedChild = firstUpdater(childItem)
+						const updatedParent = secondUpdater(parentItem)
+						Object.assign(childItem, updatedChild)
+						await options?.second?.beforeCommit?.(parentItem)
+						Object.assign(parentItem, updatedParent)
 						return []
 					},
 				),
@@ -2037,6 +2056,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 				getTaskWithId,
 				emit: emitSpy,
+				emitDelegatedTaskCompleted: vi.fn(),
 				getCurrentTask: vi.fn(() => currentTask as unknown as Task | undefined),
 				removeClineFromStack,
 				createTaskWithHistoryItem,

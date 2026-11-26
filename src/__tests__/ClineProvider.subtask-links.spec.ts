@@ -4,17 +4,17 @@ import { clineMessageSchema, type ClineMessage, type HistoryItem } from "@roo-co
 vi.mock("../core/task-persistence/taskMessages", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../core/task-persistence/taskMessages")>()),
 	readTaskMessages: vi.fn(),
+	saveTaskMessages: vi.fn(async ({ messages }: { messages: ClineMessage[] }) => messages),
 }))
-vi.mock("../core/task-persistence", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../core/task-persistence")>()),
+vi.mock("../core/task-persistence/apiMessages", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../core/task-persistence/apiMessages")>()),
 	readApiMessages: vi.fn().mockResolvedValue([]),
 	saveApiMessages: vi.fn(async ({ messages }: { messages: unknown[] }) => messages),
-	saveTaskMessages: vi.fn(async ({ messages }: { messages: ClineMessage[] }) => messages),
 }))
 
 import { ClineProvider } from "../core/webview/ClineProvider"
-import { readTaskMessages } from "../core/task-persistence/taskMessages"
-import { saveTaskMessages } from "../core/task-persistence"
+import { readTaskMessages, saveTaskMessages } from "../core/task-persistence/taskMessages"
+import type { TaskHistoryStore } from "../core/task-persistence/TaskHistoryStore"
 import { makeProviderStub } from "./helpers/provider-stub"
 
 function newTask(ts: number, childTaskId?: string, content = "Do work"): ClineMessage {
@@ -51,9 +51,12 @@ function makeLinkProvider() {
 				secondId: string,
 				firstUpdate: (item: HistoryItem) => HistoryItem,
 				secondUpdate: (item: HistoryItem) => HistoryItem,
+				options?: Parameters<TaskHistoryStore["atomicUpdatePair"]>[4],
 			) => {
 				records.set(firstId, firstUpdate(records.get(firstId)!))
-				records.set(secondId, secondUpdate(records.get(secondId)!))
+				const parent = records.get(secondId)!
+				await options?.second?.beforeCommit?.(parent)
+				records.set(secondId, secondUpdate(parent))
 			},
 		),
 	}
@@ -223,11 +226,12 @@ describe("persisted subtask links", () => {
 				completionResultSummary: "Done",
 			})
 
-			const saved = vi.mocked(saveTaskMessages).mock.calls[0][0].messages
-			expect(saved).toHaveLength(previousChildId === "earlier-child" ? 2 : 1)
-			expect(saved.at(-1)).toMatchObject({ say: "subtask_result", childTaskId: "child" })
-			if (previousChildId === "earlier-child") expect(saved[0].childTaskId).toBe("earlier-child")
-			expect(reopenedParent.overwriteClineMessages).toHaveBeenCalledWith(saved, false)
+			const written = vi.mocked(saveTaskMessages).mock.calls[0]?.[0].messages
+			const hydrated = written ?? [previous]
+			expect(written?.length).toBe(previousChildId === "child" ? undefined : 2)
+			expect(hydrated.at(-1)).toMatchObject({ say: "subtask_result", childTaskId: "child" })
+			expect(hydrated[0].childTaskId).toBe(previousChildId)
+			expect(reopenedParent.overwriteClineMessages).toHaveBeenCalledWith(hydrated, false)
 		},
 	)
 

@@ -1131,7 +1131,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			}),
 		).rejects.toThrow("Invalid task status transition: interrupted → delegated")
 
-		expect(clearPendingActionIfMatching).toHaveBeenCalledWith("parent-1", pendingAction.actionId)
+		expect(clearPendingActionIfMatching).toHaveBeenCalledWith("parent-1", pendingAction.actionId, undefined)
 		expect(provider.deleteTaskWithId).toHaveBeenCalledWith("child-1", false)
 		expect(createTaskWithHistoryItem).not.toHaveBeenCalled()
 	})
@@ -1288,7 +1288,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			// history lock failed and was swallowed, and the settled parent
 			// was restored before the original rejection surfaced.
 			await expect(fs.access(childDir)).rejects.toMatchObject({ code: "ENOENT" })
-			expect(clearPendingActionIfMatching).toHaveBeenCalledWith("parent-1", "create-action")
+			expect(clearPendingActionIfMatching).toHaveBeenCalledWith("parent-1", "create-action", undefined)
 			expect(createTaskWithHistoryItem).toHaveBeenCalledWith(
 				expect.objectContaining({ status: "interrupted", pendingAction: undefined }),
 			)

@@ -111,7 +111,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 					message: unescapedMessage,
 					todos: todoItems,
 				}
-				await provider.setPendingTaskAction(task.taskId, pendingAction)
+				await provider.setPendingTaskAction(task.taskId, pendingAction, task.attemptGeneration)
 				task.setPendingTaskAction(pendingAction)
 			}
 
@@ -128,6 +128,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				initialTodos: todoItems,
 				mode,
 				...(pendingActionId && { pendingActionId }),
+				attemptGeneration: task.attemptGeneration,
 			})
 
 			// Reflect delegation in tool result (no pause/unpause, no wait)

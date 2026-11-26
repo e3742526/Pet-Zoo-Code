@@ -43,6 +43,9 @@ export interface SafeWriteJsonOptions {
 	 */
 	merge?: (existing: unknown, incoming: unknown) => unknown
 
+	/** Runs after merge validation, with the target lock held, before replacing the file. */
+	beforeReplace?: () => Promise<void>
+
 	/**
 	 * When provided, receives one event per replacement-protocol step (see
 	 * SafeWriteJsonTraceStage). Callers such as the task-message save use it
@@ -138,6 +141,8 @@ async function safeWriteJson(filePath: string, data: unknown, options?: SafeWrit
 			}
 			data = merged
 		}
+
+		await options?.beforeReplace?.()
 
 		// Step 1: Write data to a new temporary file and flush it to storage,
 		// making a best-effort flush before committing the replacement.

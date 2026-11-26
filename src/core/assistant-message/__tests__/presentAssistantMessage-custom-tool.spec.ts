@@ -367,8 +367,70 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 			await presentAssistantMessage(mockTask, baseSnapshot)
 
 			expect(mockTask.say).toHaveBeenCalledExactlyOnceWith("text", "first", undefined, false)
-			expect(mockTask.currentStreamingContentIndex).toBe(1)
+			expect(mockTask.currentStreamingContentIndex).toBe(0)
 			expect(mockTask.dispatchState).toBe(DispatchState.IDLE)
+		})
+
+		it("does not publish the old result or release the new owner's lock after a reset", async () => {
+			let finishOldTool!: (result: string) => void
+			let finishNewPass!: () => void
+			const oldResult = new Promise<string>((resolve) => {
+				finishOldTool = resolve
+			})
+			const newPass = new Promise<void>((resolve) => {
+				finishNewPass = resolve
+			})
+			const execute = vi.fn(() => oldResult)
+			vi.mocked(customToolRegistry.has).mockReturnValue(true)
+			vi.mocked(customToolRegistry.get).mockReturnValue({
+				name: "my_custom_tool",
+				description: "Custom tool",
+				execute,
+			})
+			mockTask.assistantMessageContent = [
+				{ type: "tool_use", id: "old-call", name: "my_custom_tool", params: {}, partial: false },
+			]
+			const old = presentAssistantMessage(mockTask, baseSnapshot)
+			await vi.waitFor(() => expect(execute).toHaveBeenCalledOnce())
+			mockTask.dispatchState = DispatchState.IDLE
+			mockTask.dispatchOwner = undefined
+			mockTask.assistantMessageContent = [{ type: "text", content: "new turn", partial: false }]
+			mockTask.say.mockReturnValueOnce(newPass)
+			const current = presentAssistantMessage(mockTask, baseSnapshot)
+			finishOldTool("old result")
+			await old
+			expect(mockTask.dispatchState).toBe(DispatchState.SERIAL)
+			expect(mockTask.currentStreamingContentIndex).toBe(0)
+			expect(mockTask.pushToolResultToUserContent).not.toHaveBeenCalled()
+			finishNewPass()
+			await current
+			expect(mockTask.dispatchState).toBe(DispatchState.IDLE)
+			expect(mockTask.currentStreamingContentIndex).toBe(1)
+		})
+
+		it("pairs a definite pre-dispatch failure with the tool call", async () => {
+			const handle = vi.spyOn(readFileTool, "handle")
+			mockTask.assistantMessageContent = [
+				{
+					type: "tool_use",
+					id: "failed-call",
+					name: "read_file",
+					nativeArgs: { path: "README.md" },
+					params: { path: "README.md" },
+					partial: false,
+				},
+			]
+			mockTask.getTaskMode.mockRejectedValueOnce(new Error("task mode unavailable"))
+			await presentAssistantMessage(mockTask, baseSnapshot)
+			expect(mockTask.pushToolResultToUserContent).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					tool_use_id: "failed-call",
+					is_error: true,
+					content: expect.stringContaining("task mode unavailable"),
+				}),
+			)
+			expect(handle).not.toHaveBeenCalled()
+			handle.mockRestore()
 		})
 
 		it("returns to IDLE when a later block throws", async () => {

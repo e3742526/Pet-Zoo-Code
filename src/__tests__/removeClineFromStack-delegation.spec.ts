@@ -275,11 +275,13 @@ describe("ClineProvider.markDelegatedChildInterrupted() — live eviction path",
 		await privateClineProvider.markDelegatedChildInterrupted.call(provider, {
 			childTaskId,
 			parentTaskId,
+			attemptGeneration: 0,
 		})
 
 		// Child must be marked interrupted
 		expect(updateTaskHistory).toHaveBeenCalledWith(
 			expect.objectContaining({ id: childTaskId, status: "interrupted" }),
+			{ guard: { attemptGeneration: 0, parentLink: parentTaskId, status: "active" } },
 		)
 		// Parent must NOT be touched at all — stays delegated
 		expect(updateTaskHistory).not.toHaveBeenCalledWith(expect.objectContaining({ id: parentTaskId }))
@@ -318,6 +320,7 @@ describe("ClineProvider.markDelegatedChildInterrupted() — live eviction path",
 		await privateClineProvider.markDelegatedChildInterrupted.call(provider, {
 			childTaskId,
 			parentTaskId,
+			attemptGeneration: 0,
 		})
 
 		expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -350,6 +353,7 @@ describe("ClineProvider.markDelegatedChildInterrupted() — live eviction path",
 		await privateClineProvider.markDelegatedChildInterrupted.call(provider, {
 			childTaskId,
 			parentTaskId,
+			attemptGeneration: 0,
 		})
 
 		expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -404,6 +408,7 @@ describe("ClineProvider.markDelegatedChildInterrupted() — live eviction path",
 		await privateClineProvider.markDelegatedChildInterrupted.call(provider, {
 			childTaskId,
 			parentTaskId,
+			attemptGeneration: 0,
 		})
 
 		// Since the in-lock store check returns "interrupted", the code skips updateTaskHistory
@@ -432,6 +437,7 @@ describe("ClineProvider.markDelegatedChildInterrupted() — live eviction path",
 			privateClineProvider.markDelegatedChildInterrupted.call(provider, {
 				childTaskId,
 				parentTaskId,
+				attemptGeneration: 0,
 			}),
 		).resolves.not.toThrow()
 
@@ -550,11 +556,13 @@ describe("createTaskWithHistoryItem() navigation — does not mutate delegation 
 		await privateClineProvider.markDelegatedChildInterrupted.call(provider, {
 			childTaskId,
 			parentTaskId,
+			attemptGeneration: 0,
 		})
 
 		// Child becomes interrupted
 		expect(updateTaskHistory).toHaveBeenCalledWith(
 			expect.objectContaining({ id: childTaskId, status: "interrupted" }),
+			{ guard: { attemptGeneration: 0, parentLink: parentTaskId, status: "active" } },
 		)
 		// Parent stays delegated — awaitingChildId preserved
 		expect(updateTaskHistory).not.toHaveBeenCalledWith(
@@ -594,7 +602,7 @@ describe("ClineProvider.evictCurrentTask() — active delegated child path", () 
 		await privateClineProvider.evictCurrentTask.call(provider)
 
 		expect(provider["taskRegistry"].length).toBe(0)
-		expect(markDelegatedChildInterrupted).toHaveBeenCalledWith({ childTaskId, parentTaskId })
+		expect(markDelegatedChildInterrupted).toHaveBeenCalledWith({ childTaskId, parentTaskId, attemptGeneration: 0 })
 	})
 
 	it("does not call markDelegatedChildInterrupted when there is no current task", async () => {

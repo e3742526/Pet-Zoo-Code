@@ -23,6 +23,7 @@ export async function presentMcpToolUse(
 	cline: Task,
 	mcpBlock: McpToolUse,
 	policySnapshot: RequestPolicySnapshot,
+	isCurrent: () => boolean,
 ): Promise<void> {
 	if (cline.didRejectTool) {
 		// For native protocol, we must send a tool_result for every tool_use to avoid API errors
@@ -53,6 +54,7 @@ export async function presentMcpToolUse(
 	let approvalFeedback: { text: string; images?: string[] } | undefined
 
 	const pushToolResult = (content: ToolResponse, _feedbackImages?: string[]) => {
+		if (!isCurrent()) return
 		if (hasToolResult) {
 			console.warn(`[presentAssistantMessage] Skipping duplicate tool_result for mcp_tool_use: ${toolCallId}`)
 			return
@@ -105,6 +107,7 @@ export async function presentMcpToolUse(
 		isProtected?: boolean,
 		autoApprovalContext?: AutoApprovalContext,
 	) => {
+		if (!isCurrent()) return false
 		const { response, text, images, autoDenyDetail } = await cline.ask(
 			type,
 			partialMessage,
@@ -113,6 +116,7 @@ export async function presentMcpToolUse(
 			isProtected || false,
 			autoApprovalContext,
 		)
+		if (!isCurrent()) return false
 
 		if (response !== "yesButtonClicked") {
 			// Automatic (policy) denial: scoped to this tool call, so no
@@ -139,6 +143,7 @@ export async function presentMcpToolUse(
 
 			if (text) {
 				await cline.say("user_feedback", text, images)
+				if (!isCurrent()) return false
 				pushToolResult(formatResponse.toolResult(formatResponse.toolDeniedWithFeedback(text), images))
 			} else {
 				pushToolResult(formatResponse.toolDenied())
@@ -155,13 +160,13 @@ export async function presentMcpToolUse(
 			approvalFeedback = { text, images }
 		}
 
-		return true
+		return isCurrent()
 	}
 
 	const handleError = async (action: string, error: Error) => {
 		// Silently ignore AskIgnoredError - this is an internal control flow
 		// signal, not an actual error. It occurs when a newer ask supersedes an older one.
-		if (error instanceof AskIgnoredError) {
+		if (!isCurrent() || error instanceof AskIgnoredError) {
 			return
 		}
 		const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
@@ -218,17 +223,16 @@ export async function presentMcpToolUse(
 		// Policy inputs come from the request's frozen snapshot, never from a
 		// live provider-state re-read mid-stream.
 		const { customModes, experiments: stateExperiments, disabledTools } = policySnapshot
-		// Read the task-local mode, not the shared provider mode.
-		// A delegated child task may run in a different mode than its parent.
-		const taskMode = await cline.getTaskMode()
-
 		// Resolve aliases in includedTools before validation
 		// e.g., "write_file" should resolve to "write_to_file"
 		const rawIncludedTools = policySnapshot.modelInfo?.includedTools
 		const { resolveToolAlias } = await import("../prompts/tools/filter-tools-for-mode")
+		if (!isCurrent()) return
 		const includedTools = rawIncludedTools?.map((tool) => resolveToolAlias(tool))
 
 		try {
+			const taskMode = await cline.getTaskMode()
+			if (!isCurrent()) return
 			// Validate under the canonical "use_mcp_tool" name: the requirements map
 			// is keyed by canonical/alias names, so the dynamic mcp_* name would never
 			// key-match a disabledTools or excludedTools entry naming use_mcp_tool.
@@ -248,12 +252,14 @@ export async function presentMcpToolUse(
 				includedTools,
 			)
 		} catch (error) {
+			if (!isCurrent()) return
+			const message = error instanceof Error ? error.message : String(error)
 			cline.consecutiveMistakeCount++
 			// For validation errors, send a tool_result with the error (required for
 			// native tool calling) but do NOT set didAlreadyUseTool = true — the tool
 			// was never executed, and interrupting the stream here would make the
 			// extension appear to hang.
-			const errorContent = formatResponse.toolError(error.message)
+			const errorContent = formatResponse.toolError(message)
 			if (toolCallId) {
 				cline.pushToolResultToUserContent({
 					type: "tool_result",
@@ -265,7 +271,7 @@ export async function presentMcpToolUse(
 
 			// The validator's message names the canonical tool, never the
 			// model-controlled dynamic name, so this key is safe.
-			cline.recordToolError("use_mcp_tool", error.message)
+			cline.recordToolError("use_mcp_tool", message)
 
 			return
 		}
@@ -279,6 +285,7 @@ export async function presentMcpToolUse(
 		onValidated: mcpBlock.partial
 			? undefined
 			: () => {
+					if (!isCurrent()) return
 					cline.recordToolUsage("use_mcp_tool")
 					TelemetryService.instance.captureToolUsage(cline.taskId, "use_mcp_tool")
 				},

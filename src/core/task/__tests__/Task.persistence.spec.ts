@@ -1070,7 +1070,7 @@ describe("Task persistence", () => {
 			expect(mockSaveTaskMessages.mock.calls[0][0].messages).toEqual(expected)
 		})
 
-		it("preserves an existing lifecycle status during metadata saves", async () => {
+		it("routes saved message metadata through the existing-record writer", async () => {
 			mockSaveTaskMessages.mockResolvedValueOnce([])
 			mockTaskMetadata.mockResolvedValueOnce({
 				historyItem: {
@@ -1096,7 +1096,7 @@ describe("Task persistence", () => {
 			}
 			const provider = { ...mockProvider, updateTaskHistory, taskHistoryStore }
 			const task = new Task({
-				provider: provider as any,
+				provider: provider as unknown as ClineProvider,
 				apiConfiguration: mockApiConfig,
 				taskId: "task-with-advanced-status",
 				task: "test task",
@@ -1104,14 +1104,16 @@ describe("Task persistence", () => {
 				initialStatus: "interrupted",
 			})
 
-			await (task as Record<string, any>).saveClineMessages()
+			task["historyCreated"] = true
+			await task["saveClineMessages"]()
 
 			expect(updateTaskHistory).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: "task-with-advanced-status",
-					status: "completed",
+					status: "interrupted",
 					tokensIn: 10,
 				}),
+				{ fromMessages: "update" },
 			)
 		})
 	})
@@ -1965,7 +1967,7 @@ describe("Task persistence", () => {
 
 			await getTaskPersistenceAccess(task).resumeTaskFromHistory()
 
-			expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "finish-action")
+			expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "finish-action", 0)
 			expect(replay).not.toHaveBeenCalled()
 			expect(task.ask).toHaveBeenCalledWith("resume_task")
 		})
@@ -1993,7 +1995,7 @@ describe("Task persistence", () => {
 				content: [{ type: "tool_result", tool_use_id: "finish-action", content: "Denied" }],
 			})
 
-			expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "finish-action")
+			expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "finish-action", 0)
 		})
 
 		it("retries a rejected tool-result save before clearing pending metadata", async () => {
@@ -2029,7 +2031,7 @@ describe("Task persistence", () => {
 				await vi.advanceTimersByTimeAsync(100)
 				await saving
 				expect(mockSaveApiMessages).toHaveBeenCalledTimes(2)
-				expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "finish-action")
+				expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "finish-action", 0)
 			} finally {
 				vi.useRealTimers()
 			}
@@ -2228,7 +2230,7 @@ describe("Task persistence", () => {
 				expect.objectContaining({ type: "tool_result", tool_use_id: sanitizedActionId }),
 			])
 			expect(mockSaveApiMessages).toHaveBeenCalled()
-			expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", sanitizedActionId)
+			expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", sanitizedActionId, 0)
 			expect(persist.mock.invocationCallOrder[0]).toBeLessThan(initiate.mock.invocationCallOrder[0])
 		})
 	})

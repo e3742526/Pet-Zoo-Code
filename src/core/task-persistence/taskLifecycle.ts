@@ -45,6 +45,7 @@ export function delegateTaskToChild(
 	parent: HistoryItem,
 	childId: string,
 	awaitedChildStatus?: HistoryItemStatus,
+	toolUseId?: string,
 ): HistoryItem {
 	let base = parent
 	if (parent.status === "delegated") {
@@ -67,6 +68,7 @@ export function delegateTaskToChild(
 		status: "delegated",
 		delegatedToId: childId,
 		awaitingChildId: childId,
+		...(toolUseId !== undefined || base.awaitedToolUseId !== undefined ? { awaitedToolUseId: toolUseId } : {}),
 		childIds: Array.from(new Set([...(base.childIds ?? []), childId])),
 	}
 }
@@ -103,6 +105,7 @@ export function completeDelegatedChild(
 			completionResultSummary,
 			awaitingChildId: undefined,
 			delegatedToId: undefined,
+			...(parent.awaitedToolUseId !== undefined && { awaitedToolUseId: undefined }),
 			childIds: Array.from(new Set([...(parent.childIds ?? []), child.id])),
 		},
 	}
@@ -121,12 +124,17 @@ export function abandonDelegatedChild(
 	assertValidTransition(parent.status, "active")
 
 	return {
-		child: { ...child, parentTaskId: undefined, rootTaskId: undefined },
+		child: detachDelegatedChild(child, parent.id),
 		parent: {
 			...parent,
 			status: "active",
 			awaitingChildId: undefined,
 			delegatedToId: undefined,
+			...(parent.awaitedToolUseId !== undefined && { awaitedToolUseId: undefined }),
 		},
 	}
+}
+
+export function detachDelegatedChild(child: HistoryItem, parentId: string): HistoryItem {
+	return { ...child, parentTaskId: undefined, rootTaskId: undefined, detachedFromParentId: parentId }
 }

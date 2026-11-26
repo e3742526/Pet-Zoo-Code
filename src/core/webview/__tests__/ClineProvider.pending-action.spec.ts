@@ -38,9 +38,11 @@ describe("ClineProvider pending task actions", () => {
 	it("sets a pending action atomically and invalidates the recent-task cache", async () => {
 		const { provider, atomicReadAndUpdate, current } = makeProvider(historyItem)
 
-		await ClineProvider.prototype.setPendingTaskAction.call(provider, "task-1", pendingAction)
+		await ClineProvider.prototype.setPendingTaskAction.call(provider, "task-1", pendingAction, 2)
 
-		expect(atomicReadAndUpdate).toHaveBeenCalledWith("task-1", expect.any(Function))
+		expect(atomicReadAndUpdate).toHaveBeenCalledWith("task-1", expect.any(Function), {
+			guard: { attemptGeneration: 2, unfinished: true },
+		})
 		expect(current().pendingAction).toEqual(pendingAction)
 		expect((provider as unknown as { recentTasksCache?: string[] }).recentTasksCache).toBeUndefined()
 	})

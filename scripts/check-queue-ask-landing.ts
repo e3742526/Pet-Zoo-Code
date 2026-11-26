@@ -6,30 +6,27 @@ import { initialRunState, nextRunState, type RunEvent, type RunState } from "../
 // Bounded model of where a queued message lands after the queue hands it to the task (#2421, finding V2).
 // Real code: MessageQueueService (drain, beginEdit, commitEdit, claimNextMessage, the "drained" event) and
 // the run-state kernel nextRunState (ask pending or not).
-// Model abstractions, not imported code, because Task.ts needs VS Code:
-// - the askResponse slot: Task.handleWebviewAskResponse sets it with no check for a pending ask,
-//   and every Task.ask() start resets it (Task.ts around L2063-2116);
-// - the setTimeout(0) between a drain and Task.submitUserMessage, kept as an in-flight list.
+// The ask slot and its acknowledgement are modeled. The legacy policies
+// also model the deferred submit after a drain.
 // The queue is replayed from the action list for each state, because the service is mutable.
 // Command policy, protected asks, message text and aborted tasks are outside this model.
 
-type Action = "add-a" | "add-b" | "edit-a" | "commit-a" | "drain" | "deliver" | "ask" | "consume"
+type Action = "add-a" | "add-b" | "edit-a" | "commit-a" | "drain" | "deliver" | "ask" | "replace-ask" | "consume"
 
 interface Policy {
 	name: string
 	// How Task.submitQueuedMessage lands a message that reaches the slot.
-	land: "always-set" | "set-if-ask-pending" | "requeue-unless-ask-and-empty-slot"
+	land: "always-set" | "set-if-ask-pending" | "claim"
 }
 
-const production: Policy = { name: "production", land: "always-set" }
-// Proposed fix: set the slot only when an ask waits and the slot is empty. Otherwise keep the message queued.
-const requeue: Policy = { name: "requeue-unless-ask-and-empty-slot", land: "requeue-unless-ask-and-empty-slot" }
+const production: Policy = { name: "claim-until-accepted", land: "claim" }
+const legacy: Policy = { name: "legacy-eager-drain", land: "always-set" }
 // Injected unsafe fix: checks the ask but not the slot, so a second message overwrites the first.
 const askOnly: Policy = { name: "set-if-ask-pending", land: "set-if-ask-pending" }
 
 const MAX_DEPTH = 10
 const MAX_STATES = 50_000
-const ACTIONS: Action[] = ["add-a", "add-b", "edit-a", "commit-a", "drain", "deliver", "ask", "consume"]
+const ACTIONS: Action[] = ["add-a", "add-b", "edit-a", "commit-a", "drain", "deliver", "ask", "replace-ask", "consume"]
 
 class World {
 	readonly queue = new MessageQueueService()
@@ -73,12 +70,6 @@ class World {
 	private land(text: string): void {
 		const { land } = this.policy
 		const askPending = this.askPending()
-		const slotFull = this.slot !== undefined
-		if (land === "requeue-unless-ask-and-empty-slot" && (!askPending || slotFull)) {
-			this.queue.addMessage(text)
-			this.tags.add(askPending ? "requeued-slot-full" : "requeued-no-ask")
-			return
-		}
 		if (land === "set-if-ask-pending" && !askPending) {
 			this.queue.addMessage(text)
 			return
@@ -87,6 +78,12 @@ class World {
 			this.lost.push(this.slot)
 		}
 		this.slot = text
+	}
+
+	private claimForAsk(): void {
+		if (!this.askPending() || this.slot !== undefined) return
+		const message = this.queue.claimNextMessage()
+		if (message) this.slot = message.text
 	}
 
 	enabled(action: Action): boolean {
@@ -105,6 +102,8 @@ class World {
 				return this.inflight.length > 0
 			case "ask":
 				return !this.askPending() && this.askTs < 2
+			case "replace-ask":
+				return this.policy.land === "claim" && this.askPending() && this.askTs < 2
 			case "consume":
 				return this.askPending() && this.slot !== undefined
 		}
@@ -126,9 +125,18 @@ class World {
 				const id = this.idOf("a")
 				if (id !== undefined && this.token !== undefined) this.queue.commitEdit(id, this.token, "a")
 				this.token = undefined
+				if (this.policy.land === "claim") {
+					this.claimForAsk()
+					if (this.slot === "a") this.tags.add("edit-release-lands")
+				}
 				return
 			}
 			case "drain": {
+				if (this.policy.land === "claim") {
+					if (!this.askPending()) this.tags.add("kept-without-ask")
+					this.claimForAsk()
+					return
+				}
 				// Task.processQueuedMessages: drain, then submitQueuedMessage defers through setTimeout(0).
 				const message = this.queue.drain()
 				if (message) this.inflight.push(message.text)
@@ -145,6 +153,10 @@ class World {
 				}
 				this.askTs += 1
 				this.event({ tag: "askStarted", ask: { tag: "other", askTs: this.askTs } })
+				if (this.policy.land === "claim") {
+					this.claimForAsk()
+					return
+				}
 				const claimed = this.queue.claimNextMessage()
 				if (claimed) {
 					this.queue.removeMessage(claimed.id)
@@ -153,7 +165,26 @@ class World {
 				}
 				return
 			}
+			case "replace-ask": {
+				if (this.slot !== undefined) {
+					const id = this.idOf(this.slot)
+					assert.ok(
+						id && this.queue.releaseMessage(id),
+						"a replacement must release the original ask's claim",
+					)
+					this.tags.add("replacement-releases-claim")
+				}
+				this.slot = undefined
+				this.askTs += 1
+				this.event({ tag: "askStarted", ask: { tag: "other", askTs: this.askTs } })
+				this.claimForAsk()
+				return
+			}
 			case "consume": {
+				if (this.policy.land === "claim") {
+					const id = this.idOf(this.slot!)
+					assert.ok(id && this.queue.removeMessage(id), "acknowledgement must remove the claimed message")
+				}
 				this.consumed.push(this.slot!)
 				this.slot = undefined
 				this.event({ tag: "askSettled", askTs: this.askTs })
@@ -166,7 +197,7 @@ class World {
 		if (this.lost.length > 0) return `message ${this.lost[0]} was dropped`
 		const places = [
 			...this.queue.messages.map((message) => message.text),
-			...(this.slot === undefined ? [] : [this.slot]),
+			...(this.slot === undefined || this.policy.land === "claim" ? [] : [this.slot]),
 			...this.inflight,
 			...this.consumed,
 		]
@@ -235,14 +266,13 @@ function explore(policy: Policy): Exploration {
 
 const format = (trace: Action[]): string => trace.map((action, index) => `${index + 1}. ${action}`).join("\n")
 
-// The proposed fix must be clean, with every landmark reachable.
-const fixed = explore(requeue)
+const fixed = explore(production)
 assert.equal(
 	fixed.violation,
 	undefined,
-	`Queue landing invariant failed under ${requeue.name}: ${fixed.violation?.message}\n${format(fixed.violation?.trace ?? [])}`,
+	`Queue landing invariant failed under ${production.name}: ${fixed.violation?.message}\n${format(fixed.violation?.trace ?? [])}`,
 )
-const landmarks = ["drained-event", "requeued-no-ask"]
+const landmarks = ["kept-without-ask", "edit-release-lands", "replacement-releases-claim"]
 const missing = landmarks.filter((tag) => !fixed.tags.has(tag))
 assert.deepEqual(missing, [], `Queue landing model has unreachable landmarks: ${missing.join(", ")}`)
 
@@ -250,17 +280,15 @@ assert.deepEqual(missing, [], `Queue landing model has unreachable landmarks: ${
 const unsafe = explore(askOnly)
 assert.ok(unsafe.violation, `Injected policy ${askOnly.name} must violate the invariant`)
 
-// Known gap (#2421 finding V2): production sets the slot with no ask pending, and the next ask() drops it.
-// The requeue policy above is the proposed fix. This witness keeps the gap visible until production changes.
-const gap = explore(production)
-assert.ok(gap.violation, "Known queue landing gap no longer reproduces: update the model and the document")
+const gap = explore(legacy)
+assert.ok(gap.violation, "Injected eager drain must reproduce queue loss")
 
 console.log(
-	`Queue landing model check passed: ${fixed.states} reachable states under ${requeue.name}, ${landmarks.length}/${landmarks.length} landmarks, depth <= ${MAX_DEPTH}`,
+	`Queue landing model check passed: ${fixed.states} reachable states under ${production.name}, ${landmarks.length}/${landmarks.length} landmarks, depth <= ${MAX_DEPTH}`,
 )
 console.log(
 	`Known-unsafe witness: ${askOnly.name} (${unsafe.violation!.trace.length} steps: ${unsafe.violation!.message})`,
 )
 console.log(
-	`Known gap (message sent with no ask pending): ${gap.violation!.message} after ${gap.violation!.trace.length} steps\n${format(gap.violation!.trace)}`,
+	`Rejected legacy policy (message sent with no ask pending): ${gap.violation!.message} after ${gap.violation!.trace.length} steps\n${format(gap.violation!.trace)}`,
 )

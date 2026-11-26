@@ -607,6 +607,7 @@ describe("newTaskTool delegation flow", () => {
 			consecutiveMistakeCount: 0,
 			pausedModeSlug: "ask",
 			taskId: "mock-parent-task-id",
+			attemptGeneration: 4,
 			setPendingTaskAction: vi.fn(),
 			enableCheckpoints: false,
 			checkpointSave: mockCheckpointSave,
@@ -635,14 +636,18 @@ describe("newTaskTool delegation flow", () => {
 			toolCallId: "call-new-task",
 		})
 
-		expect(providerSpy.setPendingTaskAction).toHaveBeenCalledWith("mock-parent-task-id", {
-			kind: "create_subtask",
-			actionId: "call-new-task",
-			approvalText: expect.stringContaining('"tool":"newTask"'),
-			mode: "code",
-			message: "Do something",
-			todos: [],
-		})
+		expect(providerSpy.setPendingTaskAction).toHaveBeenCalledWith(
+			"mock-parent-task-id",
+			{
+				kind: "create_subtask",
+				actionId: "call-new-task",
+				approvalText: expect.stringContaining('"tool":"newTask"'),
+				mode: "code",
+				message: "Do something",
+				todos: [],
+			},
+			4,
+		)
 		// Assert: provider method called with correct params
 		expect(providerSpy.delegateParentAndOpenChild).toHaveBeenCalledWith({
 			parentTaskId: "mock-parent-task-id",
@@ -650,6 +655,7 @@ describe("newTaskTool delegation flow", () => {
 			initialTodos: [],
 			mode: "code",
 			pendingActionId: "call-new-task",
+			attemptGeneration: 4,
 		})
 
 		// Assert: legacy path not used

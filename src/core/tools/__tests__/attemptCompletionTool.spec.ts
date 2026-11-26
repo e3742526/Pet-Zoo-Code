@@ -524,6 +524,7 @@ describe("attemptCompletionTool", () => {
 				}
 
 				Object.assign(mockTask, {
+					attemptGeneration: 2,
 					taskId: "child-1",
 					parentTaskId: "parent-1",
 					providerRef: { deref: () => mockProvider },
@@ -548,18 +549,23 @@ describe("attemptCompletionTool", () => {
 				await handlingCompletion
 
 				expect(mockAskFinishSubTaskApproval).toHaveBeenCalled()
-				expect(mockProvider.setPendingTaskAction).toHaveBeenCalledWith("child-1", {
-					kind: "finish_subtask",
-					actionId: "call-attempt-completion",
-					approvalText: JSON.stringify({ tool: "finishTask" }),
-					parentTaskId: "parent-1",
-					result: "9",
-				})
+				expect(mockProvider.setPendingTaskAction).toHaveBeenCalledWith(
+					"child-1",
+					{
+						kind: "finish_subtask",
+						actionId: "call-attempt-completion",
+						approvalText: JSON.stringify({ tool: "finishTask" }),
+						parentTaskId: "parent-1",
+						result: "9",
+					},
+					2,
+				)
 				expect(mockProvider.reopenParentFromDelegation).toHaveBeenCalledWith({
 					parentTaskId: "parent-1",
 					childTaskId: "child-1",
 					completionResultSummary: "9",
 					pendingActionId: "call-attempt-completion",
+					attemptGeneration: 2,
 				})
 				expect(mockTask.ask).not.toHaveBeenCalled()
 				expect(mockPushToolResult).toHaveBeenCalledWith("")
@@ -751,6 +757,7 @@ describe("attemptCompletionTool", () => {
 				}
 
 				Object.assign(mockTask, {
+					attemptGeneration: 2,
 					taskId: "child-1",
 					parentTaskId: "parent-1",
 					providerRef: { deref: () => mockProvider },
@@ -774,8 +781,9 @@ describe("attemptCompletionTool", () => {
 					childTaskId: "child-1",
 					completionResultSummary: "9",
 					pendingActionId: "call-stale-completion",
+					attemptGeneration: 2,
 				})
-				expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "call-stale-completion")
+				expect(mockProvider.clearPendingTaskAction).toHaveBeenCalledWith("child-1", "call-stale-completion", 2)
 				expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
 				expect(mockPushToolResult).not.toHaveBeenCalledWith("")
 				// Flush once per validated attempt_completion call, before delegation is

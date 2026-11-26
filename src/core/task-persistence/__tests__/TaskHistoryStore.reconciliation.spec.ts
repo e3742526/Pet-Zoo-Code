@@ -55,6 +55,7 @@ function makeRepairIntent(parent: HistoryItem, child: HistoryItem): object {
 				status: "active",
 				parentTaskId: child.parentTaskId,
 				rootTaskId: child.rootTaskId,
+				attemptGeneration: child.attemptGeneration,
 			},
 		},
 		target: { childStatus: "interrupted", parentStatus: "active" },
@@ -649,6 +650,37 @@ describe("TaskHistoryStore reconcileDelegationState", () => {
 			),
 		).toBe(true)
 	})
+
+	it.each([undefined, 1])(
+		"keeps the newer interrupted attempt when a repair expected generation %s",
+		async (previous) => {
+			const parent = makeItem({ id: "repair-parent", status: "delegated", awaitingChildId: "repair-child" })
+			const child = makeItem({
+				id: "repair-child",
+				status: "interrupted",
+				parentTaskId: parent.id,
+				attemptGeneration: (previous ?? 0) + 1,
+			})
+			await seedItems([parent, child])
+			const tasksDir = path.join(tmpDir, "tasks")
+			const intentPath = path.join(tasksDir, GlobalFileNames.delegationRepairIntent)
+			await fs.writeFile(
+				intentPath,
+				JSON.stringify(makeRepairIntent(parent, { ...child, attemptGeneration: previous })),
+			)
+
+			await store.initialize()
+
+			expect(store.get(parent.id)).toMatchObject({ status: "delegated", awaitingChildId: child.id })
+			expect(store.get(child.id)).toMatchObject(child)
+			await expect(fs.access(intentPath)).rejects.toThrow()
+			expect(
+				(await fs.readdir(tasksDir)).some((name) =>
+					name.startsWith(`${GlobalFileNames.delegationRepairIntent}.quarantine-`),
+				),
+			).toBe(true)
+		},
+	)
 
 	it("repairs invalid delegation: delegated parent with no awaitingChildId → active (clears delegatedToId and awaitingChildId)", async () => {
 		// awaitingChildId is falsy but explicitly set (empty string), delegatedToId is stale

@@ -68,7 +68,11 @@ export function toTelemetryToolName(
  * as it becomes available.
  */
 
-export async function presentAssistantMessage(cline: Task, policySnapshot: RequestPolicySnapshot) {
+export async function presentAssistantMessage(
+	cline: Task,
+	policySnapshot: RequestPolicySnapshot,
+	onFailure?: (error: unknown) => void,
+) {
 	if (cline.abort) {
 		return
 	}
@@ -89,23 +93,36 @@ export async function presentAssistantMessage(cline: Task, policySnapshot: Reque
 	}
 
 	cline.dispatchState = transitionDispatch(cline.dispatchState, DispatchState.SERIAL)
+	const owner = Symbol()
+	cline.dispatchOwner = owner
+	const isCurrent = () => cline.dispatchOwner === owner && !cline.abort && !cline.abandoned
 	try {
 		// Drain updates queued while the lock was held, including one that
 		// arrives after the helper's final check but before this continuation.
 		// The last pending check and the release below run in the same
 		// synchronous step, so no update can be stranded behind the lock.
 		do {
-			await presentAssistantMessageBlock(cline, policySnapshot)
-		} while (!cline.abort && cline.pendingWork)
+			await presentAssistantMessageBlock(cline, policySnapshot, isCurrent)
+		} while (isCurrent() && cline.pendingWork)
+	} catch (error) {
+		if (isCurrent()) onFailure?.(error)
+		throw error
 	} finally {
 		// Tool handlers and provider-state reads can reject. Never strand the
 		// task behind a dispatch lock after the presenter has unwound.
-		cline.dispatchState = DispatchState.IDLE
+		if (cline.dispatchOwner === owner) {
+			cline.dispatchState = DispatchState.IDLE
+			cline.dispatchOwner = undefined
+		}
 	}
 }
 
-async function presentAssistantMessageBlock(cline: Task, policySnapshot: RequestPolicySnapshot): Promise<void> {
-	if (cline.abort) {
+async function presentAssistantMessageBlock(
+	cline: Task,
+	policySnapshot: RequestPolicySnapshot,
+	isCurrent: () => boolean,
+): Promise<void> {
+	if (!isCurrent()) {
 		return
 	}
 
@@ -143,7 +160,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 
 	switch (block.type) {
 		case "mcp_tool_use": {
-			await presentMcpToolUse(cline, block, policySnapshot)
+			await presentMcpToolUse(cline, block, policySnapshot, isCurrent)
 			break
 		}
 		case "text": {
@@ -181,6 +198,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 				}
 				cline.consecutiveMistakeCount++
 				await cline.say("error", errorMessage)
+				if (!isCurrent()) return
 				cline.userMessageContent.push({ type: "text", text: errorMessage })
 				cline.didAlreadyUseTool = true
 				break
@@ -189,10 +207,22 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 			// Policy inputs come from the request's frozen snapshot, never from a
 			// live provider-state re-read mid-stream.
 			const { customModes, experiments: stateExperiments, disabledTools } = policySnapshot
-			// Read the task-local mode, not the shared provider mode.
-			// A delegated child task may run in a different mode than its parent.
-			const taskMode = await cline.getTaskMode()
-
+			let taskMode: string
+			try {
+				taskMode = await cline.getTaskMode()
+			} catch (error) {
+				if (isCurrent() && !block.partial) {
+					const message = error instanceof Error ? error.message : String(error)
+					cline.pushToolResultToUserContent({
+						type: "tool_result",
+						tool_use_id: sanitizeToolUseId(toolCallId),
+						content: formatResponse.toolError(message),
+						is_error: true,
+					})
+				}
+				break
+			}
+			if (!isCurrent()) return
 			const toolDescription = () => describeToolUse(block, customModes)
 
 			if (cline.didRejectTool) {
@@ -258,6 +288,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 			let approvalFeedback: { text: string; images?: string[] } | undefined
 
 			const pushToolResult = (content: ToolResponse) => {
+				if (!isCurrent()) return
 				// Native tool calling: only allow ONE tool_result per tool call
 				if (hasToolResult) {
 					console.warn(
@@ -309,6 +340,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 				isProtected?: boolean,
 				autoApprovalContext?: AutoApprovalContext,
 			) => {
+				if (!isCurrent()) return false
 				const { response, text, images, queuedMessageId, autoDenyDetail } = await cline.ask(
 					type,
 					partialMessage,
@@ -317,6 +349,10 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 					isProtected || false,
 					autoApprovalContext,
 				)
+				if (!isCurrent()) {
+					if (queuedMessageId) cline.messageQueueService.releaseMessage(queuedMessageId)
+					return false
+				}
 
 				if (response !== "yesButtonClicked") {
 					// Automatic (policy) denial: scoped to this tool call, so no
@@ -352,6 +388,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 					} else if (text || images?.length) {
 						await cline.say("user_feedback", text ?? "", images)
 					}
+					if (!isCurrent()) return false
 					if (text || images?.length) {
 						pushToolResult(formatResponse.toolResult(formatResponse.toolDeniedWithFeedback(text), images))
 					} else {
@@ -376,7 +413,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 					approvalFeedback = { text: text ?? "", images }
 				}
 
-				return true
+				return isCurrent()
 			}
 
 			const askFinishSubTaskApproval = async () => {
@@ -391,7 +428,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 			const handleError = async (action: string, error: Error) => {
 				// Silently ignore AskIgnoredError - this is an internal control flow
 				// signal, not an actual error. It occurs when a newer ask supersedes an older one.
-				if (error instanceof AskIgnoredError) {
+				if (!isCurrent() || error instanceof AskIgnoredError) {
 					return
 				}
 				const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
@@ -413,6 +450,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 				// e.g., "edit_file" should resolve to "apply_diff"
 				const rawIncludedTools = policySnapshot.modelInfo?.includedTools
 				const { resolveToolAlias } = await import("../prompts/tools/filter-tools-for-mode")
+				if (!isCurrent()) return
 				const includedTools = rawIncludedTools?.map((tool) => resolveToolAlias(tool))
 
 				const isCustomTool = Boolean(stateExperiments?.customTools && customToolRegistry.has(block.name))
@@ -435,13 +473,15 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 						includedTools,
 					)
 				} catch (error) {
+					if (!isCurrent()) return
+					const message = error instanceof Error ? error.message : String(error)
 					cline.consecutiveMistakeCount++
 					// For validation errors (unknown tool, tool not allowed for mode), we need to:
 					// 1. Send a tool_result with the error (required for native tool calling)
 					// 2. NOT set didAlreadyUseTool = true (the tool was never executed, just failed validation)
 					// This prevents the stream from being interrupted with "Response interrupted by tool use result"
 					// which would cause the extension to appear to hang
-					const errorContent = formatResponse.toolError(error.message)
+					const errorContent = formatResponse.toolError(message)
 					// Push tool_result directly without setting didAlreadyUseTool
 					cline.pushToolResultToUserContent({
 						type: "tool_result",
@@ -452,10 +492,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 
 					// Record a safe failure key. Never key telemetry on the raw,
 					// model-controlled tool name.
-					cline.recordToolError(
-						toTelemetryToolName(block.name, isCustomTool, stateExperiments),
-						error.message,
-					)
+					cline.recordToolError(toTelemetryToolName(block.name, isCustomTool, stateExperiments), message)
 
 					break
 				}
@@ -501,6 +538,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 						repetitionCheck.askUser.messageKey as ClineAsk,
 						repetitionCheck.askUser.messageDetail.replace("{toolName}", block.name),
 					)
+					if (!isCurrent()) return
 
 					if (response === "messageResponse") {
 						// Add user feedback to userContent.
@@ -514,6 +552,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 
 						// Add user feedback to chat.
 						await cline.say("user_feedback", text, images)
+						if (!isCurrent()) return
 					}
 
 					// Track tool repetition in telemetry via a named event.
@@ -537,18 +576,27 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 				}
 			}
 
-			await dispatchToolUse(cline, block, stateExperiments, taskMode, {
-				askApproval,
-				handleError,
-				pushToolResult,
-				askFinishSubTaskApproval,
-				toolDescription,
-				toolCallId,
-			})
+			await dispatchToolUse(
+				cline,
+				block,
+				stateExperiments,
+				taskMode,
+				{
+					askApproval,
+					handleError,
+					pushToolResult,
+					askFinishSubTaskApproval,
+					toolDescription,
+					toolCallId,
+				},
+				isCurrent,
+			)
 
 			break
 		}
 	}
+
+	if (!isCurrent()) return
 
 	// NOTE: When tool is rejected, iterator stream is interrupted and it waits
 	// for `userMessageContentReady` to be true. Future calls to present will
@@ -577,7 +625,7 @@ async function presentAssistantMessageBlock(cline: Task, policySnapshot: Request
 		if (cline.currentStreamingContentIndex < cline.assistantMessageContent.length) {
 			// There are already more content blocks to stream, so we'll call
 			// this function ourselves.
-			return await presentAssistantMessageBlock(cline, policySnapshot)
+			return await presentAssistantMessageBlock(cline, policySnapshot, isCurrent)
 		} else {
 			// CRITICAL FIX: If we're out of bounds and the stream is complete, set userMessageContentReady
 			// This handles the case where assistantMessageContent is empty or becomes empty after processing

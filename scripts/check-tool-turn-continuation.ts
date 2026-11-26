@@ -8,7 +8,7 @@ import assert from "node:assert/strict"
 
 type Phase = "absent" | "streaming" | "final" | "running" | "resulted"
 type PassStep = "block" | "running" | "settling" | "check" | "done"
-type Request = "waiting" | "released" | "started" | "aborted"
+type Request = "waiting" | "released" | "started" | "aborted" | "failed"
 
 interface Pass {
 	id: number
@@ -41,6 +41,7 @@ interface Policy {
 	abortCheck: boolean
 	retry: boolean
 	toolThrow: boolean // also allow a failure on a tool block before its result is pushed
+	stopOnFailure?: boolean
 }
 
 interface Step {
@@ -74,8 +75,8 @@ const expectedActions = [
 	"post-wait",
 ] as const
 
-const production: Policy = {
-	name: "production",
+const legacy: Policy = {
+	name: "legacy",
 	derived: "every",
 	lockGate: true,
 	release: "unconditional",
@@ -84,19 +85,26 @@ const production: Policy = {
 	retry: false,
 	toolThrow: false,
 }
-const ownerToken: Policy = { ...production, name: "owner-token", release: "owner", retry: true }
-const unconditionalWithRetry: Policy = { ...production, name: "unconditional-release-with-retry", retry: true }
-const toolThrowGap: Policy = { ...production, name: "tool-throw-before-result", toolThrow: true }
+const production: Policy = {
+	...legacy,
+	name: "production",
+	release: "owner",
+	retry: true,
+	toolThrow: true,
+	stopOnFailure: true,
+}
+const unconditionalWithRetry: Policy = { ...legacy, name: "unconditional-release-with-retry", retry: true }
+const toolThrowGap: Policy = { ...legacy, name: "tool-throw-before-result", toolThrow: true }
 const injected: Array<{ policy: Policy; expected: string; detectStuck?: false }> = [
-	{ policy: { ...production, name: "latch-only", derived: "off" }, expected: "stuck" },
-	{ policy: { ...production, name: "no-lock-gate", lockGate: false }, expected: "continue-under-pass" },
+	{ policy: { ...legacy, name: "latch-only", derived: "off" }, expected: "stuck" },
+	{ policy: { ...legacy, name: "no-lock-gate", lockGate: false }, expected: "continue-under-pass" },
 	{
-		policy: { ...production, name: "first-tool-only", derived: "first", toolThrow: true },
+		policy: { ...legacy, name: "first-tool-only", derived: "first", toolThrow: true },
 		expected: "premature-continue",
 		detectStuck: false, // the shortest violation is the hang, which hides the premature continue
 	},
-	{ policy: { ...production, name: "no-finally-on-throw", releaseOnThrow: false }, expected: "stranded-lock" },
-	{ policy: { ...production, name: "no-abort-check", abortCheck: false }, expected: "continue-after-abort" },
+	{ policy: { ...legacy, name: "no-finally-on-throw", releaseOnThrow: false }, expected: "stranded-lock" },
+	{ policy: { ...legacy, name: "no-abort-check", abortCheck: false }, expected: "continue-after-abort" },
 ]
 
 function initialState(): ModelState {
@@ -175,11 +183,13 @@ function derivedReady(state: ModelState, policy: Policy): boolean {
 
 function transitions(state: ModelState, policy: Policy): Step[] {
 	const result: Step[] = []
-	if (state.request === "started" || state.request === "aborted") return result
+	if (state.request === "started" || state.request === "aborted" || state.request === "failed") return result
 
 	if (state.request === "released") {
 		const next = clone(state)
-		next.request = policy.abortCheck && next.abort ? "aborted" : "started"
+		if (policy.abortCheck && next.abort) next.request = "aborted"
+		else if (policy.stopOnFailure && next.threw && !derivedReady(next, policy)) next.request = "failed"
+		else next.request = "started"
 		return [{ action: "post-wait()", state: next }]
 	}
 
@@ -298,7 +308,8 @@ function transitions(state: ModelState, policy: Policy): Step[] {
 		result.push({ action: "abort()", state: next })
 	}
 
-	if (!microtaskPending && (state.latch || derivedReady(state, policy) || state.abort)) {
+	const failedTurn = policy.stopOnFailure && state.threw && state.stream === "complete" && !state.lock
+	if (!microtaskPending && (state.latch || derivedReady(state, policy) || state.abort || failedTurn)) {
 		const next = clone(state)
 		next.request = "released"
 		result.push({ action: "poll()", state: next })
@@ -361,6 +372,7 @@ const landmarkPredicates: Record<string, (state: ModelState) => boolean> = {
 	"two-tool-turn-continues": (state) =>
 		state.request === "started" && state.phase[0] === "resulted" && state.phase[1] === "resulted",
 	"presenter-throw-then-continue": (state) => state.request === "started" && state.threw,
+	"missing-tool-result-stops": (state) => state.request === "failed" && state.threw,
 	"abort-stops-ready-turn": (state) =>
 		state.request === "aborted" && state.stream === "complete" && state.phase[0] === "resulted",
 	"stale-pass-unwinds-after-retry": (state) =>
@@ -437,8 +449,7 @@ function requireClean(policy: Policy): Exploration {
 	return result
 }
 
-const fixed = [requireClean(production), requireClean(ownerToken)]
-const full = fixed[1]!
+const full = requireClean(production)
 
 const missingActions = expectedActions.filter((action) => !full.actions.has(action))
 assert.deepEqual(missingActions, [], `Tool-turn model has unreachable actions: ${missingActions.join(", ")}`)
@@ -457,23 +468,19 @@ for (const { policy, expected, detectStuck } of injected) {
 	witnesses.push(`${policy.name}=${expected}(${result.violation!.trace.length} steps)`)
 }
 
-// Known gap (#1884 review finding 3): the production `finally` clears the lock unconditionally.
-// After a request-loop reset, a stale pass can release the lock of a newer pass. The owner-token
-// policy above is the proposed fix. This witness keeps the gap visible until production changes.
 const gap = explore(unconditionalWithRetry)
-assert.ok(gap.violation, "Known stale-pass gap no longer reproduces: update the model and the document")
+assert.equal(gap.violation?.invariant, "ownership")
 
-// Known gap (#1884 review finding 2): a failure on a tool block before it pushes a result releases the
-// lock, but no result exists, so the derived check stays false and the wait has no timeout. The hang
-// existed before the PR (the lock stayed held). The PR deliberately does not synthesize a result.
 const throwGap = explore(toolThrowGap)
-assert.equal(throwGap.violation?.invariant, "stuck", "Known tool-throw hang no longer reproduces: update the model")
+assert.equal(throwGap.violation?.invariant, "stuck")
 
 console.log(
-	`Tool-turn continuation model check passed: ${fixed.map((r) => r.states).join("/")} reachable states (production/owner-token), ${full.actions.size}/${expectedActions.length} actions, ${full.landmarks.size}/${Object.keys(landmarkPredicates).length} landmarks, depth <= ${MAX_DEPTH}`,
+	`Tool-turn continuation model check passed: ${full.states} reachable states, ${full.actions.size}/${expectedActions.length} actions, ${full.landmarks.size}/${Object.keys(landmarkPredicates).length} landmarks, depth <= ${MAX_DEPTH}`,
 )
 console.log(`Known-unsafe witnesses: ${witnesses.join(", ")}`)
-console.log(`Known gap (tool failure before result): stuck after ${throwGap.violation!.trace.length} steps`)
 console.log(
-	`Known gap (stale unconditional release): ${gap.violation!.invariant} after ${gap.violation!.trace.length} steps\n${formatTrace(gap.violation!.trace)}`,
+	`Rejected legacy policy (tool failure before result): stuck after ${throwGap.violation!.trace.length} steps`,
+)
+console.log(
+	`Rejected legacy policy (stale unconditional release): ${gap.violation!.invariant} after ${gap.violation!.trace.length} steps\n${formatTrace(gap.violation!.trace)}`,
 )

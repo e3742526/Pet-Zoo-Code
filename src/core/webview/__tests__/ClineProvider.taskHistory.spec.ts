@@ -13,6 +13,7 @@ import { ProfileValidator } from "../../../shared/ProfileValidator"
 import { ClineProvider } from "../ClineProvider"
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"
+import { HistoryOwnershipError } from "../../task-persistence/taskStoreConcurrency"
 
 // Mock setup
 vi.mock("p-wait-for", () => ({
@@ -1089,6 +1090,31 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			const stored = provider.taskHistoryStore.get("task-cb-1")
 			expect(stored?.status).toBe("completed")
+		})
+
+		it("does not forward completion when the disk record belongs to a newer attempt", async () => {
+			const taskId = "task-with-newer-attempt"
+			const stored = createHistoryItem({
+				id: taskId,
+				task: "Resumed child",
+				status: "interrupted",
+				attemptGeneration: 2,
+			})
+			await provider.updateTaskHistory(stored, { broadcast: false })
+			const update = vi
+				.spyOn(provider, "updateTaskHistory")
+				.mockRejectedValueOnce(new HistoryOwnershipError(taskId))
+			const completed = vi.fn()
+			provider.on(RooCodeEventName.TaskCompleted, completed)
+			const task = { ...makeFakeTask(taskId), attemptGeneration: 1 }
+			// The listener uses the event methods, task ID and generation supplied by the double.
+			provider["taskCreationCallback"](task as unknown as Task)
+			await task.emit(RooCodeEventName.TaskCompleted, taskId, {}, {})
+			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: taskId, status: "completed" }), {
+				guard: { attemptGeneration: 1 },
+			})
+			expect(completed).not.toHaveBeenCalled()
+			expect(provider.taskHistoryStore.get(taskId)?.status).toBe("interrupted")
 		})
 
 		it("skips the write when task is already completed", async () => {

@@ -27,8 +27,8 @@ export interface AttemptCompletionCallbacks extends ToolCallbacks {
 interface DelegationProvider {
 	log(message: string): void
 	getTaskWithId(id: string): Promise<{ historyItem: HistoryItem }>
-	setPendingTaskAction(taskId: string, pendingAction: PendingTaskAction): Promise<void>
-	clearPendingTaskAction(taskId: string, actionId: string): Promise<boolean>
+	setPendingTaskAction(taskId: string, pendingAction: PendingTaskAction, attemptGeneration?: number): Promise<void>
+	clearPendingTaskAction(taskId: string, actionId: string, attemptGeneration?: number): Promise<boolean>
 	emitDelegatedTaskCompleted(
 		taskId: string,
 		tokenUsage: ReturnType<Task["getTokenUsage"]>,
@@ -39,6 +39,7 @@ interface DelegationProvider {
 		childTaskId: string
 		completionResultSummary: string
 		pendingActionId?: string
+		attemptGeneration?: number
 	}): Promise<boolean>
 }
 
@@ -136,7 +137,11 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 										parentTaskId: task.parentTaskId,
 										result,
 									}
-									await provider.setPendingTaskAction(task.taskId, pendingAction)
+									await provider.setPendingTaskAction(
+										task.taskId,
+										pendingAction,
+										task.attemptGeneration,
+									)
 									task.setPendingTaskAction(pendingAction)
 								}
 								// Known not to be a stale history replay (status was "active", not
@@ -284,11 +289,12 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			childTaskId: task.taskId,
 			completionResultSummary: result,
 			...(pendingActionId && { pendingActionId }),
+			...(task.attemptGeneration !== undefined && { attemptGeneration: task.attemptGeneration }),
 		})
 
 		if (didReopen === false) {
 			if (pendingActionId) {
-				await provider.clearPendingTaskAction(task.taskId, pendingActionId)
+				await provider.clearPendingTaskAction(task.taskId, pendingActionId, task.attemptGeneration)
 			}
 			return "continue"
 		}

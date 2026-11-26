@@ -31,6 +31,7 @@ export interface DelegationRepairIntent {
 			status: "active"
 			parentTaskId?: string
 			rootTaskId?: string
+			attemptGeneration?: number
 		}
 	}
 	target: {
@@ -50,11 +51,17 @@ export function matchesDelegationRepairParentPreconditions(
 	)
 }
 
-export function matchesDelegationRepairChildPreconditions(intent: DelegationRepairIntent, child: HistoryItem): boolean {
+export function matchesDelegationRepairChildPreconditions(
+	intent: DelegationRepairIntent,
+	child: HistoryItem,
+	status: "active" | "interrupted" = intent.expected.child.status,
+): boolean {
 	return (
-		(child.status ?? "active") === intent.expected.child.status &&
+		(child.status ?? "active") === status &&
 		child.parentTaskId === intent.expected.child.parentTaskId &&
-		child.rootTaskId === intent.expected.child.rootTaskId
+		child.rootTaskId === intent.expected.child.rootTaskId &&
+		(child.attemptGeneration ?? 0) === (intent.expected.child.attemptGeneration ?? 0) &&
+		child.detachedFromParentId !== intent.parentTaskId
 	)
 }
 
@@ -117,6 +124,10 @@ export class DelegationRepairJournal {
 			expectedChild.status === "active" &&
 			(expectedChild.parentTaskId === undefined || typeof expectedChild.parentTaskId === "string") &&
 			(expectedChild.rootTaskId === undefined || typeof expectedChild.rootTaskId === "string") &&
+			(expectedChild.attemptGeneration === undefined ||
+				(typeof expectedChild.attemptGeneration === "number" &&
+					Number.isSafeInteger(expectedChild.attemptGeneration) &&
+					expectedChild.attemptGeneration >= 0)) &&
 			!!targetRecord &&
 			targetRecord.childStatus === "interrupted" &&
 			targetRecord.parentStatus === "active"

@@ -11,6 +11,7 @@ import { getErrorCode, readFileWithMissingRetry } from "./readFileWithMissingRet
 
 export type ApiMessage = Anthropic.MessageParam & {
 	messageId?: string
+	delegationResultToolUseId?: string
 	ts?: number
 	// Signed thinking in this assistant message belongs to the provider that returned it.
 	assistantContentProvider?: "minimax"

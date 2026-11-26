@@ -39,12 +39,14 @@ export async function dispatchToolUse(
 	stateExperiments: Record<string, boolean> | undefined,
 	taskMode: string,
 	callbacks: AttemptCompletionCallbacks,
+	isCurrent: () => boolean,
 ): Promise<void> {
 	const { askApproval, handleError, pushToolResult, askFinishSubTaskApproval, toolDescription, toolCallId } =
 		callbacks
 	switch (block.name) {
 		case "write_to_file":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await writeToFileTool.handle(cline, block as ToolUse<"write_to_file">, {
 				askApproval,
 				handleError,
@@ -61,7 +63,8 @@ export async function dispatchToolUse(
 			})
 			break
 		case "apply_diff":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await applyDiffToolClass.handle(cline, block as ToolUse<"apply_diff">, {
 				askApproval,
 				handleError,
@@ -71,7 +74,8 @@ export async function dispatchToolUse(
 			break
 		case "edit":
 		case "search_and_replace":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await editTool.handle(cline, block as ToolUse<"edit">, {
 				askApproval,
 				handleError,
@@ -80,7 +84,8 @@ export async function dispatchToolUse(
 			})
 			break
 		case "search_replace":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await searchReplaceTool.handle(cline, block as ToolUse<"search_replace">, {
 				askApproval,
 				handleError,
@@ -89,7 +94,8 @@ export async function dispatchToolUse(
 			})
 			break
 		case "edit_file":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await editFileTool.handle(cline, block as ToolUse<"edit_file">, {
 				askApproval,
 				handleError,
@@ -98,7 +104,8 @@ export async function dispatchToolUse(
 			})
 			break
 		case "apply_patch":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await applyPatchTool.handle(cline, block as ToolUse<"apply_patch">, {
 				askApproval,
 				handleError,
@@ -188,7 +195,8 @@ export async function dispatchToolUse(
 			})
 			break
 		case "new_task":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await newTaskTool.handle(cline, block as ToolUse<"new_task">, {
 				askApproval,
 				handleError,
@@ -225,7 +233,8 @@ export async function dispatchToolUse(
 			})
 			break
 		case "generate_image":
-			await checkpointSaveAndMark(cline)
+			await checkpointSaveAndMark(cline, isCurrent)
+			if (!isCurrent()) return
 			await generateImageTool.handle(cline, block as ToolUse<"generate_image">, {
 				askApproval,
 				handleError,
@@ -267,6 +276,7 @@ export async function dispatchToolUse(
 						mode: taskMode,
 						task: cline,
 					})
+					if (!isCurrent()) return
 
 					// Log only the tool name. Arguments and results can hold file contents or secrets.
 					console.log(`${customTool.name}.execute() completed`)
@@ -274,6 +284,7 @@ export async function dispatchToolUse(
 					pushToolResult(result)
 					cline.consecutiveMistakeCount = 0
 				} catch (executionError) {
+					if (!isCurrent()) return
 					cline.consecutiveMistakeCount++
 					// Record custom tool error with static name
 					cline.recordToolError("custom_tool", executionError.message)
@@ -288,6 +299,7 @@ export async function dispatchToolUse(
 			cline.consecutiveMistakeCount++
 			cline.recordToolError("invalid_tool_call", errorMessage)
 			await cline.say("error", t("tools:unknownToolError", { toolName: block.name }))
+			if (!isCurrent()) return
 			// Push tool_result directly WITHOUT setting didAlreadyUseTool
 			// This prevents the stream from being interrupted with "Response interrupted by tool use result"
 			cline.pushToolResultToUserContent({
@@ -306,13 +318,13 @@ export async function dispatchToolUse(
  * @param task The Task instance to checkpoint save and mark.
  * @returns
  */
-async function checkpointSaveAndMark(task: Task) {
+async function checkpointSaveAndMark(task: Task, isCurrent: () => boolean) {
 	if (task.currentStreamingDidCheckpoint) {
 		return
 	}
 	try {
 		await task.checkpointSave(true)
-		task.currentStreamingDidCheckpoint = true
+		if (isCurrent()) task.currentStreamingDidCheckpoint = true
 	} catch (error) {
 		console.error(`[Task#presentAssistantMessage] Error saving checkpoint: ${error.message}`, error)
 	}

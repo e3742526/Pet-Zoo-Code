@@ -6,6 +6,11 @@ import type { HistoryItem } from "@roo-code/types"
 import type { MockInstance } from "vitest"
 
 import { TaskHistoryStore } from "../TaskHistoryStore"
+import { publishDelegationResult } from "../delegationResult"
+import { readApiMessages, saveApiMessages } from "../apiMessages"
+import { readTaskMessages, saveTaskMessages } from "../taskMessages"
+import { abandonDelegatedChild, completeDelegatedChild, delegateTaskToChild } from "../taskLifecycle"
+import { HistoryOwnershipError } from "../taskStoreConcurrency"
 
 // Wrap the real fs/promises so a test can pause inside the per-file lock
 // while every call still runs against the real filesystem.
@@ -14,7 +19,7 @@ vi.mock("fs/promises", async () => {
 	return { ...actual, readFile: vi.fn(actual.readFile) }
 })
 
-type WriteTaskFile = (item: HistoryItem, delta?: Partial<HistoryItem>) => Promise<HistoryItem>
+type WriteTaskFile = TaskHistoryStore["writeTaskFile"]
 
 interface WriteBarrier {
 	arrivals(): number
@@ -47,11 +52,11 @@ function synchronizeNextWrites(stores: TaskHistoryStore[], timeoutMs = 2_000): W
 		const value: unknown = Reflect.get(store, "writeTaskFile")
 		if (typeof value !== "function") throw new Error("TaskHistoryStore.writeTaskFile is unavailable")
 		const original = value.bind(store) as WriteTaskFile
-		Reflect.set(store, "writeTaskFile", async (historyItem: HistoryItem, delta?: Partial<HistoryItem>) => {
+		Reflect.set(store, "writeTaskFile", async (...args: Parameters<WriteTaskFile>) => {
 			arrivals++
 			if (arrivals === stores.length) release()
 			await barrier
-			return original(historyItem, delta)
+			return original(...args)
 		})
 	}
 
@@ -92,6 +97,198 @@ function createAction(actionId: string, message: string) {
 }
 
 describe("TaskHistoryStore real cross-host locking", () => {
+	it("rejects an old completion before either parent transcript can change", async () => {
+		const storagePath = await fs.mkdtemp(path.join(os.tmpdir(), "task-history-handoff-"))
+		const owner = new TaskHistoryStore(storagePath)
+		const stale = new TaskHistoryStore(storagePath)
+		const parent = delegateTaskToChild(item("parent"), "child-a", undefined, "call-a")
+		const child = { ...item("child-a"), status: "interrupted" as const, parentTaskId: parent.id }
+		const storage = { globalStoragePath: storagePath, taskId: parent.id }
+		try {
+			await owner.initialize()
+			await stale.initialize()
+			await owner.upsert(parent)
+			await owner.upsert(child)
+			await saveTaskMessages({ ...storage, messages: [] })
+			await stale.invalidate(parent.id)
+			await stale.invalidate(child.id)
+			const newerChild = { ...item("child-b"), parentTaskId: parent.id }
+			await owner.upsert(newerChild)
+			await owner.atomicReadAndUpdate(
+				parent.id,
+				(current) => delegateTaskToChild(current, newerChild.id, "interrupted", "call-b"),
+				{
+					guard: { awaitedChild: { id: child.id } },
+					beforeCommit: (disk) => owner.requireInterruptedChild(disk),
+				},
+			)
+			const beforeCommit = vi.fn(async (disk: HistoryItem) => {
+				await publishDelegationResult(storagePath, disk, child.id, "stale result")
+			})
+			await expect(
+				stale.atomicUpdatePair(
+					child.id,
+					parent.id,
+					(current) => completeDelegatedChild(parent, current, "stale result").child,
+					(current) => completeDelegatedChild(current, child, "stale result").parent,
+					{
+						first: { guard: { attemptGeneration: 0, parentLink: parent.id } },
+						second: { guard: { awaitedChild: { id: child.id } }, beforeCommit },
+					},
+				),
+			).rejects.toBeInstanceOf(HistoryOwnershipError)
+			await owner.invalidate(parent.id)
+			expect(owner.get(parent.id)).toMatchObject({
+				status: "delegated",
+				awaitingChildId: newerChild.id,
+				awaitedToolUseId: "call-b",
+			})
+			expect(stale.get(child.id)?.status).toBe("completed")
+			expect(beforeCommit).not.toHaveBeenCalled()
+			expect(await Promise.all([readTaskMessages(storage), readApiMessages(storage)])).toEqual([[], []])
+		} finally {
+			owner.dispose()
+			stale.dispose()
+			await fs.rm(storagePath, { recursive: true, force: true })
+		}
+	})
+
+	it("keeps detached lineage and rejects an old attempt and a save after deletion", async () => {
+		const storagePath = await fs.mkdtemp(path.join(os.tmpdir(), "task-history-attempt-"))
+		const owner = new TaskHistoryStore(storagePath)
+		const stale = new TaskHistoryStore(storagePath)
+		const parent = delegateTaskToChild(item("parent"), "child")
+		const action = createAction("same-action", "start child")
+		const child = {
+			...item("child"),
+			status: "interrupted" as const,
+			parentTaskId: parent.id,
+			rootTaskId: parent.id,
+			pendingAction: action,
+		}
+		try {
+			await owner.initialize()
+			await stale.initialize()
+			await owner.upsert(parent)
+			await owner.upsertMessageMetadata(child, true)
+			await stale.invalidate(child.id)
+			expect(await owner.beginTaskAttempt(child.id, 0, parent.id, action.actionId)).toBe(1)
+			await expect(
+				stale.atomicReadAndUpdate(child.id, (current) => ({ ...current, status: "completed" }), {
+					guard: { attemptGeneration: 0 },
+				}),
+			).rejects.toBeInstanceOf(HistoryOwnershipError)
+			expect((await stale.clearPendingActionIfMatching(child.id, action.actionId, 0)).pendingAction).toEqual(
+				action,
+			)
+			await owner.atomicUpdatePair(
+				child.id,
+				parent.id,
+				(current) => abandonDelegatedChild(parent, current).child,
+				(current) => abandonDelegatedChild(current, child).parent,
+			)
+			await stale.invalidate(child.id)
+			await stale.upsertMessageMetadata({ ...child, tokensIn: 19 }, false)
+			expect(stale.get(child.id)).toMatchObject({
+				status: "interrupted",
+				detachedFromParentId: parent.id,
+				tokensIn: 19,
+				attemptGeneration: 1,
+			})
+			expect(stale.get(child.id)?.parentTaskId).toBeUndefined()
+			expect(stale.get(child.id)?.rootTaskId).toBeUndefined()
+			await owner.delete(child.id)
+			await expect(stale.upsertMessageMetadata(child, false)).rejects.toBeInstanceOf(HistoryOwnershipError)
+		} finally {
+			owner.dispose()
+			stale.dispose()
+			await fs.rm(storagePath, { recursive: true, force: true })
+		}
+	})
+
+	it("replays a child-first completion idempotently and updates only the recorded tool call", async () => {
+		const storagePath = await fs.mkdtemp(path.join(os.tmpdir(), "task-history-replay-"))
+		const owner = new TaskHistoryStore(storagePath)
+		const restarted = new TaskHistoryStore(storagePath)
+		const parent = delegateTaskToChild(item("parent"), "child", undefined, "first-call")
+		const child = { ...item("child"), parentTaskId: parent.id }
+		const storage = { globalStoragePath: storagePath, taskId: parent.id }
+		try {
+			await owner.initialize()
+			await owner.upsert(parent)
+			await owner.upsert(child)
+			await saveTaskMessages({ ...storage, messages: [] })
+			await saveApiMessages({
+				...storage,
+				messages: [
+					{
+						ts: 1,
+						role: "assistant",
+						content: [{ type: "tool_use", id: "first-call", name: "new_task", input: {} }],
+					},
+					{
+						ts: 2,
+						role: "user",
+						content: [{ type: "tool_result", tool_use_id: "first-call", content: "old", is_error: true }],
+					},
+					{
+						ts: 3,
+						role: "assistant",
+						content: [{ type: "tool_use", id: "later-call", name: "new_task", input: {} }],
+					},
+					{
+						ts: 4,
+						role: "user",
+						content: [{ type: "tool_result", tool_use_id: "later-call", content: "leave this" }],
+					},
+				],
+			})
+			const staleApiSnapshot = await readApiMessages(storage)
+			const result = "finished the child"
+			await expect(
+				owner.atomicUpdatePair(
+					child.id,
+					parent.id,
+					(current) => completeDelegatedChild(parent, current, result).child,
+					(current) => completeDelegatedChild(current, child, result).parent,
+					{
+						second: {
+							guard: { awaitedChild: { id: child.id } },
+							beforeCommit: async (disk) => {
+								await publishDelegationResult(storagePath, disk, child.id, result)
+								throw new Error("interrupted before publishing parent history")
+							},
+						},
+					},
+				),
+			).rejects.toThrow("interrupted before publishing parent history")
+			await restarted.initialize()
+			await saveApiMessages({ ...storage, messages: staleApiSnapshot, merge: true })
+			expect(restarted.get(parent.id)).toMatchObject({
+				status: "active",
+				completedByChildId: child.id,
+				completionResultSummary: result,
+			})
+			expect(restarted.get(parent.id)?.awaitedToolUseId).toBeUndefined()
+			expect(await readTaskMessages(storage)).toEqual([
+				expect.objectContaining({ childTaskId: child.id, text: result }),
+			])
+			const api = await readApiMessages(storage)
+			expect(api).toHaveLength(4)
+			expect(api[1]?.content).toEqual([
+				{
+					type: "tool_result",
+					tool_use_id: "first-call",
+					content: `Subtask child completed.\n\nResult:\n${result}`,
+				},
+			])
+			expect(api[3]?.content).toEqual([{ type: "tool_result", tool_use_id: "later-call", content: "leave this" }])
+		} finally {
+			owner.dispose()
+			restarted.dispose()
+			await fs.rm(storagePath, { recursive: true, force: true })
+		}
+	})
 	it("preserves a recovered record instead of overwriting it during legacy migration", async () => {
 		const storagePath = await fs.mkdtemp(path.join(os.tmpdir(), "task-history-migrate-"))
 		const store = new TaskHistoryStore(storagePath)

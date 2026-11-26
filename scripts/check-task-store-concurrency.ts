@@ -9,7 +9,10 @@ import {
 import {
 	computeHistoryDelta,
 	DeltaRejectedError,
+	HistoryOwnershipError,
 	mergeHistoryDelta,
+	messageHistoryFields,
+	type HistoryWriteGuard,
 } from "../src/core/task-persistence/taskStoreConcurrency"
 
 const hosts = ["A", "B"] as const
@@ -21,6 +24,7 @@ type OperationId =
 	| "distinct-a"
 	| "distinct-b"
 	| "complete-a"
+	| "resume-b"
 	| "redelegate-b"
 	| "stale-save-a"
 	| "abandon-b"
@@ -68,6 +72,7 @@ interface OperationSpec {
 	externalSnapshot?: boolean
 	allowRefreshAfterRead?: boolean
 	publishCacheAtEnd?: boolean
+	attemptGeneration?: number
 	/**
 	 * "auto-title" mirrors TaskHistoryStore.setAutoTitleIfAbsent: under the file lock the write is
 	 * skipped when the persisted record is gone or already carries an autoTitle, and a commit copies
@@ -130,6 +135,10 @@ const semanticLandmarks = {
 		state.disk["child-a"] === undefined,
 	"manual-and-auto-title-coexist": (state: ModelState) =>
 		Boolean(state.disk["child-a"]?.title) && Boolean(state.disk["child-a"]?.autoTitle),
+	"resumed-child-rejects-old-completion": (state: ModelState) =>
+		state.operations["resume-b"]?.phase === "done" && state.operations["complete-a"]?.phase === "rejected",
+	"completed-child-rejects-concurrent-resume": (state: ModelState) =>
+		state.operations["complete-a"]?.phase === "done" && state.operations["resume-b"]?.phase === "rejected",
 } satisfies Record<string, (state: ModelState) => boolean>
 
 function item(id: TaskId, overrides: Partial<HistoryItem> = {}): HistoryItem {
@@ -208,6 +217,7 @@ const operationSpecs: Record<OperationId, OperationSpec> = {
 		host: "A",
 		externalSnapshot: true,
 		publishCacheAtEnd: true,
+		attemptGeneration: 0,
 		isEnabled: (snapshot) => {
 			const parent = snapshot.parent
 			const child = snapshot["child-a"]
@@ -224,6 +234,15 @@ const operationSpecs: Record<OperationId, OperationSpec> = {
 				"child-a result",
 			)
 			return [completed.child, completed.parent]
+		},
+	},
+	"resume-b": {
+		id: "resume-b",
+		host: "B",
+		isEnabled: (snapshot) => snapshot["child-a"]?.status !== "completed",
+		buildWrites: (snapshot) => {
+			const child = getRequired(snapshot, "child-a")
+			return [{ ...child, attemptGeneration: (child.attemptGeneration ?? 0) + 1 }]
 		},
 	},
 	"redelegate-b": {
@@ -300,18 +319,22 @@ const operationSpecs: Record<OperationId, OperationSpec> = {
 	},
 }
 
-function prepareWrites(state: ModelState, spec: OperationSpec, operation: OperationState): PreparedWrite[] {
+function prepareWrites(
+	state: ModelState,
+	spec: OperationSpec,
+	operation: OperationState,
+	legacy: boolean,
+): PreparedWrite[] {
 	return spec.buildWrites(operation.snapshot!).map((built) => {
 		const taskId = built.id as TaskId
 		const cached = state.caches[spec.host][taskId]
-		// Task.saveClineMessages rebuilds lineage from the live Task but preserves the
-		// store's current status before upsert, so stale lineage is not accompanied by
-		// a stale status transition.
-		const incoming = spec.id === "stale-save-a" && cached?.status ? { ...built, status: cached.status } : built
+		const metadata = spec.id === "stale-save-a"
+		const incoming = legacy && metadata && cached?.status ? { ...built, status: cached.status } : built
+		const fields = !legacy && metadata ? messageHistoryFields(incoming) : incoming
 		return {
 			taskId,
 			incoming,
-			delta: cached ? { id: taskId, ...computeHistoryDelta(cached, incoming) } : { ...incoming },
+			delta: cached ? { id: taskId, ...computeHistoryDelta(cached, fields) } : { id: taskId, ...fields },
 		}
 	})
 }
@@ -347,7 +370,7 @@ function nextSteps(state: ModelState, scenario: Scenario): TraceStep[] {
 				transition(state, `${spec.id}.prepare`, (next) => {
 					const target = next.operations[spec.id]!
 					if (spec.externalSnapshot) next.hostMutexes[spec.host] = spec.id
-					target.writes = prepareWrites(next, spec, target)
+					target.writes = prepareWrites(next, spec, target, scenario.targetViolation !== undefined)
 					target.phase = "prepared"
 				}),
 			)
@@ -367,14 +390,47 @@ function nextSteps(state: ModelState, scenario: Scenario): TraceStep[] {
 							return
 						}
 						try {
+							let guard: HistoryWriteGuard | undefined
+							if (!scenario.targetViolation) {
+								const parent = target.snapshot?.parent
+								if (
+									targetWrite.taskId === "parent" &&
+									(spec.id === "complete-a" || spec.id === "abandon-b" || spec.id === "redelegate-b")
+								) {
+									guard = { awaitedChild: { id: parent?.awaitingChildId } }
+									if (
+										spec.id === "redelegate-b" &&
+										parent?.awaitingChildId &&
+										next.disk[parent.awaitingChildId as TaskId]?.status !== "interrupted"
+									) {
+										throw new HistoryOwnershipError("parent", persisted?.awaitingChildId)
+									}
+								} else if (
+									targetWrite.taskId === "child-a" &&
+									(spec.id === "complete-a" || spec.id === "abandon-b" || spec.id === "resume-b")
+								) {
+									guard = {
+										parentLink: "parent",
+										attemptGeneration:
+											spec.attemptGeneration ??
+											target.snapshot?.["child-a"]?.attemptGeneration ??
+											0,
+										unfinished: true,
+									}
+								} else if (spec.id === "stale-save-a") {
+									guard = {}
+								}
+							}
 							target.candidate = mergeHistoryDelta(
 								next.disk[targetWrite.taskId],
 								targetWrite.incoming,
 								targetWrite.delta,
+								guard,
 							)
 							target.phase = "revalidated"
 						} catch (error) {
-							if (!(error instanceof DeltaRejectedError)) throw error
+							if (!(error instanceof DeltaRejectedError || error instanceof HistoryOwnershipError))
+								throw error
 							target.phase = "rejected"
 							delete next.locks[targetWrite.taskId]
 							delete next.hostMutexes[spec.host]
@@ -652,6 +708,15 @@ function runScenario(scenario: Scenario): {
 
 const scenarios: Scenario[] = [
 	{
+		name: "same child resumed in another host",
+		operations: [operationSpecs["complete-a"], operationSpecs["resume-b"]],
+		check: (state) => {
+			const resume = state.commits.findIndex(({ operationId }) => operationId === "resume-b")
+			const completion = state.commits.findIndex(({ operationId }) => operationId === "complete-a")
+			return resume >= 0 && completion > resume ? ["an old attempt completed after the child resumed"] : []
+		},
+	},
+	{
 		name: "peer field merge",
 		operations: [operationSpecs["metadata-a"], operationSpecs["metadata-b"]],
 		check: (state) => {
@@ -803,7 +868,19 @@ const scenarios: Scenario[] = [
 let totalStates = 0
 const reachedPhases = new Set<string>()
 const reachedLandmarks = new Set<string>()
-for (const scenario of scenarios) {
+const productionScenarios = scenarios.map((scenario) =>
+	scenario.targetViolation
+		? {
+				...scenario,
+				targetViolation: undefined,
+				check: (state: ModelState) => {
+					const violation = targetViolation(state, scenario)
+					return violation ? [violation] : []
+				},
+			}
+		: scenario,
+)
+for (const scenario of [...productionScenarios, ...scenarios.filter((scenario) => scenario.targetViolation)]) {
 	const result = runScenario(scenario)
 	totalStates += result.states
 	for (const phase of result.phases) reachedPhases.add(phase)
@@ -820,7 +897,7 @@ for (const scenario of scenarios) {
 			)
 		}
 		console.log(
-			`Known unsafe ${scenario.targetViolation.issue}: ${scenario.targetViolation.message}\n  ${result
+			`Rejected legacy policy ${scenario.targetViolation.issue}: ${scenario.targetViolation.message}\n  ${result
 				.witness!.slice(1)
 				.map((step) => step.action)
 				.join(" -> ")}`,

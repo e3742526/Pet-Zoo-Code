@@ -665,6 +665,7 @@ describe("ClineProvider flicker-free cancel", () => {
 				id: "child-1",
 				status: "interrupted",
 			}),
+			{ guard: { attemptGeneration: 0, parentLink: "parent-1" } },
 		)
 		// Parent is NOT transitioned to active — it stays delegated
 		expect(updateTaskHistorySpy).not.toHaveBeenCalledWith(expect.objectContaining({ id: "parent-1" }))
@@ -903,7 +904,9 @@ describe("ClineProvider flicker-free cancel", () => {
 				id: "child-1",
 				parentTaskId: undefined,
 				rootTaskId: undefined,
+				detachedFromParentId: "parent-1",
 			}),
+			{ guard: { attemptGeneration: 0, parentLink: "parent-1" } },
 		)
 		expect(createTaskWithHistoryItemSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1038,6 +1041,7 @@ describe("ClineProvider flicker-free cancel", () => {
 				id: "child-1",
 				status: "interrupted",
 			}),
+			{ guard: { attemptGeneration: 0, parentLink: "parent-1" } },
 		)
 
 		// Parent should remain delegated with awaitingChildId intact

@@ -121,5 +121,24 @@ export function mergeClineMessageSnapshots(existing: unknown, incoming: unknown)
 }
 
 export function mergeApiMessageSnapshots(existing: unknown, incoming: unknown): unknown {
-	return mergeTimestampedSnapshots(existing, incoming)
+	return mergeTimestampedSnapshots(existing, incoming, (disk, next) => {
+		const toolUseId = disk.delegationResultToolUseId
+		if (typeof toolUseId !== "string" || !Array.isArray(disk.content) || next.role !== "user") return next
+		const matchesResult = (block: unknown) =>
+			isRecord(block) && block.type === "tool_result" && block.tool_use_id === toolUseId
+		const published = disk.content.find(matchesResult)
+		if (!published) return next
+		const content = Array.isArray(next.content)
+			? next.content
+			: typeof next.content === "string"
+				? [{ type: "text", text: next.content }]
+				: []
+		return {
+			...next,
+			delegationResultToolUseId: toolUseId,
+			content: content.some(matchesResult)
+				? content.map((block) => (matchesResult(block) ? published : block))
+				: [published, ...content],
+		}
+	})
 }

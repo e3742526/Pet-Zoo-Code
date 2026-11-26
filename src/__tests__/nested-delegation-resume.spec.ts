@@ -42,14 +42,15 @@ vi.mock("vscode", () => {
 })
 
 // Mock persistence helpers used by provider reopen flow BEFORE importing provider
-vi.mock("../core/task-persistence/taskMessages", () => ({
+vi.mock("../core/task-persistence/taskMessages", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../core/task-persistence/taskMessages")>()),
 	readTaskMessages: vi.fn().mockResolvedValue([]),
+	saveTaskMessages: vi.fn(async ({ messages }: { messages: unknown[] }) => messages),
 }))
-vi.mock("../core/task-persistence", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../core/task-persistence")>()),
+vi.mock("../core/task-persistence/apiMessages", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../core/task-persistence/apiMessages")>()),
 	readApiMessages: vi.fn().mockResolvedValue([]),
-	saveApiMessages: vi.fn().mockResolvedValue(undefined),
-	saveTaskMessages: vi.fn().mockResolvedValue(undefined),
+	saveApiMessages: vi.fn(async ({ messages }: { messages: unknown[] }) => messages),
 }))
 
 import { attemptCompletionTool } from "../core/tools/AttemptCompletionTool"
@@ -58,7 +59,8 @@ import type { ToolUse } from "../shared/tools"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import type { Task } from "../core/task/Task"
 import { readTaskMessages } from "../core/task-persistence/taskMessages"
-import { readApiMessages } from "../core/task-persistence"
+import { readApiMessages } from "../core/task-persistence/apiMessages"
+import type { TaskHistoryStore } from "../core/task-persistence/TaskHistoryStore"
 
 describe("Nested delegation resume (A → B → C)", () => {
 	beforeEach(() => {
@@ -173,9 +175,11 @@ describe("Nested delegation resume (A → B → C)", () => {
 					secondId: string,
 					firstUpdater: (h: HistoryItem) => HistoryItem,
 					secondUpdater: (h: HistoryItem) => HistoryItem,
+					options?: Parameters<TaskHistoryStore["atomicUpdatePair"]>[4],
 				) => {
 					// Apply both updaters and persist to historyIndex atomically
 					const updatedFirst = firstUpdater(historyIndex[firstId])
+					await options?.second?.beforeCommit?.(historyIndex[secondId])
 					const updatedSecond = secondUpdater(historyIndex[secondId])
 					historyIndex[firstId] = updatedFirst
 					historyIndex[secondId] = updatedSecond

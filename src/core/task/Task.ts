@@ -536,6 +536,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Message Queue Service
 	public readonly messageQueueService: MessageQueueService
 	private messageQueueStateChangedHandler: (() => void) | undefined
+	private queuedAskPoll?: () => boolean
+	private askOwner?: symbol
+	private askQueueClaim?: { owner: symbol; id: string }
+	private queuedAnswerOwner?: symbol
 
 	// Streaming
 	isWaitingForFirstChunk = false
@@ -544,6 +548,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	currentStreamingDidCheckpoint = false
 	assistantMessageContent: AssistantMessageContent[] = []
 	dispatchState: DispatchState = DispatchState.IDLE
+	dispatchOwner?: symbol
+	private presentationTurn = Symbol()
+	private presentationFailure?: Error
 	pendingWork: PendingWork | null = null
 	userMessageContent: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam)[] = []
 	userMessageContentReady = false
@@ -585,7 +592,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * from crashing the extension host.
 	 */
 	private presentAssistantMessageSafe(): void {
-		void presentAssistantMessage(this, this.requestPolicySnapshot!).catch((error) => {
+		if (this.presentationFailure) return
+		const turn = this.presentationTurn
+		const markFailed = (error: unknown) => {
+			if (this.presentationTurn !== turn || this.abort || this.abandoned) return
+			if (error instanceof Error && error.message.endsWith("aborted")) return
+			this.presentationFailure = error instanceof Error ? error : new Error(String(error))
+		}
+		void presentAssistantMessage(this, this.requestPolicySnapshot!, markFailed).catch((error) => {
 			// Discriminate on the error message rather than `this.abort` state,
 			// which can flip between the throw and the catch microtask running:
 			// a real failure followed by an abort flip would otherwise be
@@ -596,6 +610,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (error instanceof Error && error.message.endsWith("aborted")) {
 				return
 			}
+			if (this.presentationTurn !== turn) return
+			markFailed(error)
 			console.error(`[Task#presentAssistantMessage] task ${this.taskId}.${this.instanceId} failed:`, error)
 		})
 	}
@@ -706,6 +722,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Initial status for the task's history item (set at creation time to avoid race conditions)
 	private readonly initialStatus?: "active" | "delegated" | "completed" | "interrupted"
+	private historyCreated: boolean
+	private fallbackHistoryProfile?: { previous: string | undefined; next: string; generation: number }
+	public attemptGeneration: number
 	private pendingAction?: PendingTaskAction
 
 	// MessageManager for high-level message operations (lazy initialized)
@@ -808,6 +827,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.parentTask = parentTask
 		this.taskNumber = taskNumber
 		this.initialStatus = initialStatus ?? historyItem?.status
+		this.historyCreated = historyItem !== undefined
+		this.attemptGeneration = historyItem?.attemptGeneration ?? 0
 		this.pendingAction = historyItem?.pendingAction
 
 		// Store the task's mode and API config name when it's created.
@@ -841,6 +862,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.messageQueueStateChangedHandler = () => {
 			this.emit(RooCodeEventName.TaskUserMessage, this.taskId)
 			this.emit(RooCodeEventName.QueuedMessagesUpdated, this.taskId, this.messageQueueService.messages)
+			this.processQueuedMessages()
 			void this.providerRef
 				.deref()
 				?.postStateToWebviewThrottled()
@@ -850,7 +872,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		this.messageQueueService.on("stateChanged", this.messageQueueStateChangedHandler)
-		this.messageQueueService.on("drained", (queued) => this.submitQueuedMessage(queued))
 
 		// Set up diff strategy
 		this.diffStrategy = new MultiSearchReplaceDiffStrategy(diffFuzzyThreshold)
@@ -1177,7 +1198,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		const provider = this.providerRef.deref()
-		const cleared = await provider?.clearPendingTaskAction(this.taskId, actionId)
+		const cleared = await provider?.clearPendingTaskAction(this.taskId, actionId, this.attemptGeneration)
 		if (cleared) {
 			if (this.pendingAction?.actionId === actionId) {
 				this.pendingAction = undefined
@@ -1274,13 +1295,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		)
 	}
 
-	private handleQueuedAskResponse(message: QueuedMessage, resolution: QueuedAskResolution): string | undefined {
+	private handleQueuedAskResponse(message: QueuedMessage, resolution: QueuedAskResolution): string {
 		this.handleWebviewAskResponse(resolution.response, message.text, message.images, message.segments)
-		if (resolution.requiresDurableAck) {
-			return message.id
-		}
-		this.messageQueueService.removeMessage(message.id)
-		return undefined
+		this.queuedAnswerOwner = this.askOwner
+		return message.id
 	}
 
 	/**
@@ -1364,20 +1382,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * Apply a queued-command policy re-check outcome to a claimed message: the
-	 * claim is released on every path except the legitimate consume, and an
-	 * engaged-policy outcome resolves the ask the same way the no-queued-message
-	 * path would (structured denial, approval, or — for a plain `ask` decision —
-	 * left pending for the user).
+	 * Apply current command policy to the ask. The caller owns the queue claim.
 	 */
 	private applyQueuedCommandPolicyAction(
 		action: QueuedCommandPolicyAction,
 		message: QueuedMessage,
 		resolution: QueuedAskResolution,
 	): string | undefined {
-		if (action.action !== "consume") {
-			this.messageQueueService.releaseMessage(message.id)
-		}
 		switch (action.action) {
 			case "consume":
 				return this.handleQueuedAskResponse(message, resolution)
@@ -1878,8 +1889,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.debouncedEmitTokenUsage(tokenUsage, this.toolUsage)
 
 			const provider = this.providerRef.deref()
-			const existingStatus = provider?.taskHistoryStore.get(this.taskId)?.status
-			await provider?.updateTaskHistory(existingStatus ? { ...historyItem, status: existingStatus } : historyItem)
+			if (provider) {
+				const profileChange = this.fallbackHistoryProfile
+				await provider.updateTaskHistory(historyItem, {
+					fromMessages: this.historyCreated ? "update" : "create",
+					...(profileChange && { profileChange }),
+				})
+				this.historyCreated = true
+				if (this.fallbackHistoryProfile === profileChange) this.fallbackHistoryProfile = undefined
+			}
 		} catch (error) {
 			// The message array was persisted above; a metadata or task-history failure must
 			// not mask that write (see the method docs). The next saveClineMessages() call
@@ -1946,6 +1964,25 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// rendered, leaving them stuck on-screen).
 		const provider = this.providerRef.deref()
 		const state = provider ? await provider.getState() : undefined
+		if (this.abort) throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
+		const askOwner = Symbol()
+		if (partial !== true) {
+			this.askOwner = askOwner
+			const supersededClaim = this.askQueueClaim
+			this.askQueueClaim = undefined
+			if (supersededClaim) this.messageQueueService.releaseMessage(supersededClaim.id)
+		}
+		const claimForAsk = () => {
+			const message = this.messageQueueService.claimNextMessage()
+			if (message) this.askQueueClaim = { owner: askOwner, id: message.id }
+			return message
+		}
+		const releaseAskClaim = () => {
+			const claim = this.askQueueClaim
+			if (claim?.owner !== askOwner) return
+			this.askQueueClaim = undefined
+			this.messageQueueService.releaseMessage(claim.id)
+		}
 		// The blanket auto-deny setting only engages while command auto-approval
 		// is on; while it is disengaged, the queued-message shortcut below is
 		// unaffected.
@@ -1972,7 +2009,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			!queueMayAnswerThisAsk ||
 			!this.mayDrainQueuedMessageForAsk()
 				? undefined
-				: this.messageQueueService.claimNextMessage()
+				: claimForAsk()
 		const queuedAskResolution = queuedMessage ? queuedResponseForAsk(type, text) : undefined
 		// `this.cwd`, not `provider.cwd`:
 		// The path inside `text` was made relative to this task's workspace,
@@ -1988,118 +2025,133 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					isProtected,
 					dcgDecision: autoApprovalContext?.dcgDecision,
 					fileTargets: autoApprovalContext?.fileTargets,
+				}).catch((error) => {
+					if (this.askOwner === askOwner) this.askOwner = undefined
+					throw error
 				})
 		const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
 		const autoApprovalDecision = isAutoAnswered ? approval.decision : undefined
 
 		// Re-check: an abort during the getState/checkAutoApproval awaits must not post an ask row.
 		if (this.abort) {
-			if (queuedMessage) {
-				this.messageQueueService.releaseMessage(queuedMessage.id)
-			}
+			releaseAskClaim()
+			if (this.askOwner === askOwner) this.askOwner = undefined
 			throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
 		}
+		if (partial !== true && this.askOwner !== askOwner) throw new AskIgnoredError("superseded")
 
-		if (partial !== undefined) {
-			const lastMessage = this.clineMessages.at(-1)
+		try {
+			if (partial !== undefined) {
+				const lastMessage = this.clineMessages.at(-1)
 
-			const isUpdatingPreviousPartial =
-				lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
+				const isUpdatingPreviousPartial =
+					lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
 
-			if (partial) {
-				if (isUpdatingPreviousPartial) {
-					// Existing partial message, so update it.
-					lastMessage.text = text
-					lastMessage.partial = partial
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
-					// TODO: Be more efficient about saving and posting only new
-					// data or one whole message at a time so ignore partial for
-					// saves, and only post parts of partial message instead of
-					// whole array in new listener.
-					this.postPartialMessageUpdate(lastMessage, "ask")
-					// console.log("Task#ask: current ask promise was ignored (#1)")
-					throw new AskIgnoredError("updating existing partial")
+				if (partial) {
+					if (isUpdatingPreviousPartial) {
+						// Existing partial message, so update it.
+						lastMessage.text = text
+						lastMessage.partial = partial
+						lastMessage.progressStatus = progressStatus
+						lastMessage.isProtected = isProtected
+						// TODO: Be more efficient about saving and posting only new
+						// data or one whole message at a time so ignore partial for
+						// saves, and only post parts of partial message instead of
+						// whole array in new listener.
+						this.postPartialMessageUpdate(lastMessage, "ask")
+						// console.log("Task#ask: current ask promise was ignored (#1)")
+						throw new AskIgnoredError("updating existing partial")
+					} else {
+						// This is a new partial message, so add it with partial
+						// state.
+						askTs = Date.now()
+						this.lastMessageTs = askTs
+						await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, partial, isProtected })
+						// console.log("Task#ask: current ask promise was ignored (#2)")
+						throw new AskIgnoredError("new partial")
+					}
 				} else {
-					// This is a new partial message, so add it with partial
-					// state.
-					askTs = Date.now()
-					this.lastMessageTs = askTs
-					await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, partial, isProtected })
-					// console.log("Task#ask: current ask promise was ignored (#2)")
-					throw new AskIgnoredError("new partial")
+					if (isUpdatingPreviousPartial) {
+						// This is the complete version of a previously partial
+						// message, so replace the partial with the complete version.
+						this.askResponse = undefined
+						this.askResponseText = undefined
+						this.askResponseImages = undefined
+
+						// Bug for the history books:
+						// In the webview we use the ts as the chatrow key for the
+						// virtuoso list. Since we would update this ts right at the
+						// end of streaming, it would cause the view to flicker. The
+						// key prop has to be stable otherwise react has trouble
+						// reconciling items between renders, causing unmounting and
+						// remounting of components (flickering).
+						// The lesson here is if you see flickering when rendering
+						// lists, it's likely because the key prop is not stable.
+						// So in this case we must make sure that the message ts is
+						// never altered after first setting it.
+						askTs = lastMessage.ts
+						this.lastMessageTs = askTs
+						lastMessage.text = text
+						lastMessage.partial = false
+						lastMessage.progressStatus = progressStatus
+						lastMessage.isProtected = isProtected
+						if (isAutoAnswered) {
+							lastMessage.isAnswered = true
+							lastMessage.autoApprovalDecision = autoApprovalDecision
+						}
+						this.cancelPendingPartialMessageUpdate()
+						await this.saveClineMessages()
+						// Fire-and-forget: see postPartialMessageUpdate for the rationale on the .catch arm.
+						this.updateClineMessage(lastMessage).catch((error) => {
+							console.error("[Task#ask] updateClineMessage failed:", error)
+						})
+					} else {
+						// This is a new and complete message, so add it like normal.
+						this.askResponse = undefined
+						this.askResponseText = undefined
+						this.askResponseImages = undefined
+						askTs = Date.now()
+						this.lastMessageTs = askTs
+						await this.addToClineMessages({
+							ts: askTs,
+							type: "ask",
+							ask: type,
+							text,
+							isProtected,
+							isAnswered: isAutoAnswered || undefined,
+							autoApprovalDecision,
+						})
+					}
 				}
 			} else {
-				if (isUpdatingPreviousPartial) {
-					// This is the complete version of a previously partial
-					// message, so replace the partial with the complete version.
-					this.askResponse = undefined
-					this.askResponseText = undefined
-					this.askResponseImages = undefined
-
-					// Bug for the history books:
-					// In the webview we use the ts as the chatrow key for the
-					// virtuoso list. Since we would update this ts right at the
-					// end of streaming, it would cause the view to flicker. The
-					// key prop has to be stable otherwise react has trouble
-					// reconciling items between renders, causing unmounting and
-					// remounting of components (flickering).
-					// The lesson here is if you see flickering when rendering
-					// lists, it's likely because the key prop is not stable.
-					// So in this case we must make sure that the message ts is
-					// never altered after first setting it.
-					askTs = lastMessage.ts
-					this.lastMessageTs = askTs
-					lastMessage.text = text
-					lastMessage.partial = false
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
-					if (isAutoAnswered) {
-						lastMessage.isAnswered = true
-						lastMessage.autoApprovalDecision = autoApprovalDecision
-					}
-					this.cancelPendingPartialMessageUpdate()
-					await this.saveClineMessages()
-					// Fire-and-forget: see postPartialMessageUpdate for the rationale on the .catch arm.
-					this.updateClineMessage(lastMessage).catch((error) => {
-						console.error("[Task#ask] updateClineMessage failed:", error)
-					})
-				} else {
-					// This is a new and complete message, so add it like normal.
-					this.askResponse = undefined
-					this.askResponseText = undefined
-					this.askResponseImages = undefined
-					askTs = Date.now()
-					this.lastMessageTs = askTs
-					await this.addToClineMessages({
-						ts: askTs,
-						type: "ask",
-						ask: type,
-						text,
-						isProtected,
-						isAnswered: isAutoAnswered || undefined,
-						autoApprovalDecision,
-					})
-				}
+				// This is a new non-partial message, so add it like normal.
+				this.askResponse = undefined
+				this.askResponseText = undefined
+				this.askResponseImages = undefined
+				askTs = Date.now()
+				this.lastMessageTs = askTs
+				await this.addToClineMessages({
+					ts: askTs,
+					type: "ask",
+					ask: type,
+					text,
+					isProtected,
+					isAnswered: isAutoAnswered || undefined,
+					autoApprovalDecision,
+				})
 			}
-		} else {
-			// This is a new non-partial message, so add it like normal.
-			this.askResponse = undefined
-			this.askResponseText = undefined
-			this.askResponseImages = undefined
-			askTs = Date.now()
-			this.lastMessageTs = askTs
-			await this.addToClineMessages({
-				ts: askTs,
-				type: "ask",
-				ask: type,
-				text,
-				isProtected,
-				isAnswered: isAutoAnswered || undefined,
-				autoApprovalDecision,
-			})
+		} catch (error) {
+			releaseAskClaim()
+			if (this.askOwner === askOwner) this.askOwner = undefined
+			throw error
+		}
+		if (this.askOwner !== askOwner) {
+			releaseAskClaim()
+			throw new AskIgnoredError("superseded")
 		}
 
+		const isPendingAsk = () =>
+			!this.abort && this.askResponse === undefined && this.lastMessageTs === askTs && this.askOwner === askOwner
 		const timeouts: NodeJS.Timeout[] = []
 
 		// Record the structured detail of an automatic (policy) denial so the
@@ -2131,6 +2183,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		} else if (approval.decision === "timeout") {
 			// Store the auto-approval timeout so it can be cancelled if user interacts
 			this.autoApprovalTimeoutRef = setTimeout(() => {
+				if (this.askOwner !== askOwner || this.abort) return
 				const { askResponse, text, images } = approval.fn()
 				this.handleWebviewAskResponse(askResponse, text, images)
 				this.autoApprovalTimeoutRef = undefined
@@ -2140,7 +2193,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// The state is mutable if the message is complete and the task will
 		// block (via the `pWaitFor`).
-		const isBlocking = !(this.askResponse !== undefined || this.lastMessageTs !== askTs)
+		const isBlocking = isPendingAsk()
 		const isMessageQueued = !this.messageQueueService.isEmpty()
 		// Keep queued user messages intact during command_output asks. Those asks
 		// are terminal flow-control, not conversational turns.
@@ -2165,26 +2218,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// can outrun that teardown, and a status transition published after
 		// abort would describe a task that no longer runs.
 		const armAskStatusTimers = (): void => {
-			const askStillPending = this.askResponse === undefined && this.lastMessageTs === askTs
-			if (!askStillPending || this.abort || partial || approval.decision !== "ask" || timeouts.length > 0) {
+			if (!isPendingAsk() || partial || approval.decision !== "ask" || timeouts.length > 0) {
 				return
 			}
 
 			const statusMutationTimeout = 2_000
-
-			// Fire-time liveness check for the timers armed below. Clearing a due
-			// timer does not retract it: when abort lands between the wait's last
-			// poll tick and the timer's due time, the callback runs before
-			// `ask()`'s continuation reaches the teardown sweep, so liveness has
-			// to be re-checked here. Read-only: the `timeouts` ledger is never
-			// touched from the callbacks.
-			const statusTimerStillLive = (): boolean =>
-				!this.abort && this.askResponse === undefined && this.lastMessageTs === askTs
-
+			// Timers check ask ownership again when they fire.
 			if (isInteractiveAsk(type)) {
 				timeouts.push(
 					setTimeout(() => {
-						if (!statusTimerStillLive()) {
+						if (!isPendingAsk()) {
 							return
 						}
 						const message = this.findMessageByTimestamp(askTs)
@@ -2202,7 +2245,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			} else if (isResumableAsk(type)) {
 				timeouts.push(
 					setTimeout(() => {
-						if (!statusTimerStillLive()) {
+						if (!isPendingAsk()) {
 							return
 						}
 						const message = this.findMessageByTimestamp(askTs)
@@ -2216,7 +2259,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			} else if (isIdleAsk(type)) {
 				timeouts.push(
 					setTimeout(() => {
-						if (!statusTimerStillLive()) {
+						if (!isPendingAsk()) {
 							return
 						}
 						const message = this.findMessageByTimestamp(askTs)
@@ -2230,213 +2273,105 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
+		// A command claim remains provisional until current policy permits it to answer.
+		let queuedCommandPolicyCheck: Promise<void> | undefined
+		const verifyQueuedCommand = async (message: QueuedMessage, resolution: QueuedAskResolution): Promise<void> => {
+			const controller = new AbortController()
+			const cancelIfSettled = () => {
+				if (!isPendingAsk()) controller.abort()
+			}
+			cancelIfSettled()
+			const watcher = setInterval(cancelIfSettled, 100)
+			try {
+				const action = await this.recheckQueuedCommandPolicy(
+					{ text, isProtected, dcgDecision: autoApprovalContext?.dcgDecision },
+					controller.signal,
+				)
+				if (isPendingAsk()) {
+					queuedMessageId = this.applyQueuedCommandPolicyAction(action, message, resolution)
+				}
+			} catch (error) {
+				console.error("[Task#ask] queued command policy re-check failed:", error)
+			} finally {
+				clearInterval(watcher)
+				if (queuedMessageId !== message.id) releaseAskClaim()
+				armAskStatusTimers()
+			}
+		}
+
 		if (isStatusMutable) {
 			armAskStatusTimers()
-		} else if (queuedMessage && queuedAskResolution) {
+		} else if (queuedMessage && queuedAskResolution && isPendingAsk()) {
 			if (type === "command") {
-				// The snapshot gate is frozen; blanket deny may have engaged since the
-				// ask began. Re-read policy before the message stands in for approval.
-				// Drain-site parity for cancellation and cleanup: the fresh policy
-				// read ends in an uncancellable provider read, so an abort poller
-				// aborts a signal the re-check itself awaits — settling it on the
-				// abort instead of leaving a pending promise that retains this task
-				// and runs policy post-abort — and one `finally` releases the claim
-				// on the abort, throw, supersession, and "release" outcomes alike.
-				const recheckAbort = new AbortController()
-				const checkAbort = () => {
-					if (this.abort) {
-						recheckAbort.abort()
-					}
-				}
-				checkAbort()
-				const abortWatcher = setInterval(checkAbort, 100)
-				try {
-					const action = await this.recheckQueuedCommandPolicy(
-						{
-							text,
-							isProtected,
-							dcgDecision: autoApprovalContext?.dcgDecision,
-						},
-						recheckAbort.signal,
-					)
-					if (!this.abort && this.askResponse === undefined && this.lastMessageTs === askTs) {
-						// Any outcome on a still-live ask — the user answered or the
-						// ask was superseded — leaves the message for the next
-						// consumer; the `finally` below releases the claim and the ask
-						// resolves with the user's own response via the pWaitFor.
-						queuedMessageId = this.applyQueuedCommandPolicyAction(
-							action,
-							queuedMessage,
-							queuedAskResolution,
-						)
-						// A "release" outcome leaves the ask pending; consume/deny/approve
-						// resolved it, and the arm's pending check declines to arm then.
-						armAskStatusTimers()
-					}
-				} catch (error) {
-					// Drain-site parity: a failed re-check must not reject ask() nor
-					// strand the claim; the prompt stays pending for the user.
-					console.error("[Task#ask] queued command policy re-check failed:", error)
-					armAskStatusTimers()
-				} finally {
-					clearInterval(abortWatcher)
-					// One release path for abort, throw, supersession, and "release".
-					// `releaseMessage` is idempotent, so it stays safe beside the
-					// helper-internal release. The durable consume is the one outcome
-					// that must keep its claim until persistence removes the message —
-					// it is the only path that assigned `queuedMessageId` here.
-					if (queuedMessageId !== queuedMessage.id) {
-						this.messageQueueService.releaseMessage(queuedMessage.id)
-					}
-				}
+				queuedCommandPolicyCheck = verifyQueuedCommand(queuedMessage, queuedAskResolution)
+				await queuedCommandPolicyCheck
 			} else {
 				queuedMessageId = this.handleQueuedAskResponse(queuedMessage, queuedAskResolution)
 			}
+		} else if (queuedMessage) {
+			releaseAskClaim()
 		} else if (shouldDrainQueuedMessageForAsk && isMessageQueued) {
-			// The claim gate (per-turn latch, or blanket deny engaged for a command
-			// ask) left the queued message untouched. If the policy still leaves the
-			// prompt pending, the non-empty queue keeps `isStatusMutable` false, so
-			// the interactive arm must run from here — the same reason a release
-			// re-arms. For an auto-answered ask the arm's pending check declines.
 			armAskStatusTimers()
 		}
 
-		// At most one drain-site policy re-check is in flight per ask; the
-		// pWaitFor predicate is synchronous, so its await runs out here.
-		let queuedCommandPolicyCheck: Promise<void> | undefined
-		const verifyDrainedCommandMessage = async (
-			message: QueuedMessage,
-			resolution: QueuedAskResolution,
-		): Promise<void> => {
-			// The fresh policy read ends in `provider.getState()`, which awaits
-			// custom-mode file work that cannot be cancelled from here. An abort
-			// poller aborts a signal the re-check itself awaits, settling it within
-			// one poll of the abort instead of leaving `ask()` blocked on the pending
-			// read or a lost race retaining this task. The re-check's own race
-			// attaches handlers to the read, so it rejecting after the abort settles
-			// is already considered handled — no extra `.catch` needed.
-			const recheckAbort = new AbortController()
-			const checkAbort = () => {
-				if (this.abort) {
-					recheckAbort.abort()
+		const pollQueuedAsk = () => {
+			if (!isPendingAsk()) return true
+
+			// If a queued message arrives while we're blocked on an ask (e.g. a follow-up
+			// suggestion click that was incorrectly queued due to UI state), consume it
+			// immediately so the task doesn't hang. Command asks under blanket deny are
+			// excluded (`queueMayAnswerThisAsk`): a queued message must never stand in
+			// for the explicit approval the policy withheld. Protected asks are exempt
+			// too: like the pre-block drain above, they must wait for explicit user
+			// approval.
+			if (
+				queueMayAnswerThisAsk &&
+				shouldDrainQueuedMessageForAsk &&
+				!isProtected &&
+				!queuedCommandPolicyCheck &&
+				this.mayDrainQueuedMessageForAsk()
+			) {
+				const message = claimForAsk()
+				const resolution = message ? queuedResponseForAsk(type, text) : undefined
+				if (message && resolution) {
+					if (type === "command") {
+						queuedCommandPolicyCheck = verifyQueuedCommand(message, resolution)
+					} else {
+						queuedMessageId = this.handleQueuedAskResponse(message, resolution)
+					}
 				}
 			}
-			checkAbort()
-			const abortWatcher = setInterval(checkAbort, 100)
-			try {
-				const action = await this.recheckQueuedCommandPolicy(
-					{
-						text,
-						isProtected,
-						dcgDecision: autoApprovalContext?.dcgDecision,
-					},
-					recheckAbort.signal,
-				)
-				if (!this.abort && this.askResponse === undefined && this.lastMessageTs === askTs) {
-					queuedMessageId = this.applyQueuedCommandPolicyAction(action, message, resolution)
-					// A "release" outcome leaves the ask pending while the queue stays
-					// non-empty, so the arm that `isStatusMutable` gates — computed
-					// once, before the claim — must run here.
-					armAskStatusTimers()
-				}
-			} finally {
-				clearInterval(abortWatcher)
-				// One release path for abort, throw, supersession, and "release".
-				// `releaseMessage` is idempotent, so it stays safe beside the
-				// branch-local releases. The durable consume is the one outcome
-				// that must keep its claim until persistence removes the message —
-				// it is the only path that assigned `queuedMessageId`.
-				if (queuedMessageId !== message.id) {
-					this.messageQueueService.releaseMessage(message.id)
-				}
-			}
+
+			return false
 		}
-
-		// Wait for askResponse to be set
+		if (this.askOwner === askOwner) this.queuedAskPoll = pollQueuedAsk
 		try {
-			await pWaitFor(
-				() => {
-					if (this.abort || this.askResponse !== undefined || this.lastMessageTs !== askTs) {
-						return true
-					}
+			await pWaitFor(pollQueuedAsk, { interval: 100 })
 
-					// If a queued message arrives while we're blocked on an ask (e.g. a follow-up
-					// suggestion click that was incorrectly queued due to UI state), consume it
-					// immediately so the task doesn't hang. Command asks under blanket deny are
-					// excluded (`queueMayAnswerThisAsk`): a queued message must never stand in
-					// for the explicit approval the policy withheld. Protected asks are exempt
-					// too: like the pre-block drain above, they must wait for explicit user
-					// approval.
-					if (
-						queueMayAnswerThisAsk &&
-						shouldDrainQueuedMessageForAsk &&
-						!isProtected &&
-						!queuedCommandPolicyCheck &&
-						this.mayDrainQueuedMessageForAsk()
-					) {
-						const message = this.messageQueueService.claimNextMessage()
-						const resolution = message ? queuedResponseForAsk(type, text) : undefined
-						if (message && resolution) {
-							if (type === "command") {
-								// Claim first, then verify the policy off-predicate: a
-								// blanket-deny flip landing during the prompt dwell is
-								// invisible to the frozen snapshot gate, so the claim is
-								// provisional until the fresh check clears it.
-								queuedCommandPolicyCheck = verifyDrainedCommandMessage(message, resolution).catch(
-									(error) => {
-										// The background check must never reject unhandled;
-										// on failure the claim is released so the message
-										// stays available to a later consumer.
-										console.error("[Task#ask] queued command policy re-check failed:", error)
-										this.messageQueueService.releaseMessage(message.id)
-										armAskStatusTimers()
-									},
-								)
-							} else {
-								queuedMessageId = this.handleQueuedAskResponse(message, resolution)
-							}
-						}
-					}
-
-					return false
-				},
-				{ interval: 100 },
-			)
-
-			// Let a policy re-check that was in flight when the wait resolved run to
-			// completion: its bail-out path releases the claim, and leaving it
-			// unresolved would let the consume race the result below. On abort, detach
-			// instead: the re-check settles on the abort and its `finally` releases the
-			// claim either way, while awaiting past the abort could stall on an
-			// uncancellable read instead of letting the throw below settle the ask.
+			// A manual reply or a replacement ask cancels pending policy work before the result returns.
 			if (queuedCommandPolicyCheck && !this.abort) {
 				await queuedCommandPolicyCheck
 			}
 
 			/* v8 ignore next 3 -- abort-while-waiting path; covered by e2e standalone-resume test */
 			if (this.abort) {
-				if (queuedMessageId) {
-					this.messageQueueService.releaseMessage(queuedMessageId)
-				}
 				throw new Error(`[ZooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
 			}
 
-			if (this.lastMessageTs !== askTs) {
+			if (this.lastMessageTs !== askTs || this.askOwner !== askOwner) {
 				// Could happen if we send multiple asks in a row i.e. with
 				// command_output. It's important that when we know an ask could
 				// fail, it is handled gracefully.
-				if (queuedMessageId) {
-					this.messageQueueService.releaseMessage(queuedMessageId)
-				}
 				throw new AskIgnoredError("superseded")
 			}
 
+			const durableAck = queuedResponseForAsk(type, text)?.requiresDurableAck === true
 			const result = {
 				response: this.askResponse!,
 				text: this.askResponseText,
 				images: this.askResponseImages,
 				segments: this.askResponseSegments,
-				queuedMessageId,
+				queuedMessageId: durableAck ? queuedMessageId : undefined,
 				autoDenyDetail: this.pendingAutoDenyDetail,
 			}
 			this.askResponse = undefined
@@ -2444,6 +2379,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.askResponseImages = undefined
 			this.askResponseSegments = undefined
 			this.pendingAutoDenyDetail = undefined
+			if (queuedMessageId) this.askQueueClaim = undefined
+			if (this.queuedAskPoll === pollQueuedAsk) this.queuedAskPoll = undefined
+			if (queuedMessageId && !durableAck) this.messageQueueService.removeMessage(queuedMessageId)
 
 			// Switch back to an active state.
 			if (this.idleAsk || this.resumableAsk || this.interactiveAsk) {
@@ -2456,6 +2394,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.emit(RooCodeEventName.TaskAskResponded)
 			return result
 		} finally {
+			if (this.queuedAskPoll === pollQueuedAsk) this.queuedAskPoll = undefined
+			if (this.askOwner === askOwner) this.askOwner = undefined
+			if (this.queuedAnswerOwner === askOwner) this.queuedAnswerOwner = undefined
+			releaseAskClaim()
 			// Teardown for every settle path: the normal resolve and the
 			// abort/supersession throws that never reach the result handling
 			// above. The fire-time guard in the armed callbacks covers the
@@ -2471,6 +2413,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		images?: string[],
 		segments?: MentionSegment[],
 	) {
+		if (this.askOwner && this.queuedAnswerOwner === this.askOwner && this.askResponse !== undefined) return
 		// Clear any pending auto-approval timeout when user responds
 		this.cancelAutoApprovalTimeout()
 
@@ -2599,6 +2542,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 
 			this.updateApiConfiguration(fallback)
+			this.fallbackHistoryProfile = {
+				previous: this._taskApiConfigName,
+				next: name,
+				generation: this.attemptGeneration,
+			}
 			this.setTaskApiConfigName(name)
 			void vscode.window.showInformationMessage(t("common:api.quotaFallback", { profile: name }))
 			return true
@@ -3340,6 +3288,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.markInitialized()
 
 			const { response, text, images, segments } = await this.ask(askType) // Calls `postStateToWebview`.
+			await this.beginResumedAttempt()
 
 			let responseText: string | undefined
 			let responseImages: string[] | undefined
@@ -3505,8 +3454,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		let { response, text, images, queuedMessageId } = await this.ask("tool", action.approvalText, false)
+		let resumed = false
 
 		if (response === "yesButtonClicked") {
+			await this.beginResumedAttempt(action.actionId)
+			resumed = true
 			if (action.kind === "create_subtask") {
 				await provider.delegateParentAndOpenChild({
 					parentTaskId: this.taskId,
@@ -3514,6 +3466,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					initialTodos: action.todos,
 					mode: action.mode,
 					pendingActionId: action.actionId,
+					attemptGeneration: this.attemptGeneration,
 				})
 				return
 			}
@@ -3523,6 +3476,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				childTaskId: this.taskId,
 				completionResultSummary: action.result,
 				pendingActionId: action.actionId,
+				attemptGeneration: this.attemptGeneration,
 			})
 			if (didReopen) {
 				return
@@ -3551,6 +3505,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		const deniedContent = text ? formatResponse.toolDeniedWithFeedback(text) : formatResponse.toolDenied()
+		if (!resumed) await this.beginResumedAttempt(action.actionId)
 		await this.initiateTaskLoop([
 			{
 				type: "tool_result",
@@ -3892,6 +3847,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * - Immediately continues task loop without user interaction
 	 */
 	public async resumeAfterDelegation(): Promise<void> {
+		await this.beginResumedAttempt()
 		// Clear any ask states that might have been set during history load
 		this.idleAsk = undefined
 		this.resumableAsk = undefined
@@ -3950,6 +3906,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Continue task loop - pass empty array to signal no new user content needed
 		// The initiateTaskLoop will handle this by skipping user message addition
 		await this.initiateTaskLoop([])
+	}
+
+	private async beginResumedAttempt(pendingActionId?: string): Promise<void> {
+		if (!this.parentTaskId || this.initialStatus === "completed") return
+		const provider = this.providerRef.deref()
+		if (!provider || this.abort || this.abandoned) throw new Error(`Task ${this.taskId} cannot resume`)
+		this.attemptGeneration = await provider.taskHistoryStore.beginTaskAttempt(
+			this.taskId,
+			this.attemptGeneration,
+			this.parentTaskId,
+			pendingActionId,
+		)
 	}
 
 	// Task Loop
@@ -4284,6 +4252,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// (a new turn) is fair game for the next ask to answer.
 				this.blanketDeniedCommandThisTurn = false
 				this.dispatchState = DispatchState.IDLE
+				this.dispatchOwner = undefined
+				this.presentationTurn = Symbol()
+				this.presentationFailure = undefined
 				this.pendingWork = null
 				// No legacy text-stream tool parser.
 				this.streamingToolCallIndices.clear()
@@ -5236,6 +5207,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						() =>
 							this.userMessageContentReady ||
 							this.hasCompleteToolResultsForCurrentTurn() ||
+							this.presentationFailure !== undefined ||
 							this.abort ||
 							this.abandoned,
 					)
@@ -5251,6 +5223,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					const didToolUse = this.assistantMessageContent.some(
 						(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
 					)
+					if (didToolUse && this.presentationFailure && !this.hasCompleteToolResultsForCurrentTurn()) {
+						await this.say("error", t("common:errors.tool_turn_failed"))
+						return false
+					}
 
 					if (!didToolUse) {
 						// Increment consecutive no-tool-use counter
@@ -6608,31 +6584,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return this._messageManager
 	}
 
-	private submitQueuedMessage(queued: QueuedMessage): void {
-		setTimeout(() => {
-			this.submitUserMessage(queued.text, queued.images, undefined, undefined, queued.segments).catch((err) =>
-				console.error(`[Task] Failed to submit queued message:`, err),
-			)
-		}, 0)
-	}
-
-	/**
-	 * Process any queued messages by dequeuing and submitting them.
-	 * This ensures that queued user messages are sent when appropriate,
-	 * preventing them from getting stuck in the queue.
-	 *
-	 * @param context - Context string for logging (e.g., the calling tool name)
-	 */
+	/** Let the current ask check for queued input. The queue owns messages between asks. */
 	public processQueuedMessages(): void {
-		try {
-			if (!this.messageQueueService.isEmpty()) {
-				const queued = this.messageQueueService.drain()
-				if (queued) {
-					this.submitQueuedMessage(queued)
-				}
-			}
-		} catch (e) {
-			console.error(`[Task] Queue processing error:`, e)
-		}
+		this.queuedAskPoll?.()
 	}
 }

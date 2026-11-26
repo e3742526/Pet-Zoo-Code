@@ -12,6 +12,7 @@ function createTask(provider?: object) {
 	const task = Object.create(Task.prototype) as Task
 	Object.assign(task, {
 		taskId: "task-1",
+		attemptGeneration: 3,
 		providerRef: { deref: () => provider },
 		ask: vi.fn(),
 		say: vi.fn().mockResolvedValue(undefined),
@@ -53,6 +54,7 @@ describe("Task pending action replay", () => {
 			initialTodos: [],
 			mode: "ask",
 			pendingActionId: "create-action",
+			attemptGeneration: 3,
 		})
 	})
 
@@ -68,6 +70,7 @@ describe("Task pending action replay", () => {
 			childTaskId: "task-1",
 			completionResultSummary: "Done",
 			pendingActionId: "finish-action",
+			attemptGeneration: 3,
 		})
 	})
 
@@ -85,7 +88,7 @@ describe("Task pending action replay", () => {
 
 		await getPendingActionAccess(task).resumePendingTaskAction(finishAction)
 
-		expect(provider.clearPendingTaskAction).toHaveBeenCalledWith("task-1", "finish-action")
+		expect(provider.clearPendingTaskAction).toHaveBeenCalledWith("task-1", "finish-action", 3)
 		expect(task.ask).toHaveBeenNthCalledWith(2, "completion_result", "", false)
 		expect(initiateTaskLoop).not.toHaveBeenCalled()
 	})
@@ -120,7 +123,7 @@ describe("Task pending action replay", () => {
 			expect.objectContaining({ pendingActionId: "finish-action" }),
 		)
 		expect(provider.clearPendingTaskAction).toHaveBeenCalledTimes(1)
-		expect(provider.clearPendingTaskAction).toHaveBeenCalledWith("task-1", "finish-action")
+		expect(provider.clearPendingTaskAction).toHaveBeenCalledWith("task-1", "finish-action", 3)
 		expect(provider.taskHistoryStore.get).toHaveBeenCalledTimes(1)
 		expect(provider.taskHistoryStore.get).toHaveBeenCalledWith("task-1")
 		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledTimes(1)
@@ -130,6 +133,7 @@ describe("Task pending action replay", () => {
 			initialTodos: newerAction.todos,
 			mode: newerAction.mode,
 			pendingActionId: "newer-action",
+			attemptGeneration: 3,
 		})
 		expect(provider.clearPendingTaskAction.mock.invocationCallOrder[0]).toBeLessThan(
 			provider.taskHistoryStore.get.mock.invocationCallOrder[0],

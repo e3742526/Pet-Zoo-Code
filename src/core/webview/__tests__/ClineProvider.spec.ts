@@ -4550,6 +4550,38 @@ describe("ClineProvider", () => {
 		expect(state.allowedReadFiles).toEqual([])
 	})
 
+	describe("saved prompt shortcuts", () => {
+		const shortcuts = [{ id: "build", name: "Build", text: "Build the app" }]
+
+		test("returns starter prompts when no shortcuts were saved", async () => {
+			await provider.resolveWebviewView(mockWebviewView)
+			const expected = [
+				{ id: "install-ios", name: "Install iOS", text: "install latest build onto MacOS" },
+				{ id: "playtest", name: "Playtest", text: "use agent-skills to run playtest scenarios" },
+			]
+			expect((await provider.getState()).promptShortcuts).toEqual(expected)
+			expect((await provider.getStateToPostToWebview()).promptShortcuts).toEqual(expected)
+		})
+
+		test.each([{ promptShortcuts: shortcuts }, { promptShortcuts: [] }])(
+			"stores and returns the saved list: %j",
+			async ({ promptShortcuts }) => {
+				await provider.resolveWebviewView(mockWebviewView)
+				const messageHandler = vi.mocked(mockWebviewView.webview.onDidReceiveMessage).mock.calls[0][0]
+				await messageHandler({ type: "updateSettings", updatedSettings: { promptShortcuts } })
+				expect(mockContext.globalState.update).toHaveBeenCalledWith("promptShortcuts", promptShortcuts)
+				expect((await provider.getState()).promptShortcuts).toEqual(promptShortcuts)
+				expect((await provider.getStateToPostToWebview()).promptShortcuts).toEqual(promptShortcuts)
+				expect(mockPostMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: "state",
+						state: expect.objectContaining({ promptShortcuts }),
+					}),
+				)
+			},
+		)
+	})
+
 	describe("date and time display settings", () => {
 		const defaults = { timeFormat: "auto", dateFormat: "auto", showRelativeTimes: true }
 

@@ -1,4 +1,21 @@
 {
+	"promptShortcuts": {
+		"toolbar": "Prompt controls",
+		"title": "Saved prompts",
+		"button": "Prompts",
+		"empty": "No saved prompts.",
+		"manage": "Manage prompts",
+		"description": "Save a name and prompt text. Select a prompt to insert it into your draft.",
+		"entry": "Prompt {{number}}",
+		"name": "Name",
+		"text": "Prompt text",
+		"delete": "Delete {{name}}",
+		"add": "Add prompt",
+		"cancel": "Cancel",
+		"save": "Save",
+		"saving": "Saving…",
+		"saveError": "Could not save prompts. Try again."
+	},
 	"task": {
 		"title": "Task",
 		"expand": "Expand task",

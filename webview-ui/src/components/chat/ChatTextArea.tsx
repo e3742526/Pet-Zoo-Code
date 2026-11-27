@@ -3,7 +3,7 @@ import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
 import { VolumeX, Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
 
-import type { ExtensionMessage, MentionSegment } from "@roo-code/types"
+import { DEFAULT_PROMPT_SHORTCUTS, type ExtensionMessage, type MentionSegment } from "@roo-code/types"
 import { generatedSegments } from "@roo/mentionSegments"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
@@ -29,6 +29,7 @@ import Thumbnails from "../common/Thumbnails"
 import { ModeSelector } from "./ModeSelector"
 import { ApiConfigSelector } from "./ApiConfigSelector"
 import { ModelSelector } from "./ModelSelector"
+import { PromptShortcuts } from "./PromptShortcuts"
 import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./constants"
 import ContextMenu from "./ContextMenu"
@@ -136,6 +137,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			commands,
 			enterBehavior,
 			lockApiConfigAcrossModes,
+			promptShortcuts,
 		} = useExtensionState()
 
 		// Find the ID and display text for the currently selected API configuration.
@@ -1021,12 +1023,59 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			vscode.postMessage({ type: "lockApiConfigAcrossModes", bool: newValue })
 		}, [lockApiConfigAcrossModes])
 
+		const handleInsertPrompt = (text: string) => {
+			const textarea = textAreaRef.current
+			const start = textarea?.selectionStart ?? normalizedInputValue.length
+			const end = textarea?.selectionEnd ?? start
+			const before = normalizedInputValue.slice(0, start)
+			const after = normalizedInputValue.slice(end)
+			const insertion = `${before && !/\s$/.test(before) ? "\n" : ""}${text}${after && !/^\s/.test(after) ? "\n" : ""}`
+			// A saved prompt is an explicit user choice, like a slash command.
+			setInputValue(before + insertion + after)
+			resetHistoryNavigation()
+			setShowContextMenu(false)
+			const cursor = start + insertion.length
+			setTimeout(() => {
+				textarea?.focus()
+				textarea?.setSelectionRange(cursor, cursor)
+			}, 0)
+		}
+
 		return (
 			<div
 				className={cn(
 					"flex flex-col gap-1 bg-editor-background outline-none border border-none box-border",
 					isEditMode ? "p-2 w-full" : "relative px-1.5 pb-1 w-[calc(100%-16px)] ml-auto mr-auto",
 				)}>
+				<div
+					role="group"
+					aria-label={t("chat:promptShortcuts.toolbar")}
+					data-testid="composer-toolbar"
+					className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-vscode-panel-border bg-vscode-sideBar-background p-1.5 mb-1">
+					<ApiConfigSelector
+						value={currentConfigId}
+						displayName={displayName}
+						disabled={selectApiConfigDisabled}
+						title={t("chat:selectApiConfig")}
+						onChange={handleApiConfigChange}
+						triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
+						listApiConfigMeta={listApiConfigMeta || []}
+						pinnedApiConfigs={pinnedApiConfigs}
+						togglePinnedApiConfig={togglePinnedApiConfig}
+						lockApiConfigAcrossModes={!!lockApiConfigAcrossModes}
+						onToggleLockApiConfig={handleToggleLockApiConfig}
+					/>
+					<ModelSelector
+						apiConfiguration={apiConfiguration}
+						disabled={selectApiConfigDisabled}
+						title={t("chat:selectModel")}
+						triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
+					/>
+					<PromptShortcuts
+						shortcuts={promptShortcuts ?? DEFAULT_PROMPT_SHORTCUTS}
+						onInsert={handleInsertPrompt}
+					/>
+				</div>
 				<div className={cn(!isEditMode && "relative")}>
 					<div
 						className={cn("chat-text-area", !isEditMode && "relative", "flex", "flex-col", "outline-none")}
@@ -1375,25 +1424,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							modeShortcutText={modeShortcutText}
 							customModes={customModes}
 							customModePrompts={customModePrompts}
-						/>
-						<ApiConfigSelector
-							value={currentConfigId}
-							displayName={displayName}
-							disabled={selectApiConfigDisabled}
-							title={t("chat:selectApiConfig")}
-							onChange={handleApiConfigChange}
-							triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:min-w-fit min-[310px]:overflow-visible min-[310px]:flex-shrink-0"
-							listApiConfigMeta={listApiConfigMeta || []}
-							pinnedApiConfigs={pinnedApiConfigs}
-							togglePinnedApiConfig={togglePinnedApiConfig}
-							lockApiConfigAcrossModes={!!lockApiConfigAcrossModes}
-							onToggleLockApiConfig={handleToggleLockApiConfig}
-						/>
-						<ModelSelector
-							apiConfiguration={apiConfiguration}
-							disabled={selectApiConfigDisabled}
-							title={t("chat:selectModel")}
-							triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink"
 						/>
 						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
 					</div>

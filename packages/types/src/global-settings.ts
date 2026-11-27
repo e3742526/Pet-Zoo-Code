@@ -57,6 +57,23 @@ export const DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED = false
 /** Whether new root tasks get a short generated title in the background. */
 export const DEFAULT_TASK_TITLE_GENERATION_ENABLED = true
 
+export const promptShortcutSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().trim().min(1).max(80),
+	text: z.string().refine((text) => text.trim().length > 0),
+})
+
+export type PromptShortcut = z.infer<typeof promptShortcutSchema>
+
+export const promptShortcutsSchema = z
+	.array(promptShortcutSchema)
+	.refine((shortcuts) => new Set(shortcuts.map(({ id }) => id)).size === shortcuts.length)
+
+export const DEFAULT_PROMPT_SHORTCUTS: PromptShortcut[] = [
+	{ id: "install-ios", name: "Install iOS", text: "install latest build onto MacOS" },
+	{ id: "playtest", name: "Playtest", text: "use agent-skills to run playtest scenarios" },
+]
+
 /**
  * Whether commands that are not explicitly auto-approved are automatically
  * denied (with a structured reason sent to the model) instead of prompting the
@@ -125,6 +142,7 @@ export const globalSettingsSchema = z.object({
 	currentApiConfigName: z.string().optional(),
 	listApiConfigMeta: z.array(providerSettingsEntrySchema).optional(),
 	pinnedApiConfigs: z.record(z.string(), z.boolean()).optional(),
+	promptShortcuts: promptShortcutsSchema.optional(),
 
 	lastShownAnnouncementId: z.string().optional(),
 	customInstructions: z.string().optional(),

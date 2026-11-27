@@ -1,8 +1,9 @@
 import { useState } from "react"
+import userEvent from "@testing-library/user-event"
 import { providerIdentifiers } from "@roo-code/types"
 import { defaultModeSlug } from "@roo/modes"
 
-import { render, fireEvent, screen, act } from "@src/utils/test-utils"
+import { render, fireEvent, screen, act, within, waitFor } from "@src/utils/test-utils"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
 import * as pathMentions from "@src/utils/path-mentions"
@@ -128,6 +129,45 @@ describe("ChatTextArea", () => {
 			Object.defineProperty(HTMLElement.prototype, "focus", originalFocus)
 			outsideInput.remove()
 		}
+	})
+
+	it("places the API, model, and saved prompt controls above the draft", () => {
+		render(<ChatTextArea {...defaultProps} selectApiConfigDisabled={true} />)
+		const toolbar = screen.getByTestId("composer-toolbar")
+		expect(within(toolbar).getByTestId("dropdown-trigger")).toBeDisabled()
+		expect(within(toolbar).getByTestId("model-selector-trigger")).toBeDisabled()
+		expect(within(toolbar).getByRole("button", { name: "chat:promptShortcuts.title" })).toBeEnabled()
+		expect(
+			toolbar.compareDocumentPosition(screen.getByRole("textbox")) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy()
+	})
+
+	it.each([
+		{ input: "", start: 0, end: 0, expected: "install latest build onto MacOS" },
+		{ input: "First task", start: 10, end: 10, expected: "First task\ninstall latest build onto MacOS" },
+		{ input: "Replace this please", start: 8, end: 12, expected: "Replace install latest build onto MacOS please" },
+	])("inserts a saved prompt into the draft at $start..$end", async ({ input, start, end, expected }) => {
+		const user = userEvent.setup()
+		const generated = vi.fn()
+		function Composer() {
+			const [value, setValue] = useState(input)
+			return (
+				<ChatTextArea
+					{...defaultProps}
+					inputValue={value}
+					setInputValue={setValue}
+					setInputValueGenerated={generated}
+				/>
+			)
+		}
+		render(<Composer />)
+		const textarea = screen.getByRole("textbox") as HTMLTextAreaElement
+		textarea.setSelectionRange(start, end)
+		await user.click(screen.getByRole("button", { name: "chat:promptShortcuts.title" }))
+		await user.click(screen.getByRole("menuitem", { name: /Install iOS/ }))
+		await waitFor(() => expect(textarea).toHaveValue(expected))
+		expect(generated).not.toHaveBeenCalled()
+		expect(defaultProps.onSend).not.toHaveBeenCalled()
 	})
 
 	describe("enhance prompt button", () => {

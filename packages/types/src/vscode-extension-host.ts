@@ -361,6 +361,7 @@ export type ExtensionState = Pick<
 	| "modeApiConfigs"
 	| "customModePrompts"
 	| "customSupportPrompts"
+	| "promptShortcuts"
 	| "enhancementApiConfigId"
 	| "customCondensingPrompt"
 	| "codebaseIndexConfig"

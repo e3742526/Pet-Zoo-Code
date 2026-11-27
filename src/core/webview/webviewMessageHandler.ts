@@ -18,6 +18,7 @@ import {
 	RooCodeSettings,
 	ExperimentId,
 	checkoutDiffPayloadSchema,
+	promptShortcutsSchema,
 	editQueuedMessagePayloadSchema,
 	checkoutRestorePayloadSchema,
 	getCompletionCheckpoint,
@@ -790,7 +791,10 @@ export const webviewMessageHandler = async (
 
 					let newValue = value
 
-					if (key === "language") {
+					if (key === "promptShortcuts") {
+						// Reject the whole list so a malformed edit cannot erase saved prompts.
+						newValue = promptShortcutsSchema.optional().parse(value)
+					} else if (key === "language") {
 						newValue = value ?? "en"
 						changeLanguage(newValue as Language)
 					} else if (key === "allowedCommands") {

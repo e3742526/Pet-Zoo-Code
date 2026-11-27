@@ -3047,6 +3047,55 @@ describe("webviewMessageHandler - renameTaskWithId", () => {
 
 // The display settings are written like any other setting, but the webview is not trusted: a value that its own
 // controls cannot produce (a hand-written message) is ignored before anything is done for it.
+describe("updateSettings with saved prompt shortcuts", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	it.each([[{ id: "build", name: "  Build  ", text: "Build the app" }], [], undefined].map((value) => ({ value })))(
+		"validates and stores shortcuts: %j",
+		async ({ value }) => {
+			await webviewMessageHandler(mockClineProvider, {
+				type: "updateSettings",
+				updatedSettings: { promptShortcuts: value },
+			})
+			expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith(
+				"promptShortcuts",
+				value?.map((shortcut) => ({ ...shortcut, name: shortcut.name.trim() })),
+			)
+		},
+	)
+
+	it.each(
+		[
+			null,
+			"invalid",
+			[{ id: "a", name: " ", text: "Build" }],
+			[{ id: "a", name: "Build", text: 2 }],
+			[{ id: "a", name: "Build", text: " " }],
+			[
+				{ id: "a", name: "Build", text: "Build" },
+				{ id: "a", name: "Test", text: "Test" },
+			],
+		].map((value) => ({ value })),
+	)("rejects invalid shortcuts without storing a partial list: %j", async ({ value }) => {
+		// Model an untrusted webview payload before runtime validation.
+		const updatedSettings: Record<string, unknown> = { promptShortcuts: value }
+		await expect(
+			webviewMessageHandler(mockClineProvider, {
+				type: "updateSettings",
+				requestId: "shortcuts-save",
+				updatedSettings,
+			}),
+		).rejects.toThrow()
+		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalled()
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "settingsSaveResult",
+			requestId: "shortcuts-save",
+			success: false,
+			error: expect.any(String),
+		})
+	})
+})
+
 describe("updateSettings with the display settings", () => {
 	const save = (updatedSettings: Record<string, unknown>) =>
 		webviewMessageHandler(mockClineProvider, { type: "updateSettings", updatedSettings })

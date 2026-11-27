@@ -22,6 +22,7 @@ import type { SkillMetadata } from "./skills.js"
 import type { RuleMetadata } from "./rules.js"
 import type { TelemetrySetting } from "./telemetry.js"
 import type { WorktreeIncludeStatus } from "./worktree.js"
+import type { PromptShortcut, PromptShortcutScope } from "./prompt-shortcuts.js"
 
 /** Provider lookups the extension host runs for the webview, keeping provider origins out of the CSP. */
 export type ProviderInfoKind = keyof ProviderInfoResultMap
@@ -387,6 +388,7 @@ export type ExtensionState = Pick<
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"
 > & {
+	repoPromptShortcuts?: PromptShortcut[]
 	lockApiConfigAcrossModes?: boolean
 	version: string
 	clineMessages: ClineMessage[]
@@ -695,6 +697,7 @@ export interface WebviewMessage {
 		| "getDismissedUpsells"
 		| "openMarkdownPreview"
 		| "updateSettings"
+		| "savePromptShortcuts"
 		| "allowedCommands"
 		| "getTaskWithAggregatedCosts"
 		| "deniedCommands"
@@ -843,6 +846,9 @@ export interface WebviewMessage {
 		codebaseIndexOpenRouterApiKey?: string
 	}
 	updatedSettings?: RooCodeSettings
+	promptShortcuts?: PromptShortcut[]
+	promptShortcutScope?: PromptShortcutScope
+	cwd?: string
 	/** Task configuration applied via `createTask()`. */
 	taskConfiguration?: RooCodeSettings
 	/** Origin of each part of `text`. Absent or not matching `text` means all generated. */

@@ -25,7 +25,7 @@ for (const theme of visualThemes) {
 }
 
 test("shows saved prompts and their editor above the composer", async ({ mount, page }) => {
-	const component = mountedStory(await mount("chat-text-area"))
+	const component = mountedStory(await mount("chat-text-area", { withRepositoryPrompts: true }))
 	await page.setViewportSize({ width: 520, height: 700 })
 	await applyVisualTheme(page, visualThemes[0])
 	await page.evaluate(() => Object.assign(globalThis, { z: undefined }))
@@ -39,11 +39,24 @@ test("shows saved prompts and their editor above the composer", async ({ mount, 
 	await page.keyboard.press("Enter")
 	const editor = component.getByRole("textbox")
 	await expect(editor).toBeFocused()
-	await expect(editor).toHaveValue(/install latest build onto MacOS/)
+	await expect(editor).toHaveValue(/Build this repository/)
 	await trigger.click()
-	await page.getByRole("menuitem", { name: "Manage prompts" }).click()
+	await page.getByRole("menuitem", { name: "Manage global prompts" }).click()
 	const dialog = page.getByRole("dialog")
 	await expect(dialog).toBeVisible()
 	await expect(page).toHaveScreenshot("chat-prompt-shortcuts-editor.png")
+	await expectBoundedLayout(page, dialog, { focusedControl: dialog.getByRole("textbox").first() })
+})
+
+test("shows the repository prompt editor", async ({ mount, page }) => {
+	const component = mountedStory(await mount("chat-text-area", { withRepositoryPrompts: true }))
+	await page.setViewportSize({ width: 520, height: 700 })
+	await applyVisualTheme(page, visualThemes[0])
+	await page.evaluate(() => Object.assign(globalThis, { z: undefined }))
+	await component.getByRole("button", { name: "Saved prompts" }).click()
+	await page.getByRole("menuitem", { name: "Manage repository prompts" }).click()
+	const dialog = page.getByRole("dialog")
+	await expect(dialog.getByLabel("Name")).toHaveValue("Build repository")
+	await expect(page).toHaveScreenshot("chat-prompt-shortcuts-repository-editor.png")
 	await expectBoundedLayout(page, dialog, { focusedControl: dialog.getByRole("textbox").first() })
 })

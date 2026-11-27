@@ -15,6 +15,7 @@ import { toolNamesSchema } from "./tool.js"
 import { type Keys } from "./type-fu.js"
 import { languagesSchema } from "./vscode.js"
 import { providerIdentifiers } from "./provider-identifiers.js"
+import { promptShortcutsSchema } from "./prompt-shortcuts.js"
 
 /**
  * Default delay in milliseconds after writes to allow diagnostics to detect potential problems.
@@ -56,23 +57,6 @@ export const DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED = false
 
 /** Whether new root tasks get a short generated title in the background. */
 export const DEFAULT_TASK_TITLE_GENERATION_ENABLED = true
-
-export const promptShortcutSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().trim().min(1).max(80),
-	text: z.string().refine((text) => text.trim().length > 0),
-})
-
-export type PromptShortcut = z.infer<typeof promptShortcutSchema>
-
-export const promptShortcutsSchema = z
-	.array(promptShortcutSchema)
-	.refine((shortcuts) => new Set(shortcuts.map(({ id }) => id)).size === shortcuts.length)
-
-export const DEFAULT_PROMPT_SHORTCUTS: PromptShortcut[] = [
-	{ id: "install-ios", name: "Install iOS", text: "install latest build onto MacOS" },
-	{ id: "playtest", name: "Playtest", text: "use agent-skills to run playtest scenarios" },
-]
 
 /**
  * Whether commands that are not explicitly auto-approved are automatically

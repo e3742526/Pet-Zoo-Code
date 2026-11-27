@@ -4,13 +4,19 @@ import { defaultModeSlug, type Mode } from "@roo/modes"
 import { AppProviders } from "../../../../playwright/AppProviders"
 import { ChatTextArea } from "../ChatTextArea"
 
-export function ChatTextAreaStory() {
+export function ChatTextAreaStory({ withRepositoryPrompts = false }: { withRepositoryPrompts?: boolean }) {
 	const [inputValue, setInputValue] = useState("Audit contrast across the Zoo Code webview")
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
 	const [mode, setMode] = useState<Mode>(defaultModeSlug)
 
 	return (
-		<AppProviders>
+		<AppProviders
+			initialState={{
+				cwd: "/workspace/project",
+				repoPromptShortcuts: withRepositoryPrompts
+					? [{ id: "build", name: "Build repository", text: "Build this repository" }]
+					: [],
+			}}>
 			<div
 				data-testid="chat-text-area-story"
 				className="w-[488px] max-w-full rounded-lg border border-vscode-panel-border bg-vscode-editor-background p-3">

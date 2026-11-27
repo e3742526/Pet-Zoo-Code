@@ -1,3 +1,8 @@
+vi.mock("../../config/promptShortcuts", () => ({
+	loadPromptShortcuts: vi.fn().mockResolvedValue([]),
+	savePromptShortcuts: vi.fn().mockResolvedValue(undefined),
+}))
+import { loadPromptShortcuts, savePromptShortcuts } from "../../config/promptShortcuts"
 // pnpm --filter roo-cline test core/webview/__tests__/ClineProvider.spec.ts
 
 import fs from "fs"
@@ -18,6 +23,9 @@ import {
 	type ExtensionState,
 	type HistoryItem,
 	type RooCodeSettings,
+	type PromptShortcut,
+	DEFAULT_PROMPT_SHORTCUTS,
+	promptShortcutsSchema,
 	type WebviewMessage,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
@@ -4551,35 +4559,107 @@ describe("ClineProvider", () => {
 	})
 
 	describe("saved prompt shortcuts", () => {
-		const shortcuts = [{ id: "build", name: "Build", text: "Build the app" }]
-
-		test("returns starter prompts when no shortcuts were saved", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-			const expected = [
-				{ id: "install-ios", name: "Install iOS", text: "install latest build onto MacOS" },
-				{ id: "playtest", name: "Playtest", text: "use agent-skills to run playtest scenarios" },
-			]
-			expect((await provider.getState()).promptShortcuts).toEqual(expected)
-			expect((await provider.getStateToPostToWebview()).promptShortcuts).toEqual(expected)
+		let repositories: Map<string, PromptShortcut[]>
+		beforeEach(() => {
+			repositories = new Map()
+			vi.spyOn(provider, "cwd", "get").mockReturnValue("/repos/first")
+			vi.mocked(loadPromptShortcuts).mockImplementation(async (cwd) => repositories.get(cwd ?? "") ?? [])
+			vi.mocked(savePromptShortcuts).mockImplementation(async (cwd, shortcuts) => {
+				repositories.set(cwd, promptShortcutsSchema.parse(shortcuts))
+			})
+		})
+		afterEach(() => {
+			vi.mocked(loadPromptShortcuts).mockReset().mockResolvedValue([])
+			vi.mocked(savePromptShortcuts).mockReset().mockResolvedValue(undefined)
 		})
 
-		test.each([{ promptShortcuts: shortcuts }, { promptShortcuts: [] }])(
-			"stores and returns the saved list: %j",
-			async ({ promptShortcuts }) => {
+		test("starts with sample global prompts and an empty repository list", async () => {
+			const expected = { promptShortcuts: DEFAULT_PROMPT_SHORTCUTS, repoPromptShortcuts: [] }
+			expect(await provider.getState()).toMatchObject(expected)
+			expect(await provider.getStateToPostToWebview()).toMatchObject(expected)
+		})
+
+		test.each([{ shortcuts: [{ id: "build", name: "Build", text: "Build the app" }] }, { shortcuts: [] }])(
+			"keeps repository prompts separate from global prompts: %j",
+			async ({ shortcuts }) => {
 				await provider.resolveWebviewView(mockWebviewView)
 				const messageHandler = vi.mocked(mockWebviewView.webview.onDidReceiveMessage).mock.calls[0][0]
-				await messageHandler({ type: "updateSettings", updatedSettings: { promptShortcuts } })
-				expect(mockContext.globalState.update).toHaveBeenCalledWith("promptShortcuts", promptShortcuts)
-				expect((await provider.getState()).promptShortcuts).toEqual(promptShortcuts)
-				expect((await provider.getStateToPostToWebview()).promptShortcuts).toEqual(promptShortcuts)
+				await messageHandler({
+					type: "savePromptShortcuts",
+					promptShortcutScope: "repository",
+					cwd: "/repos/first",
+					promptShortcuts: shortcuts,
+				})
+				expect(savePromptShortcuts).toHaveBeenCalledWith("/repos/first", shortcuts)
+				expect(mockContext.globalState.update).not.toHaveBeenCalledWith("promptShortcuts", expect.anything())
+				const expected = {
+					cwd: "/repos/first",
+					repoPromptShortcuts: shortcuts,
+					promptShortcuts: DEFAULT_PROMPT_SHORTCUTS,
+				}
+				expect(await provider.getState()).toMatchObject(expected)
+				expect(await provider.getStateToPostToWebview()).toMatchObject(expected)
 				expect(mockPostMessage).toHaveBeenCalledWith(
-					expect.objectContaining({
-						type: "state",
-						state: expect.objectContaining({ promptShortcuts }),
-					}),
+					expect.objectContaining({ type: "state", state: expect.objectContaining(expected) }),
 				)
+				vi.spyOn(provider, "cwd", "get").mockReturnValue("/repos/second")
+				expect(await provider.getStateToPostToWebview()).toMatchObject({
+					promptShortcuts: DEFAULT_PROMPT_SHORTCUTS,
+					repoPromptShortcuts: [],
+				})
+				vi.spyOn(provider, "cwd", "get").mockReturnValue("/repos/first")
+				expect((await provider.getStateToPostToWebview()).repoPromptShortcuts).toEqual(shortcuts)
 			},
 		)
+
+		test.each([{ shortcuts: [{ id: "global", name: "Global build", text: "Build" }] }, { shortcuts: [] }])(
+			"returns saved global prompts in every repository: %j",
+			async ({ shortcuts }) => {
+				const local = [{ id: "local", name: "Local build", text: "Build first" }]
+				repositories.set("/repos/first", local)
+				await provider.resolveWebviewView(mockWebviewView)
+				const messageHandler = vi.mocked(mockWebviewView.webview.onDidReceiveMessage).mock.calls[0][0]
+				await messageHandler({
+					type: "savePromptShortcuts",
+					promptShortcutScope: "global",
+					promptShortcuts: shortcuts,
+				})
+				expect(mockContext.globalState.update).toHaveBeenCalledWith("promptShortcuts", shortcuts)
+				expect(savePromptShortcuts).not.toHaveBeenCalled()
+				expect(await provider.getState()).toMatchObject({
+					promptShortcuts: shortcuts,
+					repoPromptShortcuts: local,
+				})
+				expect(await provider.getStateToPostToWebview()).toMatchObject({
+					promptShortcuts: shortcuts,
+					repoPromptShortcuts: local,
+				})
+				vi.spyOn(provider, "cwd", "get").mockReturnValue("/repos/second")
+				expect(await provider.getStateToPostToWebview()).toMatchObject({
+					promptShortcuts: shortcuts,
+					repoPromptShortcuts: [],
+				})
+			},
+		)
+
+		test("keeps the repository and its list together if the workspace changes during the read", async () => {
+			vi.mocked(loadPromptShortcuts).mockImplementationOnce(async () => {
+				vi.spyOn(provider, "cwd", "get").mockReturnValue("/repos/second")
+				return []
+			})
+			expect(await provider.getStateToPostToWebview()).toMatchObject({
+				cwd: "/repos/first",
+				repoPromptShortcuts: [],
+			})
+		})
+
+		test("keeps global prompts available if the repository prompt file is invalid", async () => {
+			vi.mocked(loadPromptShortcuts).mockRejectedValueOnce(new Error("Invalid JSON"))
+			expect(await provider.getState()).toMatchObject({
+				repoPromptShortcuts: [],
+				promptShortcuts: DEFAULT_PROMPT_SHORTCUTS,
+			})
+		})
 	})
 
 	describe("date and time display settings", () => {

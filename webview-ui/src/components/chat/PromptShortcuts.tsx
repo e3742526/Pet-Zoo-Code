@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { Bookmark, ChevronDown, Plus, Settings2, Trash2 } from "lucide-react"
 
-import { type ExtensionMessage, type PromptShortcut, promptShortcutsSchema } from "@roo-code/types"
+import {
+	type ExtensionMessage,
+	type PromptShortcut,
+	type PromptShortcutScope,
+	promptShortcutsSchema,
+} from "@roo-code/types"
 
 import {
 	Button,
@@ -14,6 +19,7 @@ import {
 	DialogTitle,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	Input,
 	Textarea,
@@ -26,13 +32,16 @@ import { vscode } from "@/utils/vscode"
 
 interface PromptShortcutsProps {
 	shortcuts: PromptShortcut[]
+	repoShortcuts?: PromptShortcut[]
+	repoPath?: string
 	onInsert: (text: string) => void
 }
 
-export function PromptShortcuts({ shortcuts, onInsert }: PromptShortcutsProps) {
+export function PromptShortcuts({ shortcuts, repoShortcuts = [], repoPath, onInsert }: PromptShortcutsProps) {
 	const { t } = useAppTranslation()
 	const portalContainer = useRooPortal("roo-portal")
 	const [editorOpen, setEditorOpen] = useState(false)
+	const [editorScope, setEditorScope] = useState<PromptShortcutScope>("repository")
 	const [draft, setDraft] = useState<PromptShortcut[]>([])
 	const [pendingRequest, setPendingRequest] = useState<string>()
 	const [saveError, setSaveError] = useState(false)
@@ -66,14 +75,38 @@ export function PromptShortcuts({ shortcuts, onInsert }: PromptShortcutsProps) {
 		)
 	}
 
+	const openEditor = (scope: PromptShortcutScope) => {
+		setEditorScope(scope)
+		setDraft((scope === "global" ? shortcuts : repoShortcuts).map((shortcut) => ({ ...shortcut })))
+		setSaveError(false)
+		setEditorOpen(true)
+	}
+
 	const save = () => {
+		if (editorScope === "repository" && !repoPath) return
 		const result = promptShortcutsSchema.safeParse(draft)
 		if (!result.success) return
 		const requestId = crypto.randomUUID()
 		setSaveError(false)
 		setPendingRequest(requestId)
-		vscode.postMessage({ type: "updateSettings", requestId, updatedSettings: { promptShortcuts: result.data } })
+		vscode.postMessage({
+			type: "savePromptShortcuts",
+			requestId,
+			promptShortcutScope: editorScope,
+			...(editorScope === "repository" ? { cwd: repoPath } : {}),
+			promptShortcuts: result.data,
+		})
 	}
+
+	const renderShortcuts = (entries: PromptShortcut[]) =>
+		entries.map((shortcut) => (
+			<DropdownMenuItem key={shortcut.id} onSelect={() => (selectedText.current = shortcut.text)}>
+				<div className="min-w-0">
+					<div className="break-words">{shortcut.name}</div>
+					<div className="truncate text-xs opacity-70">{shortcut.text}</div>
+				</div>
+			</DropdownMenuItem>
+		))
 
 	return (
 		<>
@@ -100,28 +133,31 @@ export function PromptShortcuts({ shortcuts, onInsert }: PromptShortcutsProps) {
 						onInsert(selectedText.current)
 						selectedText.current = undefined
 					}}>
-					{shortcuts.length === 0 && (
+					{shortcuts.length === 0 && (!repoPath || repoShortcuts.length === 0) && (
 						<div className="p-2 text-sm text-vscode-descriptionForeground">
 							{t("chat:promptShortcuts.empty")}
 						</div>
 					)}
-					{shortcuts.map((shortcut) => (
-						<DropdownMenuItem key={shortcut.id} onSelect={() => (selectedText.current = shortcut.text)}>
-							<div className="min-w-0">
-								<div className="break-words">{shortcut.name}</div>
-								<div className="truncate text-xs opacity-70">{shortcut.text}</div>
-							</div>
-						</DropdownMenuItem>
-					))}
+					{repoPath && repoShortcuts.length > 0 && (
+						<>
+							<DropdownMenuLabel>{t("chat:promptShortcuts.repository")}</DropdownMenuLabel>
+							{renderShortcuts(repoShortcuts)}
+						</>
+					)}
+					{shortcuts.length > 0 && (
+						<>
+							<DropdownMenuLabel>{t("chat:promptShortcuts.global")}</DropdownMenuLabel>
+							{renderShortcuts(shortcuts)}
+						</>
+					)}
 					<DropdownMenuSeparator />
-					<DropdownMenuItem
-						onSelect={() => {
-							setDraft(shortcuts.map((shortcut) => ({ ...shortcut })))
-							setSaveError(false)
-							setEditorOpen(true)
-						}}>
+					<DropdownMenuItem disabled={!repoPath} onSelect={() => openEditor("repository")}>
 						<Settings2 />
-						{t("chat:promptShortcuts.manage")}
+						{t("chat:promptShortcuts.manageRepository")}
+					</DropdownMenuItem>
+					<DropdownMenuItem onSelect={() => openEditor("global")}>
+						<Settings2 />
+						{t("chat:promptShortcuts.manageGlobal")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu.Root>
@@ -129,8 +165,20 @@ export function PromptShortcuts({ shortcuts, onInsert }: PromptShortcutsProps) {
 			<Dialog open={editorOpen} onOpenChange={(open) => !pendingRequest && setEditorOpen(open)}>
 				<DialogContent className="max-h-[85vh] flex flex-col min-w-0 p-4">
 					<DialogHeader className="pr-6">
-						<DialogTitle>{t("chat:promptShortcuts.manage")}</DialogTitle>
-						<DialogDescription>{t("chat:promptShortcuts.description")}</DialogDescription>
+						<DialogTitle>
+							{t(
+								editorScope === "global"
+									? "chat:promptShortcuts.manageGlobal"
+									: "chat:promptShortcuts.manageRepository",
+							)}
+						</DialogTitle>
+						<DialogDescription>
+							{t(
+								editorScope === "global"
+									? "chat:promptShortcuts.globalDescription"
+									: "chat:promptShortcuts.repositoryDescription",
+							)}
+						</DialogDescription>
 					</DialogHeader>
 					<div className="min-h-0 overflow-y-auto space-y-3">
 						{draft.map((shortcut, index) => (

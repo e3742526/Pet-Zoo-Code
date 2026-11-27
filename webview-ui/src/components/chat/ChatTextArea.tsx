@@ -138,6 +138,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			enterBehavior,
 			lockApiConfigAcrossModes,
 			promptShortcuts,
+			repoPromptShortcuts,
 		} = useExtensionState()
 
 		// Find the ID and display text for the currently selected API configuration.
@@ -1072,7 +1073,10 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
 					/>
 					<PromptShortcuts
+						key={cwd}
+						repoPath={cwd}
 						shortcuts={promptShortcuts ?? DEFAULT_PROMPT_SHORTCUTS}
+						repoShortcuts={repoPromptShortcuts}
 						onInsert={handleInsertPrompt}
 					/>
 				</div>

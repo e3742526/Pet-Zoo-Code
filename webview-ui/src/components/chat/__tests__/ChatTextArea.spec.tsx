@@ -142,6 +142,35 @@ describe("ChatTextArea", () => {
 		).toBeTruthy()
 	})
 
+	it("closes the prompt editor and loads the new list when the repository changes", async () => {
+		const user = userEvent.setup()
+		const state = vi.mocked(useExtensionState).getMockImplementation()?.()
+		if (!state) throw new Error("Expected the shared extension state mock")
+		vi.mocked(useExtensionState).mockReturnValue({
+			...state,
+			cwd: "/repos/one",
+			repoPromptShortcuts: [{ id: "one", name: "Only in one", text: "Build one" }],
+		})
+		const { rerender } = render(<ChatTextArea {...defaultProps} />)
+		await user.click(screen.getByRole("button", { name: "chat:promptShortcuts.title" }))
+		await user.click(screen.getByRole("menuitem", { name: "chat:promptShortcuts.manageRepository" }))
+		fireEvent.change(screen.getAllByLabelText("chat:promptShortcuts.name")[0], {
+			target: { value: "Unsaved in one" },
+		})
+		vi.mocked(useExtensionState).mockReturnValue({
+			...state,
+			cwd: "/repos/two",
+			repoPromptShortcuts: [{ id: "two", name: "Only in two", text: "Build two" }],
+		})
+		rerender(<ChatTextArea {...defaultProps} />)
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+		await user.click(screen.getByRole("button", { name: "chat:promptShortcuts.title" }))
+		expect(screen.getByRole("menuitem", { name: /Only in two/ })).toBeInTheDocument()
+		expect(screen.queryByText("Unsaved in one")).not.toBeInTheDocument()
+		expect(screen.queryByText("Only in one")).not.toBeInTheDocument()
+		expect(screen.getByRole("menuitem", { name: /Install iOS/ })).toBeInTheDocument()
+	})
+
 	it.each([
 		{ input: "", start: 0, end: 0, expected: "install latest build onto MacOS" },
 		{ input: "First task", start: 10, end: 10, expected: "First task\ninstall latest build onto MacOS" },

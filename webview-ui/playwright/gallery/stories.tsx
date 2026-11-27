@@ -205,9 +205,9 @@ export const stories: Record<string, Story> = {
 			await import("@/components/settings/__tests__/AutoApproveSettings.visual.fixture")
 		return <AutoApproveSettingsStory />
 	},
-	"chat-text-area": async () => {
+	"chat-text-area": async (props) => {
 		const { ChatTextAreaStory } = await import("@/components/chat/__tests__/ChatTextArea.visual.fixture")
-		return <ChatTextAreaStory />
+		return <ChatTextAreaStory withRepositoryPrompts={props.withRepositoryPrompts === true} />
 	},
 	"history-empty": async () => {
 		const [{ AppProviders }, { default: HistoryView }] = await Promise.all([

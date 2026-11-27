@@ -78,6 +78,9 @@ import * as vsCodeLmProvider from "../../../api/providers/vscode-lm"
 import * as copilotProvider from "../../../api/providers/github-copilot"
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
+import { savePromptShortcuts } from "../../config/promptShortcuts"
+
+vi.mock("../../config/promptShortcuts", () => ({ savePromptShortcuts: vi.fn().mockResolvedValue(undefined) }))
 import { registerCopilotModelBroadcast } from "../../../services/language-models/copilotModelBroadcast"
 import type { ClineProvider } from "../ClineProvider"
 import { experimentDefault } from "../../../shared/experiments"
@@ -3047,25 +3050,44 @@ describe("webviewMessageHandler - renameTaskWithId", () => {
 
 // The display settings are written like any other setting, but the webview is not trusted: a value that its own
 // controls cannot produce (a hand-written message) is ignored before anything is done for it.
-describe("updateSettings with saved prompt shortcuts", () => {
-	beforeEach(() => vi.clearAllMocks())
+describe("saved repository prompt shortcuts", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		vi.mocked(savePromptShortcuts).mockReset().mockResolvedValue(undefined)
+	})
 
-	it.each([[{ id: "build", name: "  Build  ", text: "Build the app" }], [], undefined].map((value) => ({ value })))(
-		"validates and stores shortcuts: %j",
+	const save = (value: unknown, cwd: string | undefined = mockClineProvider.cwd, scope: unknown = "repository") => {
+		// The transport can carry invalid data, which the host must reject.
+		const payload: Record<string, unknown> = { promptShortcuts: value, promptShortcutScope: scope }
+		return webviewMessageHandler(mockClineProvider, {
+			type: "savePromptShortcuts",
+			cwd,
+			requestId: "prompts",
+			...payload,
+		})
+	}
+
+	it.each([[{ id: "build", name: "  Build  ", text: "Build the app" }], []].map((value) => ({ value })))(
+		"validates and saves repository prompts: %j",
 		async ({ value }) => {
-			await webviewMessageHandler(mockClineProvider, {
-				type: "updateSettings",
-				updatedSettings: { promptShortcuts: value },
-			})
-			expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith(
-				"promptShortcuts",
-				value?.map((shortcut) => ({ ...shortcut, name: shortcut.name.trim() })),
+			await save(value)
+			expect(savePromptShortcuts).toHaveBeenCalledWith(
+				mockClineProvider.cwd,
+				value.map((shortcut) => ({ ...shortcut, name: shortcut.name.trim() })),
 			)
+			expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalled()
+			expect(mockClineProvider.postStateToWebviewWithoutClineMessages).toHaveBeenCalledOnce()
+			expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+				type: "settingsSaveResult",
+				requestId: "prompts",
+				success: true,
+			})
 		},
 	)
 
 	it.each(
 		[
+			undefined,
 			null,
 			"invalid",
 			[{ id: "a", name: " ", text: "Build" }],
@@ -3075,24 +3097,112 @@ describe("updateSettings with saved prompt shortcuts", () => {
 				{ id: "a", name: "Build", text: "Build" },
 				{ id: "a", name: "Test", text: "Test" },
 			],
-		].map((value) => ({ value })),
-	)("rejects invalid shortcuts without storing a partial list: %j", async ({ value }) => {
-		// Model an untrusted webview payload before runtime validation.
-		const updatedSettings: Record<string, unknown> = { promptShortcuts: value }
-		await expect(
-			webviewMessageHandler(mockClineProvider, {
-				type: "updateSettings",
-				requestId: "shortcuts-save",
-				updatedSettings,
-			}),
-		).rejects.toThrow()
+		].flatMap((value) => ["global", "repository"].map((scope) => ({ value, scope }))),
+	)("rejects invalid prompts: %j", async ({ value, scope }) => {
+		await save(value, mockClineProvider.cwd, scope)
+		expect(savePromptShortcuts).not.toHaveBeenCalled()
 		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalled()
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "settingsSaveResult",
-			requestId: "shortcuts-save",
+			requestId: "prompts",
 			success: false,
 			error: expect.any(String),
 		})
+	})
+
+	it.each(["/another/repo", ""])("rejects a save for a different or missing repository: %s", async (cwd) => {
+		await save([], cwd)
+		expect(savePromptShortcuts).not.toHaveBeenCalled()
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith(expect.objectContaining({ success: false }))
+	})
+
+	it("reports a failed repository write", async () => {
+		vi.mocked(savePromptShortcuts).mockRejectedValueOnce(new Error("Read-only repository"))
+		await save([])
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "settingsSaveResult",
+			requestId: "prompts",
+			success: false,
+			error: "Read-only repository",
+		})
+	})
+
+	it("does not treat a failed webview refresh as a failed save", async () => {
+		vi.mocked(mockClineProvider.postStateToWebviewWithoutClineMessages).mockRejectedValueOnce(
+			new Error("view closed"),
+		)
+		await save([])
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "settingsSaveResult",
+			requestId: "prompts",
+			success: true,
+		})
+	})
+
+	it.each([[{ id: "global", name: " Global ", text: "Build" }], []].map((value) => ({ value })))(
+		"saves global prompts without a repository: %j",
+		async ({ value }) => {
+			await save(value, "", "global")
+			expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith(
+				"promptShortcuts",
+				value.map((shortcut) => ({ ...shortcut, name: shortcut.name.trim() })),
+			)
+			expect(savePromptShortcuts).not.toHaveBeenCalled()
+			expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+				type: "settingsSaveResult",
+				requestId: "prompts",
+				success: true,
+			})
+		},
+	)
+
+	it.each([undefined, "workspace", 42])("rejects an invalid prompt scope: %j", async (scope) => {
+		// Omit the default so undefined also reaches the transport.
+		const payload: Record<string, unknown> = { promptShortcutScope: scope }
+		await webviewMessageHandler(mockClineProvider, {
+			type: "savePromptShortcuts",
+			cwd: mockClineProvider.cwd,
+			requestId: "prompts",
+			promptShortcuts: [],
+			...payload,
+		})
+		expect(savePromptShortcuts).not.toHaveBeenCalled()
+		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalled()
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith(expect.objectContaining({ success: false }))
+	})
+
+	it("reports a failed global write", async () => {
+		vi.mocked(mockClineProvider.contextProxy.setValue).mockRejectedValueOnce(new Error("Storage failed"))
+		await save([], "", "global")
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "settingsSaveResult",
+			requestId: "prompts",
+			success: false,
+			error: "Storage failed",
+		})
+	})
+
+	it.each([[], [{ id: "global", name: " Global ", text: "Build" }]].map((value) => ({ value })))(
+		"validates global prompts saved through settings: %j",
+		async ({ value }) => {
+			await webviewMessageHandler(mockClineProvider, {
+				type: "updateSettings",
+				updatedSettings: { promptShortcuts: value },
+			})
+			expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith(
+				"promptShortcuts",
+				value.map((shortcut) => ({ ...shortcut, name: shortcut.name.trim() })),
+			)
+			expect(savePromptShortcuts).not.toHaveBeenCalled()
+		},
+	)
+
+	it("rejects invalid global prompts saved through settings", async () => {
+		const updatedSettings: Record<string, unknown> = { promptShortcuts: "invalid" }
+		await expect(
+			webviewMessageHandler(mockClineProvider, { type: "updateSettings", updatedSettings }),
+		).rejects.toThrow()
+		expect(mockClineProvider.contextProxy.setValue).not.toHaveBeenCalled()
 	})
 })
 

@@ -19,6 +19,7 @@ import {
 	ExperimentId,
 	checkoutDiffPayloadSchema,
 	promptShortcutsSchema,
+	promptShortcutScopeSchema,
 	editQueuedMessagePayloadSchema,
 	checkoutRestorePayloadSchema,
 	getCompletionCheckpoint,
@@ -40,6 +41,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiMessage } from "../task-persistence/apiMessages"
 import { saveTaskMessages } from "../task-persistence"
 import { isInvalidDisplayValue } from "../config/displaySettings"
+import { savePromptShortcuts } from "../config/promptShortcuts"
 import { handleLegacyHistoryImport } from "./handleLegacyHistoryImport"
 
 import { ClineProvider } from "./ClineProvider"
@@ -752,6 +754,41 @@ export const webviewMessageHandler = async (
 			}
 			break
 
+		case "savePromptShortcuts": {
+			let errorMessage: string | undefined
+			try {
+				const scope = promptShortcutScopeSchema.parse(message.promptShortcutScope)
+				const shortcuts = promptShortcutsSchema.parse(message.promptShortcuts)
+				if (scope === "global") {
+					await provider.contextProxy.setValue("promptShortcuts", shortcuts)
+				} else {
+					// Bind the edit to the repository that opened the editor, even if the workspace changes.
+					if (!message.cwd || message.cwd !== provider.cwd) {
+						throw new Error("The repository changed. Open the prompt editor again.")
+					}
+					await savePromptShortcuts(message.cwd, shortcuts)
+				}
+			} catch (error) {
+				errorMessage = error instanceof Error ? error.message : String(error)
+			}
+			try {
+				await provider.postStateToWebviewWithoutClineMessages()
+			} catch (error) {
+				provider.log(
+					`Could not refresh saved prompts: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+			if (message.requestId) {
+				await provider.postMessageToWebview({
+					type: "settingsSaveResult",
+					requestId: message.requestId,
+					success: errorMessage === undefined,
+					...(errorMessage === undefined ? {} : { error: errorMessage }),
+				})
+			}
+			break
+		}
+
 		case "updateSettings": {
 			// The settings are written one at a time, in the order sent, and not as a transaction. If a write fails, the
 			// ones before it stay stored and the ones after it are not written. The display settings only change how
@@ -792,7 +829,6 @@ export const webviewMessageHandler = async (
 					let newValue = value
 
 					if (key === "promptShortcuts") {
-						// Reject the whole list so a malformed edit cannot erase saved prompts.
 						newValue = promptShortcutsSchema.optional().parse(value)
 					} else if (key === "language") {
 						newValue = value ?? "en"

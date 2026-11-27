@@ -31,6 +31,7 @@ import {
 	type ProviderName,
 	type ProviderSettings,
 	type RooCodeSettings,
+	type PromptShortcut,
 	type ProviderSettingsEntry,
 	type StaticAppProperties,
 	type DynamicAppProperties,
@@ -119,6 +120,7 @@ import {
 import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
+import { loadPromptShortcuts } from "../config/promptShortcuts"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
 
 import { getPanel, setPanel } from "../../activate/registerCommands"
@@ -3220,6 +3222,8 @@ export class ClineProvider
 			openRouterImageGenerationSelectedModel,
 			lockApiConfigAcrossModes,
 			promptShortcuts,
+			repoPromptShortcuts,
+			cwd,
 			autoCloseZooOpenedFiles,
 			autoCloseZooOpenedFilesAfterUserEdited,
 			autoCloseZooOpenedNewFiles,
@@ -3227,7 +3231,6 @@ export class ClineProvider
 
 		const mergedAllowedCommands = this.mergeAllowedCommands(allowedCommands)
 		const mergedDeniedCommands = this.mergeDeniedCommands(deniedCommands)
-		const cwd = this.cwd
 		const currentTask = this.getCurrentTask()
 		let currentTaskMode: string | undefined
 		try {
@@ -3350,7 +3353,8 @@ export class ClineProvider
 			profileThresholds: profileThresholds ?? {},
 			hasOpenedModeSelector: this.getGlobalState("hasOpenedModeSelector") ?? false,
 			lockApiConfigAcrossModes: lockApiConfigAcrossModes ?? false,
-			promptShortcuts: promptShortcuts ?? DEFAULT_PROMPT_SHORTCUTS,
+			promptShortcuts,
+			repoPromptShortcuts,
 			alwaysAllowFollowupQuestions: alwaysAllowFollowupQuestions ?? false,
 			followupAutoApproveTimeoutMs: followupAutoApproveTimeoutMs ?? 60000,
 			includeDiagnosticMessages: includeDiagnosticMessages ?? true,
@@ -3415,6 +3419,13 @@ export class ClineProvider
 		>
 	> {
 		const customModes = await this.customModesManager.getCustomModes()
+		const cwd = this.cwd
+		let repoPromptShortcuts: PromptShortcut[] = []
+		try {
+			repoPromptShortcuts = await loadPromptShortcuts(cwd)
+		} catch (error) {
+			this.log(`Could not load repository prompts: ${error instanceof Error ? error.message : String(error)}`)
+		}
 		// Read the active profile and provider configuration from one snapshot after the async load.
 		const stateValues = this.contextProxy.getValues()
 
@@ -3436,6 +3447,7 @@ export class ClineProvider
 
 		// Return the same structure as before.
 		return {
+			cwd,
 			apiConfiguration: providerSettings,
 			lastShownAnnouncementId: stateValues.lastShownAnnouncementId,
 			customInstructions: stateValues.customInstructions,
@@ -3544,6 +3556,7 @@ export class ClineProvider
 			profileThresholds: stateValues.profileThresholds ?? {},
 			lockApiConfigAcrossModes: this.context.workspaceState.get("lockApiConfigAcrossModes", false),
 			promptShortcuts: stateValues.promptShortcuts ?? DEFAULT_PROMPT_SHORTCUTS,
+			repoPromptShortcuts,
 			includeDiagnosticMessages: stateValues.includeDiagnosticMessages ?? true,
 			maxDiagnosticMessages: stateValues.maxDiagnosticMessages ?? 50,
 			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,

@@ -38,6 +38,10 @@ Zoo Code builds on the foundation created by Roo Code and continues to expand it
 - **More dependable terminal and editing workflows** — fixes for premature terminal completion, task-state races, context management, diff editing, and provider-specific tool use.
 - **More control over your workspace** — rules management, per-mode MCP restrictions, multi-root path controls, model reasoning options, and completion change review actions.
 
+## Agent engines
+
+Use Dory, Codex, or Claude Agent from the prompt composer with a supported provider profile. See the [agent engine setup and controls](https://github.com/e3742526/Pet-Zoo-Code/blob/main/docs/native-agent-engines.md).
+
 ## What Dory Code changes
 
 Dory Code removes the upstream account, gateway, billing, and analytics services. It also adds fixes that the fork needs for local work:

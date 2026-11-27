@@ -28,6 +28,12 @@ export type PendingTaskAction = z.infer<typeof pendingTaskActionSchema>
 
 export const historyItemSchema = z.object({
 	id: z.string(),
+	engine: z.string().min(1).optional(),
+	// Validate supported descriptors when opening the task. Preserve future versions on disk.
+	nativeSession: z.unknown().optional(),
+	nativeTurnState: z.enum(["running", "turn-completed", "stopped", "failed", "disconnected"]).optional(),
+	continuedFromTaskId: z.string().optional(),
+	continuedToTaskIds: z.array(z.string()).optional(),
 	rootTaskId: z.string().optional(),
 	parentTaskId: z.string().optional(),
 	number: z.number(),

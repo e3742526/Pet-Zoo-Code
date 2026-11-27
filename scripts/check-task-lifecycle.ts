@@ -4,9 +4,12 @@ import type { HistoryItem, PendingTaskAction } from "../packages/types/src/histo
 
 import {
 	abandonDelegatedChild,
+	beginNativeTurn,
 	completeDelegatedChild,
 	delegateTaskToChild,
 	interruptDelegatedChild,
+	linkTaskContinuation,
+	settleNativeTurn,
 	settleRejectedCreateSubtaskAction,
 } from "../src/core/task-persistence/taskLifecycle"
 
@@ -451,6 +454,45 @@ function runRepresentativeScenarios(): void {
 		"action-1",
 	)
 }
+
+function checkContinuationLandmarks() {
+	const source = { ...task("parent"), status: "completed" } as const
+	const child = { ...task("child-a"), engine: "codex", continuedFromTaskId: source.id }
+	const other = { ...task("child-b"), engine: "claude-agent", continuedFromTaskId: source.id }
+	for (const [first, second] of [
+		[child, other],
+		[other, child],
+	]) {
+		// A crash after the target write can replay the same backlink update.
+		const linked = linkTaskContinuation(source, first)
+		assert.equal(linkTaskContinuation(linked, first), linked)
+		const both = linkTaskContinuation(linked, second)
+		assert.deepEqual(both.continuedToTaskIds, [first.id, second.id])
+		assert.equal(both.status, "completed")
+		assert.equal(both.awaitingChildId, undefined)
+		assert.equal(first.continuedFromTaskId, source.id)
+	}
+	assert.throws(() => linkTaskContinuation(source, { ...other, continuedFromTaskId: child.id }))
+	assert.throws(() => linkTaskContinuation(source, { ...source, continuedFromTaskId: source.id }))
+	console.log("Linked session landmarks passed: replay, both link orders, unrelated and self-link rejection")
+}
+
+function checkNativeTurnOwnership() {
+	const first = beginNativeTurn({ ...task("parent"), engine: "codex" })
+	const next = beginNativeTurn(first)
+	assert.equal(first.attemptGeneration, 1)
+	assert.equal(next.attemptGeneration, 2)
+	assert.equal(settleNativeTurn(next, 1, "turn-completed"), next)
+	const stopped = settleNativeTurn(next, 2, "stopped")
+	assert.equal(stopped.nativeTurnState, "stopped")
+	assert.equal(stopped.status, next.status)
+	assert.equal(settleNativeTurn(stopped, 2, "turn-completed"), stopped)
+	console.log("Native turn landmarks passed: stale and duplicate results rejected, task status preserved")
+}
+
+checkNativeTurnOwnership()
+
+checkContinuationLandmarks()
 
 runRepresentativeScenarios()
 const checkedStates = runModelCheck()

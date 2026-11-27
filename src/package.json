@@ -533,6 +533,7 @@
 		"clean": "rimraf README.md CHANGELOG.md LICENSE dist logs mock .turbo"
 	},
 	"dependencies": {
+		"@anthropic-ai/claude-agent-sdk": "0.3.284",
 		"@anthropic-ai/sdk": "^0.137.0",
 		"@anthropic-ai/vertex-sdk": "0.22.0",
 		"@aws-sdk/client-bedrock-runtime": "^3.922.0",

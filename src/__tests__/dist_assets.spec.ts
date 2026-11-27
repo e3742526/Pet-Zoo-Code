@@ -45,6 +45,24 @@ describe("dist assets", () => {
 		}
 	})
 
+	it("loads the packaged Claude Agent SDK as ESM without user-installed dependencies", () => {
+		const root = fs.mkdtempSync(path.join(tmpdir(), "dory-native-sdk-"))
+		try {
+			const moduleName = "claude-agent-sdk.mjs"
+			fs.copyFileSync(path.join(distPath, moduleName), path.join(root, moduleName))
+			expect(fs.readFileSync(path.join(distPath, "extension.js"), "utf8")).toContain(`./${moduleName}`)
+			expect(fs.existsSync(path.join(distPath, "THIRD_PARTY_CLAUDE_AGENT_SDK_LICENSE.md"))).toBe(true)
+			const stdout = execFileSync(
+				process.execPath,
+				["--eval", `import("./${moduleName}").then(({ query }) => console.log(typeof query))`],
+				{ cwd: root, encoding: "utf8", timeout: 5000 },
+			)
+			expect(stdout.trim()).toBe("function")
+		} finally {
+			fs.rmSync(root, { recursive: true, force: true })
+		}
+	})
+
 	describe("tiktoken", () => {
 		const encodingFilename = "tiktoken_o200k_base.json"
 		const workerPath = path.join(distPath, "workers", "countTokens.js")

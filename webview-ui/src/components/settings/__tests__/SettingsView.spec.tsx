@@ -72,6 +72,54 @@ describe("Muse quota fallback", () => {
 	})
 })
 
+it("buffers native billing and keeps edits after a failed or in-flight profile Save", () => {
+	vi.clearAllMocks()
+	renderWithExtensionState(<SettingsView onDone={vi.fn()} targetSection="providers" />, {
+		state: {
+			currentApiConfigName: "Claude",
+			listApiConfigMeta: [{ id: "claude-id", name: "Claude", apiProvider: providerIdentifiers.anthropic }],
+			apiConfiguration: { apiProvider: providerIdentifiers.anthropic, apiKey: "test" },
+		},
+	})
+	const calls = vi.mocked(vscode.postMessage).mock.calls
+	const select = screen.getByRole("combobox", { name: "settings:agentEngine.label" })
+	const save = screen.getByTestId("save-button")
+	fireEvent.change(select, { target: { value: "subscription" } })
+	expect(calls.find(([message]) => message.type === "upsertApiConfiguration")).toBeUndefined()
+	fireEvent.click(save)
+	const first = calls.findLast(([message]) => message.type === "upsertApiConfiguration")?.[0]
+	expect(first).toMatchObject({
+		text: "Claude",
+		requestId: expect.any(String),
+		values: { expectedProfileId: "claude-id" },
+		apiConfiguration: { nativeAgentAuth: "subscription" },
+	})
+	fireEvent.click(save)
+	expect(calls.filter(([message]) => message.type === "upsertApiConfiguration")).toHaveLength(1)
+	act(() =>
+		window.dispatchEvent(
+			new MessageEvent("message", {
+				data: { type: "settingsSaveResult", requestId: first?.requestId, success: false },
+			}),
+		),
+	)
+	expect(select).toHaveValue("subscription")
+	expect(save).toBeEnabled()
+
+	fireEvent.click(save)
+	const second = calls.findLast(([message]) => message.type === "upsertApiConfiguration")?.[0]
+	fireEvent.change(select, { target: { value: "api-key" } })
+	act(() =>
+		window.dispatchEvent(
+			new MessageEvent("message", {
+				data: { type: "settingsSaveResult", requestId: second?.requestId, success: true },
+			}),
+		),
+	)
+	expect(select).toHaveValue("api-key")
+	expect(save).toBeEnabled()
+})
+
 // SettingsView hands the buffered api configuration to the provider section, so the
 // save round trip can be observed without rendering the whole provider tree.
 vi.mock("../ApiOptions", () => ({

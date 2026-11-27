@@ -2,6 +2,7 @@ import * as esbuild from "esbuild"
 import * as fs from "fs"
 import * as path from "path"
 import { fileURLToPath } from "url"
+import { createRequire } from "node:module"
 import process from "node:process"
 import * as console from "node:console"
 
@@ -9,6 +10,8 @@ import { copyPaths, copyWasms, copyLocales, setupLocaleWatcher } from "@roo-code
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const resolveFromExtension = createRequire(import.meta.url).resolve
+const claudeCore = "@anthropic-ai/claude-agent-sdk/core"
 
 async function removeDirWithRetries(dirPath, retries = 5, retryDelayMs = 200) {
 	for (let attempt = 0; attempt <= retries; attempt++) {
@@ -65,6 +68,15 @@ async function main() {
 	 */
 	const plugins = [
 		{
+			name: "loadClaudeSdkAsEsm",
+			setup(build) {
+				build.onResolve({ filter: /^@anthropic-ai\/claude-agent-sdk\/core$/ }, () => ({
+					path: "./claude-agent-sdk.mjs",
+					external: true,
+				}))
+			},
+		},
+		{
 			name: "copyFiles",
 			setup(build) {
 				build.onEnd(() => {
@@ -73,6 +85,10 @@ async function main() {
 							["../README.md", "README.md"],
 							["../CHANGELOG.md", "CHANGELOG.md"],
 							["../LICENSE", "LICENSE"],
+							[
+								"node_modules/@anthropic-ai/claude-agent-sdk/LICENSE.md",
+								"dist/THIRD_PARTY_CLAUDE_AGENT_SDK_LICENSE.md",
+							],
 							["../.env", ".env", { optional: true }],
 							["node_modules/vscode-material-icons/generated", "assets/vscode-material-icons"],
 							["../webview-ui/audio", "webview-ui/audio"],
@@ -136,13 +152,22 @@ async function main() {
 		outdir: "dist/workers",
 	}
 
-	const [extensionCtx, workerCtx] = await Promise.all([
+	/** @type {import('esbuild').BuildOptions} */
+	const claudeConfig = {
+		...buildOptions,
+		format: "esm",
+		entryPoints: [resolveFromExtension(claudeCore)],
+		outfile: "dist/claude-agent-sdk.mjs",
+		banner: { js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' },
+	}
+	const [extensionCtx, workerCtx, claudeCtx] = await Promise.all([
 		esbuild.context(extensionConfig),
 		esbuild.context(workerConfig),
+		esbuild.context(claudeConfig),
 	])
 
 	if (watch) {
-		await Promise.all([extensionCtx.watch(), workerCtx.watch()])
+		await Promise.all([extensionCtx.watch(), workerCtx.watch(), claudeCtx.watch()])
 		copyLocales(srcDir, distDir)
 		setupLocaleWatcher(srcDir, distDir)
 	} else {
@@ -150,7 +175,8 @@ async function main() {
 		// onEnd hooks copy the same asset directories concurrently.
 		await extensionCtx.rebuild()
 		await workerCtx.rebuild()
-		await Promise.all([extensionCtx.dispose(), workerCtx.dispose()])
+		await claudeCtx.rebuild()
+		await Promise.all([extensionCtx.dispose(), workerCtx.dispose(), claudeCtx.dispose()])
 	}
 }
 

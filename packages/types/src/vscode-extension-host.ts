@@ -1,5 +1,12 @@
 import { z } from "zod"
 
+import type {
+	NativeAgentAvailability,
+	NativeAgentCommand,
+	NativeAgentHandoff,
+	NativeAgentView,
+} from "./agent-engine.js"
+
 import type { GlobalSettings, RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettings, ProviderSettingsEntry } from "./provider-settings.js"
 import type { HistoryItem } from "./history.js"
@@ -58,7 +65,15 @@ export interface ProviderInfoResultMap {
  * Extension -> Webview | CLI
  */
 export interface ExtensionMessage {
+	nativeAgentResult?: {
+		requestId: string
+		availability?: NativeAgentAvailability
+		handoff?: NativeAgentHandoff
+		error?: string
+	}
+
 	type:
+		| "nativeAgentResult"
 		| "action"
 		| "state"
 		| "taskHistoryUpdated"
@@ -388,6 +403,7 @@ export type ExtensionState = Pick<
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"
 > & {
+	nativeAgentView?: NativeAgentView | null
 	repoPromptShortcuts?: PromptShortcut[]
 	lockApiConfigAcrossModes?: boolean
 	version: string
@@ -546,6 +562,8 @@ export const editQueuedMessagePayloadSchema = z.object({
 export type EditQueuedMessagePayload = z.infer<typeof editQueuedMessagePayloadSchema>
 
 export interface WebviewMessage {
+	nativeAgentCommand?: NativeAgentCommand
+
 	type:
 		| "updateTodoList"
 		| "deleteMultipleTasksWithIds"
@@ -562,6 +580,7 @@ export interface WebviewMessage {
 		| "webviewDidLaunch"
 		| "webviewHeartbeat"
 		| "webviewDidFocus"
+		| "nativeAgent"
 		| "newTask"
 		| "askResponse"
 		| "terminalOperation"

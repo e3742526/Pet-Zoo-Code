@@ -1,3 +1,4 @@
+import { engineForProvider } from "../agent-engines/eligibility"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import * as path from "path"
 import * as os from "os"
@@ -705,7 +706,21 @@ export const webviewMessageHandler = async (
 			// Confirm renderer liveness and advance the watchdog recovery health window.
 			provider.updateWebviewHeartbeat()
 			break
+		case "nativeAgent":
+			await provider.nativeAgents.handle(message.nativeAgentCommand, message.requestId)
+			break
 		case "newTask":
+			{
+				const profileEngine = provider.contextProxy.getValue("agentEngine")
+				const availableEngine = engineForProvider(provider.contextProxy.getValue("apiProvider"))
+				if (
+					provider.nativeAgentView ||
+					(profileEngine && availableEngine && profileEngine === availableEngine)
+				) {
+					void vscode.window.showErrorMessage("Select Dory explicitly before starting a Dory task.")
+					break
+				}
+			}
 			// Initializing new instance of Cline will make sure that any
 			// agentically running promises in old instance don't affect our new
 			// task. This essentially creates a fresh slate for the new task.
@@ -993,7 +1008,7 @@ export const webviewMessageHandler = async (
 			})
 			break
 		case "exportCurrentTask":
-			const currentTaskId = provider.getCurrentTask()?.taskId
+			const currentTaskId = provider.getCurrentTask()?.taskId ?? provider.nativeAgentView?.taskId
 			if (currentTaskId) {
 				await provider.exportTaskWithId(currentTaskId)
 			}
@@ -2262,6 +2277,10 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebviewWithoutClineMessages()
 			break
 		case "enhancePrompt":
+			if (provider.nativeAgentView || (provider.contextProxy.getValue("agentEngine") ?? "dory") !== "dory") {
+				await provider.postMessageToWebview({ type: "enhancedPrompt" })
+				break
+			}
 			if (message.text) {
 				try {
 					const state = await provider.getState()
@@ -2461,7 +2480,24 @@ export const webviewMessageHandler = async (
 			break
 		case "upsertApiConfiguration":
 			if (message.text && message.apiConfiguration) {
-				await provider.upsertProviderProfile(message.text, message.apiConfiguration)
+				const expectedProfileId = message.values?.expectedProfileId
+				const id = message.requestId
+					? typeof expectedProfileId === "string" && expectedProfileId.length > 0
+						? await provider.upsertProviderProfile(
+								message.text,
+								message.apiConfiguration,
+								true,
+								expectedProfileId,
+							)
+						: undefined
+					: await provider.upsertProviderProfile(message.text, message.apiConfiguration)
+				if (message.requestId) {
+					await provider.postMessageToWebview({
+						type: "settingsSaveResult",
+						requestId: message.requestId,
+						success: !!id,
+					})
+				}
 			}
 			break
 		case "updateProfileModel": {

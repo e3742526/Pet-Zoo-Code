@@ -71,6 +71,7 @@ import {
 	DEFAULT_MODES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	getModelId,
+	getAgentProfileModelId,
 	isRetiredProvider,
 	modelIdKeys,
 	providerIdentifiers,
@@ -78,6 +79,11 @@ import {
 import { RateLimitClock, createRateLimitClock } from "../task/RateLimitClock"
 import { TaskRegistry } from "../task/TaskRegistry"
 import { TaskScheduler } from "../task/TaskScheduler"
+import { linkTaskContinuation } from "../task-persistence/taskLifecycle"
+import { claimAgentCheckout } from "../agent-engines/checkoutWriter"
+import { checkoutRoot } from "../agent-engines/process"
+import { NativeAgentController } from "../agent-engines/NativeAgentController"
+import type { AgentEngineId } from "@roo-code/types"
 import {
 	getEffectiveTaskApiConfiguration,
 	selectHandoffExecutionContext,
@@ -202,7 +208,24 @@ function scheduleTask(
 	run: () => Promise<void> = () => task.run(),
 	onError?: (error: unknown) => void | Promise<void>,
 ): void {
-	void scheduler.schedule(task, run).catch(async (error) => {
+	const runInCheckout = async () => {
+		if (!["darwin", "linux"].includes(process.platform) || typeof task.cwd !== "string") {
+			await run()
+			return
+		}
+		const root = await checkoutRoot(task.cwd).catch(() => undefined)
+		if (!root) {
+			await run()
+			return
+		}
+		const release = await claimAgentCheckout(root)
+		try {
+			if (!task.abort && !task.abandoned) await run()
+		} finally {
+			await release()
+		}
+	}
+	void scheduler.schedule(task, runInCheckout).catch(async (error) => {
 		console.error(`[${source}] taskScheduler.schedule failed:`, error)
 		try {
 			await onError?.(error)
@@ -263,6 +286,17 @@ export class ClineProvider
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	private taskRegistry = new TaskRegistry()
 	private taskScheduler = new TaskScheduler()
+	private nativeAgentController?: NativeAgentController
+
+	get nativeAgents(): NativeAgentController {
+		this.nativeAgentController ??= new NativeAgentController(this, this.taskScheduler)
+		return this.nativeAgentController
+	}
+
+	get nativeAgentView() {
+		return this.nativeAgentController?.view
+	}
+
 	private static readonly delegationTransitionLocks = new Map<string, Promise<void>>()
 	private cancelledDelegationChildIds = new Set<string>()
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -814,6 +848,7 @@ export class ClineProvider
 	 * createTask with a parentTask, and reopenParentFromDelegation).
 	 */
 	public async evictCurrentTask(): Promise<void> {
+		await this.nativeAgentController?.clear()
 		const current = this.getCurrentTask()
 		const storedHistory = current ? this.taskHistoryStore.get(current.taskId) : undefined
 		await this.removeClineFromStack()
@@ -1037,6 +1072,7 @@ export class ClineProvider
 		}
 
 		this._disposed = true
+		await this.nativeAgentController?.clear().catch(() => this.log("Native agent shutdown could not be verified."))
 		this._postStateToWebviewThrottled.cancel()
 		this.stopWebviewWatchdog()
 		this.diagnosticsRecorder.record({ boundary: "provider", phase: "start", type: "dispose" })
@@ -1432,6 +1468,9 @@ export class ClineProvider
 		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
 		options?: { startTask?: boolean },
 	): Promise<Task> {
+		if (historyItem.engine && historyItem.engine !== "dory") {
+			return Promise.reject(new Error("Open this task in its native engine from task history."))
+		}
 		// History navigation can arrive concurrently (for example, two rapid
 		// showTaskWithId messages). Serialize the full eviction/installation
 		// transition so both callers cannot observe the same previous registry
@@ -2254,10 +2293,22 @@ export class ClineProvider
 		name: string,
 		providerSettings: ProviderSettings,
 		activate: boolean = true,
+		expectedProfileId?: string,
 	): Promise<string | undefined> {
 		try {
 			return await this.enqueueProviderProfileMutation(
-				(signal) => this.persistProviderProfile(name, providerSettings, activate, signal),
+				async (signal) => {
+					if (expectedProfileId) {
+						const profile = await this.providerSettingsManager.getProfile({ id: expectedProfileId })
+						if (
+							profile.name !== name ||
+							name !== (this.contextProxy.getValue("currentApiConfigName") ?? "default")
+						) {
+							throw new Error("The provider profile changed during Save.")
+						}
+					}
+					return this.persistProviderProfile(name, providerSettings, activate, signal)
+				},
 				{ runToCompletion: true },
 			)
 		} catch (error) {
@@ -2368,6 +2419,24 @@ export class ClineProvider
 						: t("common:errors.create_api_config"),
 			)
 		}
+	}
+
+	public async setAgentEnginePreference(profileId: string, model: string, agentEngine: AgentEngineId): Promise<void> {
+		await this.enqueueProviderProfileMutation(
+			async (signal) => {
+				const profile = await this.providerSettingsManager.getProfile({ id: profileId })
+				if (
+					profile.name !== (this.contextProxy.getValue("currentApiConfigName") ?? "default") ||
+					getAgentProfileModelId(profile) !== model
+				) {
+					throw new Error("The provider or model changed. Select the engine again.")
+				}
+				const { name, ...settings } = profile
+				await this.persistProviderProfile(name, { ...settings, agentEngine }, true, signal)
+				await this.postStateToWebviewWithoutClineMessages()
+			},
+			{ runToCompletion: true },
+		)
 	}
 
 	private async persistProviderProfile(
@@ -2710,7 +2779,9 @@ export class ClineProvider
 		let apiConversationHistory: Anthropic.MessageParam[] = []
 
 		try {
-			apiConversationHistory = JSON.parse(await readFileWithMissingRetry(apiConversationHistoryFilePath))
+			if (!historyItem.engine || historyItem.engine === "dory") {
+				apiConversationHistory = JSON.parse(await readFileWithMissingRetry(apiConversationHistoryFilePath))
+			}
 		} catch (error) {
 			console.warn(
 				`[getTaskWithId] Could not read API conversation history for task ${id}, returning empty history: ${error instanceof Error ? error.message : String(error)}`,
@@ -2751,10 +2822,14 @@ export class ClineProvider
 			taskId: id,
 		})
 		try {
-			if (id !== this.getCurrentTask()?.taskId) {
-				// Non-current task.
+			if (id !== this.getCurrentTask()?.taskId && id !== this.nativeAgentView?.taskId) {
 				const { historyItem } = await this.getTaskWithId(id)
-				await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
+				if (historyItem.engine && historyItem.engine !== "dory") {
+					await this.evictCurrentTask()
+					await this.nativeAgents.show(historyItem)
+				} else {
+					await this.createTaskWithHistoryItem(historyItem)
+				}
 			}
 
 			await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
@@ -2780,16 +2855,32 @@ export class ClineProvider
 
 	async exportTaskWithId(id: string) {
 		const { historyItem, apiConversationHistory } = await this.getTaskWithId(id)
+		if (historyItem.engine && historyItem.engine !== "dory") {
+			await this.nativeAgents.export(historyItem)
+			return
+		}
 		const fileName = getTaskFileName(historyItem.ts)
 		const defaultUri = await resolveDefaultSaveUri(this.contextProxy, "lastTaskExportPath", fileName, {
 			useWorkspace: false,
 			fallbackDir: path.join(os.homedir(), "Downloads"),
 		})
-		const saveUri = await downloadTask(apiConversationHistory, defaultUri)
+		const links = [
+			historyItem.continuedFromTaskId && `Continued from ${historyItem.continuedFromTaskId}`,
+			...(historyItem.continuedToTaskIds ?? []).map((taskId) => `Continued as ${taskId}`),
+		].filter(Boolean)
+		const header = links.length ? ["# Dory task", ...links].join("\n\n") + "\n\n" : undefined
+		const saveUri = await downloadTask(apiConversationHistory, defaultUri, header)
 
 		if (saveUri) {
 			await saveLastExportPath(this.contextProxy, "lastTaskExportPath", saveUri)
 		}
+	}
+
+	public async recordTaskContinuation(target: HistoryItem): Promise<void> {
+		const sourceId = target.continuedFromTaskId
+		if (!sourceId || !this.taskHistoryStore.get(sourceId)) return
+		await this.taskHistoryStore.atomicReadAndUpdate(sourceId, (source) => linkTaskContinuation(source, target))
+		await this.broadcastTaskHistoryUpdate()
 	}
 
 	/*
@@ -2873,6 +2964,9 @@ export class ClineProvider
 
 			// Remove from stack if any of the tasks to delete are in the current task stack
 			for (const taskId of allIdsToDelete) {
+				if (taskId === this.nativeAgentView?.taskId) {
+					await this.nativeAgents.clear()
+				}
 				if (taskId === this.getCurrentTask()?.taskId) {
 					// Close the current task instance; delegation flows will be handled via metadata if applicable.
 					await this.removeClineFromStack()
@@ -3223,6 +3317,7 @@ export class ClineProvider
 			lockApiConfigAcrossModes,
 			promptShortcuts,
 			repoPromptShortcuts,
+			nativeAgentView,
 			cwd,
 			autoCloseZooOpenedFiles,
 			autoCloseZooOpenedFilesAfterUserEdited,
@@ -3262,8 +3357,13 @@ export class ClineProvider
 			autoCondenseContext: autoCondenseContext ?? true,
 			autoCondenseContextPercent: autoCondenseContextPercent ?? 100,
 			uriScheme: vscode.env.uriScheme,
-			currentTaskId: currentTask?.taskId,
-			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
+			nativeAgentView,
+			currentTaskId: currentTask?.taskId ?? nativeAgentView?.taskId,
+			currentTaskItem: currentTask?.taskId
+				? this.taskHistoryStore.get(currentTask.taskId)
+				: nativeAgentView
+					? this.taskHistoryStore.get(nativeAgentView.taskId)
+					: undefined,
 			clineMessages: currentTask?.clineMessages || [],
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
@@ -3502,6 +3602,7 @@ export class ClineProvider
 			mcpEnabled: stateValues.mcpEnabled ?? true,
 			mcpServers: this.mcpHub?.getAllServers() ?? [],
 			currentApiConfigName: stateValues.currentApiConfigName ?? "default",
+			nativeAgentView: this.nativeAgentView ?? null,
 			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
 			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
 			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Mode, string>),
@@ -4200,6 +4301,8 @@ export class ClineProvider
 		parentTask?: Task,
 		options: CreateTaskOptions & {
 			handoffExecutionContext?: DelegatedChildContext
+			continuedFromTaskId?: string
+			workspacePath?: string
 			segments?: MentionSegment[]
 		} = {},
 		configuration: RooCodeSettings = {},
@@ -4259,6 +4362,7 @@ export class ClineProvider
 
 		// Single-open-task invariant: always enforce for user-initiated top-level tasks.
 		if (!parentTask) {
+			await this.nativeAgentController?.clear()
 			await this.evictCurrentTask().catch(() => {
 				// Non-fatal
 			})
@@ -4304,6 +4408,7 @@ export class ClineProvider
 	}
 
 	public async cancelTask(): Promise<void> {
+		if (this.nativeAgentView) return this.nativeAgents.stop(this.nativeAgentView.taskId)
 		const task = this.getCurrentTask()
 
 		if (!task) {
@@ -4470,6 +4575,7 @@ export class ClineProvider
 	// Clear the current task without treating it as a subtask.
 	// This is used when the user cancels a task that is not a subtask.
 	public async clearTask(): Promise<void> {
+		await this.nativeAgentController?.clear()
 		const task = this.taskRegistry.current
 		if (task) {
 			console.log(`[clearTask] clearing task ${task.taskId}.${task.instanceId}`)

@@ -90,5 +90,8 @@ export function mergeHistoryDelta(
 	if (normalizedDelta.childIds && disk.childIds) {
 		merged.childIds = [...new Set([...disk.childIds, ...normalizedDelta.childIds])]
 	}
+	if (normalizedDelta.continuedToTaskIds && disk.continuedToTaskIds) {
+		merged.continuedToTaskIds = [...new Set([...disk.continuedToTaskIds, ...normalizedDelta.continuedToTaskIds])]
+	}
 	return merged
 }

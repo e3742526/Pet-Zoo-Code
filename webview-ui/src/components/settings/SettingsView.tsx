@@ -196,6 +196,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const quotaFallbackId = cachedState.apiConfiguration.museCodeQuotaFallbackProfileId ?? ""
 	const hasQuotaFallback = quotaFallbackProfiles.some(({ id }) => id === quotaFallbackId)
 	const quotaFallbackControlId = useId()
+	const nativeRouteControlId = useId()
 	const quotaFallbackDescriptionId = `${quotaFallbackControlId}-description`
 	// The save waiting for the host's answer, and the form state it sent. The "unsaved changes" flag stays on until the
 	// host says it was stored, and then goes off only if the user has not edited anything since.
@@ -203,6 +204,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const sentState = useRef<
 		| {
 				id: string
+				awaiting: Set<string>
 				settings: ReturnType<typeof captureSettingsSave>
 				provider: ReturnType<typeof captureProviderSave>
 		  }
@@ -389,18 +391,27 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		(cachedState.showRelativeTimes ?? true) !== (extensionState.showRelativeTimes ?? true)
 
 	const handleSubmit = () => {
-		if (isSettingValid) {
-			const saveId = displayChanged ? nextSaveRequestId() : undefined
+		if (isSettingValid && !pendingSaveId) {
+			const nativeRouteChanged =
+				cachedState.apiConfiguration.nativeAgentAuth !== extensionState.apiConfiguration.nativeAgentAuth
+			const saveId = displayChanged || nativeRouteChanged ? nextSaveRequestId() : undefined
+			const displaySaveId = displayChanged ? saveId : undefined
+			const profileSaveId = nativeRouteChanged && saveId ? `${saveId}-profile` : undefined
 			const savedSettings = captureSettingsSave()
 			const savedProvider = captureProviderSave()
 			if (saveId) {
-				sentState.current = { id: saveId, settings: savedSettings, provider: savedProvider }
+				sentState.current = {
+					id: saveId,
+					awaiting: new Set([displaySaveId, profileSaveId].filter((id) => id !== undefined)),
+					settings: savedSettings,
+					provider: savedProvider,
+				}
 				setPendingSaveId(saveId)
 			}
 
 			vscode.postMessage({
 				type: "updateSettings",
-				requestId: saveId,
+				requestId: displaySaveId,
 				updatedSettings: {
 					language,
 					alwaysAllowReadOnly: alwaysAllowReadOnly ?? undefined,
@@ -483,7 +494,19 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			// These have more complex logic so they aren't (yet) handled
 			// by the `updateSettings` message.
-			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
+			if (profileSaveId) {
+				vscode.postMessage({
+					type: "upsertApiConfiguration",
+					text: currentApiConfigName,
+					apiConfiguration,
+					requestId: profileSaveId,
+					values: {
+						expectedProfileId: listApiConfigMeta?.find(({ name }) => name === currentApiConfigName)?.id,
+					},
+				})
+			} else {
+				vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
+			}
 			vscode.postMessage({ type: "debugSetting", bool: cachedState.debug })
 
 			// With a time or date edit the flag is cleared when the host reports the save (see below). A failed save
@@ -513,8 +536,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 		const onResult = (event: MessageEvent) => {
 			const message = event.data
-			if (message?.type !== "settingsSaveResult" || message.requestId !== pendingSaveId) return
-			settle(message.success === true)
+			const awaiting = sentState.current?.awaiting
+			if (message?.type !== "settingsSaveResult" || !awaiting?.delete(message.requestId)) return
+			if (!message.success || awaiting.size === 0) settle(message.success === true)
 		}
 
 		window.addEventListener("message", onResult)
@@ -818,6 +842,39 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 									errorMessage={errorMessage}
 									setErrorMessage={setErrorMessage}
 								/>
+								{(cachedState.apiConfiguration.apiProvider === providerIdentifiers.anthropic ||
+									cachedState.apiConfiguration.apiProvider === providerIdentifiers.openaiCodex ||
+									cachedState.apiConfiguration.apiProvider === providerIdentifiers.openaiNative) && (
+									<div className="flex flex-col gap-1">
+										<label htmlFor={nativeRouteControlId}>{t("settings:agentEngine.label")}</label>
+										<select
+											id={nativeRouteControlId}
+											className="w-full rounded border border-vscode-input-border bg-vscode-input-background px-2 py-1 text-vscode-input-foreground"
+											value={cachedState.apiConfiguration.nativeAgentAuth ?? ""}
+											onChange={(event) => {
+												const route = event.target.value
+												setApiConfigurationField(
+													"nativeAgentAuth",
+													route === "subscription" || route === "api-key" ? route : undefined,
+												)
+											}}>
+											<option value="">{t("settings:agentEngine.off")}</option>
+											{cachedState.apiConfiguration.apiProvider !==
+												providerIdentifiers.openaiNative && (
+												<option value="subscription">
+													{t("settings:agentEngine.subscription")}
+												</option>
+											)}
+											{cachedState.apiConfiguration.apiProvider !==
+												providerIdentifiers.openaiCodex && (
+												<option value="api-key">{t("settings:agentEngine.apiKey")}</option>
+											)}
+										</select>
+										<div className="text-xs text-vscode-descriptionForeground">
+											{t("settings:agentEngine.help")}
+										</div>
+									</div>
+								)}
 								{apiConfiguration.apiProvider === providerIdentifiers.museCode && (
 									<div className="flex flex-col gap-1">
 										<label htmlFor={quotaFallbackControlId} className="font-medium">

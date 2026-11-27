@@ -13,6 +13,7 @@ const taskSizeCache = new NodeCache({ stdTTL: 30, checkperiod: 5 * 60 })
 export type TaskMetadataOptions = {
 	taskId: string
 	rootTaskId?: string
+	continuedFromTaskId?: string
 	parentTaskId?: string
 	taskNumber: number
 	messages: ClineMessage[]
@@ -28,6 +29,7 @@ export type TaskMetadataOptions = {
 export async function taskMetadata({
 	taskId: id,
 	rootTaskId,
+	continuedFromTaskId,
 	parentTaskId,
 	taskNumber,
 	messages,
@@ -94,6 +96,7 @@ export async function taskMetadata({
 	const historyItem: HistoryItem = {
 		id,
 		rootTaskId,
+		...(continuedFromTaskId && { continuedFromTaskId, engine: "dory" }),
 		parentTaskId,
 		number: taskNumber,
 		ts: timestamp,

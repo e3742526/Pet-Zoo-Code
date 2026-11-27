@@ -1199,5 +1199,12 @@
 			"relative": "5 min ago",
 			"hover": "(hover: {{value}})"
 		}
+	},
+	"agentEngine": {
+		"label": "Native agent billing",
+		"off": "Use Dory only",
+		"subscription": "Native CLI subscription",
+		"apiKey": "Use this profile’s API key",
+		"help": "Choose the billing route for the native agent. Then select its engine under the prompt."
 	}
 }

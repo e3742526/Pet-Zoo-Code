@@ -207,7 +207,12 @@ export const stories: Record<string, Story> = {
 	},
 	"chat-text-area": async (props) => {
 		const { ChatTextAreaStory } = await import("@/components/chat/__tests__/ChatTextArea.visual.fixture")
-		return <ChatTextAreaStory withRepositoryPrompts={props.withRepositoryPrompts === true} />
+		return (
+			<ChatTextAreaStory
+				withRepositoryPrompts={props.withRepositoryPrompts === true}
+				withAgentEngine={props.withAgentEngine === true}
+			/>
+		)
 	},
 	"history-empty": async () => {
 		const [{ AppProviders }, { default: HistoryView }] = await Promise.all([

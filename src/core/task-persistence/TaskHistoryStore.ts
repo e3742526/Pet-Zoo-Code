@@ -13,7 +13,12 @@ import { safeWriteJson } from "../../utils/safeWriteJson"
 import { deleteJsonFile, recoverMissingJsonFile } from "../../utils/jsonFileRecovery"
 import { getErrorCode, readFileWithMissingRetry } from "./readFileWithMissingRetry"
 import { getStorageBasePath } from "../../utils/storage"
-import { assertValidTransition, settleRejectedCreateSubtaskAction, type HistoryItemStatus } from "./taskLifecycle"
+import {
+	assertValidTransition,
+	linkTaskContinuation,
+	settleRejectedCreateSubtaskAction,
+	type HistoryItemStatus,
+} from "./taskLifecycle"
 import {
 	computeHistoryDelta,
 	DeltaRejectedError,
@@ -146,6 +151,12 @@ export class TaskHistoryStore {
 
 			// 3. Repair delegation inconsistencies left by a previous crash
 			await this.reconcileDelegationState(persistedActiveIds)
+			for (const target of this.cache.values()) {
+				const source = target.continuedFromTaskId && this.cache.get(target.continuedFromTaskId)
+				if (source && source.id !== target.id && !source.continuedToTaskIds?.includes(target.id)) {
+					await this.atomicReadAndUpdate(source.id, (current) => linkTaskContinuation(current, target))
+				}
+			}
 
 			// 4. Start fs.watch for cross-instance reactivity
 			this.startWatcher()

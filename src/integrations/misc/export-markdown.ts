@@ -35,6 +35,7 @@ export function getTaskFileName(dateTs: number): string {
 export async function downloadTask(
 	conversationHistory: Anthropic.MessageParam[],
 	defaultUri: vscode.Uri,
+	header = "",
 ): Promise<vscode.Uri | undefined> {
 	// Generate markdown
 	const markdownContent = conversationHistory
@@ -55,7 +56,7 @@ export async function downloadTask(
 
 	if (saveUri) {
 		// Write content to the selected location
-		await vscode.workspace.fs.writeFile(saveUri, Buffer.from(markdownContent))
+		await vscode.workspace.fs.writeFile(saveUri, Buffer.from(header + markdownContent))
 		vscode.window.showTextDocument(saveUri, { preview: true })
 		return saveUri
 	}

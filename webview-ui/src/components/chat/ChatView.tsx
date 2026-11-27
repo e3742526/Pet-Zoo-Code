@@ -81,6 +81,11 @@ export interface ChatViewRef {
 }
 
 import { MAX_IMAGES_PER_MESSAGE } from "./constants"
+import { AgentEngineSelector, engineName } from "./AgentEngineSelector"
+import { NativeAgentConversation } from "./NativeAgentConversation"
+import { useAgentEngine } from "./useAgentEngine"
+import { AgentHandoff } from "./AgentHandoff"
+import { mentionRegex } from "@roo/context-mentions"
 const CHAT_DEFAULT_ITEM_HEIGHT = 180
 const CHAT_VIEWPORT_BUFFER = {
 	top: 600,
@@ -104,6 +109,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const {
 		clineMessages: messages,
 		currentTaskId,
+		nativeAgentView,
 		currentTaskItem,
 		currentTaskTodos,
 		taskHistory,
@@ -190,6 +196,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [draft] = useState(createChatDraft)
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
+	const agent = useAgentEngine(currentTaskId)
+	const useNativeEngine = !!nativeAgentView || agent.engine !== "dory"
+	const continuationEngines = [
+		...(nativeAgentView ? ["dory" as const] : []),
+		...(agent.candidate && agent.candidate !== nativeAgentView?.engine ? [agent.candidate] : []),
+	]
+	const nativeBusy =
+		!!nativeAgentView && ["starting", "running", "approval", "input", "stopping"].includes(nativeAgentView.status)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
 
 	// We need to hold on to the ask because useEffect > lastMessage will always
@@ -1452,7 +1466,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// (PageUp, Home, ArrowUp) is handled by useScrollLifecycle.
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent) => {
-			if ((event.metaKey || event.ctrlKey) && event.key === ".") {
+			if (!useNativeEngine && (event.metaKey || event.ctrlKey) && event.key === ".") {
 				event.preventDefault()
 				if (event.shiftKey) {
 					switchToPreviousMode()
@@ -1461,7 +1475,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				}
 			}
 		},
-		[switchToNextMode, switchToPreviousMode],
+		[switchToNextMode, switchToPreviousMode, useNativeEngine],
 	)
 
 	useEffect(() => {
@@ -1472,10 +1486,30 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [handleKeyDown])
 
+	const sendFromComposer = () => {
+		if (agent.handoff) return
+		const text = draft.getText()
+		if (!useNativeEngine) {
+			handleSendMessage(text, selectedImages)
+			return
+		}
+		if (nativeBusy || agent.handoff || (!text.trim() && !selectedImages.length)) return
+		const images = selectedImages
+		agent.send(text, images, mentionRegex.test(text), () => {
+			if (draft.getText() === text) draft.clear()
+			setSelectedImages((current) => (current === images ? [] : current))
+		})
+	}
+
 	useImperativeHandle(ref, () => ({
 		acceptInput: () => {
 			const inputValue = draft.getText()
 			const hasInput = inputValue.trim() || selectedImages.length > 0
+
+			if (useNativeEngine) {
+				sendFromComposer()
+				return
+			}
 
 			// Special case: during command_output, queue the message instead of
 			// triggering the primary button action (which would lose the message)
@@ -1525,7 +1559,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					}}
 				/>
 			)}
-			{task ? (
+			{nativeAgentView ? (
+				<NativeAgentConversation view={nativeAgentView} item={currentTaskItem} action={agent.action} />
+			) : task ? (
 				<>
 					<TaskHeader
 						task={task}
@@ -1579,9 +1615,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				</div>
 			)}
 
-			{!task && showWorktreesInHomeScreen && <WorktreeSelector />}
+			{!nativeAgentView && !task && showWorktreesInHomeScreen && <WorktreeSelector />}
 
-			{task && (
+			{!nativeAgentView && task && (
 				<>
 					<div className="grow flex" ref={scrollContainerRef}>
 						<Virtuoso
@@ -1707,6 +1743,58 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				</>
 			)}
 
+			{currentTaskId && continuationEngines.length > 0 && !agent.handoff && (
+				<div className="mx-3 mb-1 flex flex-wrap items-center gap-2">
+					{continuationEngines.map((engine) => (
+						<Button
+							key={engine}
+							size="sm"
+							variant="secondary"
+							disabled={agent.pending}
+							title={t("chat:agentEngine.continueHelp")}
+							onClick={() => agent.prepareContinuation(engine)}>
+							{t("chat:agentEngine.continueWith", { engine: engineName(engine) })}
+						</Button>
+					))}
+				</div>
+			)}
+			{agent.handoff && (
+				<AgentHandoff
+					key={agent.handoff.id}
+					handoff={agent.handoff}
+					pending={agent.pending}
+					onContinue={agent.continueTask}
+					onCancel={agent.cancelContinuation}
+				/>
+			)}
+			{!nativeAgentView && currentTaskItem?.continuedFromTaskId && (
+				<div className="mx-3">
+					<Button
+						size="sm"
+						variant="ghost"
+						onClick={() =>
+							vscode.postMessage({
+								type: "showTaskWithId",
+								text: currentTaskItem.continuedFromTaskId,
+							})
+						}>
+						{t("chat:agentEngine.openSource")}
+					</Button>
+				</div>
+			)}
+
+			{!nativeAgentView &&
+				currentTaskItem?.continuedToTaskIds?.map((id) => (
+					<div key={id} className="mx-3">
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() => vscode.postMessage({ type: "showTaskWithId", text: id })}>
+							{t("chat:agentEngine.openLinked")}
+						</Button>
+					</div>
+				))}
+
 			<QueuedMessages
 				queue={messageQueue}
 				onRemove={(index) => {
@@ -1741,14 +1829,24 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			<ChatComposer
 				ref={textAreaRef}
 				draft={draft}
-				sendingDisabled={sendingDisabled || isProfileDisabled}
-				selectApiConfigDisabled={sendingDisabled && clineAsk !== "api_req_failed"}
+				sendingDisabled={
+					useNativeEngine
+						? nativeBusy ||
+							agent.pending ||
+							(nativeAgentView ? !nativeAgentView.session : !agent.availability?.selection)
+						: sendingDisabled || isProfileDisabled
+				}
+				selectApiConfigDisabled={!!nativeAgentView || (sendingDisabled && clineAsk !== "api_req_failed")}
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(draft.getText(), selectedImages)}
+				onSend={sendFromComposer}
 				onSelectImages={selectImages}
-				shouldDisableImages={shouldDisableImages}
+				shouldDisableImages={
+					useNativeEngine
+						? !(nativeAgentView?.canSendImages ?? agent.availability?.images) || selectedImages.length >= 4
+						: shouldDisableImages
+				}
 				onHeightChange={() => {
 					if (isAtBottomRef.current && scrollPhaseRef.current !== "USER_BROWSING_HISTORY") {
 						scrollToBottomAuto()
@@ -1757,12 +1855,35 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				mode={mode}
 				setMode={setMode}
 				modeShortcutText={modeShortcutText}
-				isStreaming={isStreaming}
-				onStop={handleStopTask}
-				onEnqueueMessage={handleEnqueueCurrentMessage}
+				isStreaming={useNativeEngine ? nativeBusy : isStreaming}
+				onStop={
+					nativeAgentView
+						? () => agent.action({ kind: "stop", taskId: nativeAgentView.taskId })
+						: handleStopTask
+				}
+				onEnqueueMessage={useNativeEngine ? undefined : handleEnqueueCurrentMessage}
+				nativeEngine={useNativeEngine}
+				showEngineConnection={!nativeAgentView}
+				agentEngineControl={
+					agent.availability && (
+						<AgentEngineSelector
+							availability={agent.availability}
+							engine={agent.engine}
+							pending={agent.pending}
+							onChange={agent.select}
+							onRefresh={agent.discover}
+						/>
+					)
+				}
 			/>
 
-			{isProfileDisabled && (
+			{agent.error && (
+				<p role="alert" className="mx-3 text-vscode-errorForeground">
+					{agent.error}
+				</p>
+			)}
+
+			{isProfileDisabled && !nativeAgentView && (
 				<div className="px-3">
 					<ProfileViolationWarning />
 				</div>

@@ -54,7 +54,7 @@ describe("webviewMessageHandler mention segment forwarding", () => {
 		getState: ReturnType<typeof vi.fn>
 		postStateToWebview: ReturnType<typeof vi.fn>
 		log: ReturnType<typeof vi.fn>
-		contextProxy: { globalStorageUri: { fsPath: string } }
+		contextProxy: { globalStorageUri: { fsPath: string }; getValue: ReturnType<typeof vi.fn> }
 	}
 	let providerAsClineProvider: ClineProvider
 	let currentTask: {
@@ -83,7 +83,7 @@ describe("webviewMessageHandler mention segment forwarding", () => {
 			getState: vi.fn().mockResolvedValue({ maxImageFileSize: 5, maxTotalImageSize: 20 }),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),
 			log: vi.fn(),
-			contextProxy: { globalStorageUri: { fsPath: "/tmp/storage" } },
+			contextProxy: { globalStorageUri: { fsPath: "/tmp/storage" }, getValue: vi.fn() },
 		}
 		providerAsClineProvider = provider as unknown as ClineProvider
 	})

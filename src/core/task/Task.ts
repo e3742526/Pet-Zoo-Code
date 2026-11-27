@@ -262,6 +262,7 @@ export interface ToolExecutionContext {
 
 export interface TaskOptions extends CreateTaskOptions {
 	provider: ClineProvider
+	continuedFromTaskId?: string
 	apiConfiguration: ProviderSettings
 	enableCheckpoints?: boolean
 	checkpointTimeout?: number
@@ -731,9 +732,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private _messageManager?: MessageManager
 
 	private readonly segments?: MentionSegment[]
+	private readonly continuedFromTaskId?: string
 
 	constructor({
 		segments,
+		continuedFromTaskId,
 		provider,
 		apiConfiguration,
 		enableCheckpoints = true,
@@ -759,6 +762,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}: TaskOptions) {
 		super()
 		this.segments = segments
+		this.continuedFromTaskId = historyItem?.continuedFromTaskId ?? continuedFromTaskId
 
 		this.resetAssistantMessagePersistence()
 
@@ -1871,6 +1875,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const { historyItem, tokenUsage } = await taskMetadata({
 				taskId: this.taskId,
 				rootTaskId: this.rootTaskId,
+				continuedFromTaskId: this.continuedFromTaskId,
 				parentTaskId: this.parentTaskId,
 				taskNumber: this.taskNumber,
 				messages: this.clineMessages,
@@ -1895,6 +1900,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					fromMessages: this.historyCreated ? "update" : "create",
 					...(profileChange && { profileChange }),
 				})
+				if (!this.historyCreated && historyItem.continuedFromTaskId) {
+					await provider.recordTaskContinuation(historyItem)
+				}
 				this.historyCreated = true
 				if (this.fallbackHistoryProfile === profileChange) this.fallbackHistoryProfile = undefined
 			}

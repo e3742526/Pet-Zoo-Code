@@ -274,6 +274,7 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 		rest.clineMessagesSeq = prevState.clineMessagesSeq
 	}
 	if (keepTaskIdentity) {
+		rest.nativeAgentView = prevState.nativeAgentView
 		// Pushes without fresh messages cannot establish task identity. Keep the task item with
 		// the pinned ID when it describes another task; same-task item updates still apply.
 		if (newState.currentTaskId !== prevState.currentTaskId) {
@@ -526,7 +527,10 @@ export const ExtensionStateContextProvider: React.FC<{
 					setState((prevState) => mergeExtensionState(prevState, stateUpdate))
 					const provider = newState.apiConfiguration?.apiProvider
 					setShowWelcome(
-						!(provider && isRetiredProvider(provider)) && !checkExistKey(newState.apiConfiguration),
+						!(provider && isRetiredProvider(provider)) &&
+							!newState.nativeAgentView &&
+							newState.apiConfiguration?.nativeAgentAuth !== "subscription" &&
+							!checkExistKey(newState.apiConfiguration),
 					)
 					setDidHydrateState(true)
 					recordDiagnosticsHydration(true)

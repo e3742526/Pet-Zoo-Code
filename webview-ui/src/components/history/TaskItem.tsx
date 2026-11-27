@@ -1,3 +1,4 @@
+import { engineName } from "../chat/AgentEngineSelector"
 import { memo, useState } from "react"
 import { ArrowRight, Folder } from "lucide-react"
 import { getTaskDisplayTitle, type DisplayHistoryItem } from "./types"
@@ -111,6 +112,9 @@ const TaskItem = ({
 						<ArrowRight className="size-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
 					</div>
 
+					{item.engine && item.engine !== "dory" && (
+						<span className="text-xs text-vscode-descriptionForeground">{engineName(item.engine)}</span>
+					)}
 					{showWorkspace && item.workspace && (
 						<div className="flex items-center font-mono gap-1 text-vscode-descriptionForeground text-xs mt-1">
 							<Folder className="size-3" />

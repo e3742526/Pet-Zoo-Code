@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { agentEngineProfileSchema } from "./agent-engine.js"
+
 import { providerDefinitionList, type ProviderDefinition } from "./providers/index.js"
 import { API_PROVIDER_FIELD, SETTINGS_SHAPE_FIELD } from "./providers/common.js"
 export {
@@ -283,6 +285,7 @@ const providerSettingsShape = providerSettingsObjectSchema.shape as ProviderSett
 export const providerSettingsSchema = z.object({
 	[API_PROVIDER_FIELD]: providerNamesWithRetiredSchema.optional(),
 	...providerSettingsShape,
+	...agentEngineProfileSchema.shape,
 	...codebaseIndexProviderSchema.shape,
 })
 
@@ -291,7 +294,7 @@ export type ProviderSettings = z.infer<typeof providerSettingsSchema>
 export const providerSettingsWithIdSchema = providerSettingsSchema.extend({ id: z.string().optional() })
 
 export const discriminatedProviderSettingsWithIdSchema = providerSettingsSchemaDiscriminated.and(
-	z.object({ id: z.string().optional() }),
+	agentEngineProfileSchema.extend({ id: z.string().optional() }),
 )
 
 export type ProviderSettingsWithId = z.infer<typeof providerSettingsWithIdSchema>
@@ -374,6 +377,14 @@ export function getModelId(settings: ProviderSettings): string | undefined {
  */
 export function getProviderDefaultModelId(provider: ProviderName, settings: ProviderSettings): string {
 	return providerDefinitions[provider]?.getDefaultModelId(settings) ?? anthropicDefaultModelId
+}
+
+/** Effective model for the direct profiles used by native agents. */
+export function getAgentProfileModelId(settings: ProviderSettings): string | undefined {
+	return (
+		getModelId(settings) ??
+		(isProviderName(settings.apiProvider) ? getProviderDefaultModelId(settings.apiProvider, settings) : undefined)
+	)
 }
 
 /**

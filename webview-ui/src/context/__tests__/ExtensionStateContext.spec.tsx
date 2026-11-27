@@ -661,6 +661,19 @@ describe("ExtensionStateContext", () => {
 		expect(stale.currentTaskId).toBe("task-a")
 	})
 
+	it("keeps native session ownership when an old state push arrives", () => {
+		const initial = {
+			...createInitialExtensionState(),
+			currentTaskId: "native",
+			clineMessagesSeq: 5,
+			nativeAgentView: { taskId: "native", engine: "codex", status: "running" as const, rows: [] },
+		}
+		const stale = mergeExtensionState(initial, { nativeAgentView: null, clineMessages: [], clineMessagesSeq: 4 })
+		expect(stale.nativeAgentView).toBe(initial.nativeAgentView)
+		const cleared = mergeExtensionState(stale, { nativeAgentView: null, clineMessages: [], clineMessagesSeq: 6 })
+		expect(cleared.nativeAgentView).toBeNull()
+	})
+
 	it("preserves the message cache on stale task pushes and rebuilds replaced history", () => {
 		const internSpy = vi.spyOn(StringCache.prototype, "intern")
 		render(

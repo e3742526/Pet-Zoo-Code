@@ -58,6 +58,9 @@ const isFileDrag = (dataTransfer: DataTransfer): boolean =>
 	)
 
 interface ChatTextAreaProps {
+	agentEngineControl?: React.ReactNode
+	nativeEngine?: boolean
+	showEngineConnection?: boolean
 	inputValue: string
 	setInputValue: (value: string) => void
 	/** Programmatic updates preserve the chat box authorization scope. */
@@ -96,6 +99,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setInputValueGenerated,
 			getInputSegments,
 			setInputValueWithSegments,
+			sendingDisabled,
 			selectApiConfigDisabled,
 			placeholderText,
 			selectedImages,
@@ -112,6 +116,9 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			isStreaming = false,
 			onStop,
 			onEnqueueMessage,
+			agentEngineControl,
+			nativeEngine,
+			showEngineConnection = true,
 		},
 		ref,
 	) => {
@@ -1053,25 +1060,29 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					aria-label={t("chat:promptShortcuts.toolbar")}
 					data-testid="composer-toolbar"
 					className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-vscode-panel-border bg-vscode-sideBar-background p-1.5 mb-1">
-					<ApiConfigSelector
-						value={currentConfigId}
-						displayName={displayName}
-						disabled={selectApiConfigDisabled}
-						title={t("chat:selectApiConfig")}
-						onChange={handleApiConfigChange}
-						triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
-						listApiConfigMeta={listApiConfigMeta || []}
-						pinnedApiConfigs={pinnedApiConfigs}
-						togglePinnedApiConfig={togglePinnedApiConfig}
-						lockApiConfigAcrossModes={!!lockApiConfigAcrossModes}
-						onToggleLockApiConfig={handleToggleLockApiConfig}
-					/>
-					<ModelSelector
-						apiConfiguration={apiConfiguration}
-						disabled={selectApiConfigDisabled}
-						title={t("chat:selectModel")}
-						triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
-					/>
+					{showEngineConnection && (
+						<>
+							<ApiConfigSelector
+								value={currentConfigId}
+								displayName={displayName}
+								disabled={selectApiConfigDisabled}
+								title={t("chat:selectApiConfig")}
+								onChange={handleApiConfigChange}
+								triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
+								listApiConfigMeta={listApiConfigMeta || []}
+								pinnedApiConfigs={pinnedApiConfigs}
+								togglePinnedApiConfig={togglePinnedApiConfig}
+								lockApiConfigAcrossModes={!!lockApiConfigAcrossModes}
+								onToggleLockApiConfig={handleToggleLockApiConfig}
+							/>
+							<ModelSelector
+								apiConfiguration={apiConfiguration}
+								disabled={selectApiConfigDisabled}
+								title={t("chat:selectModel")}
+								triggerClassName="min-w-[48px] max-w-full flex-auto overflow-hidden"
+							/>
+						</>
+					)}
 					<PromptShortcuts
 						key={cwd}
 						repoPath={cwd}
@@ -1297,29 +1308,31 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										</button>
 									</StandardTooltip>
 								) : (
-									<StandardTooltip content={t("chat:enhancePrompt")}>
-										<button
-											aria-label={t("chat:enhancePrompt")}
-											disabled={false}
-											onClick={handleEnhancePrompt}
-											className={cn(
-												"relative inline-flex items-center justify-center",
-												"bg-transparent border-none p-1.5",
-												"rounded-md min-w-[28px] min-h-[28px]",
-												"text-vscode-descriptionForeground hover:text-vscode-foreground",
-												"transition-all duration-1000",
-												"cursor-pointer",
-												hasInputContent
-													? "opacity-50 delay-750 pointer-events-auto"
-													: "opacity-0 pointer-events-none duration-200 delay-0",
-												hasInputContent && enabledChatControlClassName,
-												"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-											)}>
-											<WandSparkles
-												className={cn("w-4 h-4", isEnhancingPrompt && "animate-spin")}
-											/>
-										</button>
-									</StandardTooltip>
+									!nativeEngine && (
+										<StandardTooltip content={t("chat:enhancePrompt")}>
+											<button
+												aria-label={t("chat:enhancePrompt")}
+												disabled={false}
+												onClick={handleEnhancePrompt}
+												className={cn(
+													"relative inline-flex items-center justify-center",
+													"bg-transparent border-none p-1.5",
+													"rounded-md min-w-[28px] min-h-[28px]",
+													"text-vscode-descriptionForeground hover:text-vscode-foreground",
+													"transition-all duration-1000",
+													"cursor-pointer",
+													hasInputContent
+														? "opacity-50 delay-750 pointer-events-auto"
+														: "opacity-0 pointer-events-none duration-200 delay-0",
+													hasInputContent && enabledChatControlClassName,
+													"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
+												)}>
+												<WandSparkles
+													className={cn("w-4 h-4", isEnhancingPrompt && "animate-spin")}
+												/>
+											</button>
+										</StandardTooltip>
+									)
 								)}
 								{/* Queue button - shown when streaming and user has typed content */}
 								{!isEditMode && isStreaming && hasInputContent && onEnqueueMessage && (
@@ -1360,7 +1373,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 													? t("chat:stop.title")
 													: t("chat:pressToSend", { keyCombination: sendKeyCombination })
 										}
-										disabled={false}
+										disabled={!!nativeEngine && sendingDisabled && !isStreaming}
 										onClick={isStreaming ? onStop : onSend}
 										className={cn(
 											"relative inline-flex items-center justify-center",
@@ -1406,6 +1419,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					</div>
 				</div>
 
+				{agentEngineControl}
+
 				{selectedImages.length > 0 && (
 					<Thumbnails
 						images={selectedImages}
@@ -1420,16 +1435,20 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-2 min-w-0 overflow-clip flex-1 min-[310px]:flex-wrap min-[310px]:overflow-visible">
-						<ModeSelector
-							value={mode}
-							title={t("chat:selectMode")}
-							onChange={handleModeChange}
-							triggerClassName="text-ellipsis overflow-hidden flex-shrink-0"
-							modeShortcutText={modeShortcutText}
-							customModes={customModes}
-							customModePrompts={customModePrompts}
-						/>
-						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
+						{!nativeEngine && (
+							<>
+								<ModeSelector
+									value={mode}
+									title={t("chat:selectMode")}
+									onChange={handleModeChange}
+									triggerClassName="text-ellipsis overflow-hidden flex-shrink-0"
+									modeShortcutText={modeShortcutText}
+									customModes={customModes}
+									customModePrompts={customModePrompts}
+								/>
+								<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink min-[310px]:overflow-visible min-[310px]:flex-shrink-0" />
+							</>
+						)}
 					</div>
 					<div className={cn("flex flex-shrink-0 items-center gap-0.5 h-5 leading-none pr-2")}>
 						{isTtsPlaying && (

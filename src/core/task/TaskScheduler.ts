@@ -1,5 +1,4 @@
 import { TaskSemaphore } from "../../utils/TaskSemaphore"
-import { type Task } from "./Task"
 
 /**
  * Semaphore-based concurrency gate for task execution.
@@ -29,7 +28,10 @@ export class TaskScheduler {
 	 * user cancelled it before it started), the permit is released immediately
 	 * without calling `run()`.
 	 */
-	async schedule(task: Task, run: () => Promise<void>): Promise<void> {
+	async schedule(
+		task: { readonly abort: boolean; readonly abandoned?: boolean },
+		run: () => Promise<void>,
+	): Promise<void> {
 		const release = await this.sem.acquire()
 		if (task.abort || task.abandoned) {
 			release()

@@ -138,3 +138,28 @@ export function abandonDelegatedChild(
 export function detachDelegatedChild(child: HistoryItem, parentId: string): HistoryItem {
 	return { ...child, parentTaskId: undefined, rootTaskId: undefined, detachedFromParentId: parentId }
 }
+
+/** Continuations link independent sessions. They do not delegate or change task status. */
+export function linkTaskContinuation(source: HistoryItem, target: HistoryItem): HistoryItem {
+	if (target.id === source.id || target.continuedFromTaskId !== source.id) {
+		throw new LifecycleTransitionError("The target session does not belong to this continuation.")
+	}
+	if (source.continuedToTaskIds?.includes(target.id)) return source
+	return { ...source, continuedToTaskIds: [...(source.continuedToTaskIds ?? []), target.id] }
+}
+
+/** Record ownership of a native turn before submitting input to its runtime. */
+export function beginNativeTurn(item: HistoryItem): HistoryItem {
+	return { ...item, attemptGeneration: (item.attemptGeneration ?? 0) + 1, nativeTurnState: "running" }
+}
+
+/** A result from a replaced or already-settled attempt cannot change history. */
+export function settleNativeTurn(
+	item: HistoryItem,
+	generation: number,
+	result: Exclude<NonNullable<HistoryItem["nativeTurnState"]>, "running">,
+): HistoryItem {
+	return item.attemptGeneration === generation && item.nativeTurnState === "running"
+		? { ...item, nativeTurnState: result }
+		: item
+}

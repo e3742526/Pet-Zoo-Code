@@ -64,7 +64,8 @@
 		"unknownError": "Onbekende fout",
 		"indexingRequiresWorkspace": "Indexering vereist een geopende workspace map",
 		"indexingStopped": "Indexering gestopt door gebruiker.",
-		"indexingStoppedPartial": "Indexering gestopt. Gedeeltelijke indexgegevens bewaard."
+		"indexingStoppedPartial": "Indexering gestopt. Gedeeltelijke indexgegevens bewaard.",
+		"clearIndexFailed": "Kan de indexgegevens niet wissen: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Semble-binary downloaden...",

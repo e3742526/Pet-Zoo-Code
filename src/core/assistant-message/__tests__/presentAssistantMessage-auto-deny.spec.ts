@@ -731,4 +731,53 @@ describe("presentAssistantMessage - automatic (policy) denials", () => {
 		expect(mockTask.didRejectTool).toBe(false)
 		expect(mockTask.say).not.toHaveBeenCalledWith("user_feedback", expect.anything(), expect.anything())
 	})
+
+	it.each([
+		["denial", "noButtonClicked", false],
+		["approval", "yesButtonClicked", true],
+	])("keeps image-only feedback on an MCP %s", async (_label, response, expectedApproval) => {
+		const images = ["data:image/png;base64,AAAA"]
+		mockTask.assistantMessageContent = [
+			{
+				type: "mcp_tool_use",
+				id: "call_mcp_images",
+				name: "mcp_my_server_do_thing",
+				serverName: "my_server",
+				toolName: "do_thing",
+				arguments: {},
+				partial: false,
+			},
+		]
+		mockTask.providerRef = {
+			deref: () => ({
+				getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }),
+				getMcpHub: () => ({ findServerNameBySanitizedName: () => undefined }),
+			}),
+		}
+
+		const approvals: boolean[] = []
+		useMcpToolHandle.mockImplementation(
+			async (
+				_task: unknown,
+				_block: unknown,
+				{
+					askApproval,
+					pushToolResult,
+				}: { askApproval: (t: string, m?: string) => Promise<boolean>; pushToolResult: (r: string) => void },
+			) => {
+				const approved = await askApproval("use_mcp_server", "{}")
+				approvals.push(approved)
+				if (approved) pushToolResult("tool output")
+			},
+		)
+		mockTask.ask.mockResolvedValueOnce({ response, images })
+
+		await presentAssistantMessage(asTask(mockTask), baseSnapshot)
+
+		expect(approvals).toEqual([expectedApproval])
+		expect(mockTask.say).toHaveBeenCalledWith("user_feedback", "", images)
+		// The images reach the model with the tool result.
+		expect(mockTask.userMessageContent.some((block) => block.tool_use_id === "call_mcp_images")).toBe(true)
+		expect(JSON.stringify(mockTask.userMessageContent)).toContain("AAAA")
+	})
 })

@@ -411,4 +411,21 @@ describe("checkpointRestoreHandler", () => {
 		expect(fixture.taskDouble.handleWebviewAskResponse).toHaveBeenCalledWith("messageResponse", "Accepted edit", [])
 		expect(fixture.store.get(`task-${fixture.task.taskId}`)).toBeUndefined()
 	})
+
+	it("skips a pending edit when the rehydrated task is replaced during the delay", async () => {
+		vi.useFakeTimers()
+		await handleCheckpointRestoreOperation({
+			...fixture.config,
+			operation: "edit",
+			editData: { editedContent: "Accepted edit", images: [], apiConversationHistoryIndex: 0 },
+		})
+		await ClineProvider.prototype.createTaskWithHistoryItem.call(fixture.provider, fixture.historyItem, {
+			startTask: false,
+		})
+		fixture.providerDouble.getCurrentTask.mockReturnValue(undefined)
+		await vi.advanceTimersByTimeAsync(100)
+		expect(fixture.taskDouble.overwriteClineMessages).not.toHaveBeenCalled()
+		expect(fixture.taskDouble.overwriteApiConversationHistory).not.toHaveBeenCalled()
+		expect(fixture.taskDouble.handleWebviewAskResponse).not.toHaveBeenCalled()
+	})
 })

@@ -36,14 +36,15 @@ vi.mock("../../i18n", async () => {
 
 import * as vscode from "vscode"
 
-const { mockGetVisibleInstance, mockVisibleProvider } = vi.hoisted(() => {
+const { mockGetVisibleInstance, mockGetAllInstances, mockVisibleProvider } = vi.hoisted(() => {
 	// Visible provider double provides the Requesty callback.
 	const mockVisibleProvider = {
 		handleRequestyCallback: vi.fn(),
 	} as unknown as ClineProvider
 
 	return {
-		mockGetVisibleInstance: vi.fn((): ClineProvider | null => mockVisibleProvider),
+		mockGetVisibleInstance: vi.fn((): ClineProvider | undefined => mockVisibleProvider),
+		mockGetAllInstances: vi.fn((): ClineProvider[] => [mockVisibleProvider]),
 		mockVisibleProvider,
 	}
 })
@@ -51,6 +52,7 @@ const { mockGetVisibleInstance, mockVisibleProvider } = vi.hoisted(() => {
 vi.mock("../../core/webview/ClineProvider", () => ({
 	ClineProvider: {
 		getVisibleInstance: mockGetVisibleInstance,
+		getAllInstances: mockGetAllInstances,
 	},
 }))
 
@@ -65,6 +67,16 @@ describe("handleUri", () => {
 		vi.clearAllMocks()
 		mockShowWarningMessage.mockResolvedValue(undefined)
 		mockGetVisibleInstance.mockReturnValue(mockVisibleProvider)
+		mockGetAllInstances.mockReturnValue([mockVisibleProvider])
+	})
+
+	it("passes a Requesty callback to a hidden provider when no provider is visible", async () => {
+		mockGetVisibleInstance.mockReturnValue(undefined)
+		mockShowWarningMessage.mockResolvedValue("Activate Requesty")
+
+		await handleUri(makeUri({ path: "/requesty", query: "code=abc&baseUrl=https%3A%2F%2Fexample.com" }))
+
+		expect(mockVisibleProvider.handleRequestyCallback).toHaveBeenCalledWith("abc", "https://example.com")
 	})
 
 	it("passes Requesty codes without losing literal plus signs", async () => {
@@ -170,8 +182,9 @@ describe("handleUri", () => {
 		expect(mockVisibleProvider.handleRequestyCallback).toHaveBeenCalledWith("test-code", null)
 	})
 
-	it("ignores Requesty when no provider is visible", async () => {
-		mockGetVisibleInstance.mockReturnValue(null)
+	it("ignores Requesty when no provider exists", async () => {
+		mockGetVisibleInstance.mockReturnValue(undefined)
+		mockGetAllInstances.mockReturnValue([])
 		await handleUri(makeUri({ path: "/requesty", query: "code=test-code" }))
 		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 	})

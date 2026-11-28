@@ -2321,6 +2321,9 @@ export const webviewMessageHandler = async (
 					vscode.window.showErrorMessage(t("common:errors.enhance_prompt"))
 					await provider.postMessageToWebview({ type: "enhancedPrompt" })
 				}
+			} else {
+				// Empty input has nothing to enhance. Answer anyway, so a waiting caller stops its spinner.
+				await provider.postMessageToWebview({ type: "enhancedPrompt" })
 			}
 			break
 		case "getSystemPrompt":
@@ -3466,12 +3469,15 @@ export const webviewMessageHandler = async (
 				await scope.codeIndexManager.clearIndexData()
 				await provider.postMessageToWebview({ type: "indexCleared", values: { success: true } })
 			} catch (error) {
-				provider.log(`Error clearing index data: ${error instanceof Error ? error.message : String(error)}`)
+				const errorMessage = error instanceof Error ? error.message : String(error)
+				provider.log(`Error clearing index data: ${errorMessage}`)
+				// The confirmation dialog is closed by now, so the user is told here that the clear failed.
+				void vscode.window.showErrorMessage(t("embeddings:orchestrator.clearIndexFailed", { errorMessage }))
 				await provider.postMessageToWebview({
 					type: "indexCleared",
 					values: {
 						success: false,
-						error: error instanceof Error ? error.message : String(error),
+						error: errorMessage,
 					},
 				})
 			}
@@ -4305,7 +4311,6 @@ export const webviewMessageHandler = async (
 			// "marketplaceInstallResult" |
 			// "shareTaskSuccess" |
 			// "playSound" |
-			// "draggedImages" |
 			// "setApiConfigPassword" |
 			// "setopenAiCustomModelInfo" |
 			// "marketplaceButtonClicked" |

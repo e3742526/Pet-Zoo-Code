@@ -64,7 +64,8 @@
 		"unknownError": "Unbekannter Fehler",
 		"indexingRequiresWorkspace": "Indexierung erfordert einen offenen Workspace-Ordner",
 		"indexingStopped": "Indexierung vom Benutzer gestoppt.",
-		"indexingStoppedPartial": "Indexierung gestoppt. Teilweise Indexdaten beibehalten."
+		"indexingStoppedPartial": "Indexierung gestoppt. Teilweise Indexdaten beibehalten.",
+		"clearIndexFailed": "Die Indexdaten konnten nicht gelöscht werden: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Semble-Binary wird heruntergeladen...",

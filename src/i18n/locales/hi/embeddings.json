@@ -64,7 +64,8 @@
 		"unknownError": "अज्ञात त्रुटि",
 		"indexingRequiresWorkspace": "इंडेक्सिंग के लिए एक खुला वर्कस्पेस फ़ोल्डर आवश्यक है",
 		"indexingStopped": "उपयोगकर्ता द्वारा इंडेक्सिंग रोकी गई।",
-		"indexingStoppedPartial": "इंडेक्सिंग रोकी गई। आंशिक इंडेक्स डेटा संरक्षित।"
+		"indexingStoppedPartial": "इंडेक्सिंग रोकी गई। आंशिक इंडेक्स डेटा संरक्षित।",
+		"clearIndexFailed": "इंडेक्स डेटा साफ़ नहीं किया जा सका: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "semble बाइनरी डाउनलोड हो रहा है...",

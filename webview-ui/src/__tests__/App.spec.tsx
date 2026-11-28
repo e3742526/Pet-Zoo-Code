@@ -1,7 +1,7 @@
 // npx vitest run src/__tests__/App.spec.tsx
 
 import React from "react"
-import { render, screen, act, cleanup } from "@/utils/test-utils"
+import { render, screen, act, cleanup, fireEvent } from "@/utils/test-utils"
 
 import AppWithProviders from "../App"
 import { vscode } from "../utils/vscode"
@@ -192,6 +192,28 @@ describe("App", () => {
 		experiments: {},
 		language: "en",
 		telemetrySetting: "enabled",
+	})
+
+	it.each([
+		["with a checkpoint", true, "common:confirmation.editOnly"],
+		["without a checkpoint", false, "common:confirmation.proceed"],
+	])("keeps the message images when an edit is confirmed %s", async (_label, hasCheckpoint, confirmLabel) => {
+		render(<AppWithProviders />)
+		const images = ["data:image/png;base64,AAAA"]
+
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: { type: "showEditMessageDialog", messageTs: 42, text: "edited", hasCheckpoint, images },
+				}),
+			)
+		})
+
+		fireEvent.click(await screen.findByText(confirmLabel))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: "editMessageConfirm", messageTs: 42, text: "edited", images }),
+		)
 	})
 
 	it("shows chat view by default", () => {

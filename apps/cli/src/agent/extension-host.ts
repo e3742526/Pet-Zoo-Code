@@ -26,7 +26,7 @@ import type {
 import { createVSCodeAPI, IExtensionHost, ExtensionHostEventMap, setRuntimeConfigValues } from "@roo-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 
-import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
+import { DEFAULT_FLAGS, EXTENSION_CONFIG_SECTION, type SupportedProvider } from "@/types/index.js"
 import { getProviderSettings } from "@/lib/utils/provider.js"
 import { createEphemeralStorageDir } from "@/lib/storage/index.js"
 
@@ -447,7 +447,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// sending webviewDidLaunch. This prevents a race condition where the
 		// webviewDidLaunch handler's first-time init sync reads default state
 		// (apiProvider: "anthropic") instead of the CLI-provided settings.
-		setRuntimeConfigValues("zoo-code", this.initialSettings as Record<string, unknown>)
+		setRuntimeConfigValues(EXTENSION_CONFIG_SECTION, this.initialSettings as Record<string, unknown>)
 		this.sendToExtension({ type: "updateSettings", updatedSettings: this.initialSettings })
 
 		// Now trigger extension initialization. The context proxy should already

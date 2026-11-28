@@ -97,6 +97,9 @@ async function checkWorktreeAutoOpen(
 			// Open the Dory Code sidebar with a slight delay to ensure UI is ready
 			setTimeout(async () => {
 				try {
+					// Show the sidebar first. `plusButtonClicked` acts only on a visible provider, and the sidebar
+					// of a newly opened window is often closed.
+					await vscode.commands.executeCommand(`${ClineProvider.sideBarId}.focus`)
 					await vscode.commands.executeCommand(`${Package.name}.plusButtonClicked`)
 				} catch (error) {
 					outputChannel.appendLine(
@@ -323,7 +326,46 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	const providerFactory = new ClineProviderFactory(context, outputChannel, webviewFocusTracker)
-	return new API(outputChannel, provider, providerFactory, socketPath, enableLogging)
+	const api = new API(outputChannel, provider, providerFactory, socketPath, enableLogging)
+	// Closes the IPC socket on deactivation.
+	context.subscriptions.push({ dispose: () => api.dispose() })
+	return api
+}
+
+/** How long deactivation waits for the providers to shut down before it continues with the other cleanup. */
+const PROVIDER_SHUTDOWN_TIMEOUT_MS = 3_000
+
+/**
+ * Disposes every provider. Unregistering the sidebar view does not dispose its provider, so without this the
+ * provider shutdown (which marks an active delegated child as interrupted and stops watchers and native agents)
+ * never runs for the sidebar, or for a tab that is still open.
+ */
+async function disposeProviders(): Promise<void> {
+	const disposals = Promise.allSettled(
+		ClineProvider.getAllInstances().map(async (instance) => {
+			try {
+				await instance.dispose()
+			} catch (error) {
+				outputChannel.appendLine(
+					`Failed to dispose a provider: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		}),
+	)
+
+	let timer: NodeJS.Timeout | undefined
+	const timeout = new Promise<void>((resolve) => {
+		timer = setTimeout(() => {
+			outputChannel.appendLine("Provider shutdown did not finish in time; continuing deactivation.")
+			resolve()
+		}, PROVIDER_SHUTDOWN_TIMEOUT_MS)
+	})
+
+	try {
+		await Promise.race([disposals, timeout])
+	} finally {
+		clearTimeout(timer)
+	}
 }
 
 // This method is called when your extension is deactivated.
@@ -331,6 +373,8 @@ export async function deactivate() {
 	tracePersistenceEvent("shutdown")
 	outputChannel.appendLine(`${Package.name} extension deactivated`)
 
+	// Providers go first: their shutdown unregisters them from the MCP hub that is cleaned up next.
+	await disposeProviders()
 	await McpServerManager.cleanup(extensionContext)
 
 	if (TelemetryService.hasInstance()) {

@@ -88,6 +88,9 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		exitOnComplete,
 		reasoningEffort,
 		ephemeral,
+		consecutiveMistakeLimit,
+		terminalShell,
+		exitOnError,
 		version,
 	} = extensionHostOptions
 
@@ -189,6 +192,9 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		nonInteractive,
 		ephemeral,
 		exitOnComplete,
+		consecutiveMistakeLimit,
+		terminalShell,
+		exitOnError,
 		onExtensionMessage: handleExtensionMessage,
 		createExtensionHost,
 	})

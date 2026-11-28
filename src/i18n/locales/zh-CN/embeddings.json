@@ -64,7 +64,8 @@
 		"unknownError": "未知错误",
 		"indexingRequiresWorkspace": "索引需要打开的工作区文件夹",
 		"indexingStopped": "用户已停止索引。",
-		"indexingStoppedPartial": "索引已停止。部分索引数据已保留。"
+		"indexingStoppedPartial": "索引已停止。部分索引数据已保留。",
+		"clearIndexFailed": "无法清除索引数据：{{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "正在下载 semble 二进制文件...",

@@ -36,13 +36,14 @@ program
 	.option("-a, --require-approval", "Require manual approval for actions", false)
 	.option("-k, --api-key <key>", "API key for the LLM provider")
 	.option("--provider <provider>", "API provider (anthropic, openai-native, gemini, openrouter, etc.)")
-	.option("-m, --model <model>", "Model to use", DEFAULT_FLAGS.model)
-	.option("--mode <mode>", "Mode to start in (code, architect, ask, debug, etc.)", DEFAULT_FLAGS.mode)
+	// The model, mode, and reasoning-effort options have no Commander default: a default would always be set and
+	// hide the value in the settings file. `run` falls back to the settings file, then to DEFAULT_FLAGS.
+	.option("-m, --model <model>", `Model to use (default: "${DEFAULT_FLAGS.model}")`)
+	.option("--mode <mode>", `Mode to start in (code, architect, ask, debug, etc.) (default: "${DEFAULT_FLAGS.mode}")`)
 	.option("--terminal-shell <path>", "Absolute path to shell executable for inline terminal commands")
 	.option(
 		"-r, --reasoning-effort <effort>",
-		"Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh)",
-		DEFAULT_FLAGS.reasoningEffort,
+		`Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) (default: "${DEFAULT_FLAGS.reasoningEffort}")`,
 	)
 	.option(
 		"--consecutive-mistake-limit <limit>",

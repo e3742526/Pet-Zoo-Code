@@ -522,6 +522,26 @@ describe("extension.ts", () => {
 			vi.resetModules()
 		})
 
+		test("disposes every provider before the MCP cleanup, and continues when one fails", async () => {
+			const { ClineProvider } = await import("../core/webview/ClineProvider")
+			const { McpServerManager } = await import("../services/mcp/McpServerManager")
+			const order: string[] = []
+			const healthy = { dispose: vi.fn(async () => void order.push("provider")) }
+			const failing = { dispose: vi.fn().mockRejectedValue(new Error("dispose failed")) }
+			// The deactivation code calls only `dispose()` on each provider.
+			vi.mocked(ClineProvider.getAllInstances).mockReturnValue([failing, healthy] as unknown as ClineProvider[])
+			vi.mocked(McpServerManager.cleanup).mockImplementation(async () => void order.push("mcp"))
+
+			const { activate, deactivate } = await import("../extension")
+			await activate(mockContext)
+
+			await expect(deactivate()).resolves.toBeUndefined()
+
+			expect(failing.dispose).toHaveBeenCalledTimes(1)
+			expect(healthy.dispose).toHaveBeenCalledTimes(1)
+			expect(order).toEqual(["provider", "mcp"])
+		})
+
 		test("still runs terminal cleanup when telemetry shutdown rejects", async () => {
 			const { TelemetryService } = await import("@roo-code/telemetry")
 			const { Terminal } = await import("../integrations/terminal/Terminal")

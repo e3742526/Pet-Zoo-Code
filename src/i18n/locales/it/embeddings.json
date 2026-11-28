@@ -64,7 +64,8 @@
 		"unknownError": "Errore sconosciuto",
 		"indexingRequiresWorkspace": "L'indicizzazione richiede una cartella di workspace aperta",
 		"indexingStopped": "Indicizzazione interrotta dall'utente.",
-		"indexingStoppedPartial": "Indicizzazione interrotta. Dati di indice parziali conservati."
+		"indexingStoppedPartial": "Indicizzazione interrotta. Dati di indice parziali conservati.",
+		"clearIndexFailed": "Impossibile cancellare i dati dell'indice: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Download del binario semble in corso...",

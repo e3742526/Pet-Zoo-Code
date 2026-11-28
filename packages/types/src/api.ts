@@ -202,6 +202,7 @@ export interface RooCodeTestAPI extends RooCodeAPI {
 
 export interface RooCodeIpcServer extends EventEmitter<IpcServerEvents> {
 	listen(): void
+	close(): void
 	broadcast(message: IpcMessage): void
 	send(client: string | Socket, message: IpcMessage): void
 	get socketPath(): string

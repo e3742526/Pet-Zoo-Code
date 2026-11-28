@@ -110,23 +110,30 @@ export class PromptManager {
 				output: this.stdout,
 			})
 
-			rl.question(prompt, (answer) => {
-				rl.close()
+			// Settle once. Input can end (EOF) before an answer arrives; the promise must still settle then.
+			let settled = false
+			const settle = (finish: () => void) => {
+				if (settled) {
+					return
+				}
+				settled = true
 				this.isPrompting = false
 				this.afterPrompt()
-				resolve(answer)
+				finish()
+			}
+
+			rl.question(prompt, (answer) => {
+				settle(() => resolve(answer))
+				rl.close()
 			})
 
 			rl.on("close", () => {
-				this.isPrompting = false
-				this.afterPrompt()
+				settle(() => reject(new Error("Input closed before an answer was given")))
 			})
 
 			rl.on("error", (err) => {
+				settle(() => reject(err))
 				rl.close()
-				this.isPrompting = false
-				this.afterPrompt()
-				reject(err)
 			})
 		})
 	}

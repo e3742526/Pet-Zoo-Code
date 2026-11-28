@@ -64,7 +64,8 @@
 		"unknownError": "Bilinmeyen hata",
 		"indexingRequiresWorkspace": "İndeksleme açık bir workspace klasörü gerektirir",
 		"indexingStopped": "İndeksleme kullanıcı tarafından durduruldu.",
-		"indexingStoppedPartial": "İndeksleme durduruldu. Kısmi indeks verileri korundu."
+		"indexingStoppedPartial": "İndeksleme durduruldu. Kısmi indeks verileri korundu.",
+		"clearIndexFailed": "Dizin verileri temizlenemedi: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "semble ikili dosyası indiriliyor...",

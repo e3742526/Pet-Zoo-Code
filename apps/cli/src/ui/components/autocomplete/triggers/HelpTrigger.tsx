@@ -95,8 +95,8 @@ export function createHelpTrigger(): AutocompleteTrigger<HelpShortcutResult> {
 
 		getReplacementText: (item: HelpShortcutResult, _lineText: string, _triggerIndex: number): string => {
 			// When a shortcut is selected, replace with the trigger character
-			// For action shortcuts (tab, ctrl+c, shift+enter, ctrl+t), just clear the input
-			if (["newline", "focus", "quit", "todos"].includes(item.key)) {
+			// For action shortcuts (tab, ctrl+c, shift+enter, ctrl+m, ctrl+t), just clear the input
+			if (["newline", "focus", "mode", "quit", "todos"].includes(item.key)) {
 				return ""
 			}
 			// For trigger shortcuts (/, @, !), insert the trigger character

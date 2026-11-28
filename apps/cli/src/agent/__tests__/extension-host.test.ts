@@ -7,7 +7,7 @@ import fs from "fs"
 import type { ExtensionMessage, WebviewMessage } from "@roo-code/types"
 import { setRuntimeConfigValues } from "@roo-code/vscode-shim"
 
-import { DEFAULT_FLAGS } from "@/types/index.js"
+import { DEFAULT_FLAGS, EXTENSION_CONFIG_SECTION } from "@/types/index.js"
 
 import { type ExtensionHostOptions, ExtensionHost } from "../extension-host.js"
 import { ExtensionClient } from "../extension-client.js"
@@ -260,7 +260,16 @@ describe("ExtensionHost", () => {
 
 				host.markWebviewReady()
 
-				expect(setRuntimeConfigValues).toHaveBeenCalledWith("zoo-code", expect.any(Object))
+				expect(setRuntimeConfigValues).toHaveBeenCalledWith("pet-zoo-code", expect.any(Object))
+			})
+
+			it("should use the configuration section that the extension reads", async () => {
+				// The extension reads its settings under the `name` in src/package.json.
+				const actualFs = await vi.importActual<typeof import("fs")>("fs")
+				const packageJsonUrl = new URL("../../../../../src/package.json", import.meta.url)
+				const { name } = JSON.parse(actualFs.readFileSync(packageJsonUrl, "utf8")) as { name: string }
+
+				expect(EXTENSION_CONFIG_SECTION).toBe(name)
 			})
 
 			it("should force terminalShellIntegrationDisabled when terminalShell is provided", () => {

@@ -64,7 +64,8 @@
 		"unknownError": "Erro desconhecido",
 		"indexingRequiresWorkspace": "A indexação requer uma pasta de workspace aberta",
 		"indexingStopped": "Indexação interrompida pelo usuário.",
-		"indexingStoppedPartial": "Indexação interrompida. Dados de índice parciais preservados."
+		"indexingStoppedPartial": "Indexação interrompida. Dados de índice parciais preservados.",
+		"clearIndexFailed": "Não foi possível limpar os dados do índice: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Baixando o binário do semble...",

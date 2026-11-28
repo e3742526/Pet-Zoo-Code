@@ -2,6 +2,7 @@
 
 import { render, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
+import { render as renderWithProviders } from "@/utils/test-utils"
 import { ImageViewer } from "../ImageViewer"
 
 // Mock vscode API
@@ -15,6 +16,17 @@ vi.mock("@src/utils/vscode", () => ({
 import { vscode } from "@src/utils/vscode"
 
 describe("ImageViewer", () => {
+	it("shows no View Code control on hover, because an image has no source to show", () => {
+		const { container } = renderWithProviders(
+			<ImageViewer imageUri="https://example.com/image.png" alt="Test image" />,
+		)
+
+		fireEvent.mouseEnter(container.querySelector("img")!.parentElement!)
+
+		expect(container.querySelector(".codicon-copy")).toBeTruthy()
+		expect(container.querySelector(".codicon-code")).toBeNull()
+	})
+
 	it("should render image with webview URI", () => {
 		const webviewUri = "https://file+.vscode-resource.vscode-cdn.net/path/to/image.png"
 		const { container } = render(<ImageViewer imageUri={webviewUri} alt="Test image" />)

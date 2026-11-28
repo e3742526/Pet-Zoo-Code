@@ -147,6 +147,13 @@ export class McpHub {
 	}
 
 	/**
+	 * Whether the hub has been disposed. A disposed hub has closed its connections and watchers and cannot be reused.
+	 */
+	public get disposed(): boolean {
+		return this.isDisposed
+	}
+
+	/**
 	 * Unregisters a client. Decrements the reference count.
 	 * If the count reaches zero, disposes the hub.
 	 */

@@ -21,8 +21,6 @@ const registerCodeAction = (
 	promptType: CodeActionName,
 	webviewFocusTracker: WebviewFocusTracker,
 ) => {
-	let userInput: string | undefined
-
 	context.subscriptions.push(
 		vscode.commands.registerCommand(getCodeActionCommand(command), async (...args: unknown[]) => {
 			// Handle both code action and direct command cases.
@@ -57,7 +55,6 @@ const registerCodeAction = (
 				...(startLine !== undefined ? { startLine: startLine.toString() } : {}),
 				...(endLine !== undefined ? { endLine: endLine.toString() } : {}),
 				...(diagnostics ? { diagnostics } : {}),
-				...(userInput ? { userInput } : {}),
 			}
 
 			// Capture the destination before focus returns from the source editor to a chat.

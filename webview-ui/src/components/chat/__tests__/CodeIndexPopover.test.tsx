@@ -183,6 +183,20 @@ describe("CodeIndexPopover OpenRouter provider lookup", () => {
 		}
 	})
 
+	it("keeps a failed save's error on screen", () => {
+		renderPopover(providerIdentifiers.openai, "text-embedding-3-small")
+
+		act(() =>
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: { type: "codeIndexSettingsSaved", success: false, error: "Qdrant is not reachable" },
+				}),
+			),
+		)
+
+		expect(screen.getByText("Qdrant is not reachable")).toBeInTheDocument()
+	})
+
 	it("waits for an OpenRouter model selection before enabling lookup", () => {
 		renderPopover(providerIdentifiers.openrouter, "")
 

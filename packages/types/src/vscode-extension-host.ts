@@ -638,7 +638,6 @@ export interface WebviewMessage {
 		| "updateMcpTimeout"
 		| "enhancePrompt"
 		| "enhancedPrompt"
-		| "draggedImages"
 		| "deleteMessage"
 		| "deleteMessageConfirm"
 		| "submitEditedMessage"
@@ -786,7 +785,6 @@ export interface WebviewMessage {
 	mode?: string
 	promptMode?: string | "enhance"
 	customPrompt?: PromptComponent
-	dataUrls?: string[]
 	/** Generic payload for webview messages that use `values` */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	values?: Record<string, any>

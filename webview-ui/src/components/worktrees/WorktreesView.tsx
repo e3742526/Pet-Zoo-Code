@@ -122,7 +122,8 @@ export const WorktreesView = () => {
 		})
 	}, [])
 
-	// Handle toggle show in home screen
+	// Handle toggle show in home screen. This toggle saves at once, like the other worktree actions on this page,
+	// and does not wait for the settings Save button.
 	const handleToggleShowInHomeScreen = useCallback(() => {
 		const newValue = !showWorktreesInHomeScreen
 		setShowWorktreesInHomeScreen(newValue)
@@ -182,12 +183,19 @@ export const WorktreesView = () => {
 					<p className="text-vscode-descriptionForeground text-sm m-0">{t("worktrees:description")}</p>
 
 					{/* Show in Home Screen toggle */}
-					<label
-						className="flex cursor-pointer items-center gap-2 text-sm text-vscode-descriptionForeground"
-						onClick={handleToggleShowInHomeScreen}>
-						<ToggleSwitch checked={showWorktreesInHomeScreen} onChange={handleToggleShowInHomeScreen} />
-						<span>{t("worktrees:showInHomeScreen")}</span>
-					</label>
+					{/* Only the switch and the text toggle the setting. A click handler on the wrapper as well would
+					    run twice for a click on the switch, because the switch's click bubbles up to it. */}
+					<div className="flex items-center gap-2 text-sm text-vscode-descriptionForeground">
+						<ToggleSwitch
+							checked={showWorktreesInHomeScreen}
+							onChange={handleToggleShowInHomeScreen}
+							aria-label={t("worktrees:showInHomeScreen")}
+							data-testid="show-worktrees-in-home-screen-toggle"
+						/>
+						<span className="cursor-pointer" onClick={handleToggleShowInHomeScreen}>
+							{t("worktrees:showInHomeScreen")}
+						</span>
+					</div>
 
 					{/* New Worktree button */}
 					<Button variant="secondary" className="py-1" onClick={() => setShowCreateModal(true)}>

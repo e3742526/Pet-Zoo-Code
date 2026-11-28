@@ -228,7 +228,6 @@ export function ImageViewer({
 							onZoom={handleZoom}
 							onCopy={handleCopy}
 							onSave={handleSave}
-							onViewCode={() => {}} // Not applicable for images
 							copyFeedback={copyFeedback}
 						/>
 					</div>

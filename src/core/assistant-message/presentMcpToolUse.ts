@@ -141,8 +141,9 @@ export async function presentMcpToolUse(
 				return false
 			}
 
-			if (text) {
-				await cline.say("user_feedback", text, images)
+			// Feedback can be images alone, as in the generic approval path.
+			if (text || images?.length) {
+				await cline.say("user_feedback", text ?? "", images)
 				if (!isCurrent()) return false
 				pushToolResult(formatResponse.toolResult(formatResponse.toolDeniedWithFeedback(text), images))
 			} else {
@@ -155,9 +156,9 @@ export async function presentMcpToolUse(
 		// Store approval feedback to be merged into tool result (GitHub #10465)
 		// Don't push it as a separate tool_result here - that would create duplicates.
 		// The tool will call pushToolResult, which will merge the feedback into the actual result.
-		if (text) {
-			await cline.say("user_feedback", text, images)
-			approvalFeedback = { text, images }
+		if (text || images?.length) {
+			await cline.say("user_feedback", text ?? "", images)
+			approvalFeedback = { text: text ?? "", images }
 		}
 
 		return isCurrent()

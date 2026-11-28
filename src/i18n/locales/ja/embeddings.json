@@ -64,7 +64,8 @@
 		"unknownError": "不明なエラー",
 		"indexingRequiresWorkspace": "インデックス作成には、開かれたワークスペースフォルダーが必要です",
 		"indexingStopped": "ユーザーによりインデックス作成が停止されました。",
-		"indexingStoppedPartial": "インデックス作成が停止されました。部分的なインデックスデータは保持されています。"
+		"indexingStoppedPartial": "インデックス作成が停止されました。部分的なインデックスデータは保持されています。",
+		"clearIndexFailed": "インデックスデータを消去できませんでした: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "sembleバイナリをダウンロード中...",

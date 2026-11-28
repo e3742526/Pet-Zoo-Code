@@ -180,7 +180,7 @@ export const ModeSelector = ({
 				searchInputRef.current.focus()
 			}
 
-			requestAnimationFrame(() => {
+			const frame = requestAnimationFrame(() => {
 				if (selectedItemRef.current && scrollContainerRef.current) {
 					const container = scrollContainerRef.current
 					const item = selectedItemRef.current
@@ -203,6 +203,8 @@ export const ModeSelector = ({
 					})
 				}
 			})
+
+			return () => cancelAnimationFrame(frame)
 		}
 	}, [open])
 

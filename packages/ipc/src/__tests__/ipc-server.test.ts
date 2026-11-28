@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import os from "node:os"
+import path from "node:path"
 import { IpcMessageType, IpcOrigin, TaskCommandName, ipcMessageSchema } from "@roo-code/types"
 import { IpcServer } from "../ipc-server.js"
 
@@ -61,5 +63,24 @@ describe("IPC rejection logging", () => {
 		assert.equal(f.commands.length, 1)
 		assert.deepEqual(f.commands[0], { clientId: "client-1", command: command("valid-id").data })
 		assert.deepEqual(f.logs, [])
+	})
+})
+
+describe("IpcServer.close", () => {
+	it("does nothing when the server is not listening", () => {
+		const server = new IpcServer("/unused-test.sock", () => {})
+		server.close()
+		assert.equal(server.isListening, false)
+	})
+	it("stops a listening server, and a second close does nothing", async () => {
+		const socketPath = path.join(os.tmpdir(), `ipc-close-${process.pid}-${Date.now()}.sock`)
+		const server = new IpcServer(socketPath, () => {})
+		server.listen()
+		await new Promise((resolve) => setTimeout(resolve, 50))
+		assert.equal(server.isListening, true)
+		server.close()
+		assert.equal(server.isListening, false)
+		server.close()
+		assert.equal(server.isListening, false)
 	})
 })

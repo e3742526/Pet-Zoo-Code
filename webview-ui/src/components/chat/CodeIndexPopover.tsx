@@ -343,11 +343,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 					setSaveStatus("idle")
 				} else {
+					// Keep the error on screen. The next save clears it.
 					setSaveStatus("error")
 					setSaveError(event.data.error || t("settings:codeIndex.saveError"))
-					// Clear error message after 5 seconds
-					setSaveStatus("idle")
-					setSaveError(null)
 				}
 			}
 		}
@@ -411,7 +409,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 				// Only update settings if we're not in the middle of saving
 				// After save is complete (saved status), we still want to update to maintain consistency
-				if (saveStatus === "idle" || saveStatus === "saved") {
+				if (saveStatus !== "saving") {
 					setCurrentSettings(updateWithSecrets)
 					setInitialSettings(updateWithSecrets)
 				}

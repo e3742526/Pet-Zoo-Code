@@ -11,6 +11,16 @@ export interface UseMessageHandlersOptions {
 	nonInteractive: boolean
 }
 
+/**
+ * Asks that the extension's auto-approval never answers. The task waits on each one until the user decides.
+ * The print-mode `AskDispatcher` answers them itself; the TUI shows the approval prompt for them.
+ */
+export const ASKS_NEEDING_USER_DECISION: ReadonlySet<ClineAsk> = new Set<ClineAsk>([
+	"api_req_failed",
+	"mistake_limit_reached",
+	"auto_approval_max_req_reached",
+])
+
 export interface UseMessageHandlersReturn {
 	handleExtensionMessage: (msg: ExtensionMessage) => void
 	seenMessageIds: React.MutableRefObject<Set<string>>
@@ -205,7 +215,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				pendingCommandRef.current = text
 			}
 
-			if (nonInteractive && ask !== "followup") {
+			// The extension's auto-approval answers tool, command, and MCP asks. It never answers these, so the
+			// task waits for the user even in non-interactive mode. They must go to the prompt below.
+			const needsUserDecision = ASKS_NEEDING_USER_DECISION.has(ask)
+
+			if (nonInteractive && ask !== "followup" && !needsUserDecision) {
 				seenMessageIds.current.add(messageId)
 
 				if (ask === "tool") {

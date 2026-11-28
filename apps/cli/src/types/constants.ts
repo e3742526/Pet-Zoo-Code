@@ -7,6 +7,12 @@ export const DEFAULT_FLAGS = {
 	consecutiveMistakeLimit: 10,
 }
 
+/**
+ * The configuration section the extension reads with `vscode.workspace.getConfiguration()`. It is the `name` in
+ * `src/package.json`. Runtime settings that the CLI sets under another section are not seen by the extension.
+ */
+export const EXTENSION_CONFIG_SECTION = "pet-zoo-code"
+
 export const REASONING_EFFORTS = [...reasoningEffortsExtended, "unspecified", "disabled"]
 
 /**

@@ -276,6 +276,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeTaskHistoryInEnhance,
 		taskTitleGenerationEnabled,
 		taskTitleApiConfigId,
+		enhancementApiConfigId,
 		imageGenerationProvider,
 		openRouterImageApiKey,
 		openRouterImageGenerationSelectedModel,
@@ -470,6 +471,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					includeTaskHistoryInEnhance: includeTaskHistoryInEnhance ?? true,
 					taskTitleGenerationEnabled: taskTitleGenerationEnabled ?? DEFAULT_TASK_TITLE_GENERATION_ENABLED,
 					taskTitleApiConfigId: taskTitleApiConfigId ?? "",
+					enhancementApiConfigId: enhancementApiConfigId ?? "",
 					reasoningBlockCollapsed: reasoningBlockCollapsed ?? true,
 					chatFontSize: chatFontSize ?? null,
 					timeFormat: timeFormat ?? "auto",
@@ -1073,6 +1075,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							}
 							taskTitleApiConfigId={taskTitleApiConfigId}
 							setTaskTitleApiConfigId={(value) => setCachedStateField("taskTitleApiConfigId", value)}
+							enhancementApiConfigId={enhancementApiConfigId}
+							setEnhancementApiConfigId={(value) => setCachedStateField("enhancementApiConfigId", value)}
 						/>
 					)}
 

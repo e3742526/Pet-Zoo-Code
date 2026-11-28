@@ -972,13 +972,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						const dataUrls = imageDataArray.filter((dataUrl): dataUrl is string => dataUrl !== null)
 
 						if (dataUrls.length > 0) {
+							// The images are kept in the draft and are sent with the message. The extension needs no
+							// separate notice of the drop.
 							setSelectedImages((prevImages) =>
 								[...prevImages, ...dataUrls].slice(0, MAX_IMAGES_PER_MESSAGE),
 							)
-
-							if (typeof vscode !== "undefined") {
-								vscode.postMessage({ type: "draggedImages", dataUrls: dataUrls })
-							}
 						} else {
 							console.warn(t("chat:noValidImages"))
 						}

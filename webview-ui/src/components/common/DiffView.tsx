@@ -111,6 +111,10 @@ const DiffView = memo(({ source, filePath }: DiffViewProps) => {
 			return
 		}
 
+		// Highlighting is async. When the inputs change before it finishes, drop the stale result so it cannot
+		// overwrite the result for the newer inputs.
+		let cancelled = false
+
 		const processHunks = async () => {
 			const processed: Hunk[] = []
 
@@ -136,10 +140,16 @@ const DiffView = memo(({ source, filePath }: DiffViewProps) => {
 				}
 			}
 
-			setProcessedHunks(processed)
+			if (!cancelled) {
+				setProcessedHunks(processed)
+			}
 		}
 
-		processHunks()
+		void processHunks()
+
+		return () => {
+			cancelled = true
+		}
 	}, [hunks, shouldHighlight, normalizedLang, isLightTheme, filePath])
 
 	// Render helper that uses precomputed highlighting

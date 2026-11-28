@@ -30,6 +30,8 @@ interface PromptsSettingsProps {
 	setTaskTitleGenerationEnabled?: (value: boolean) => void
 	taskTitleApiConfigId?: string
 	setTaskTitleApiConfigId?: (value: string) => void
+	enhancementApiConfigId?: string
+	setEnhancementApiConfigId?: (value: string) => void
 }
 
 const PromptsSettings = ({
@@ -41,12 +43,12 @@ const PromptsSettings = ({
 	setTaskTitleGenerationEnabled,
 	taskTitleApiConfigId,
 	setTaskTitleApiConfigId,
+	enhancementApiConfigId,
+	setEnhancementApiConfigId,
 }: PromptsSettingsProps) => {
 	const { t } = useAppTranslation()
 	const {
 		listApiConfigMeta,
-		enhancementApiConfigId,
-		setEnhancementApiConfigId,
 		includeTaskHistoryInEnhance: contextIncludeTaskHistoryInEnhance,
 		setIncludeTaskHistoryInEnhance: contextSetIncludeTaskHistoryInEnhance,
 	} = useExtensionState()
@@ -171,14 +173,7 @@ const PromptsSettings = ({
 								</label>
 								<Select
 									value={enhancementApiConfigId || "-"}
-									onValueChange={(value) => {
-										const newConfigId = value === "-" ? "" : value
-										setEnhancementApiConfigId(newConfigId)
-										vscode.postMessage({
-											type: "enhancementApiConfigId",
-											text: value,
-										})
-									}}>
+									onValueChange={(value) => setEnhancementApiConfigId?.(value === "-" ? "" : value)}>
 									<SelectTrigger data-testid="api-config-select" className="w-full">
 										<SelectValue
 											placeholder={t("prompts:supportPrompts.enhance.useCurrentConfig")}

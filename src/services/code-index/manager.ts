@@ -276,6 +276,14 @@ export class CodeIndexManager {
 
 		this._isRecoveringFromError = true
 		try {
+			// Stop the services before they are dropped below. A dropped orchestrator would otherwise keep its file
+			// watcher and any scan that is still running, and a dropped semble provider would keep its resources.
+			this._orchestrator?.stopIndexing()
+			this._sembleProvider?.dispose()
+		} catch (error) {
+			console.error("Failed to stop services during recovery:", error)
+		}
+		try {
 			// Clear error state
 			this._stateManager.setSystemState("Standby", "")
 		} catch (error) {
@@ -352,9 +360,10 @@ export class CodeIndexManager {
 	 * Used by both initialize() and handleSettingsChange().
 	 */
 	private async _recreateServices(): Promise<void> {
-		// Stop watcher if it exists
+		// Stop the old orchestrator's scan and watcher. Stopping only the watcher would let a running scan continue
+		// on the orchestrator that is replaced below.
 		if (this._orchestrator) {
-			this.stopWatcher()
+			this._orchestrator.stopIndexing()
 		}
 		// Dispose existing semble provider if switching away
 		if (this._sembleProvider) {

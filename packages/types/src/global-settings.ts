@@ -104,6 +104,11 @@ export const TERMINAL_PREVIEW_BYTES: Record<TerminalOutputPreviewSize, number> =
 export const DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE: TerminalOutputPreviewSize = "medium"
 
 /**
+ * Default for showing the worktree selector on the home screen.
+ */
+export const DEFAULT_SHOW_WORKTREES_IN_HOME_SCREEN = true
+
+/**
  * Minimum checkpoint timeout in seconds.
  */
 export const MIN_CHECKPOINT_TIMEOUT_SECONDS = 10

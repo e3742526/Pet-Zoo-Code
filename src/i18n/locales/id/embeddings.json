@@ -64,7 +64,8 @@
 		"unknownError": "Kesalahan tidak diketahui",
 		"indexingRequiresWorkspace": "Pengindeksan memerlukan folder workspace yang terbuka",
 		"indexingStopped": "Pengindeksan dihentikan oleh pengguna.",
-		"indexingStoppedPartial": "Pengindeksan dihentikan. Data indeks parsial dipertahankan."
+		"indexingStoppedPartial": "Pengindeksan dihentikan. Data indeks parsial dipertahankan.",
+		"clearIndexFailed": "Tidak dapat menghapus data indeks: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Mengunduh biner semble...",

@@ -62,6 +62,8 @@ import {
 	DEFAULT_DESTRUCTIVE_COMMAND_GUARD_ENABLED,
 	DEFAULT_ALWAYS_DENY_UNAPPROVED_COMMANDS,
 	DEFAULT_COLLAPSE_COMMAND_OUTPUT_BY_DEFAULT,
+	DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
+	DEFAULT_SHOW_WORKTREES_IN_HOME_SCREEN,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
 	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
@@ -568,6 +570,11 @@ export class ClineProvider
 		// Initialize MCP Hub through the singleton manager
 		McpServerManager.getInstance(this.context, this)
 			.then((hub) => {
+				// A provider disposed while the hub was starting has already skipped `unregisterClient()`.
+				// Registering now would hold a reference that nothing releases.
+				if (this._disposed) {
+					return
+				}
 				this.mcpHub = hub
 				this.mcpHub.registerClient()
 			})
@@ -1739,6 +1746,13 @@ export class ClineProvider
 
 			// Process the pending edit after a short delay to ensure the task is fully initialized
 			setTimeout(async () => {
+				// The provider can be disposed, or the task replaced, during the delay. Do not edit a task that is no
+				// longer current.
+				if (this._disposed || this.getCurrentTask() !== task) {
+					this.log(`[createTaskWithHistoryItem] Skipped a pending edit for a task that is no longer current`)
+					return
+				}
+
 				try {
 					// Find the message index in the restored state
 					const { messageIndex, apiConversationHistoryIndex } = (() => {
@@ -3256,6 +3270,7 @@ export class ClineProvider
 			terminalShellIntegrationTimeout,
 			terminalShellIntegrationDisabled,
 			collapseCommandOutputByDefault,
+			terminalOutputPreviewSize,
 			terminalCommandDelay,
 			terminalPowershellCounter,
 			terminalZshClearEolMark,
@@ -3263,6 +3278,7 @@ export class ClineProvider
 			terminalZshP10k,
 			terminalZdotdir,
 			terminalProfile,
+			showWorktreesInHomeScreen,
 			mcpEnabled,
 			currentApiConfigName,
 			listApiConfigMeta,
@@ -3385,6 +3401,7 @@ export class ClineProvider
 			terminalShellIntegrationDisabled: terminalShellIntegrationDisabled ?? true,
 			collapseCommandOutputByDefault:
 				collapseCommandOutputByDefault ?? DEFAULT_COLLAPSE_COMMAND_OUTPUT_BY_DEFAULT,
+			terminalOutputPreviewSize: terminalOutputPreviewSize ?? DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
 			terminalCommandDelay: terminalCommandDelay ?? 0,
 			terminalPowershellCounter: terminalPowershellCounter ?? false,
 			terminalZshClearEolMark: terminalZshClearEolMark ?? true,
@@ -3392,6 +3409,7 @@ export class ClineProvider
 			terminalZshP10k: terminalZshP10k ?? false,
 			terminalZdotdir: terminalZdotdir ?? false,
 			terminalProfile,
+			showWorktreesInHomeScreen: showWorktreesInHomeScreen ?? DEFAULT_SHOW_WORKTREES_IN_HOME_SCREEN,
 			mcpEnabled: mcpEnabled ?? true,
 			currentApiConfigName: currentTask ? currentTaskApiConfigName : currentApiConfigName,
 			listApiConfigMeta: listApiConfigMeta ?? [],
@@ -3590,6 +3608,7 @@ export class ClineProvider
 			terminalShellIntegrationDisabled: stateValues.terminalShellIntegrationDisabled ?? true,
 			collapseCommandOutputByDefault:
 				stateValues.collapseCommandOutputByDefault ?? DEFAULT_COLLAPSE_COMMAND_OUTPUT_BY_DEFAULT,
+			terminalOutputPreviewSize: stateValues.terminalOutputPreviewSize ?? DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
 			terminalCommandDelay: stateValues.terminalCommandDelay ?? 0,
 			terminalPowershellCounter: stateValues.terminalPowershellCounter ?? false,
 			terminalZshClearEolMark: stateValues.terminalZshClearEolMark ?? true,
@@ -3597,6 +3616,7 @@ export class ClineProvider
 			terminalZshP10k: stateValues.terminalZshP10k ?? false,
 			terminalZdotdir: stateValues.terminalZdotdir ?? false,
 			terminalProfile: stateValues.terminalProfile,
+			showWorktreesInHomeScreen: stateValues.showWorktreesInHomeScreen ?? DEFAULT_SHOW_WORKTREES_IN_HOME_SCREEN,
 			mode: stateValues.mode ?? defaultModeSlug,
 			language: stateValues.language ?? formatLanguage(vscode.env.language),
 			mcpEnabled: stateValues.mcpEnabled ?? true,

@@ -154,6 +154,15 @@ describe("command approval display", () => {
 		expect(printed).toBe(expected)
 	})
 
+	it("answers a failed api request with a retry in non-interactive mode", async () => {
+		// The task waits on this ask. Without an answer the run hangs.
+		const { printed, sendMessage, result } = await run("api_req_failed", "boom", () => {}, true)
+
+		expect(printed).toBe(`\n[api request failed]\n  Error: "boom"\n\n[retrying api request]\n`)
+		expect(sendMessage).toHaveBeenCalledExactlyOnceWith(yes)
+		expect(result).toEqual(approved)
+	})
+
 	it("prints Unknown error for an empty api error", async () => {
 		const { printed } = await run("api_req_failed", "")
 

@@ -506,8 +506,9 @@ export class AskDispatcher {
 
 		if (this.nonInteractive) {
 			this.outputManager.output("\n[retrying api request]")
-			// Auto-retry in non-interactive mode
-			return { handled: true }
+			// Auto-retry in non-interactive mode. The task waits on this ask until it gets an answer, so answer it.
+			this.sendApprovalResponse(true)
+			return { handled: true, response: "yesButtonClicked" }
 		}
 
 		try {

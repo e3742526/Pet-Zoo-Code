@@ -461,6 +461,13 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		return this.sidebarProvider.latestAnnouncementId
 	}
 
+	/**
+	 * Closes the IPC socket, if one was opened. The extension calls this on deactivation.
+	 */
+	public dispose(): void {
+		this.ipc?.close()
+	}
+
 	private async waitForWebviewLaunch(timeoutMs: number): Promise<boolean> {
 		try {
 			await pWaitFor(() => this.sidebarProvider.viewLaunched, {

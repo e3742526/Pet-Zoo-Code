@@ -4424,6 +4424,40 @@ describe("ClineProvider", () => {
 		},
 	)
 
+	test.each([
+		["true", true, true],
+		["false", false, false],
+		["unset", undefined, true],
+	])(
+		"showWorktreesInHomeScreen %s round-trips through getState and the webview state",
+		async (_label, saved, expected) => {
+			await provider.contextProxy.setValue("showWorktreesInHomeScreen", saved)
+
+			const state = await provider.getState()
+			const webviewState = await provider.getStateToPostToWebview({ includeTaskHistory: false })
+
+			expect(state.showWorktreesInHomeScreen).toBe(expected)
+			expect(webviewState.showWorktreesInHomeScreen).toBe(expected)
+		},
+	)
+
+	test.each([
+		["small", "small", "small"],
+		["large", "large", "large"],
+		["unset", undefined, "medium"],
+	] as const)(
+		"terminalOutputPreviewSize %s round-trips through getState and the webview state",
+		async (_label, saved, expected) => {
+			await provider.contextProxy.setValue("terminalOutputPreviewSize", saved)
+
+			const state = await provider.getState()
+			const webviewState = await provider.getStateToPostToWebview({ includeTaskHistory: false })
+
+			expect(state.terminalOutputPreviewSize).toBe(expected)
+			expect(webviewState.terminalOutputPreviewSize).toBe(expected)
+		},
+	)
+
 	test("getState returns the saved destructive command guard setting", async () => {
 		await provider.contextProxy.setValue("destructiveCommandGuardEnabled", true)
 

@@ -77,6 +77,18 @@ describe("HelpTrigger", () => {
 			expect(replacement).toBe("")
 		})
 
+		it("should clear input for the mode-cycle action shortcut", () => {
+			const trigger = createHelpTrigger()
+
+			const modeItem: HelpShortcutResult = {
+				key: "mode",
+				shortcut: "ctrl + m",
+				description: "to cycle modes",
+			}
+			const replacement = trigger.getReplacementText(modeItem, "?mode", 0)
+			expect(replacement).toBe("")
+		})
+
 		it("should filter shortcuts by shortcut character", () => {
 			const trigger = createHelpTrigger()
 

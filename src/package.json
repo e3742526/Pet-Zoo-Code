@@ -396,20 +396,6 @@
 					"default": false,
 					"description": "%commands.preventCompletionWithOpenTodos.description%"
 				},
-				"pet-zoo-code.vsCodeLmModelSelector": {
-					"type": "object",
-					"properties": {
-						"vendor": {
-							"type": "string",
-							"description": "%settings.vsCodeLmModelSelector.vendor.description%"
-						},
-						"family": {
-							"type": "string",
-							"description": "%settings.vsCodeLmModelSelector.family.description%"
-						}
-					},
-					"description": "%settings.vsCodeLmModelSelector.description%"
-				},
 				"pet-zoo-code.customStoragePath": {
 					"type": "string",
 					"default": "",

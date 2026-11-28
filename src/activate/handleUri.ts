@@ -9,7 +9,9 @@ import { t } from "../i18n"
 export const handleUri = async (uri: vscode.Uri) => {
 	const path = uri.path
 	const query = new URLSearchParams(uri.query.replace(/\+/g, "%2B"))
-	const visibleProvider = ClineProvider.getVisibleInstance()
+	// A deep link can arrive while the sidebar is hidden. The provider still exists then, so use the newest one
+	// instead of dropping the callback.
+	const visibleProvider = ClineProvider.getVisibleInstance() ?? ClineProvider.getAllInstances().at(-1)
 
 	switch (path) {
 		case "/openrouter": {

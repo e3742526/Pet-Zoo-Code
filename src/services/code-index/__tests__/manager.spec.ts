@@ -476,6 +476,17 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			;(manager as any)._configManager = mockConfigManager
 		})
 
+		it("stops the old orchestrator's scan, not only its watcher, when services are recreated", async () => {
+			await manager["_recreateServices"]()
+			const oldOrchestrator = manager["_orchestrator"]!
+			const stopIndexing = vi.spyOn(oldOrchestrator, "stopIndexing")
+
+			await manager["_recreateServices"]()
+
+			expect(stopIndexing).toHaveBeenCalledTimes(1)
+			expect(manager["_orchestrator"]).not.toBe(oldOrchestrator)
+		})
+
 		it("should create indexing services without a startup embedder validation request", async () => {
 			mockServiceFactoryInstance.validateEmbedder.mockResolvedValue({
 				valid: false,
@@ -550,6 +561,15 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			;(manager as any)._orchestrator = { stopWatcher: vi.fn(), stopIndexing: vi.fn(), state: "Error" }
 			;(manager as any)._searchService = {}
 			;(manager as any)._serviceFactory = {}
+		})
+
+		it("stops the orchestrator before dropping it", async () => {
+			const orchestrator = manager["_orchestrator"]
+
+			await manager.recoverFromError()
+
+			expect(orchestrator?.stopIndexing).toHaveBeenCalledTimes(1)
+			expect(manager["_orchestrator"]).toBeUndefined()
 		})
 
 		it("should clear error state when recoverFromError is called", async () => {

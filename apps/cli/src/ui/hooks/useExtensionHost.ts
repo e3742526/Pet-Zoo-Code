@@ -78,6 +78,9 @@ export function useExtensionHost({
 	ephemeral,
 	debug,
 	exitOnComplete,
+	consecutiveMistakeLimit,
+	terminalShell,
+	exitOnError,
 	onExtensionMessage,
 	createExtensionHost,
 }: UseExtensionHostOptions): UseExtensionHostReturn {
@@ -116,6 +119,9 @@ export function useExtensionHost({
 					ephemeral,
 					debug,
 					exitOnComplete,
+					consecutiveMistakeLimit,
+					terminalShell,
+					exitOnError,
 					disableOutput: true,
 				})
 

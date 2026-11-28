@@ -22,6 +22,11 @@ export class McpServerManager {
 		// Register the provider
 		this.providers.add(provider)
 
+		// The last client to unregister disposes the hub. Drop that hub so the next provider gets a working one.
+		if (this.instance?.disposed) {
+			this.instance = null
+		}
+
 		// If we already have an instance, return it
 		if (this.instance) {
 			return this.instance
@@ -78,6 +83,16 @@ export class McpServerManager {
 	 * Clean up the singleton instance and all its resources.
 	 */
 	static async cleanup(context: vscode.ExtensionContext): Promise<void> {
+		// A hub that is still starting is not in `instance` yet. Wait for it, so that it is disposed too and does not
+		// keep its server processes and watchers after deactivation.
+		if (this.initializationPromise) {
+			try {
+				await this.initializationPromise
+			} catch {
+				// A failed start leaves no hub to dispose.
+			}
+		}
+
 		if (this.instance) {
 			await this.instance.dispose()
 			this.instance = null

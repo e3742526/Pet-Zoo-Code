@@ -27,6 +27,7 @@ import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_WRITE_DELAY_MS,
+	DEFAULT_SHOW_WORKTREES_IN_HOME_SCREEN,
 } from "@roo-code/types"
 
 import { findLastIndex } from "@roo/array"
@@ -896,7 +897,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		setIncludeCurrentCost,
 		skills,
 		rules,
-		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? true,
+		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? DEFAULT_SHOW_WORKTREES_IN_HOME_SCREEN,
 		setShowWorktreesInHomeScreen: (value) =>
 			setState((prevState) => ({ ...prevState, showWorktreesInHomeScreen: value })),
 	}

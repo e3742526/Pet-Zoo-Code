@@ -290,6 +290,7 @@ const App = () => {
 							type: "editMessageConfirm",
 							messageTs: editMessageDialogState.messageTs,
 							text: editMessageDialogState.text,
+							images: editMessageDialogState.images,
 							restoreCheckpoint,
 						})
 						setEditMessageDialogState((prev) => ({ ...prev, isOpen: false }))

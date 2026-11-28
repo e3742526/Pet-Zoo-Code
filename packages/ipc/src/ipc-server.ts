@@ -126,6 +126,19 @@ export class IpcServer extends EventEmitter<IpcServerEvents> implements RooCodeI
 		}
 	}
 
+	/**
+	 * Stops the server and drops its clients. Safe to call when the server is not listening.
+	 */
+	public close() {
+		if (!this._isListening) {
+			return
+		}
+
+		this._isListening = false
+		this._clients.clear()
+		ipc.server.stop()
+	}
+
 	public get socketPath() {
 		return this._socketPath
 	}

@@ -64,7 +64,8 @@
 		"unknownError": "Error desconocido",
 		"indexingRequiresWorkspace": "La indexación requiere una carpeta de workspace abierta",
 		"indexingStopped": "Indexación detenida por el usuario.",
-		"indexingStoppedPartial": "Indexación detenida. Datos de índice parciales conservados."
+		"indexingStoppedPartial": "Indexación detenida. Datos de índice parciales conservados.",
+		"clearIndexFailed": "No se pudieron borrar los datos del índice: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Descargando el binario de semble...",

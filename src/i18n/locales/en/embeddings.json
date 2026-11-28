@@ -64,7 +64,8 @@
 		"unknownError": "Unknown error",
 		"indexingRequiresWorkspace": "Indexing requires an open workspace folder",
 		"indexingStopped": "Indexing stopped by user.",
-		"indexingStoppedPartial": "Indexing stopped. Partial index data preserved."
+		"indexingStoppedPartial": "Indexing stopped. Partial index data preserved.",
+		"clearIndexFailed": "Could not clear the index data: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Downloading semble binary...",

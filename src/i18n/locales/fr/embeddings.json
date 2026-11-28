@@ -64,7 +64,8 @@
 		"unknownError": "Erreur inconnue",
 		"indexingRequiresWorkspace": "L'indexation nécessite l'ouverture d'un dossier workspace",
 		"indexingStopped": "Indexation arrêtée par l'utilisateur.",
-		"indexingStoppedPartial": "Indexation arrêtée. Données d'index partielles conservées."
+		"indexingStoppedPartial": "Indexation arrêtée. Données d'index partielles conservées.",
+		"clearIndexFailed": "Impossible d'effacer les données de l'index : {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Téléchargement du binaire semble...",

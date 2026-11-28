@@ -10,7 +10,8 @@ interface MermaidActionButtonsProps {
 	onZoomOut?: () => void
 	onCopy: (e: React.MouseEvent) => void
 	onSave?: (e: React.MouseEvent) => void
-	onViewCode: () => void
+	/** Shows the source code. The button is not shown when this is not given, for example for an image. */
+	onViewCode?: () => void
 	onClose?: () => void
 	copyFeedback: boolean
 	showZoomControls?: boolean
@@ -41,15 +42,17 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 					zoomInTitle={t("common:mermaid.buttons.zoomIn")}
 					zoomOutTitle={t("common:mermaid.buttons.zoomOut")}
 				/>
-				<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
-					<IconButton
-						icon="code"
-						onClick={(e: React.MouseEvent) => {
-							e.stopPropagation()
-							onViewCode()
-						}}
-					/>
-				</StandardTooltip>
+				{onViewCode && (
+					<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
+						<IconButton
+							icon="code"
+							onClick={(e: React.MouseEvent) => {
+								e.stopPropagation()
+								onViewCode()
+							}}
+						/>
+					</StandardTooltip>
+				)}
 				<StandardTooltip content={t("common:mermaid.buttons.copy")}>
 					<IconButton icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
 				</StandardTooltip>
@@ -64,15 +67,17 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 					<IconButton icon="zoom-in" onClick={onZoom} />
 				</StandardTooltip>
 			)}
-			<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
-				<IconButton
-					icon="code"
-					onClick={(e: React.MouseEvent) => {
-						e.stopPropagation()
-						onViewCode()
-					}}
-				/>
-			</StandardTooltip>
+			{onViewCode && (
+				<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
+					<IconButton
+						icon="code"
+						onClick={(e: React.MouseEvent) => {
+							e.stopPropagation()
+							onViewCode()
+						}}
+					/>
+				</StandardTooltip>
+			)}
 			<StandardTooltip content={t("common:mermaid.buttons.copy")}>
 				<IconButton icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
 			</StandardTooltip>

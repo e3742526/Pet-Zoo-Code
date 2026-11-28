@@ -64,7 +64,8 @@
 		"unknownError": "Неизвестная ошибка",
 		"indexingRequiresWorkspace": "Для индексации требуется открытая папка рабочего пространства",
 		"indexingStopped": "Индексация остановлена пользователем.",
-		"indexingStoppedPartial": "Индексация остановлена. Частичные данные индекса сохранены."
+		"indexingStoppedPartial": "Индексация остановлена. Частичные данные индекса сохранены.",
+		"clearIndexFailed": "Не удалось очистить данные индекса: {{errorMessage}}"
 	},
 	"semble": {
 		"downloadingBinary": "Загрузка бинарного файла semble...",

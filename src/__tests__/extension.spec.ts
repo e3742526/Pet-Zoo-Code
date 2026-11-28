@@ -528,8 +528,11 @@ describe("extension.ts", () => {
 			const order: string[] = []
 			const healthy = { dispose: vi.fn(async () => void order.push("provider")) }
 			const failing = { dispose: vi.fn().mockRejectedValue(new Error("dispose failed")) }
+			const providers = [failing, healthy] satisfies Pick<InstanceType<typeof ClineProvider>, "dispose">[]
 			// The deactivation code calls only `dispose()` on each provider.
-			vi.mocked(ClineProvider.getAllInstances).mockReturnValue([failing, healthy] as unknown as ClineProvider[])
+			vi.mocked(ClineProvider.getAllInstances).mockReturnValue(
+				providers as unknown as ReturnType<typeof ClineProvider.getAllInstances>,
+			)
 			vi.mocked(McpServerManager.cleanup).mockImplementation(async () => void order.push("mcp"))
 
 			const { activate, deactivate } = await import("../extension")

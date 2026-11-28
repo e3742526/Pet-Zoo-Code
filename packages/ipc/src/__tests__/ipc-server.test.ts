@@ -1,7 +1,11 @@
 import assert from "node:assert/strict"
-import { describe, it } from "node:test"
+import { randomUUID } from "node:crypto"
+import { once } from "node:events"
+import { createConnection } from "node:net"
+import { describe, it, type TestContext } from "node:test"
 import os from "node:os"
 import path from "node:path"
+import ipc from "node-ipc"
 import { IpcMessageType, IpcOrigin, TaskCommandName, ipcMessageSchema } from "@roo-code/types"
 import { IpcServer } from "../ipc-server.js"
 
@@ -67,20 +71,44 @@ describe("IPC rejection logging", () => {
 })
 
 describe("IpcServer.close", () => {
+	function startServer(t: TestContext) {
+		const name = `ipc-${randomUUID().slice(0, 8)}.sock`
+		const socketPath = process.platform === "win32" ? name : path.join(os.tmpdir(), name)
+		const address = process.platform === "win32" ? `\\\\.\\pipe\\${name}` : socketPath
+		const server = new IpcServer(socketPath, () => {})
+		t.after(() => server.close())
+		server.listen()
+		const ready = new Promise<void>((resolve) => ipc.server.on("start", resolve))
+		return { server, address, ready }
+	}
+
 	it("does nothing when the server is not listening", () => {
 		const server = new IpcServer("/unused-test.sock", () => {})
 		server.close()
 		assert.equal(server.isListening, false)
 	})
-	it("stops a listening server, and a second close does nothing", async () => {
-		const socketPath = path.join(os.tmpdir(), `ipc-close-${process.pid}-${Date.now()}.sock`)
-		const server = new IpcServer(socketPath, () => {})
-		server.listen()
-		await new Promise((resolve) => setTimeout(resolve, 50))
+	it("stops a listening server and disconnects its clients", { timeout: 2000 }, async (t) => {
+		const { server, address, ready } = startServer(t)
+		await ready
 		assert.equal(server.isListening, true)
+		const client = createConnection(address)
+		t.after(() => client.destroy())
+		await once(client, "data", { signal: t.signal })
+		const closed = once(client, "close", { signal: t.signal })
+
 		server.close()
+		server.close()
+		await closed
 		assert.equal(server.isListening, false)
+	})
+	it("stops startup when closed before the listener is ready", { timeout: 2000 }, async (t) => {
+		const { server, address, ready } = startServer(t)
 		server.close()
+		await ready
+
+		const client = createConnection(address)
+		t.after(() => client.destroy())
+		await assert.rejects(once(client, "connect", { signal: t.signal }), /ENOENT|ECONNREFUSED/)
 		assert.equal(server.isListening, false)
 	})
 })

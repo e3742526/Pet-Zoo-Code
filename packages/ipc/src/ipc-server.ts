@@ -18,6 +18,8 @@ export class IpcServer extends EventEmitter<IpcServerEvents> implements RooCodeI
 	private readonly _log: (...args: unknown[]) => void
 	private readonly _clients: Map<string, Socket>
 
+	private _server?: typeof ipc.server
+	private _serverStarted = false
 	private _isListening = false
 
 	constructor(socketPath: string, log = console.log) {
@@ -30,16 +32,33 @@ export class IpcServer extends EventEmitter<IpcServerEvents> implements RooCodeI
 
 	public listen() {
 		this._isListening = true
+		if (this._server) {
+			return
+		}
 
 		ipc.config.silent = true
+		ipc.serve(this.socketPath)
+		const server = (this._server = ipc.server)
 
-		ipc.serve(this.socketPath, () => {
-			ipc.server.on("connect", (socket) => this.onConnect(socket))
-			ipc.server.on("socket.disconnected", (socket) => this.onDisconnect(socket))
-			ipc.server.on("message", (data) => this.onMessage(data))
+		server.on("start", () => {
+			this._serverStarted = true
+			if (!this._isListening) {
+				this.stopServer()
+				return
+			}
+
+			server.on("connect", (socket) => this.onConnect(socket))
+			server.on("socket.disconnected", (socket) => this.onDisconnect(socket))
+			server.on("message", (data) => this.onMessage(data))
+		})
+		server.on("error", () => {
+			if (!this._serverStarted && this._server === server) {
+				this._server = undefined
+				this._isListening = false
+			}
 		})
 
-		ipc.server.start()
+		server.start()
 	}
 
 	private onConnect(socket: Socket) {
@@ -109,7 +128,7 @@ export class IpcServer extends EventEmitter<IpcServerEvents> implements RooCodeI
 
 	public broadcast(message: IpcMessage) {
 		// this.log("[server#broadcast] message =", message)
-		ipc.server.broadcast("message", message)
+		this._server?.broadcast("message", message)
 	}
 
 	public send(client: string | Socket, message: IpcMessage) {
@@ -119,24 +138,33 @@ export class IpcServer extends EventEmitter<IpcServerEvents> implements RooCodeI
 			const socket = this._clients.get(client)
 
 			if (socket) {
-				ipc.server.emit(socket, "message", message)
+				this._server?.emit(socket, "message", message)
 			}
 		} else {
-			ipc.server.emit(client, "message", message)
+			this._server?.emit(client, "message", message)
 		}
 	}
 
-	/**
-	 * Stops the server and drops its clients. Safe to call when the server is not listening.
-	 */
+	/** Stops the server and drops its clients, including when shutdown races with startup. */
 	public close() {
-		if (!this._isListening) {
+		this._isListening = false
+		this.stopServer()
+	}
+
+	private stopServer() {
+		// node-ipc creates its socket server asynchronously. The start handler stops it if close came first.
+		if (!this._server || !this._serverStarted) {
 			return
 		}
 
-		this._isListening = false
+		this._server.stop()
+		this._server = undefined
+		this._serverStarted = false
+		// Stopping the listener still leaves established connections open.
+		for (const socket of this._clients.values()) {
+			socket.destroy()
+		}
 		this._clients.clear()
-		ipc.server.stop()
 	}
 
 	public get socketPath() {
